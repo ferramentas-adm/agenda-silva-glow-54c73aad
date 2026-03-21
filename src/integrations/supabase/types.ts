@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      agendamentos: {
+        Row: {
+          closer_id: string
+          created_at: string
+          created_by: string
+          id: string
+          lead_name: string
+          lead_phone: string
+          meet_link: string | null
+          observation: string | null
+          original_agendamento_id: string | null
+          scheduled_date: string
+          scheduled_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+        }
+        Insert: {
+          closer_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          lead_name: string
+          lead_phone: string
+          meet_link?: string | null
+          observation?: string | null
+          original_agendamento_id?: string | null
+          scheduled_date: string
+          scheduled_time: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Update: {
+          closer_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          lead_name?: string
+          lead_phone?: string
+          meet_link?: string | null
+          observation?: string | null
+          original_agendamento_id?: string | null
+          scheduled_date?: string
+          scheduled_time?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_original_agendamento_id_fkey"
+            columns: ["original_agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closers: {
         Row: {
           active: boolean
@@ -98,6 +161,12 @@ export type Database = {
     }
     Enums: {
       app_role: "sdr" | "gestor"
+      appointment_status:
+        | "pendente"
+        | "confirmada"
+        | "realizada"
+        | "cancelada"
+        | "reagendada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -226,6 +295,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["sdr", "gestor"],
+      appointment_status: [
+        "pendente",
+        "confirmada",
+        "realizada",
+        "cancelada",
+        "reagendada",
+      ],
     },
   },
 } as const
