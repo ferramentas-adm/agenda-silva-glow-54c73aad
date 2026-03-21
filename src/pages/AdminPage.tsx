@@ -117,7 +117,19 @@ export default function AdminPage() {
           <form onSubmit={handleCreateUser} className="grid gap-3 sm:grid-cols-2">
             <Input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
             <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            <Input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            <div className="space-y-1.5">
+              <Input type="password" placeholder="Senha" value={password} onChange={(e) => handlePasswordChange(e.target.value)} required minLength={8} />
+              {passwordErrors.length > 0 && (
+                <div className="flex flex-col gap-0.5">
+                  {passwordErrors.map((err) => (
+                    <p key={err} className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="h-3 w-3" />
+                      {err}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
               <Button
                 type="button"
