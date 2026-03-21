@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, UserPlus, Users, Briefcase } from "lucide-react";
+import { Loader2, UserPlus, Users, Briefcase, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"sdr" | "gestor">("sdr");
   const [creating, setCreating] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   // Closers management
   const [closerName, setCloserName] = useState("");
@@ -41,8 +42,26 @@ export default function AdminPage() {
     },
   });
 
+  const validatePassword = (pw: string): string[] => {
+    const errs: string[] = [];
+    if (pw.length < 8) errs.push("Mínimo 8 caracteres");
+    if (!/[A-Z]/.test(pw)) errs.push("Pelo menos 1 letra maiúscula");
+    if (!/[0-9]/.test(pw)) errs.push("Pelo menos 1 número");
+    return errs;
+  };
+
+  const handlePasswordChange = (val: string) => {
+    setPassword(val);
+    setPasswordErrors(val ? validatePassword(val) : []);
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errs = validatePassword(password);
+    if (errs.length > 0) {
+      setPasswordErrors(errs);
+      return;
+    }
     setCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-user", {
@@ -54,6 +73,7 @@ export default function AdminPage() {
       setFullName("");
       setEmail("");
       setPassword("");
+      setPasswordErrors([]);
       refetchUsers();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar usuário");
@@ -97,7 +117,19 @@ export default function AdminPage() {
           <form onSubmit={handleCreateUser} className="grid gap-3 sm:grid-cols-2">
             <Input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
             <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            <Input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            <div className="space-y-1.5">
+              <Input type="password" placeholder="Senha" value={password} onChange={(e) => handlePasswordChange(e.target.value)} required minLength={8} />
+              {passwordErrors.length > 0 && (
+                <div className="flex flex-col gap-0.5">
+                  {passwordErrors.map((err) => (
+                    <p key={err} className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="h-3 w-3" />
+                      {err}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
               <Button
                 type="button"

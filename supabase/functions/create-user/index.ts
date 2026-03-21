@@ -68,6 +68,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Password strength validation
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return new Response(JSON.stringify({ error: "Senha fraca: mínimo 8 caracteres, 1 maiúscula e 1 número." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Create user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
