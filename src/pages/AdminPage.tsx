@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"sdr" | "gestor">("sdr");
   const [creating, setCreating] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   // Closers management
   const [closerName, setCloserName] = useState("");
