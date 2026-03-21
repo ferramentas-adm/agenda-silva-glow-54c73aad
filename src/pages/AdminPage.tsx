@@ -42,8 +42,26 @@ export default function AdminPage() {
     },
   });
 
+  const validatePassword = (pw: string): string[] => {
+    const errs: string[] = [];
+    if (pw.length < 8) errs.push("Mínimo 8 caracteres");
+    if (!/[A-Z]/.test(pw)) errs.push("Pelo menos 1 letra maiúscula");
+    if (!/[0-9]/.test(pw)) errs.push("Pelo menos 1 número");
+    return errs;
+  };
+
+  const handlePasswordChange = (val: string) => {
+    setPassword(val);
+    setPasswordErrors(val ? validatePassword(val) : []);
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errs = validatePassword(password);
+    if (errs.length > 0) {
+      setPasswordErrors(errs);
+      return;
+    }
     setCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-user", {
@@ -55,6 +73,7 @@ export default function AdminPage() {
       setFullName("");
       setEmail("");
       setPassword("");
+      setPasswordErrors([]);
       refetchUsers();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar usuário");
