@@ -1,18 +1,364 @@
+import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CalendarIcon, ArrowRight, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+
 import AppLayout from "@/components/AppLayout";
+import LeadSearch from "@/components/agendar/LeadSearch";
+import CloserSelector from "@/components/agendar/CloserSelector";
+import TimeSlotPicker from "@/components/agendar/TimeSlotPicker";
+import SuccessScreen from "@/components/agendar/SuccessScreen";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Lead } from "@/data/mockLeads";
+
+type Step = "lead" | "closer" | "datetime" | "confirm";
+
+interface AgendamentoData {
+  lead: Lead;
+  closerId: string;
+  closerName: string;
+  date: Date;
+  time: string;
+  observation: string;
+}
 
 export default function AgendarPage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("edit");
+
+  const [step, setStep] = useState<Step>("lead");
+  const [lead, setLead] = useState<Lead | null>(null);
+  const [closerId, setCloserId] = useState<string | null>(null);
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [time, setTime] = useState<string | null>(null);
+  const [observation, setObservation] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState<AgendamentoData | null>(null);
+
+  // Fetch closers for name resolution
+  const { data: closers = [] } = useQuery({
+    queryKey: ["closers-active"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      return data ?? [];
+    },
+  });
+
+  // If editing, load existing agendamento
+  const { data: editData } = useQuery({
+    queryKey: ["agendamento-edit", editId],
+    enabled: !!editId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("*")
+        .eq("id", editId!)
+        .single();
+      return data;
+    },
+  });
+
+  // Pre-fill from edit data
+  useState(() => {
+    if (editData) {
+      setLead({ id: "edit", name: editData.lead_name, phone: editData.lead_phone });
+      setCloserId(editData.closer_id);
+      setDate(new Date(editData.scheduled_date + "T12:00:00"));
+      setTime(editData.scheduled_time);
+      setObservation(editData.observation ?? "");
+    }
+  });
+
+  const closerName = useMemo(
+    () => closers.find((c) => c.id === closerId)?.name ?? "",
+    [closers, closerId]
+  );
+
+  const canGoNext: Record<Step, boolean> = {
+    lead: !!lead,
+    closer: !!closerId,
+    datetime: !!date && !!time,
+    confirm: true,
+  };
+
+  const steps: Step[] = ["lead", "closer", "datetime", "confirm"];
+  const stepIndex = steps.indexOf(step);
+
+  const goNext = () => {
+    if (stepIndex < steps.length - 1) setStep(steps[stepIndex + 1]);
+  };
+  const goBack = () => {
+    if (stepIndex > 0) setStep(steps[stepIndex - 1]);
+  };
+
+  const handleSubmit = async () => {
+    if (!lead || !closerId || !date || !time || !user) return;
+    setSubmitting(true);
+
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    try {
+      // If reagendamento, update old status
+      if (editId) {
+        await supabase
+          .from("agendamentos")
+          .update({ status: "reagendada" })
+          .eq("id", editId);
+      }
+
+      const { error } = await supabase.from("agendamentos").insert({
+        lead_name: lead.name,
+        lead_phone: lead.phone,
+        closer_id: closerId,
+        scheduled_date: dateStr,
+        scheduled_time: time,
+        observation: observation || null,
+        status: "pendente",
+        meet_link: "https://meet.google.com/abc-defg-hij",
+        created_by: user.id,
+        original_agendamento_id: editId || null,
+      });
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
+
+      setSuccess({
+        lead,
+        closerId,
+        closerName,
+        date,
+        time,
+        observation,
+      });
+
+      toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao agendar");
+    }
+    setSubmitting(false);
+  };
+
+  const resetForm = () => {
+    setLead(null);
+    setCloserId(null);
+    setDate(undefined);
+    setTime(null);
+    setObservation("");
+    setSuccess(null);
+    setStep("lead");
+  };
+
+  if (success) {
+    return (
+      <AppLayout>
+        <SuccessScreen
+          leadName={success.lead.name}
+          closerName={success.closerName}
+          date={format(success.date, "dd/MM/yyyy")}
+          time={success.time}
+          onReset={resetForm}
+        />
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
-      <div className="animate-fade-in space-y-6">
+      <div className="animate-fade-in space-y-6 max-w-2xl mx-auto">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Novo Agendamento</h1>
-          <p className="text-sm text-muted-foreground">Formulário de agendamento será implementado aqui.</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {editId ? "Reagendar Reunião" : "Novo Agendamento"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Etapa {stepIndex + 1} de {steps.length}
+          </p>
         </div>
 
-        <div className="card-meeting flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-muted-foreground">Em breve você poderá agendar reuniões por aqui.</p>
+        {/* Progress bar */}
+        <div className="flex gap-1">
+          {steps.map((s, i) => (
+            <div
+              key={s}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-colors",
+                i <= stepIndex ? "bg-primary" : "bg-secondary"
+              )}
+            />
+          ))}
+        </div>
+
+        {/* Step content */}
+        <div className="card-meeting p-5 space-y-4">
+          {step === "lead" && (
+            <>
+              <h2 className="text-lg font-semibold">Buscar Lead</h2>
+              <p className="text-sm text-muted-foreground">
+                Pesquise pelo nome ou telefone do lead.
+              </p>
+              <LeadSearch
+                selectedLead={lead}
+                onSelect={setLead}
+                onClear={() => setLead(null)}
+              />
+            </>
+          )}
+
+          {step === "closer" && (
+            <>
+              <h2 className="text-lg font-semibold">Selecionar Closer</h2>
+              <p className="text-sm text-muted-foreground">
+                Escolha o closer para a reunião.
+                {date && ` Disponibilidade para ${format(date, "dd/MM")}.`}
+              </p>
+              <CloserSelector
+                selectedDate={date}
+                selectedCloserId={closerId}
+                onSelect={setCloserId}
+              />
+            </>
+          )}
+
+          {step === "datetime" && (
+            <>
+              <h2 className="text-lg font-semibold">Data e Horário</h2>
+              <p className="text-sm text-muted-foreground">
+                Selecione a data e o horário disponível.
+              </p>
+
+              <div className="space-y-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione a data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={(d) => {
+                        setDate(d);
+                        setTime(null); // reset time when date changes
+                      }}
+                      disabled={(d) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return d < today || d.getDay() === 0 || d.getDay() === 6;
+                      }}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {date && closerId && (
+                  <TimeSlotPicker
+                    closerId={closerId}
+                    date={date}
+                    selectedTime={time}
+                    onSelect={setTime}
+                  />
+                )}
+
+                {date && !closerId && (
+                  <p className="text-sm text-muted-foreground">
+                    Selecione um closer primeiro (etapa anterior).
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {step === "confirm" && lead && closerId && date && time && (
+            <>
+              <h2 className="text-lg font-semibold">Confirmar Agendamento</h2>
+
+              <div className="space-y-3">
+                <SummaryRow label="Lead" value={`${lead.name} · ${lead.phone}`} />
+                <SummaryRow label="Closer" value={closerName} />
+                <SummaryRow label="Data" value={format(date, "dd/MM/yyyy")} />
+                <SummaryRow label="Horário" value={time} />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Observação interna (opcional)</label>
+                <Textarea
+                  placeholder="Notas sobre o lead, contexto da reunião..."
+                  value={observation}
+                  onChange={(e) => setObservation(e.target.value.slice(0, 300))}
+                  className="resize-none"
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground text-right">{observation.length}/300</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <div className="flex justify-between gap-3">
+          {stepIndex > 0 ? (
+            <Button variant="secondary" onClick={goBack} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+          ) : (
+            <div />
+          )}
+
+          {step === "confirm" ? (
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting || !canGoNext.confirm}
+              className="gap-2"
+            >
+              {submitting ? "Agendando..." : editId ? "Reagendar" : "Confirmar Agendamento"}
+            </Button>
+          ) : (
+            <Button
+              onClick={goNext}
+              disabled={!canGoNext[step]}
+              className="gap-2"
+            >
+              Próximo
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-md bg-secondary/50 px-4 py-3">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium">{value}</span>
+    </div>
   );
 }
