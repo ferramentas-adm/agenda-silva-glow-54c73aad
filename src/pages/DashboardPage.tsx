@@ -1,13 +1,18 @@
 import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
+import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
+import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 
 export default function DashboardPage() {
   const { closers, selectedIds, toggle, isLoading } = useCloserFilter();
+  const { pendingCount, syncing, syncNow } = useDataCrazySync();
 
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
+        <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
+
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
           <p className="text-sm text-muted-foreground">Seus agendamentos aparecerão aqui.</p>
