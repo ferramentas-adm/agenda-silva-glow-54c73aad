@@ -30,6 +30,9 @@ interface AgendamentoData {
   date: Date;
   time: string;
   observation: string;
+  meetLink: string | null;
+  meetError: boolean;
+  agendamentoId: string | null;
 }
 
 export default function AgendarPage() {
