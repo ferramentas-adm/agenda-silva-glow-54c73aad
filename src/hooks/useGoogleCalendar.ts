@@ -46,3 +46,30 @@ export function useGoogleAuthUrl() {
 
   return { getAuthUrl };
 }
+
+export interface CreateEventParams {
+  closer_id: string;
+  lead_name: string;
+  lead_phone: string;
+  sdr_name: string;
+  scheduled_date: string;
+  scheduled_time: string;
+}
+
+export interface CreateEventResult {
+  success: boolean;
+  meet_link?: string;
+  event_id?: string;
+  error?: string;
+}
+
+export async function createGoogleCalendarEvent(params: CreateEventParams): Promise<CreateEventResult> {
+  const { data, error } = await supabase.functions.invoke("google-create-event", {
+    body: params,
+  });
+  if (error) {
+    console.error("Error creating Google event:", error);
+    return { success: false, error: "invoke_error" };
+  }
+  return data as CreateEventResult;
+}
