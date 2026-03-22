@@ -8,13 +8,14 @@ import { Loader2 } from "lucide-react";
 export default function LoginPage() {
   const { signIn, user } = useAuth();
   const location = useLocation();
-
-  const from = (location.state as any)?.from?.pathname || "/";
-  if (user) return <Navigate to={from} replace />;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const from = (location.state as any)?.from?.pathname || "/";
+
+  if (user) return <Navigate to={from} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
