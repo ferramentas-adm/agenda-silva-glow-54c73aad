@@ -100,8 +100,7 @@ export default function SuccessScreen({
         {meetLink && (
           <Button
             asChild
-            className="w-full gap-2"
-            style={{ backgroundColor: "hsl(var(--accent-meet))", color: "hsl(0 0% 10%)" }}
+            className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <a href={meetLink} target="_blank" rel="noopener noreferrer">
               <Video className="h-4 w-4" />
