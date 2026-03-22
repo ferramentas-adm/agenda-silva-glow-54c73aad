@@ -42,6 +42,7 @@ export default function AgendarPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
+  const { send: sendToDataCrazy, pendingCount, syncing, syncNow } = useDataCrazySync();
 
   const [step, setStep] = useState<Step>("lead");
   const [lead, setLead] = useState<Lead | null>(null);
