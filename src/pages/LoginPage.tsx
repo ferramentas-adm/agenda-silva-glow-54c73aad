@@ -4,6 +4,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export default function LoginPage() {
   const { signIn, user } = useAuth();
