@@ -262,6 +262,7 @@ export default function AgendarPage() {
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-6 max-w-2xl mx-auto">
+        <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             {editId ? "Reagendar Reunião" : "Novo Agendamento"}
