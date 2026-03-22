@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import type { Lead } from "@/data/mockLeads";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
@@ -29,6 +30,9 @@ interface AgendamentoData {
   date: Date;
   time: string;
   observation: string;
+  meetLink: string | null;
+  meetError: boolean;
+  agendamentoId: string | null;
 }
 
 export default function AgendarPage() {
@@ -121,7 +125,29 @@ export default function AgendarPage() {
           .eq("id", editId);
       }
 
-      const { error } = await supabase.from("agendamentos").insert({
+      // Try to create Google Calendar event + Meet link
+      let meetLink: string | null = null;
+      let meetError = false;
+
+      const sdrName = user.user_metadata?.full_name || user.email || "";
+      const googleResult = await createGoogleCalendarEvent({
+        closer_id: closerId,
+        lead_name: lead.name,
+        lead_phone: lead.phone,
+        sdr_name: sdrName,
+        scheduled_date: dateStr,
+        scheduled_time: time,
+      });
+
+      if (googleResult.success && googleResult.meet_link) {
+        meetLink = googleResult.meet_link;
+      } else {
+        meetError = true;
+        console.warn("Google Calendar event creation failed:", googleResult.error);
+      }
+
+      // Always create the agendamento, with or without meet link
+      const { data: insertedData, error } = await supabase.from("agendamentos").insert({
         lead_name: lead.name,
         lead_phone: lead.phone,
         closer_id: closerId,
@@ -129,10 +155,10 @@ export default function AgendarPage() {
         scheduled_time: time,
         observation: observation || null,
         status: "pendente",
-        meet_link: "https://meet.google.com/abc-defg-hij",
+        meet_link: meetLink,
         created_by: user.id,
         original_agendamento_id: editId || null,
-      });
+      }).select("id").single();
 
       if (error) throw error;
 
@@ -146,9 +172,16 @@ export default function AgendarPage() {
         date,
         time,
         observation,
+        meetLink,
+        meetError,
+        agendamentoId: insertedData?.id ?? null,
       });
 
-      toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
+      if (meetError) {
+        toast.warning("Reunião agendada, mas o link do Meet não foi gerado.");
+      } else {
+        toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao agendar");
     }
@@ -165,6 +198,33 @@ export default function AgendarPage() {
     setStep("lead");
   };
 
+  const handleRetryMeet = async () => {
+    if (!success || !success.agendamentoId || !success.closerId) return;
+    const dateStr = `${success.date.getFullYear()}-${String(success.date.getMonth() + 1).padStart(2, "0")}-${String(success.date.getDate()).padStart(2, "0")}`;
+    const sdrName = user?.user_metadata?.full_name || user?.email || "";
+
+    const result = await createGoogleCalendarEvent({
+      closer_id: success.closerId,
+      lead_name: success.lead.name,
+      lead_phone: success.lead.phone,
+      sdr_name: sdrName,
+      scheduled_date: dateStr,
+      scheduled_time: success.time,
+    });
+
+    if (result.success && result.meet_link) {
+      await supabase
+        .from("agendamentos")
+        .update({ meet_link: result.meet_link })
+        .eq("id", success.agendamentoId);
+
+      setSuccess({ ...success, meetLink: result.meet_link, meetError: false });
+      toast.success("Link do Meet gerado com sucesso!");
+    } else {
+      toast.error("Falha ao gerar o link do Meet. Tente novamente.");
+    }
+  };
+
   if (success) {
     return (
       <AppLayout>
@@ -173,6 +233,9 @@ export default function AgendarPage() {
           closerName={success.closerName}
           date={format(success.date, "dd/MM/yyyy")}
           time={success.time}
+          meetLink={success.meetLink}
+          meetError={success.meetError}
+          onRetryMeet={handleRetryMeet}
           onReset={resetForm}
         />
       </AppLayout>
