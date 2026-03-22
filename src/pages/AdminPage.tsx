@@ -232,7 +232,7 @@ export default function AdminPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {isGoogleConnected ? (
-                      <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-600 dark:text-green-400">
+                      <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                         <CalendarCheck className="h-3 w-3" />
                         Calendar
                       </span>
