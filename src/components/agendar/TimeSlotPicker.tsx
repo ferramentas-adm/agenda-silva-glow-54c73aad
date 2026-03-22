@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Clock, Ban, AlertTriangle } from "lucide-react";
+import { Clock, Ban, AlertTriangle, PenLine } from "lucide-react";
 import { useGoogleCalendarEvents } from "@/hooks/useGoogleCalendar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface TimeSlotPickerProps {
   closerId: string;
@@ -32,7 +35,53 @@ function isSlotBlockedByGoogle(
   });
 }
 
+function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date): boolean {
+  const match = time.match(/^(\d{2}):(\d{2})$/);
+  if (!match) return false;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (h < 9 || h > 23 || m < 0 || m > 59) return false;
+  if (h === 23 && m > 0) return false; // end would be after 00:00
+
+  if (isToday) {
+    const slotStart = new Date(`${dateStr}T${time}:00`);
+    if (slotStart <= now) return false;
+  }
+  return true;
+}
+
+function isCustomTimeConflicting(
+  time: string,
+  dateStr: string,
+  bookedTimes: string[],
+  googleEvents: { start: string; end: string }[],
+): boolean {
+  const slotStart = new Date(`${dateStr}T${time}:00`);
+  const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+
+  // Check Google Calendar conflicts
+  const googleConflict = googleEvents.some((ev) => {
+    const evStart = new Date(ev.start);
+    const evEnd = new Date(ev.end);
+    return evStart < slotEnd && evEnd > slotStart;
+  });
+  if (googleConflict) return true;
+
+  // Check booked slot conflicts (booked slots are 60-min blocks)
+  const bookedConflict = bookedTimes.some((bt) => {
+    const bookedStart = new Date(`${dateStr}T${bt}:00`);
+    const bookedEnd = new Date(bookedStart.getTime() + 60 * 60 * 1000);
+    return bookedStart < slotEnd && bookedEnd > slotStart;
+  });
+
+  return bookedConflict;
+}
+
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
+  const [customMode, setCustomMode] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
   const { data: bookedTimes = [] } = useQuery<string[]>({
@@ -63,6 +112,25 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
 
+  const isCustomSelected = selectedTime !== null && !ALL_SLOTS.includes(selectedTime);
+
+  const handleCustomConfirm = () => {
+    setCustomError(null);
+
+    if (!isCustomTimeValid(customInput, dateStr, isToday, now)) {
+      setCustomError("Horário inválido. Use o formato HH:MM entre 09:00 e 23:00.");
+      return;
+    }
+
+    if (isCustomTimeConflicting(customInput, dateStr, bookedTimes, googleEvents)) {
+      setCustomError("Esse horário conflita com outro agendamento ou evento.");
+      return;
+    }
+
+    onSelect(customInput);
+    setCustomMode(false);
+  };
+
   return (
     <div className="space-y-3">
       {calendarExpired && calendarConnected && (
@@ -84,7 +152,11 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             <button
               key={slot}
               disabled={isDisabled}
-              onClick={() => onSelect(slot)}
+              onClick={() => {
+                onSelect(slot);
+                setCustomMode(false);
+                setCustomError(null);
+              }}
               title={isGoogleBlocked ? "Indisponível (Google Calendar)" : isBooked ? "Já agendado" : undefined}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
@@ -106,7 +178,63 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             </button>
           );
         })}
+
+        {/* Custom time toggle button */}
+        <button
+          onClick={() => {
+            setCustomMode(!customMode);
+            setCustomError(null);
+            if (!customMode) setCustomInput("");
+          }}
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
+            customMode || isCustomSelected
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-dashed border-input bg-card hover:border-primary/50 active:scale-[0.97]"
+          )}
+        >
+          <PenLine className="h-3.5 w-3.5" />
+          {isCustomSelected && !customMode ? selectedTime : "Outro"}
+        </button>
       </div>
+
+      {/* Custom time input */}
+      {customMode && (
+        <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <div className="flex-1 space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              Horário personalizado (ex: 16:20)
+            </label>
+            <Input
+              type="time"
+              min="09:00"
+              max="23:00"
+              value={customInput}
+              onChange={(e) => {
+                setCustomInput(e.target.value);
+                setCustomError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCustomConfirm();
+              }}
+              placeholder="HH:MM"
+              className="h-9 w-32 font-mono"
+              autoFocus
+            />
+            {customError && (
+              <p className="text-xs text-destructive">{customError}</p>
+            )}
+          </div>
+          <Button
+            size="sm"
+            onClick={handleCustomConfirm}
+            disabled={!customInput}
+            className="mt-5"
+          >
+            Confirmar
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
