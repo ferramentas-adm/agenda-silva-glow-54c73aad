@@ -198,6 +198,33 @@ export default function AgendarPage() {
     setStep("lead");
   };
 
+  const handleRetryMeet = async () => {
+    if (!success || !success.agendamentoId || !success.closerId) return;
+    const dateStr = `${success.date.getFullYear()}-${String(success.date.getMonth() + 1).padStart(2, "0")}-${String(success.date.getDate()).padStart(2, "0")}`;
+    const sdrName = user?.user_metadata?.full_name || user?.email || "";
+
+    const result = await createGoogleCalendarEvent({
+      closer_id: success.closerId,
+      lead_name: success.lead.name,
+      lead_phone: success.lead.phone,
+      sdr_name: sdrName,
+      scheduled_date: dateStr,
+      scheduled_time: success.time,
+    });
+
+    if (result.success && result.meet_link) {
+      await supabase
+        .from("agendamentos")
+        .update({ meet_link: result.meet_link })
+        .eq("id", success.agendamentoId);
+
+      setSuccess({ ...success, meetLink: result.meet_link, meetError: false });
+      toast.success("Link do Meet gerado com sucesso!");
+    } else {
+      toast.error("Falha ao gerar o link do Meet. Tente novamente.");
+    }
+  };
+
   if (success) {
     return (
       <AppLayout>
@@ -206,6 +233,9 @@ export default function AgendarPage() {
           closerName={success.closerName}
           date={format(success.date, "dd/MM/yyyy")}
           time={success.time}
+          meetLink={success.meetLink}
+          meetError={success.meetError}
+          onRetryMeet={handleRetryMeet}
           onReset={resetForm}
         />
       </AppLayout>
