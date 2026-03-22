@@ -1,0 +1,152 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
+      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    console.error('Token refresh failed:', data);
+    return null;
+  }
+  return { access_token: data.access_token, expires_in: data.expires_in };
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { closer_id, lead_name, lead_phone, sdr_name, scheduled_date, scheduled_time } = await req.json();
+
+    if (!closer_id || !lead_name || !scheduled_date || !scheduled_time) {
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    // Get token for closer
+    const { data: tokenData, error: tokenError } = await supabaseAdmin
+      .from('closer_google_tokens')
+      .select('*')
+      .eq('closer_id', closer_id)
+      .single();
+
+    if (tokenError || !tokenData) {
+      return new Response(JSON.stringify({ success: false, error: 'google_not_connected' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let accessToken = tokenData.access_token;
+
+    // Refresh if expired
+    const expiryDate = new Date(tokenData.token_expiry);
+    if (expiryDate.getTime() - Date.now() < 5 * 60 * 1000) {
+      const refreshed = await refreshAccessToken(tokenData.refresh_token);
+      if (!refreshed) {
+        return new Response(JSON.stringify({ success: false, error: 'token_expired' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      accessToken = refreshed.access_token;
+      await supabaseAdmin
+        .from('closer_google_tokens')
+        .update({
+          access_token: accessToken,
+          token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+        })
+        .eq('closer_id', closer_id);
+    }
+
+    // Build event
+    const startDateTime = `${scheduled_date}T${scheduled_time}:00`;
+    const [hours, minutes] = scheduled_time.split(':').map(Number);
+    const endHours = hours + 1;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const endDateTime = `${scheduled_date}T${endTime}:00`;
+
+    const description = [
+      `Lead: ${lead_name}`,
+      lead_phone ? `Telefone: ${lead_phone}` : '',
+      sdr_name ? `SDR: ${sdr_name}` : '',
+    ].filter(Boolean).join('\n');
+
+    const event = {
+      summary: `Grupo Silva & ${lead_name}`,
+      description,
+      start: {
+        dateTime: startDateTime,
+        timeZone: 'America/Sao_Paulo',
+      },
+      end: {
+        dateTime: endDateTime,
+        timeZone: 'America/Sao_Paulo',
+      },
+      conferenceData: {
+        createRequest: {
+          requestId: crypto.randomUUID(),
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      },
+    };
+
+    const calendarId = tokenData.calendar_id || 'primary';
+    const calRes = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(event),
+      },
+    );
+
+    if (!calRes.ok) {
+      const errBody = await calRes.text();
+      console.error('Google Calendar create event error:', calRes.status, errBody);
+      return new Response(JSON.stringify({ success: false, error: 'calendar_api_error', details: errBody }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const calData = await calRes.json();
+    const meetLink = calData.conferenceData?.entryPoints?.find(
+      (ep: any) => ep.entryPointType === 'video'
+    )?.uri || calData.hangoutLink || null;
+
+    return new Response(JSON.stringify({
+      success: true,
+      meet_link: meetLink,
+      event_id: calData.id,
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error creating calendar event:', error);
+    return new Response(JSON.stringify({ success: false, error: 'internal_error' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
