@@ -1,15 +1,21 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Navigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const from = (location.state as any)?.from?.pathname || "/";
+
+  if (user) return <Navigate to={from} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
