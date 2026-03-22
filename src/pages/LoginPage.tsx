@@ -6,7 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
+  const location = useLocation();
+
+  const from = (location.state as any)?.from?.pathname || "/";
+  if (user) return <Navigate to={from} replace />;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
