@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
+import logo from "@/assets/logo.png";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
