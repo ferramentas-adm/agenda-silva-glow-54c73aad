@@ -168,10 +168,13 @@ export default function AgendarPage() {
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
 
-      // Send DataCrazy webhook
+      // Send DataCrazy webhook with pipeline action
       const dateTimeISO = new Date(`${dateStr}T${time}:00`).toISOString();
       sendToDataCrazy({
         evento: "agendamento_criado",
+        pipeline_acao: "mover_para_reuniao_agendada",
+        pipeline_origem: "pre-vendas",
+        etapa_destino: "Reunião Agendada",
         lead_nome: lead.name,
         lead_telefone: lead.phone,
         closer_nome: closerName,

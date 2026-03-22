@@ -108,21 +108,23 @@ export function useDataCrazySync() {
   return { send, pendingCount, syncing, syncNow: processQueue };
 }
 
-/** Helper to build a status update payload */
+/** Helper to build a status update payload with pipeline actions */
 export function buildStatusUpdatePayload({
   leadName,
   leadPhone,
   previousStatus,
   newStatus,
   updatedBy,
+  closerName,
 }: {
   leadName: string;
   leadPhone: string;
   previousStatus: string;
   newStatus: string;
   updatedBy: string;
+  closerName?: string;
 }): DataCrazyPayload {
-  return {
+  const base = {
     evento: "status_atualizado",
     lead_nome: leadName,
     lead_telefone: leadPhone,
@@ -131,4 +133,30 @@ export function buildStatusUpdatePayload({
     atualizado_por: updatedBy,
     timestamp: new Date().toISOString(),
   };
+
+  // Reunião realizada → Pré-Vendas "Ganho" + Vendas "Reunião Realizada"
+  if (newStatus === "realizada") {
+    return {
+      ...base,
+      pipeline_acao: "reuniao_realizada",
+      pipeline_pre_vendas: "pre-vendas",
+      etapa_pre_vendas_destino: "Ganho",
+      pipeline_vendas: "vendas",
+      etapa_vendas_destino: "Reunião Realizada",
+      closer_nome: closerName || "",
+    };
+  }
+
+  // No-show ou Cancelada → Pré-Vendas "No-show/Cancelado"
+  if (newStatus === "no-show" || newStatus === "cancelada") {
+    return {
+      ...base,
+      pipeline_acao: "no_show_ou_cancelado",
+      pipeline_origem: "pre-vendas",
+      etapa_destino: "No-show/Cancelado",
+    };
+  }
+
+  // Other status updates (confirmada, reagendada, etc.) — no pipeline action
+  return base;
 }
