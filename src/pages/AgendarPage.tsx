@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
+import { useDataCrazySync } from "@/hooks/useDataCrazySync";
+import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
 import type { Lead } from "@/data/mockLeads";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
@@ -40,6 +42,7 @@ export default function AgendarPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
+  const { send: sendToDataCrazy, pendingCount, syncing, syncNow } = useDataCrazySync();
 
   const [step, setStep] = useState<Step>("lead");
   const [lead, setLead] = useState<Lead | null>(null);
@@ -165,6 +168,20 @@ export default function AgendarPage() {
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
 
+      // Send DataCrazy webhook
+      const dateTimeISO = new Date(`${dateStr}T${time}:00`).toISOString();
+      sendToDataCrazy({
+        evento: "agendamento_criado",
+        lead_nome: lead.name,
+        lead_telefone: lead.phone,
+        closer_nome: closerName,
+        data_hora: dateTimeISO,
+        meet_url: meetLink || "",
+        sdr_responsavel: sdrName,
+        status: "pendente",
+        observacao: observation || "",
+      });
+
       setSuccess({
         lead,
         closerId,
@@ -245,6 +262,7 @@ export default function AgendarPage() {
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-6 max-w-2xl mx-auto">
+        <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             {editId ? "Reagendar Reunião" : "Novo Agendamento"}
