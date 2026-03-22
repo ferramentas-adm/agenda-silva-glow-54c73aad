@@ -77,9 +77,52 @@ export type Database = {
           },
         ]
       }
+      closer_google_tokens: {
+        Row: {
+          access_token: string
+          calendar_id: string
+          closer_id: string
+          created_at: string
+          id: string
+          refresh_token: string
+          token_expiry: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          calendar_id?: string
+          closer_id: string
+          created_at?: string
+          id?: string
+          refresh_token: string
+          token_expiry: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          calendar_id?: string
+          closer_id?: string
+          created_at?: string
+          id?: string
+          refresh_token?: string
+          token_expiry?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closer_google_tokens_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: true
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closers: {
         Row: {
           active: boolean
+          business_hours_end: string
+          business_hours_start: string
           created_at: string
           email: string | null
           id: string
@@ -87,6 +130,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          business_hours_end?: string
+          business_hours_start?: string
           created_at?: string
           email?: string | null
           id?: string
@@ -94,6 +139,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          business_hours_end?: string
+          business_hours_start?: string
           created_at?: string
           email?: string | null
           id?: string
