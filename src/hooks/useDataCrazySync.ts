@@ -107,3 +107,28 @@ export function useDataCrazySync() {
 
   return { send, pendingCount, syncing, syncNow: processQueue };
 }
+
+/** Helper to build a status update payload */
+export function buildStatusUpdatePayload({
+  leadName,
+  leadPhone,
+  previousStatus,
+  newStatus,
+  updatedBy,
+}: {
+  leadName: string;
+  leadPhone: string;
+  previousStatus: string;
+  newStatus: string;
+  updatedBy: string;
+}): DataCrazyPayload {
+  return {
+    evento: "status_atualizado",
+    lead_nome: leadName,
+    lead_telefone: leadPhone,
+    status_anterior: previousStatus,
+    status_novo: newStatus,
+    atualizado_por: updatedBy,
+    timestamp: new Date().toISOString(),
+  };
+}
