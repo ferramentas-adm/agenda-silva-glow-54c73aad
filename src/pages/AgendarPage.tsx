@@ -168,6 +168,20 @@ export default function AgendarPage() {
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
 
+      // Send DataCrazy webhook
+      const dateTimeISO = new Date(`${dateStr}T${time}:00`).toISOString();
+      sendToDataCrazy({
+        evento: "agendamento_criado",
+        lead_nome: lead.name,
+        lead_telefone: lead.phone,
+        closer_nome: closerName,
+        data_hora: dateTimeISO,
+        meet_url: meetLink || "",
+        sdr_responsavel: sdrName,
+        status: "pendente",
+        observacao: observation || "",
+      });
+
       setSuccess({
         lead,
         closerId,
