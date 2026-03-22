@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
+import { useDataCrazySync } from "@/hooks/useDataCrazySync";
+import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
 import type { Lead } from "@/data/mockLeads";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
