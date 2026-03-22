@@ -125,7 +125,29 @@ export default function AgendarPage() {
           .eq("id", editId);
       }
 
-      const { error } = await supabase.from("agendamentos").insert({
+      // Try to create Google Calendar event + Meet link
+      let meetLink: string | null = null;
+      let meetError = false;
+
+      const sdrName = user.user_metadata?.full_name || user.email || "";
+      const googleResult = await createGoogleCalendarEvent({
+        closer_id: closerId,
+        lead_name: lead.name,
+        lead_phone: lead.phone,
+        sdr_name: sdrName,
+        scheduled_date: dateStr,
+        scheduled_time: time,
+      });
+
+      if (googleResult.success && googleResult.meet_link) {
+        meetLink = googleResult.meet_link;
+      } else {
+        meetError = true;
+        console.warn("Google Calendar event creation failed:", googleResult.error);
+      }
+
+      // Always create the agendamento, with or without meet link
+      const { data: insertedData, error } = await supabase.from("agendamentos").insert({
         lead_name: lead.name,
         lead_phone: lead.phone,
         closer_id: closerId,
@@ -133,10 +155,10 @@ export default function AgendarPage() {
         scheduled_time: time,
         observation: observation || null,
         status: "pendente",
-        meet_link: "https://meet.google.com/abc-defg-hij",
+        meet_link: meetLink,
         created_by: user.id,
         original_agendamento_id: editId || null,
-      });
+      }).select("id").single();
 
       if (error) throw error;
 
@@ -150,9 +172,16 @@ export default function AgendarPage() {
         date,
         time,
         observation,
+        meetLink,
+        meetError,
+        agendamentoId: insertedData?.id ?? null,
       });
 
-      toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
+      if (meetError) {
+        toast.warning("Reunião agendada, mas o link do Meet não foi gerado.");
+      } else {
+        toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao agendar");
     }
