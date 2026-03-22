@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, UserPlus, Users, Briefcase, AlertCircle } from "lucide-react";
+import { Loader2, UserPlus, Users, Briefcase, AlertCircle, CalendarCheck, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useGoogleAuthUrl } from "@/hooks/useGoogleCalendar";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -21,6 +22,9 @@ export default function AdminPage() {
   const [closerName, setCloserName] = useState("");
   const [closerEmail, setCloserEmail] = useState("");
   const [addingCloser, setAddingCloser] = useState(false);
+
+  const { getAuthUrl } = useGoogleAuthUrl();
+  const [connectingCloserId, setConnectingCloserId] = useState<string | null>(null);
 
   const { data: users, refetch: refetchUsers } = useQuery({
     queryKey: ["admin-profiles"],
@@ -39,6 +43,17 @@ export default function AdminPage() {
     queryFn: async () => {
       const { data } = await supabase.from("closers").select("*").order("name");
       return data ?? [];
+    },
+  });
+
+  // Check which closers have Google Calendar connected
+  const { data: connectedCloserIds = [] } = useQuery({
+    queryKey: ["closer-google-tokens"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closer_google_tokens" as any)
+        .select("closer_id");
+      return (data ?? []).map((d: any) => d.closer_id);
     },
   });
 
@@ -98,6 +113,17 @@ export default function AdminPage() {
       toast.error(err.message || "Erro ao adicionar closer");
     }
     setAddingCloser(false);
+  };
+
+  const handleConnectGoogle = async (closerId: string) => {
+    setConnectingCloserId(closerId);
+    try {
+      const url = await getAuthUrl(closerId);
+      window.open(url, "_blank", "width=600,height=700");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao gerar link de autorização");
+    }
+    setConnectingCloserId(null);
   };
 
   return (
@@ -194,17 +220,45 @@ export default function AdminPage() {
             </Button>
           </form>
           <div className="space-y-2">
-            {closers?.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-4 py-3">
-                <div>
-                  <p className="font-medium">{c.name}</p>
-                  {c.email && <p className="text-xs text-muted-foreground">{c.email}</p>}
+            {closers?.map((c) => {
+              const isGoogleConnected = connectedCloserIds.includes(c.id);
+              return (
+                <div key={c.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="font-medium">{c.name}</p>
+                      {c.email && <p className="text-xs text-muted-foreground">{c.email}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isGoogleConnected ? (
+                      <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-600 dark:text-green-400">
+                        <CalendarCheck className="h-3 w-3" />
+                        Calendar
+                      </span>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleConnectGoogle(c.id)}
+                        disabled={connectingCloserId === c.id}
+                        className="h-7 gap-1 text-xs"
+                      >
+                        {connectingCloserId === c.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <ExternalLink className="h-3 w-3" />
+                        )}
+                        Conectar Google
+                      </Button>
+                    )}
+                    <span className={`text-xs ${c.active ? "text-primary" : "text-muted-foreground"}`}>
+                      {c.active ? "Ativo" : "Inativo"}
+                    </span>
+                  </div>
                 </div>
-                <span className={`text-xs ${c.active ? "text-primary" : "text-muted-foreground"}`}>
-                  {c.active ? "Ativo" : "Inativo"}
-                </span>
-              </div>
-            ))}
+              );
+            })}
             {(!closers || closers.length === 0) && (
               <p className="text-sm text-muted-foreground">Nenhum closer cadastrado.</p>
             )}
