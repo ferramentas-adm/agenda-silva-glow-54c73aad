@@ -23,7 +23,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-primary/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="container flex h-14 items-center justify-between">
-          <Link to="/" className="text-lg font-bold tracking-tight">
+          <Link to="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
+            <img src={logo} alt="Grupo Silva" className="h-7 w-7" />
             Grupo <span className="text-primary">Silva</span>
           </Link>
 
