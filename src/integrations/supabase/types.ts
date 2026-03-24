@@ -185,6 +185,7 @@ export type Database = {
         Row: {
           active: boolean
           business_hours_end: string
+          business_hours_ranges: Json | null
           business_hours_start: string
           created_at: string
           email: string | null
@@ -194,6 +195,7 @@ export type Database = {
         Insert: {
           active?: boolean
           business_hours_end?: string
+          business_hours_ranges?: Json | null
           business_hours_start?: string
           created_at?: string
           email?: string | null
@@ -203,6 +205,7 @@ export type Database = {
         Update: {
           active?: boolean
           business_hours_end?: string
+          business_hours_ranges?: Json | null
           business_hours_start?: string
           created_at?: string
           email?: string | null

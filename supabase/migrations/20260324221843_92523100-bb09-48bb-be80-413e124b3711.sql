@@ -1,0 +1,1 @@
+ALTER TABLE public.closers ADD COLUMN business_hours_ranges jsonb DEFAULT NULL;
