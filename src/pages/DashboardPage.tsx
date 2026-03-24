@@ -332,7 +332,7 @@ function WeekView({
 
 // ─── Day View ────────────────────────────────────────────────────
 
-const DAY_HOURS = Array.from({ length: 16 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
+const DAY_HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
 
 function DayView({
   date,
