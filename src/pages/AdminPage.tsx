@@ -130,6 +130,7 @@ function UsersSection() {
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
+            datacrazyId: c.datacrazy_id || "",
           };
         });
 
