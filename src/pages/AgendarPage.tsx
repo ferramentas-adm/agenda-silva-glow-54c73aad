@@ -158,7 +158,7 @@ export default function AgendarPage() {
         scheduled_date: dateStr,
         scheduled_time: time,
         observation: observation || null,
-        status: "pendente",
+        status: "confirmada",
         meet_link: meetLink,
         created_by: user.id,
         original_agendamento_id: editId || null,

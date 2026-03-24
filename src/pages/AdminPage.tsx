@@ -511,6 +511,7 @@ function UsersSection() {
               <SelectContent>
                 <SelectItem value="sdr">SDR</SelectItem>
                 <SelectItem value="gestor">Administrador</SelectItem>
+                <SelectItem value="closer">Closer</SelectItem>
               </SelectContent>
             </Select>
           </div>

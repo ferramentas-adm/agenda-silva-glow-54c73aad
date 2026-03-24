@@ -111,7 +111,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         .select("scheduled_time")
         .eq("closer_id", closerId)
         .eq("scheduled_date", dateStr)
-        .in("status", ["pendente", "confirmada"]);
+        .in("status", ["confirmada"]);
       return (data ?? []).map((a) => a.scheduled_time);
     },
   });
