@@ -20,8 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
-  const [editStart, setEditStart] = useState("09:00");
-  const [editEnd, setEditEnd] = useState("23:00");
+  const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [saving, setSaving] = useState(false);
 
   const isCloser = role === "closer";
