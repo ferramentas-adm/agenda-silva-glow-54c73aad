@@ -26,11 +26,27 @@ function normalizeDataCrazyApiUrl(rawUrl: string): string {
     return `${parsed.origin}${basePath}`;
   }
 
-  if (!pathname || pathname === "/") {
+  const resourceLikeSegments = new Set([
+    "leads",
+    "businesses",
+    "tags",
+    "lists",
+    "pipelines",
+    "stages",
+    "activities",
+  ]);
+
+  const segments = pathname.split("/").filter(Boolean);
+  const lastSegment = segments.at(-1);
+  if (lastSegment && resourceLikeSegments.has(lastSegment)) {
+    segments.pop();
+  }
+
+  if (segments.length === 0) {
     return `${parsed.origin}/api/v1`;
   }
 
-  return `${parsed.origin}${pathname}`;
+  return `${parsed.origin}/${segments.join("/")}`;
 }
 
 function buildProxyUrl(baseUrl: string, path: string): string {
