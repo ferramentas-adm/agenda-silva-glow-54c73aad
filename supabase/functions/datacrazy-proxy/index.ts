@@ -89,7 +89,7 @@ serve(async (req) => {
     if (!path) throw new Error("Missing 'path' in request body");
 
     // Build URL
-    const url = `${DATACRAZY_API_URL}${path}`;
+    const url = buildProxyUrl(DATACRAZY_API_URL, path);
 
     const fetchOptions: RequestInit = {
       method,
