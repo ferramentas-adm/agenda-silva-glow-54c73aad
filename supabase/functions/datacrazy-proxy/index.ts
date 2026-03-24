@@ -6,6 +6,41 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const WEBHOOK_PATH_FRAGMENT = "/api/crm/flows/webhooks/";
+
+function normalizeDataCrazyApiUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  let parsed: URL;
+
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error("DATACRAZY_API_URL is not a valid URL");
+  }
+
+  const pathname = parsed.pathname.replace(/\/+$/, "");
+
+  // If someone configures the webhook URL by mistake, force the base API URL.
+  if (pathname.includes(WEBHOOK_PATH_FRAGMENT)) {
+    return `${parsed.origin}/api/v1`;
+  }
+
+  if (!pathname || pathname === "/") {
+    return `${parsed.origin}/api/v1`;
+  }
+
+  return `${parsed.origin}${pathname}`;
+}
+
+function buildProxyUrl(baseUrl: string, path: string): string {
+  if (/^https?:\/\//i.test(path)) {
+    throw new Error("Proxy path must be relative");
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl}${normalizedPath}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
