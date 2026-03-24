@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X } from "lucide-react";
+import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
