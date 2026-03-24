@@ -360,6 +360,18 @@ function UsersSection() {
                           onCheckedChange={() => handleToggleActive(u)}
                           disabled={togglingId === u.userId}
                         />
+                        {u.type === "profile" && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
+                              onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
+                              onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
+                              <KeyRound className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -392,6 +404,81 @@ function UsersSection() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Password change dialog */}
+      <AlertDialog open={!!passwordChangeTarget} onOpenChange={(open) => { if (!open) { setPasswordChangeTarget(null); setNewPassword(""); setShowNewPassword(false); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterar senha</AlertDialogTitle>
+            <AlertDialogDescription>
+              Defina uma nova senha para <strong>{passwordChangeTarget?.name}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="relative">
+              <Input
+                type={showNewPassword ? "text" : "password"}
+                placeholder="Nova senha"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+              >
+                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {newPassword && validatePassword(newPassword).length > 0 && (
+              <div className="flex flex-col gap-0.5">
+                {validatePassword(newPassword).map((err) => (
+                  <p key={err} className="flex items-center gap-1 text-xs text-destructive">
+                    <AlertCircle className="h-3 w-3" />{err}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleChangePassword} disabled={changingPassword || !newPassword || validatePassword(newPassword).length > 0}>
+              {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : "Alterar senha"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Role change dialog */}
+      <AlertDialog open={!!roleChangeTarget} onOpenChange={(open) => { if (!open) { setRoleChangeTarget(null); setNewRole(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterar função</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alterar a função de <strong>{roleChangeTarget?.name}</strong> de{" "}
+              <strong>{roleLabel(roleChangeTarget?.currentRole || "")}</strong> para:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Select value={newRole} onValueChange={setNewRole}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a nova função" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sdr">SDR</SelectItem>
+                <SelectItem value="gestor">Administrador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleChangeRole} disabled={changingRole || !newRole || newRole === roleChangeTarget?.currentRole}>
+              {changingRole ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
