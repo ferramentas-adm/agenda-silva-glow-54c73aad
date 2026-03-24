@@ -26,10 +26,9 @@ function UsersSection() {
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<"sdr" | "gestor" | "closer">("sdr");
   const [creating, setCreating] = useState(false);
-  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
