@@ -47,8 +47,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!closerRecord) return;
     setSaving(true);
     try {
+      const firstStart = editRanges[0]?.start || "09:00";
+      const lastEnd = editRanges[editRanges.length - 1]?.end || "23:00";
       const { error } = await supabase.from("closers")
-        .update({ business_hours_start: editStart, business_hours_end: editEnd })
+        .update({
+          business_hours_start: firstStart,
+          business_hours_end: lastEnd,
+          business_hours_ranges: editRanges,
+        } as any)
         .eq("id", closerRecord.id);
       if (error) throw error;
       toast.success("Horário atualizado!");
