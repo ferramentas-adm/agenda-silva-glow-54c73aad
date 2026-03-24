@@ -8,7 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ScrollText, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollText, Search, ChevronLeft, ChevronRight, CalendarIcon, Download } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AuditLog {
   id: string;
@@ -47,17 +50,31 @@ export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState("all");
   const [page, setPage] = useState(0);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["audit-logs", page],
+    queryKey: ["audit-logs", page, dateFrom?.toISOString(), dateTo?.toISOString()],
     queryFn: async () => {
-      const from = page * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-      const { data, count } = await supabase
+      let query = supabase
         .from("audit_logs")
         .select("*", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range(from, to);
+        .order("created_at", { ascending: false });
+
+      if (dateFrom) {
+        query = query.gte("created_at", format(dateFrom, "yyyy-MM-dd"));
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        query = query.lt("created_at", format(endDate, "yyyy-MM-dd"));
+      }
+
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      query = query.range(from, to);
+
+      const { data, count } = await query;
       return { logs: (data ?? []) as AuditLog[], total: count ?? 0 };
     },
   });
@@ -83,17 +100,90 @@ export default function AuditLogsPage() {
     return result;
   }, [logs, search, entityFilter]);
 
+  // CSV export for agendamentos report
+  const handleExportCSV = async () => {
+    // Fetch all agendamentos (including deleted) for the period
+    let agQuery = supabase
+      .from("agendamentos")
+      .select("*")
+      .order("scheduled_date", { ascending: false });
+
+    if (dateFrom) {
+      agQuery = agQuery.gte("scheduled_date", format(dateFrom, "yyyy-MM-dd"));
+    }
+    if (dateTo) {
+      agQuery = agQuery.gte("scheduled_date", format(dateFrom || new Date(0), "yyyy-MM-dd"))
+        .lte("scheduled_date", format(dateTo, "yyyy-MM-dd"));
+    }
+
+    const [{ data: agendamentos }, { data: closers }, { data: profiles }] = await Promise.all([
+      agQuery,
+      supabase.from("closers").select("id, name"),
+      supabase.from("profiles").select("user_id, full_name"),
+    ]);
+
+    const closerMap = new Map((closers ?? []).map((c: any) => [c.id, c.name]));
+    const profileMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p.full_name]));
+
+    const rows = (agendamentos ?? []).map((a: any) => ({
+      "Data": a.scheduled_date,
+      "Horário": a.scheduled_time,
+      "Lead": a.lead_name,
+      "Telefone": a.lead_phone,
+      "Closer": closerMap.get(a.closer_id) || a.closer_id,
+      "SDR (Criado por)": profileMap.get(a.created_by) || a.created_by,
+      "Status": STATUS_LABELS_AG[a.status] || a.status,
+      "Link da Reunião": a.meet_link || "",
+      "Observações": a.observation || "",
+      "Criado em": a.created_at ? format(new Date(a.created_at), "dd/MM/yyyy HH:mm") : "",
+      "Excluído em": a.deleted_at ? format(new Date(a.deleted_at), "dd/MM/yyyy HH:mm") : "",
+      "Motivo Exclusão": a.deletion_reason || "",
+    }));
+
+    // Build CSV
+    if (rows.length === 0) {
+      return;
+    }
+    const headers = Object.keys(rows[0]);
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map((row: any) =>
+        headers.map((h) => `"${String(row[h] ?? "").replace(/"/g, '""')}"`).join(";")
+      ),
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio-reunioes-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const clearDates = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setPage(0);
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ScrollText className="h-6 w-6 text-primary" />
-            Audit Logs
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Histórico de todas as ações realizadas no sistema.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <ScrollText className="h-6 w-6 text-primary" />
+              Audit Logs
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Histórico de todas as ações realizadas no sistema.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportCSV}>
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </Button>
         </div>
 
         {/* Filters */}
@@ -119,6 +209,50 @@ export default function AuditLogsPage() {
               <SelectItem value="settings">Configurações</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Date from */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("gap-2 text-xs", !dateFrom && "text-muted-foreground")}>
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data início"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dateFrom}
+                onSelect={(d) => { setDateFrom(d); setPage(0); }}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Date to */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("gap-2 text-xs", !dateTo && "text-muted-foreground")}>
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data fim"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dateTo}
+                onSelect={(d) => { setDateTo(d); setPage(0); }}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" className="text-xs" onClick={clearDates}>
+              Limpar datas
+            </Button>
+          )}
         </div>
 
         {/* Logs table */}
@@ -196,6 +330,14 @@ export default function AuditLogsPage() {
     </AppLayout>
   );
 }
+
+const STATUS_LABELS_AG: Record<string, string> = {
+  pendente: "Pendente",
+  confirmada: "Confirmada",
+  realizada: "Realizada",
+  cancelada: "Cancelada",
+  reagendada: "Reagendada",
+};
 
 function formatDetails(log: AuditLog): string {
   const d = log.details;
