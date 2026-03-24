@@ -107,6 +107,7 @@ function UsersSection() {
           hoursStart: closerInfo?.hoursStart || "09:00",
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
+          datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
         };
       });
 
