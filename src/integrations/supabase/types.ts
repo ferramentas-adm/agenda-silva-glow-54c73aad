@@ -188,6 +188,7 @@ export type Database = {
           business_hours_ranges: Json | null
           business_hours_start: string
           created_at: string
+          datacrazy_id: string | null
           email: string | null
           id: string
           name: string
@@ -198,6 +199,7 @@ export type Database = {
           business_hours_ranges?: Json | null
           business_hours_start?: string
           created_at?: string
+          datacrazy_id?: string | null
           email?: string | null
           id?: string
           name: string
@@ -208,6 +210,7 @@ export type Database = {
           business_hours_ranges?: Json | null
           business_hours_start?: string
           created_at?: string
+          datacrazy_id?: string | null
           email?: string | null
           id?: string
           name?: string
@@ -218,6 +221,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          datacrazy_id: string | null
           email: string
           full_name: string
           id: string
@@ -228,6 +232,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          datacrazy_id?: string | null
           email: string
           full_name: string
           id?: string
@@ -238,6 +243,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          datacrazy_id?: string | null
           email?: string
           full_name?: string
           id?: string
