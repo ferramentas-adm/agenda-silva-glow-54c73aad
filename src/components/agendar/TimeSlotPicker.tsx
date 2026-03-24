@@ -88,6 +88,21 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
 
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
+  // Fetch closer's individual business hours
+  const { data: closerData } = useQuery({
+    queryKey: ["closer-hours", closerId],
+    queryFn: async () => {
+      const { data } = await supabase.from("closers").select("business_hours_start, business_hours_end").eq("id", closerId).single();
+      return data;
+    },
+  });
+
+  const hoursStart = closerData?.business_hours_start || "09:00";
+  const hoursEnd = closerData?.business_hours_end || "23:00";
+  const startH = parseInt(hoursStart.split(":")[0], 10);
+  const endH = parseInt(hoursEnd.split(":")[0], 10);
+  const ALL_SLOTS = useMemo(() => generateSlots(hoursStart, hoursEnd), [hoursStart, hoursEnd]);
+
   const { data: bookedTimes = [] } = useQuery<string[]>({
     queryKey: ["booked-slots", closerId, dateStr],
     queryFn: async () => {
