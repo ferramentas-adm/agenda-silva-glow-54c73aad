@@ -256,25 +256,7 @@ function UsersSection() {
         </h3>
         <form onSubmit={handleCreateUser} className="grid gap-3 sm:grid-cols-2">
           <Input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-          <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required={role !== "closer"} />
-          {role !== "closer" && (
-            <div className="space-y-1.5">
-              <Input
-                type="password" placeholder="Senha" value={password}
-                onChange={(e) => { setPassword(e.target.value); setPasswordErrors(e.target.value ? validatePassword(e.target.value) : []); }}
-                required minLength={8}
-              />
-              {passwordErrors.length > 0 && (
-                <div className="flex flex-col gap-0.5">
-                  {passwordErrors.map((err) => (
-                    <p key={err} className="flex items-center gap-1 text-xs text-destructive">
-                      <AlertCircle className="h-3 w-3" />{err}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <div className="flex gap-2">
             <Select value={role} onValueChange={(v) => setRole(v as any)}>
               <SelectTrigger className="flex-1">
@@ -287,10 +269,38 @@ function UsersSection() {
               </SelectContent>
             </Select>
           </div>
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            Uma senha aleatória será gerada automaticamente. O usuário deverá alterá-la no primeiro login.
+          </p>
           <Button type="submit" disabled={creating} className="sm:col-span-2">
             {creating ? <Loader2 className="animate-spin" /> : "Criar Usuário"}
           </Button>
         </form>
+
+        {generatedPassword && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+            <p className="text-sm font-medium">✅ Usuário criado! Senha temporária:</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded bg-secondary px-3 py-2 font-mono text-sm select-all">
+                {generatedPassword}
+              </code>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedPassword);
+                  toast.success("Senha copiada!");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Copie e envie esta senha para o usuário. Ele será obrigado a alterá-la no primeiro acesso.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Users list */}
