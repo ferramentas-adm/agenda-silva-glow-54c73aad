@@ -7,7 +7,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
-  Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle,
+  Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -15,6 +15,7 @@ import CloserFilterBar from "@/components/CloserFilterBar";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
+import { useGoogleCalendarEvents, GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +48,13 @@ interface Agendamento {
   deleted_at: string | null;
   created_by: string;
   created_at: string;
+}
+
+interface GoogleBusyBlock {
+  closer_id: string;
+  date: string;       // yyyy-MM-dd
+  time: string;       // HH:mm
+  summary: string;
 }
 
 // ─── Status helpers ──────────────────────────────────────────────
@@ -143,6 +151,41 @@ export default function DashboardPage() {
 
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
+
+  // Fetch Google Calendar events for all selected closers
+  const calDateStart = viewMode === "week" ? format(weekStart, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
+  const calDateEnd = viewMode === "week" ? format(weekEnd, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
+  const closerIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+  const closerIdsKey = closerIds.join(",");
+
+  const { data: googleBusyBlocks = [] } = useQuery<GoogleBusyBlock[]>({
+    queryKey: ["google-busy-blocks", closerIdsKey, calDateStart, calDateEnd],
+    enabled: closerIds.length > 0,
+    queryFn: async () => {
+      const blocks: GoogleBusyBlock[] = [];
+      const results = await Promise.allSettled(
+        closerIds.map(async (cid) => {
+          const { data, error } = await supabase.functions.invoke("google-calendar-events", {
+            body: { closer_id: cid, date_start: `${calDateStart}T00:00:00`, date_end: `${calDateEnd}T23:59:59` },
+          });
+          if (error || !data?.connected || !data.events) return;
+          (data.events as GoogleCalendarEvent[]).forEach((ev) => {
+            const startDate = ev.start ? new Date(ev.start) : null;
+            if (!startDate) return;
+            blocks.push({
+              closer_id: cid,
+              date: format(startDate, "yyyy-MM-dd"),
+              time: format(startDate, "HH:mm"),
+              summary: "Ocupado",
+            });
+          });
+        })
+      );
+      return blocks;
+    },
+    staleTime: 4 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+  });
 
   // Filter by selected closers
   const filtered = useMemo(
@@ -339,6 +382,7 @@ export default function DashboardPage() {
             days={weekDays}
             agendamentos={filtered}
             closerMap={closerMap}
+            busyBlocks={googleBusyBlocks}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
           />
@@ -347,6 +391,7 @@ export default function DashboardPage() {
             date={currentDate}
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
+            busyBlocks={googleBusyBlocks}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
           />
@@ -494,12 +539,14 @@ function WeekView({
   days,
   agendamentos,
   closerMap,
+  busyBlocks,
   onDelete,
   onClickAg,
 }: {
   days: Date[];
   agendamentos: Agendamento[];
   closerMap: Map<string, string>;
+  busyBlocks: GoogleBusyBlock[];
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
 }) {
@@ -513,7 +560,7 @@ function WeekView({
     return map;
   }, [agendamentos]);
 
-  const hasAny = agendamentos.length > 0;
+  const hasAny = agendamentos.length > 0 || busyBlocks.length > 0;
 
   if (!hasAny) {
     return (
@@ -538,6 +585,7 @@ function WeekView({
       {days.map((day) => {
         const dateStr = format(day, "yyyy-MM-dd");
         const dayAgendamentos = byDate.get(dateStr) || [];
+        const dayBusy = busyBlocks.filter((b) => b.date === dateStr);
         const today = isToday(day);
         const weekend = day.getDay() === 0 || day.getDay() === 6;
 
@@ -571,7 +619,7 @@ function WeekView({
               </span>
             </div>
 
-            {dayAgendamentos.length === 0 ? (
+            {dayAgendamentos.length === 0 && dayBusy.length === 0 ? (
               <p className="text-[10px] text-muted-foreground/50 text-center pt-4">—</p>
             ) : (
               <div className="space-y-1.5">
@@ -584,6 +632,15 @@ function WeekView({
                     onDelete={onDelete}
                     onClick={() => onClickAg(ag)}
                   />
+                ))}
+                {dayBusy.map((b, idx) => (
+                  <div
+                    key={`busy-${idx}`}
+                    className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5"
+                  >
+                    <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground font-medium">{b.time} — Ocupado</span>
+                  </div>
                 ))}
               </div>
             )}
@@ -602,12 +659,14 @@ function DayView({
   date,
   closers,
   agendamentos,
+  busyBlocks,
   onDelete,
   onClickAg,
 }: {
   date: Date;
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
+  busyBlocks: GoogleBusyBlock[];
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
 }) {
@@ -619,6 +678,16 @@ function DayView({
     });
     return m;
   }, [agendamentos]);
+
+  const busyMap = useMemo(() => {
+    const m = new Map<string, GoogleBusyBlock>();
+    busyBlocks.forEach((b) => {
+      const hourPrefix = b.time.slice(0, 2);
+      const key = `${b.closer_id}-${hourPrefix}`;
+      if (!m.has(key)) m.set(key, b);
+    });
+    return m;
+  }, [busyBlocks]);
 
   if (closers.length === 0) {
     return (
@@ -654,12 +723,13 @@ function DayView({
               </div>
               {closers.map((c) => {
                 const ag = slotMap.get(`${c.id}-${hourPrefix}`);
+                const busy = !ag ? busyMap.get(`${c.id}-${hourPrefix}`) : null;
                 return (
                   <div
                     key={`${c.id}-${hour}`}
                     className="border-b border-l border-primary/5 px-1 py-1 min-h-[52px]"
                   >
-                    {ag && (
+                    {ag ? (
                       <div
                         className={cn(
                           "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer",
@@ -691,7 +761,12 @@ function DayView({
                           </button>
                         </div>
                       </div>
-                    )}
+                    ) : busy ? (
+                      <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5">
+                        <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="text-muted-foreground font-medium">Ocupado</span>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
