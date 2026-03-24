@@ -109,6 +109,13 @@ Deno.serve(async (req) => {
       }
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: new_password });
       if (error) throw error;
+
+      // Set must_change_password = true so user is forced to change on next login
+      await supabaseAdmin
+        .from("profiles")
+        .update({ must_change_password: true })
+        .eq("user_id", user_id);
+
       return new Response(JSON.stringify({ message: "Senha alterada com sucesso" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

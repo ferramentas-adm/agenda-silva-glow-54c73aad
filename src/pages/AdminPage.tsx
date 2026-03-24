@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw,
 } from "lucide-react";
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
@@ -26,10 +26,9 @@ function UsersSection() {
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<"sdr" | "gestor" | "closer">("sdr");
   const [creating, setCreating] = useState(false);
-  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,30 +58,38 @@ function UsersSection() {
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
     queryFn: async () => {
-      // Fetch profiles (SDRs and Gestors)
       const { data: profiles } = await supabase.from("profiles").select("*");
       const { data: roles } = await supabase.from("user_roles").select("*");
       const { data: closers } = await supabase.from("closers").select("*").order("name");
 
-      const profileUsers = (profiles ?? []).map((p: any) => ({
-        id: p.id,
-        userId: p.user_id,
-        name: p.full_name,
-        email: p.email,
-        role: roles?.find((r: any) => r.user_id === p.user_id)?.role ?? "sdr",
-        active: p.active !== false,
-        type: "profile" as const,
-      }));
+      // Profile-based users (SDR, Gestor, Closer with auth)
+      const profileEmails = new Set<string>();
+      const profileUsers = (profiles ?? []).map((p: any) => {
+        profileEmails.add(p.email?.toLowerCase());
+        const userRole = roles?.find((r: any) => r.user_id === p.user_id)?.role ?? "sdr";
+        return {
+          id: p.id,
+          userId: p.user_id,
+          name: p.full_name,
+          email: p.email,
+          role: userRole,
+          active: p.active !== false,
+          type: "profile" as const,
+        };
+      });
 
-      const closerUsers = (closers ?? []).map((c: any) => ({
-        id: c.id,
-        userId: c.id,
-        name: c.name,
-        email: c.email || "",
-        role: "closer" as const,
-        active: c.active,
-        type: "closer" as const,
-      }));
+      // Only show closers without auth accounts (legacy closers)
+      const closerUsers = (closers ?? [])
+        .filter((c: any) => !c.email || !profileEmails.has(c.email.toLowerCase()))
+        .map((c: any) => ({
+          id: c.id,
+          userId: c.id,
+          name: c.name,
+          email: c.email || "",
+          role: "closer" as const,
+          active: c.active,
+          type: "closer" as const,
+        }));
 
       return [...profileUsers, ...closerUsers];
     },
@@ -98,40 +105,22 @@ function UsersSection() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (role === "closer") {
-      // Create closer directly in closers table
-      setCreating(true);
-      try {
-        const { error } = await supabase.from("closers").insert({
-          name: fullName,
-          email: email || null,
-        });
-        if (error) throw error;
-        toast.success("Closer criado com sucesso!");
-        setFullName(""); setEmail(""); setPassword(""); setPasswordErrors([]);
-        queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
-        queryClient.invalidateQueries({ queryKey: ["closers"] });
-        queryClient.invalidateQueries({ queryKey: ["closers-active"] });
-      } catch (err: any) {
-        toast.error(err.message || "Erro ao criar closer");
-      }
-      setCreating(false);
-      return;
-    }
-
-    const errs = validatePassword(password);
-    if (errs.length > 0) { setPasswordErrors(errs); return; }
     setCreating(true);
+    setGeneratedPassword(null);
     try {
+      // All users (including closers) now go through create-user edge function
       const { data, error } = await supabase.functions.invoke("create-user", {
-        body: { email, password, full_name: fullName, role },
+        body: { email, full_name: fullName, role },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      
+      setGeneratedPassword(data.generated_password);
       toast.success("Usuário criado com sucesso!");
-      setFullName(""); setEmail(""); setPassword(""); setPasswordErrors([]);
+      setFullName(""); setEmail("");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["closers"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-active"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar usuário");
     }
@@ -275,25 +264,7 @@ function UsersSection() {
         </h3>
         <form onSubmit={handleCreateUser} className="grid gap-3 sm:grid-cols-2">
           <Input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-          <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required={role !== "closer"} />
-          {role !== "closer" && (
-            <div className="space-y-1.5">
-              <Input
-                type="password" placeholder="Senha" value={password}
-                onChange={(e) => { setPassword(e.target.value); setPasswordErrors(e.target.value ? validatePassword(e.target.value) : []); }}
-                required minLength={8}
-              />
-              {passwordErrors.length > 0 && (
-                <div className="flex flex-col gap-0.5">
-                  {passwordErrors.map((err) => (
-                    <p key={err} className="flex items-center gap-1 text-xs text-destructive">
-                      <AlertCircle className="h-3 w-3" />{err}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <div className="flex gap-2">
             <Select value={role} onValueChange={(v) => setRole(v as any)}>
               <SelectTrigger className="flex-1">
@@ -306,10 +277,38 @@ function UsersSection() {
               </SelectContent>
             </Select>
           </div>
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            Uma senha aleatória será gerada automaticamente. O usuário deverá alterá-la no primeiro login.
+          </p>
           <Button type="submit" disabled={creating} className="sm:col-span-2">
             {creating ? <Loader2 className="animate-spin" /> : "Criar Usuário"}
           </Button>
         </form>
+
+        {generatedPassword && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+            <p className="text-sm font-medium">✅ Usuário criado! Senha temporária:</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded bg-secondary px-3 py-2 font-mono text-sm select-all">
+                {generatedPassword}
+              </code>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedPassword);
+                  toast.success("Senha copiada!");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Copie e envie esta senha para o usuário. Ele será obrigado a alterá-la no primeiro acesso.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Users list */}
@@ -361,17 +360,15 @@ function UsersSection() {
                           disabled={togglingId === u.userId}
                         />
                         {u.type === "profile" && (
-                          <>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
-                              onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
-                              <ArrowRightLeft className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
-                              onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
-                              <KeyRound className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
+                            onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
+                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
                         )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
+                          onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
+                          <KeyRound className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>

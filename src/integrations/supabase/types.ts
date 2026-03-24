@@ -218,6 +218,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          must_change_password: boolean
           updated_at: string
           user_id: string
         }
@@ -227,6 +228,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          must_change_password?: boolean
           updated_at?: string
           user_id: string
         }
@@ -236,6 +238,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          must_change_password?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -273,7 +276,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "sdr" | "gestor"
+      app_role: "sdr" | "gestor" | "closer"
       appointment_status:
         | "pendente"
         | "confirmada"
@@ -409,7 +412,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["sdr", "gestor"],
+      app_role: ["sdr", "gestor", "closer"],
       appointment_status: [
         "pendente",
         "confirmada",

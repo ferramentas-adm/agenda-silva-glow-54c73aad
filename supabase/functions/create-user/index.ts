@@ -6,6 +6,28 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function generateRandomPassword(): string {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  const special = "!@#$%&*";
+  const all = upper + lower + digits + special;
+
+  // Ensure at least 1 upper, 1 lower, 1 digit, 1 special
+  let pw = "";
+  pw += upper[Math.floor(Math.random() * upper.length)];
+  pw += lower[Math.floor(Math.random() * lower.length)];
+  pw += digits[Math.floor(Math.random() * digits.length)];
+  pw += special[Math.floor(Math.random() * special.length)];
+
+  for (let i = 4; i < 12; i++) {
+    pw += all[Math.floor(Math.random() * all.length)];
+  }
+
+  // Shuffle
+  return pw.split("").sort(() => Math.random() - 0.5).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -16,7 +38,6 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller is authenticated
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
@@ -38,7 +59,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if caller is gestor
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -52,34 +72,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, full_name, role } = await req.json();
+    const { email, full_name, role } = await req.json();
 
-    if (!email || !password || !full_name || !role) {
-      return new Response(JSON.stringify({ error: "Campos obrigatórios: email, password, full_name, role" }), {
+    if (!email || !full_name || !role) {
+      return new Response(JSON.stringify({ error: "Campos obrigatórios: email, full_name, role" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!["sdr", "gestor"].includes(role)) {
-      return new Response(JSON.stringify({ error: "Role inválida. Use 'sdr' ou 'gestor'." }), {
+    if (!["sdr", "gestor", "closer"].includes(role)) {
+      return new Response(JSON.stringify({ error: "Role inválida. Use 'sdr', 'gestor' ou 'closer'." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Password strength validation
-    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-      return new Response(JSON.stringify({ error: "Senha fraca: mínimo 8 caracteres, 1 maiúscula e 1 número." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Generate random password
+    const generatedPassword = generateRandomPassword();
 
-    // Create user
+    // Create auth user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password,
+      password: generatedPassword,
       email_confirm: true,
       user_metadata: { full_name },
     });
@@ -103,8 +118,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Set must_change_password = true on profile
+    await supabaseAdmin
+      .from("profiles")
+      .update({ must_change_password: true })
+      .eq("user_id", newUser.user.id);
+
+    // If closer, also create entry in closers table linked by email
+    if (role === "closer") {
+      await supabaseAdmin.from("closers").insert({
+        name: full_name,
+        email,
+      });
+    }
+
     return new Response(
-      JSON.stringify({ message: "Usuário criado com sucesso", user_id: newUser.user.id }),
+      JSON.stringify({
+        message: "Usuário criado com sucesso",
+        user_id: newUser.user.id,
+        generated_password: generatedPassword,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
