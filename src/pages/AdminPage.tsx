@@ -44,6 +44,17 @@ function UsersSection() {
   // Toggle active
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  // Password change state
+  const [passwordChangeTarget, setPasswordChangeTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  // Role change state
+  const [roleChangeTarget, setRoleChangeTarget] = useState<{ userId: string; name: string; currentRole: string } | null>(null);
+  const [newRole, setNewRole] = useState<string>("");
+  const [changingRole, setChangingRole] = useState(false);
+
   // Fetch all users (profiles + roles) and closers
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
