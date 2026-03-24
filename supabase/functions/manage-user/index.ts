@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { user_id, action } = await req.json();
+    const body = await req.json();
+    const { user_id, action } = body;
 
     if (!user_id) {
       return new Response(JSON.stringify({ error: "user_id é obrigatório" }), {
@@ -59,6 +60,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Delete user
     if (action === "delete") {
       const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
       if (error) throw error;
@@ -68,8 +70,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Toggle active
     if (action === "toggle_active") {
-      // We toggle the active field in profiles
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("active")
@@ -84,7 +86,6 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
 
-      // If deactivating, we could also ban the user
       if (!newActive) {
         await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "876600h" });
       } else {
@@ -92,6 +93,46 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ message: newActive ? "Usuário ativado" : "Usuário desativado", active: newActive }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Change password
+    if (action === "change_password") {
+      const { new_password } = body;
+      if (!new_password || new_password.length < 8) {
+        return new Response(JSON.stringify({ error: "Senha deve ter no mínimo 8 caracteres" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: new_password });
+      if (error) throw error;
+      return new Response(JSON.stringify({ message: "Senha alterada com sucesso" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Change role
+    if (action === "change_role") {
+      const { new_role } = body;
+      if (!["sdr", "gestor"].includes(new_role)) {
+        return new Response(JSON.stringify({ error: "Role inválida" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Update role in user_roles table
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .update({ role: new_role })
+        .eq("user_id", user_id);
+
+      if (error) throw error;
+      return new Response(JSON.stringify({ message: `Role alterada para ${new_role}` }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
