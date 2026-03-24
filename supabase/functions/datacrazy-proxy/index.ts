@@ -6,14 +6,74 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const WEBHOOK_PATH_FRAGMENT = "/api/crm/flows/webhooks/";
+
+function normalizeDataCrazyApiUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  let parsed: URL;
+
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error("DATACRAZY_API_URL is not a valid URL");
+  }
+
+  const pathname = parsed.pathname.replace(/\/+$/, "");
+
+  // If someone configures the webhook URL by mistake, force the base API URL.
+  if (pathname.includes(WEBHOOK_PATH_FRAGMENT)) {
+    const [basePath] = pathname.split(WEBHOOK_PATH_FRAGMENT);
+    return `${parsed.origin}${basePath}`;
+  }
+
+  const resourceLikeSegments = new Set([
+    "leads",
+    "businesses",
+    "tags",
+    "lists",
+    "pipelines",
+    "stages",
+    "activities",
+  ]);
+
+  const segments = pathname.split("/").filter(Boolean);
+  const lastSegment = segments.at(-1);
+  if (lastSegment && resourceLikeSegments.has(lastSegment)) {
+    segments.pop();
+  }
+
+  if (segments.length === 0) {
+    return `${parsed.origin}/api/v1`;
+  }
+
+  return `${parsed.origin}/${segments.join("/")}`;
+}
+
+function buildProxyUrl(baseUrl: string, path: string): string {
+  if (/^https?:\/\//i.test(path)) {
+    throw new Error("Proxy path must be relative");
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl}${normalizedPath}`;
+}
+
+function buildG1FallbackUrl(url: string): string | null {
+  const parsed = new URL(url);
+  if (parsed.hostname !== "api.datacrazy.io") return null;
+  parsed.hostname = "api.g1.datacrazy.io";
+  return parsed.toString();
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const DATACRAZY_API_URL = Deno.env.get("DATACRAZY_API_URL");
-    if (!DATACRAZY_API_URL) throw new Error("DATACRAZY_API_URL is not configured");
+    const DATACRAZY_API_URL_RAW = Deno.env.get("DATACRAZY_API_URL");
+    if (!DATACRAZY_API_URL_RAW) throw new Error("DATACRAZY_API_URL is not configured");
+    const DATACRAZY_API_URL = normalizeDataCrazyApiUrl(DATACRAZY_API_URL_RAW);
 
     const DATACRAZY_API_TOKEN = Deno.env.get("DATACRAZY_API_TOKEN");
     if (!DATACRAZY_API_TOKEN) throw new Error("DATACRAZY_API_TOKEN is not configured");
@@ -53,7 +113,7 @@ serve(async (req) => {
     if (!path) throw new Error("Missing 'path' in request body");
 
     // Build URL
-    const url = `${DATACRAZY_API_URL}${path}`;
+    const url = buildProxyUrl(DATACRAZY_API_URL, path);
 
     const fetchOptions: RequestInit = {
       method,
@@ -67,8 +127,27 @@ serve(async (req) => {
       fetchOptions.body = JSON.stringify(payload);
     }
 
-    const response = await fetch(url, fetchOptions);
+    let requestUrl = url;
+    let response = await fetch(requestUrl, fetchOptions);
+
+    if (response.status === 404) {
+      const fallbackUrl = buildG1FallbackUrl(requestUrl);
+      if (fallbackUrl) {
+        requestUrl = fallbackUrl;
+        response = await fetch(requestUrl, fetchOptions);
+      }
+    }
+
     const responseData = await response.text();
+
+    if (!response.ok) {
+      console.error("DataCrazy request failed", {
+        method,
+        requestUrl,
+        status: response.status,
+        response: responseData.slice(0, 500),
+      });
+    }
 
     let parsed;
     try {
