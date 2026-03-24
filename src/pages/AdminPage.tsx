@@ -607,6 +607,62 @@ function UsersSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* DataCrazy ID dialog */}
+      <AlertDialog open={!!datacrazyTarget} onOpenChange={(open) => { if (!open) setDatacrazyTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ID DataCrazy</AlertDialogTitle>
+            <AlertDialogDescription>
+              Configure o ID do DataCrazy para <strong>{datacrazyTarget?.name}</strong>. Este ID é usado para criar atividades e vincular ações no CRM.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Input
+              placeholder="Ex: fca47567-94b8-418f-b087-e6c4d10e71bb"
+              value={editDatacrazyId}
+              onChange={(e) => setEditDatacrazyId(e.target.value.trim())}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Encontre este ID na plataforma DataCrazy, na página do usuário.
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingDatacrazyId}
+              onClick={async () => {
+                if (!datacrazyTarget) return;
+                setSavingDatacrazyId(true);
+                try {
+                  if (datacrazyTarget.type === "closer" || datacrazyTarget.closerId) {
+                    const closerId = datacrazyTarget.closerId || datacrazyTarget.userId;
+                    const { error } = await supabase.from("closers")
+                      .update({ datacrazy_id: editDatacrazyId || null } as any)
+                      .eq("id", closerId);
+                    if (error) throw error;
+                  }
+                  if (datacrazyTarget.type === "profile") {
+                    const { error } = await supabase.from("profiles")
+                      .update({ datacrazy_id: editDatacrazyId || null } as any)
+                      .eq("user_id", datacrazyTarget.userId);
+                    if (error) throw error;
+                  }
+                  toast.success("ID DataCrazy atualizado!");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  setDatacrazyTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao salvar");
+                }
+                setSavingDatacrazyId(false);
+              }}
+            >
+              {savingDatacrazyId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
