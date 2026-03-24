@@ -374,7 +374,9 @@ function UsersSection() {
                       <div className="flex items-center gap-2">
                         {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
                         {u.role === "closer" && u.closerId && (
-                          <span className="text-xs text-muted-foreground">({u.hoursStart}–{u.hoursEnd})</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({u.ranges.map((r: any) => `${r.start}–${r.end}`).join(", ")})
+                          </span>
                         )}
                       </div>
                     </div>
