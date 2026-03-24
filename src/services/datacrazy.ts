@@ -282,6 +282,15 @@ export async function reuniaoRealizada(ag: AgendamentoData) {
   const stageId = await getStageId("datacrazy_stage_reuniao_realizada");
   const agObj = ag as unknown as Record<string, unknown>;
 
+  // Resolve DataCrazy ID for closer
+  let closerDatacrazyId = ag.closerId;
+  try {
+    const { data: closerData } = await supabase.from("closers").select("datacrazy_id").eq("id", ag.closerId).single();
+    if (closerData?.datacrazy_id) closerDatacrazyId = closerData.datacrazy_id;
+  } catch {
+    console.warn("Could not resolve closer DataCrazy ID for reuniaoRealizada");
+  }
+
   let lead: DataCrazyLead | null;
   try {
     lead = await buscarLead(ag.leadTelefone);
@@ -297,7 +306,7 @@ export async function reuniaoRealizada(ag: AgendamentoData) {
   try { await ganharNegocio(negocio.id); } catch { addToQueue("reuniaoRealizada", 3, agObj); return; }
 
   try {
-    await criarNegocio(lead.id, stageId, ag.closerId);
+    await criarNegocio(lead.id, stageId, closerDatacrazyId);
   } catch { addToQueue("reuniaoRealizada", 4, agObj); }
 
   try {
