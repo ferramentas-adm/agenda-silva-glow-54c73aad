@@ -72,14 +72,22 @@ serve(async (req) => {
       });
     }
 
-    return new Response(`
-      <html><body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0a0a0a;color:#fff">
-        <div style="text-align:center">
-          <h2>✅ Google Calendar conectado!</h2>
-          <p>Você pode fechar esta janela.</p>
-        </div>
-      </body></html>
-    `, { headers: { 'Content-Type': 'text/html' } });
+    return new Response(
+      `<!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0a0a0a;color:#fff">
+          <div style="text-align:center">
+            <h2>✅ Google Calendar conectado!</h2>
+            <p>Você pode fechar esta janela.</p>
+          </div>
+        </body>
+      </html>`,
+      { headers: { 'Content-Type': 'text/html; charset=UTF-8' } }
+    );
   } catch (error) {
     console.error('Callback error:', error);
     return new Response('<html><body><h2>Erro interno</h2></body></html>', {
