@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -14,11 +14,15 @@ interface TimeSlotPickerProps {
   onSelect: (time: string) => void;
 }
 
-const ALL_SLOTS = [
-  "09:00", "10:00", "11:00", "12:00", "13:00",
-  "14:00", "15:00", "16:00", "17:00", "18:00",
-  "19:00", "20:00", "21:00", "22:00", "23:00",
-];
+function generateSlots(start: string, end: string): string[] {
+  const startH = parseInt(start.split(":")[0], 10);
+  const endH = parseInt(end.split(":")[0], 10);
+  const slots: string[] = [];
+  for (let h = startH; h <= endH; h++) {
+    slots.push(`${String(h).padStart(2, "0")}:00`);
+  }
+  return slots;
+}
 
 function isSlotBlockedByGoogle(
   slot: string,
