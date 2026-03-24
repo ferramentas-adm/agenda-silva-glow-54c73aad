@@ -67,14 +67,18 @@ function UsersSection() {
       const { data: roles } = await supabase.from("user_roles").select("*");
       const { data: closers } = await supabase.from("closers").select("*").order("name");
 
-      // Build a map of closer hours by email
-      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string }>();
+      // Build a map of closer info by email
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[] }>();
       (closers ?? []).forEach((c: any) => {
         if (c.email) {
+          const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
+            ? c.business_hours_ranges
+            : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
           closerMap.set(c.email.toLowerCase(), {
             closerId: c.id,
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
+            ranges,
           });
         }
       });
