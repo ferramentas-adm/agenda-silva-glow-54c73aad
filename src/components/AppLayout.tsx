@@ -30,7 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     queryKey: ["my-closer-record", user?.email],
     enabled: isCloser && !!user?.email,
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id, business_hours_start, business_hours_end").eq("email", user!.email!).single();
+      const { data } = await supabase.from("closers").select("id, business_hours_start, business_hours_end, business_hours_ranges").eq("email", user!.email!).single();
       return data;
     },
   });
