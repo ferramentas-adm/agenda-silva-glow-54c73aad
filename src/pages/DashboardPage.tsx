@@ -7,6 +7,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
+  Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -21,6 +22,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +45,8 @@ interface Agendamento {
   meet_link: string | null;
   observation: string | null;
   deleted_at: string | null;
+  created_by: string;
+  created_at: string;
 }
 
 // ─── Status helpers ──────────────────────────────────────────────
@@ -83,6 +90,10 @@ export default function DashboardPage() {
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  // Detail dialog state
+  const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
   // Week range
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -98,7 +109,7 @@ export default function DashboardPage() {
     queryFn: async () => {
       let query = supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at, created_by, created_at")
         .is("deleted_at", null)
         .order("scheduled_time", { ascending: true });
 
@@ -179,6 +190,33 @@ export default function DashboardPage() {
     setDeleting(false);
     setDeleteTarget(null);
     setDeleteReason("");
+  };
+
+  // Status update handler
+  const handleStatusChange = async (newStatus: string) => {
+    if (!detailAg) return;
+    setUpdatingStatus(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ status: newStatus as any })
+        .eq("id", detailAg.id);
+
+      if (error) throw error;
+
+      await logAudit("update_status", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        old_status: detailAg.status,
+        new_status: newStatus,
+      });
+
+      toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
+      setDetailAg({ ...detailAg, status: newStatus });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao atualizar status");
+    }
+    setUpdatingStatus(false);
   };
 
   return (
@@ -269,6 +307,7 @@ export default function DashboardPage() {
             agendamentos={filtered}
             closerMap={closerMap}
             onDelete={setDeleteTarget}
+            onClickAg={setDetailAg}
           />
         ) : (
           <DayView
@@ -276,6 +315,7 @@ export default function DashboardPage() {
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
             onDelete={setDeleteTarget}
+            onClickAg={setDetailAg}
           />
         )}
       </div>
@@ -310,6 +350,125 @@ export default function DashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Detail / Status change dialog */}
+      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) setDetailAg(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              {detailAg?.lead_name}
+            </DialogTitle>
+            <DialogDescription>Detalhes do agendamento</DialogDescription>
+          </DialogHeader>
+
+          {detailAg && (
+            <div className="space-y-4">
+              {/* Info */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">Data</p>
+                  <p className="font-medium">{format(new Date(detailAg.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">Horário</p>
+                  <p className="font-medium flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{detailAg.scheduled_time}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">Closer</p>
+                  <p className="font-medium">{closerMap.get(detailAg.closer_id) || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">Telefone</p>
+                  <p className="font-medium flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{detailAg.lead_phone}</p>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">Status atual</p>
+                <Badge variant="outline" className={cn("text-xs", STATUS_COLORS[detailAg.status])}>
+                  {STATUS_LABELS[detailAg.status] || detailAg.status}
+                </Badge>
+              </div>
+
+              {/* Meet link */}
+              {detailAg.meet_link && (
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs">Link da reunião</p>
+                  <a href={detailAg.meet_link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
+                    <Video className="h-3.5 w-3.5" />
+                    Abrir reunião
+                  </a>
+                </div>
+              )}
+
+              {/* Observation */}
+              {detailAg.observation && (
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs flex items-center gap-1"><FileText className="h-3.5 w-3.5" />Observações</p>
+                  <p className="text-sm bg-secondary/50 rounded-md p-2">{detailAg.observation}</p>
+                </div>
+              )}
+
+              {/* Status actions */}
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
+                <div className="flex flex-wrap gap-2">
+                  {detailAg.status !== "confirmada" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                      disabled={updatingStatus}
+                      onClick={() => handleStatusChange("confirmada")}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Confirmar
+                    </Button>
+                  )}
+                  {detailAg.status !== "realizada" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
+                      disabled={updatingStatus}
+                      onClick={() => handleStatusChange("realizada")}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Realizada
+                    </Button>
+                  )}
+                  {detailAg.status !== "cancelada" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                      disabled={updatingStatus}
+                      onClick={() => handleStatusChange("cancelada")}
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                      Cancelar
+                    </Button>
+                  )}
+                  {detailAg.status !== "reagendada" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
+                      disabled={updatingStatus}
+                      onClick={() => handleStatusChange("reagendada")}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Reagendar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
@@ -321,11 +480,13 @@ function WeekView({
   agendamentos,
   closerMap,
   onDelete,
+  onClickAg,
 }: {
   days: Date[];
   agendamentos: Agendamento[];
   closerMap: Map<string, string>;
   onDelete: (target: DeleteTarget) => void;
+  onClickAg: (ag: Agendamento) => void;
 }) {
   const byDate = useMemo(() => {
     const map = new Map<string, Agendamento[]>();
@@ -406,6 +567,7 @@ function WeekView({
                     closerName={closerMap.get(ag.closer_id) || ""}
                     compact
                     onDelete={onDelete}
+                    onClick={() => onClickAg(ag)}
                   />
                 ))}
               </div>
@@ -426,11 +588,13 @@ function DayView({
   closers,
   agendamentos,
   onDelete,
+  onClickAg,
 }: {
   date: Date;
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
   onDelete: (target: DeleteTarget) => void;
+  onClickAg: (ag: Agendamento) => void;
 }) {
   const slotMap = useMemo(() => {
     const m = new Map<string, Agendamento>();
@@ -483,9 +647,10 @@ function DayView({
                     {ag && (
                       <div
                         className={cn(
-                          "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative",
+                          "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer",
                           STATUS_COLORS[ag.status] || "bg-secondary"
                         )}
+                        onClick={() => onClickAg(ag)}
                       >
                         <div className="font-semibold truncate">{ag.lead_name}</div>
                         <div className="flex items-center gap-1 text-[10px] opacity-80">
@@ -504,7 +669,7 @@ function DayView({
                           )}
                           <button
                             className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                            onClick={() => onDelete({ id: ag.id, lead_name: ag.lead_name })}
+                            onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name }); }}
                             title="Excluir agendamento"
                           >
                             <Trash2 className="h-2.5 w-2.5" />
@@ -530,18 +695,21 @@ function AgendamentoCard({
   closerName,
   compact,
   onDelete,
+  onClick,
 }: {
   ag: Agendamento;
   closerName: string;
   compact?: boolean;
   onDelete: (target: DeleteTarget) => void;
+  onClick: () => void;
 }) {
   return (
     <div
       className={cn(
-        "rounded-md border px-2 py-1.5 space-y-0.5 group relative",
+        "rounded-md border px-2 py-1.5 space-y-0.5 group relative cursor-pointer",
         STATUS_COLORS[ag.status] || "bg-secondary"
       )}
+      onClick={onClick}
     >
       <div className="flex items-center justify-between gap-1">
         <span className="text-[11px] font-semibold truncate">{ag.lead_name}</span>
@@ -558,7 +726,7 @@ function AgendamentoCard({
           )}
           <button
             className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-            onClick={() => onDelete({ id: ag.id, lead_name: ag.lead_name })}
+            onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name }); }}
             title="Excluir agendamento"
           >
             <Trash2 className="h-3 w-3" />
