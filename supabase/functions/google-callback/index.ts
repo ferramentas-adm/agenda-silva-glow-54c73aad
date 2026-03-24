@@ -17,8 +17,8 @@ serve(async (req) => {
     const closerId = url.searchParams.get('state');
 
     if (!code || !closerId) {
-      return new Response('<html><body><h2>Erro: parâmetros inválidos</h2></body></html>', {
-        status: 400, headers: { 'Content-Type': 'text/html' },
+      return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro: parâmetros inválidos</h2></body></html>', {
+        status: 400, headers: { 'Content-Type': 'text/html; charset=UTF-8' },
       });
     }
 
@@ -43,8 +43,8 @@ serve(async (req) => {
 
     if (!tokenRes.ok || !tokenData.access_token) {
       console.error('Token exchange failed:', tokenData);
-      return new Response('<html><body><h2>Erro ao autenticar com Google</h2></body></html>', {
-        status: 400, headers: { 'Content-Type': 'text/html' },
+      return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro ao autenticar com Google</h2></body></html>', {
+        status: 400, headers: { 'Content-Type': 'text/html; charset=UTF-8' },
       });
     }
 
@@ -67,23 +67,31 @@ serve(async (req) => {
 
     if (error) {
       console.error('Error saving token:', error);
-      return new Response('<html><body><h2>Erro ao salvar token</h2></body></html>', {
-        status: 500, headers: { 'Content-Type': 'text/html' },
+      return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro ao salvar token</h2></body></html>', {
+        status: 500, headers: { 'Content-Type': 'text/html; charset=UTF-8' },
       });
     }
 
-    return new Response(`
-      <html><body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0a0a0a;color:#fff">
-        <div style="text-align:center">
-          <h2>✅ Google Calendar conectado!</h2>
-          <p>Você pode fechar esta janela.</p>
-        </div>
-      </body></html>
-    `, { headers: { 'Content-Type': 'text/html' } });
+    return new Response(
+      `<!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0a0a0a;color:#fff">
+          <div style="text-align:center">
+            <h2>✅ Google Calendar conectado!</h2>
+            <p>Você pode fechar esta janela.</p>
+          </div>
+        </body>
+      </html>`,
+      { headers: { 'Content-Type': 'text/html; charset=UTF-8' } }
+    );
   } catch (error) {
     console.error('Callback error:', error);
-    return new Response('<html><body><h2>Erro interno</h2></body></html>', {
-      status: 500, headers: { 'Content-Type': 'text/html' },
+    return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro interno</h2></body></html>', {
+      status: 500, headers: { 'Content-Type': 'text/html; charset=UTF-8' },
     });
   }
 });
