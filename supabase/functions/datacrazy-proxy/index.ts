@@ -47,8 +47,9 @@ serve(async (req) => {
   }
 
   try {
-    const DATACRAZY_API_URL = Deno.env.get("DATACRAZY_API_URL");
-    if (!DATACRAZY_API_URL) throw new Error("DATACRAZY_API_URL is not configured");
+    const DATACRAZY_API_URL_RAW = Deno.env.get("DATACRAZY_API_URL");
+    if (!DATACRAZY_API_URL_RAW) throw new Error("DATACRAZY_API_URL is not configured");
+    const DATACRAZY_API_URL = normalizeDataCrazyApiUrl(DATACRAZY_API_URL_RAW);
 
     const DATACRAZY_API_TOKEN = Deno.env.get("DATACRAZY_API_TOKEN");
     if (!DATACRAZY_API_TOKEN) throw new Error("DATACRAZY_API_TOKEN is not configured");
