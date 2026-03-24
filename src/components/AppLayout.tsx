@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
+import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
@@ -76,6 +77,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </nav>
         )}
       </header>
+
+      {/* Google Calendar Banner for closers */}
+      <div className="container pt-2">
+        <GoogleCalendarBanner />
+      </div>
 
       {/* Main */}
       <main className="container flex-1 py-6">
