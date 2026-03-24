@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
-import { Search, X, Tag } from "lucide-react";
+import { Search, X, Tag, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { buscarLeadsComTag, type DataCrazyLead } from "@/services/datacrazy";
 
 export interface Lead {
