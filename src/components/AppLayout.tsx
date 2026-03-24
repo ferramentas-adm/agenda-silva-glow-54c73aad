@@ -164,19 +164,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Meu Horário de Trabalho</AlertDialogTitle>
-            <AlertDialogDescription>
-              Configure os horários em que você está disponível para agendamentos.
+          <AlertDialogDescription>
+              Configure os turnos em que você está disponível. Adicione múltiplos turnos para intervalos (ex: almoço).
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2 py-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Início</label>
-              <Input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className="font-mono" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Fim</label>
-              <Input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className="font-mono" />
-            </div>
+          <div className="space-y-3 py-2">
+            {editRanges.map((range, idx) => (
+              <div key={idx} className="flex items-end gap-2">
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Turno {idx + 1} - Início</label>
+                  <Input type="time" value={range.start} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], start: e.target.value }; setEditRanges(nr); }} className="font-mono" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Fim</label>
+                  <Input type="time" value={range.end} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], end: e.target.value }; setEditRanges(nr); }} className="font-mono" />
+                </div>
+                {editRanges.length > 1 && (
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive" onClick={() => setEditRanges(editRanges.filter((_, i) => i !== idx))}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="w-full" onClick={() => setEditRanges([...editRanges, { start: "14:00", end: "18:00" }])}>
+              + Adicionar turno
+            </Button>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
