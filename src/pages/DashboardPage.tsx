@@ -723,12 +723,13 @@ function DayView({
               </div>
               {closers.map((c) => {
                 const ag = slotMap.get(`${c.id}-${hourPrefix}`);
+                const busy = !ag ? busyMap.get(`${c.id}-${hourPrefix}`) : null;
                 return (
                   <div
                     key={`${c.id}-${hour}`}
                     className="border-b border-l border-primary/5 px-1 py-1 min-h-[52px]"
                   >
-                    {ag && (
+                    {ag ? (
                       <div
                         className={cn(
                           "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer",
@@ -760,7 +761,12 @@ function DayView({
                           </button>
                         </div>
                       </div>
-                    )}
+                    ) : busy ? (
+                      <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5">
+                        <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="text-muted-foreground font-medium">Ocupado</span>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
