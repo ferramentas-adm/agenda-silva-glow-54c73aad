@@ -2,11 +2,11 @@ import { useState, useMemo, useEffect, Fragment } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  startOfWeek, endOfWeek, addWeeks, format, isSameDay, addDays, isToday,
+  startOfWeek, endOfWeek, addWeeks, format, addDays, isToday,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock,
+  PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -16,8 +16,16 @@ import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { logAudit } from "@/services/auditLog";
+import { toast } from "sonner";
 
 type ViewMode = "week" | "day";
 
@@ -31,6 +39,7 @@ interface Agendamento {
   status: string;
   meet_link: string | null;
   observation: string | null;
+  deleted_at: string | null;
 }
 
 // ─── Status helpers ──────────────────────────────────────────────
@@ -51,15 +60,28 @@ const STATUS_LABELS: Record<string, string> = {
   reagendada: "Reagendada",
 };
 
+// ─── Delete Dialog State (shared) ────────────────────────────────
+
+interface DeleteTarget {
+  id: string;
+  lead_name: string;
+}
+
 // ─── Main Page ───────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { closers, selectedIds, toggle, isLoading } = useCloserFilter();
   const { pendingCount, syncing, syncNow } = useDataCrazySync();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   // Week range
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -76,7 +98,8 @@ export default function DashboardPage() {
     queryFn: async () => {
       let query = supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at")
+        .is("deleted_at", null)
         .order("scheduled_time", { ascending: true });
 
       if (viewMode === "week") {
@@ -127,6 +150,37 @@ export default function DashboardPage() {
     return m;
   }, [closers]);
 
+  // Delete handler
+  const handleDelete = async () => {
+    if (!deleteTarget || !deleteReason.trim()) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+          deletion_reason: deleteReason.trim(),
+        })
+        .eq("id", deleteTarget.id);
+
+      if (error) throw error;
+
+      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, {
+        lead_name: deleteTarget.lead_name,
+        reason: deleteReason.trim(),
+      });
+
+      toast.success("Agendamento excluído com sucesso.");
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao excluir agendamento");
+    }
+    setDeleting(false);
+    setDeleteTarget(null);
+    setDeleteReason("");
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
@@ -151,7 +205,6 @@ export default function DashboardPage() {
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* View toggle */}
           <div className="flex gap-1 rounded-lg bg-secondary p-1">
             <button
               onClick={() => setViewMode("week")}
@@ -177,7 +230,6 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Date navigation */}
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goPrev}>
               <ChevronLeft className="h-4 w-4" />
@@ -216,15 +268,48 @@ export default function DashboardPage() {
             days={weekDays}
             agendamentos={filtered}
             closerMap={closerMap}
+            onDelete={setDeleteTarget}
           />
         ) : (
           <DayView
             date={currentDate}
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
+            onDelete={setDeleteTarget}
           />
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agendamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o agendamento de <strong>{deleteTarget?.lead_name}</strong>?
+              Informe a justificativa abaixo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Textarea
+              placeholder="Justificativa da exclusão (obrigatório)"
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting || !deleteReason.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
@@ -235,12 +320,13 @@ function WeekView({
   days,
   agendamentos,
   closerMap,
+  onDelete,
 }: {
   days: Date[];
   agendamentos: Agendamento[];
   closerMap: Map<string, string>;
+  onDelete: (target: DeleteTarget) => void;
 }) {
-  // Group by date
   const byDate = useMemo(() => {
     const map = new Map<string, Agendamento[]>();
     agendamentos.forEach((a) => {
@@ -319,6 +405,7 @@ function WeekView({
                     ag={ag}
                     closerName={closerMap.get(ag.closer_id) || ""}
                     compact
+                    onDelete={onDelete}
                   />
                 ))}
               </div>
@@ -338,16 +425,16 @@ function DayView({
   date,
   closers,
   agendamentos,
+  onDelete,
 }: {
   date: Date;
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
+  onDelete: (target: DeleteTarget) => void;
 }) {
-  // Index agendamentos by closer+hour
   const slotMap = useMemo(() => {
     const m = new Map<string, Agendamento>();
     agendamentos.forEach((a) => {
-      // Match by hour prefix (e.g. "09" matches "09:00" and "09:30")
       const hourPrefix = a.scheduled_time.slice(0, 2);
       m.set(`${a.closer_id}-${hourPrefix}`, a);
     });
@@ -396,7 +483,7 @@ function DayView({
                     {ag && (
                       <div
                         className={cn(
-                          "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5",
+                          "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative",
                           STATUS_COLORS[ag.status] || "bg-secondary"
                         )}
                       >
@@ -415,6 +502,13 @@ function DayView({
                               <Video className="h-2.5 w-2.5" />
                             </a>
                           )}
+                          <button
+                            className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                            onClick={() => onDelete({ id: ag.id, lead_name: ag.lead_name })}
+                            title="Excluir agendamento"
+                          >
+                            <Trash2 className="h-2.5 w-2.5" />
+                          </button>
                         </div>
                       </div>
                     )}
@@ -435,31 +529,41 @@ function AgendamentoCard({
   ag,
   closerName,
   compact,
+  onDelete,
 }: {
   ag: Agendamento;
   closerName: string;
   compact?: boolean;
+  onDelete: (target: DeleteTarget) => void;
 }) {
   return (
     <div
       className={cn(
-        "rounded-md border px-2 py-1.5 space-y-0.5",
+        "rounded-md border px-2 py-1.5 space-y-0.5 group relative",
         STATUS_COLORS[ag.status] || "bg-secondary"
       )}
     >
       <div className="flex items-center justify-between gap-1">
         <span className="text-[11px] font-semibold truncate">{ag.lead_name}</span>
-        {ag.meet_link && (
-          <a
-            href={ag.meet_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0"
-            onClick={(e) => e.stopPropagation()}
+        <div className="flex items-center gap-1 shrink-0">
+          {ag.meet_link && (
+            <a
+              href={ag.meet_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Video className="h-3 w-3" />
+            </a>
+          )}
+          <button
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+            onClick={() => onDelete({ id: ag.id, lead_name: ag.lead_name })}
+            title="Excluir agendamento"
           >
-            <Video className="h-3 w-3" />
-          </a>
-        )}
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
       </div>
       <div className="flex items-center gap-1.5 text-[10px] opacity-80">
         <Clock className="h-2.5 w-2.5" />
