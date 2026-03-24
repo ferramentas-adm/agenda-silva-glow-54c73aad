@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock,
 } from "lucide-react";
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
@@ -54,6 +54,12 @@ function UsersSection() {
   const [newRole, setNewRole] = useState<string>("");
   const [changingRole, setChangingRole] = useState(false);
 
+  // Closer hours edit state
+  const [hoursTarget, setHoursTarget] = useState<{ closerId: string; name: string; start: string; end: string } | null>(null);
+  const [editHoursStart, setEditHoursStart] = useState("09:00");
+  const [editHoursEnd, setEditHoursEnd] = useState("23:00");
+  const [savingHours, setSavingHours] = useState(false);
+
   // Fetch all users (profiles + roles) and closers
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
@@ -62,11 +68,24 @@ function UsersSection() {
       const { data: roles } = await supabase.from("user_roles").select("*");
       const { data: closers } = await supabase.from("closers").select("*").order("name");
 
+      // Build a map of closer hours by email
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string }>();
+      (closers ?? []).forEach((c: any) => {
+        if (c.email) {
+          closerMap.set(c.email.toLowerCase(), {
+            closerId: c.id,
+            hoursStart: c.business_hours_start || "09:00",
+            hoursEnd: c.business_hours_end || "23:00",
+          });
+        }
+      });
+
       // Profile-based users (SDR, Gestor, Closer with auth)
       const profileEmails = new Set<string>();
       const profileUsers = (profiles ?? []).map((p: any) => {
         profileEmails.add(p.email?.toLowerCase());
         const userRole = roles?.find((r: any) => r.user_id === p.user_id)?.role ?? "sdr";
+        const closerInfo = closerMap.get(p.email?.toLowerCase());
         return {
           id: p.id,
           userId: p.user_id,
@@ -75,6 +94,9 @@ function UsersSection() {
           role: userRole,
           active: p.active !== false,
           type: "profile" as const,
+          closerId: closerInfo?.closerId || null,
+          hoursStart: closerInfo?.hoursStart || "09:00",
+          hoursEnd: closerInfo?.hoursEnd || "23:00",
         };
       });
 
@@ -89,6 +111,9 @@ function UsersSection() {
           role: "closer" as const,
           active: c.active,
           type: "closer" as const,
+          closerId: c.id,
+          hoursStart: c.business_hours_start || "09:00",
+          hoursEnd: c.business_hours_end || "23:00",
         }));
 
       return [...profileUsers, ...closerUsers];
@@ -336,7 +361,12 @@ function UsersSection() {
                   ) : (
                     <div className="min-w-0">
                       <p className="font-medium truncate">{u.name}</p>
-                      {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
+                      <div className="flex items-center gap-2">
+                        {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
+                        {u.role === "closer" && u.closerId && (
+                          <span className="text-xs text-muted-foreground">({u.hoursStart}–{u.hoursEnd})</span>
+                        )}
+                      </div>
                     </div>
                   )}
                   <div className="flex items-center gap-2 shrink-0">
@@ -363,6 +393,12 @@ function UsersSection() {
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
                             onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
                             <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {u.role === "closer" && u.closerId && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Horário de trabalho"
+                            onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, start: u.hoursStart, end: u.hoursEnd }); setEditHoursStart(u.hoursStart); setEditHoursEnd(u.hoursEnd); }}>
+                            <Clock className="h-3.5 w-3.5" />
                           </Button>
                         )}
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
@@ -476,6 +512,53 @@ function UsersSection() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleChangeRole} disabled={changingRole || !newRole || newRole === roleChangeTarget?.currentRole}>
               {changingRole ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Closer hours dialog */}
+      <AlertDialog open={!!hoursTarget} onOpenChange={(open) => { if (!open) setHoursTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Horário de trabalho</AlertDialogTitle>
+            <AlertDialogDescription>
+              Configure o horário de trabalho de <strong>{hoursTarget?.name}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Início</label>
+              <Input type="time" value={editHoursStart} onChange={(e) => setEditHoursStart(e.target.value)} className="font-mono" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Fim</label>
+              <Input type="time" value={editHoursEnd} onChange={(e) => setEditHoursEnd(e.target.value)} className="font-mono" />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingHours}
+              onClick={async () => {
+                if (!hoursTarget) return;
+                setSavingHours(true);
+                try {
+                  const { error } = await supabase.from("closers")
+                    .update({ business_hours_start: editHoursStart, business_hours_end: editHoursEnd })
+                    .eq("id", hoursTarget.closerId);
+                  if (error) throw error;
+                  toast.success("Horário atualizado!");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  queryClient.invalidateQueries({ queryKey: ["closers"] });
+                  setHoursTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao salvar horário");
+                }
+                setSavingHours(false);
+              }}
+            >
+              {savingHours ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -14,11 +14,15 @@ interface TimeSlotPickerProps {
   onSelect: (time: string) => void;
 }
 
-const ALL_SLOTS = [
-  "09:00", "10:00", "11:00", "12:00", "13:00",
-  "14:00", "15:00", "16:00", "17:00", "18:00",
-  "19:00", "20:00", "21:00", "22:00", "23:00",
-];
+function generateSlots(start: string, end: string): string[] {
+  const startH = parseInt(start.split(":")[0], 10);
+  const endH = parseInt(end.split(":")[0], 10);
+  const slots: string[] = [];
+  for (let h = startH; h <= endH; h++) {
+    slots.push(`${String(h).padStart(2, "0")}:00`);
+  }
+  return slots;
+}
 
 function isSlotBlockedByGoogle(
   slot: string,
@@ -35,13 +39,13 @@ function isSlotBlockedByGoogle(
   });
 }
 
-function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date): boolean {
+function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date, startH: number, endH: number): boolean {
   const match = time.match(/^(\d{2}):(\d{2})$/);
   if (!match) return false;
   const h = parseInt(match[1], 10);
   const m = parseInt(match[2], 10);
-  if (h < 9 || h > 23 || m < 0 || m > 59) return false;
-  if (h === 23 && m > 0) return false; // end would be after 00:00
+  if (h < startH || h > endH || m < 0 || m > 59) return false;
+  if (h === endH && m > 0) return false;
 
   if (isToday) {
     const slotStart = new Date(`${dateStr}T${time}:00`);
@@ -84,6 +88,21 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
 
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
+  // Fetch closer's individual business hours
+  const { data: closerData } = useQuery({
+    queryKey: ["closer-hours", closerId],
+    queryFn: async () => {
+      const { data } = await supabase.from("closers").select("business_hours_start, business_hours_end").eq("id", closerId).single();
+      return data;
+    },
+  });
+
+  const hoursStart = closerData?.business_hours_start || "09:00";
+  const hoursEnd = closerData?.business_hours_end || "23:00";
+  const startH = parseInt(hoursStart.split(":")[0], 10);
+  const endH = parseInt(hoursEnd.split(":")[0], 10);
+  const ALL_SLOTS = useMemo(() => generateSlots(hoursStart, hoursEnd), [hoursStart, hoursEnd]);
+
   const { data: bookedTimes = [] } = useQuery<string[]>({
     queryKey: ["booked-slots", closerId, dateStr],
     queryFn: async () => {
@@ -117,8 +136,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const handleCustomConfirm = () => {
     setCustomError(null);
 
-    if (!isCustomTimeValid(customInput, dateStr, isToday, now)) {
-      setCustomError("Horário inválido. Use o formato HH:MM entre 09:00 e 23:00.");
+    if (!isCustomTimeValid(customInput, dateStr, isToday, now, startH, endH)) {
+      setCustomError(`Horário inválido. Use o formato HH:MM entre ${hoursStart} e ${hoursEnd}.`);
       return;
     }
 
@@ -207,8 +226,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             </label>
             <Input
               type="time"
-              min="09:00"
-              max="23:00"
+              min={hoursStart}
+              max={hoursEnd}
               value={customInput}
               onChange={(e) => {
                 setCustomInput(e.target.value);
