@@ -22,7 +22,8 @@ function normalizeDataCrazyApiUrl(rawUrl: string): string {
 
   // If someone configures the webhook URL by mistake, force the base API URL.
   if (pathname.includes(WEBHOOK_PATH_FRAGMENT)) {
-    return `${parsed.origin}/api/v1`;
+    const [basePath] = pathname.split(WEBHOOK_PATH_FRAGMENT);
+    return `${parsed.origin}${basePath}`;
   }
 
   if (!pathname || pathname === "/") {
