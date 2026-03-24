@@ -41,6 +41,13 @@ function buildProxyUrl(baseUrl: string, path: string): string {
   return `${baseUrl}${normalizedPath}`;
 }
 
+function buildG1FallbackUrl(url: string): string | null {
+  const parsed = new URL(url);
+  if (parsed.hostname !== "api.datacrazy.io") return null;
+  parsed.hostname = "api.g1.datacrazy.io";
+  return parsed.toString();
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
