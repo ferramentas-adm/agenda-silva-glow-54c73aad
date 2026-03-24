@@ -213,6 +213,49 @@ function UsersSection() {
     setTogglingId(null);
   };
 
+  const handleChangePassword = async () => {
+    if (!passwordChangeTarget) return;
+    const errs = validatePassword(newPassword);
+    if (errs.length > 0) {
+      toast.error(errs.join(", "));
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-user", {
+        body: { user_id: passwordChangeTarget.userId, action: "change_password", new_password: newPassword },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Senha alterada com sucesso!");
+      setPasswordChangeTarget(null);
+      setNewPassword("");
+      setShowNewPassword(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar senha");
+    }
+    setChangingPassword(false);
+  };
+
+  const handleChangeRole = async () => {
+    if (!roleChangeTarget || !newRole) return;
+    setChangingRole(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-user", {
+        body: { user_id: roleChangeTarget.userId, action: "change_role", new_role: newRole },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Função alterada para ${roleLabel(newRole)}`);
+      setRoleChangeTarget(null);
+      setNewRole("");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar função");
+    }
+    setChangingRole(false);
+  };
+
   const roleLabel = (r: string) => {
     switch (r) {
       case "gestor": return "Admin";
