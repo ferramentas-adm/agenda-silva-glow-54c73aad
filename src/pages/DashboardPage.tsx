@@ -442,51 +442,33 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
                 <div className="flex flex-wrap gap-2">
                   {detailAg.status !== "confirmada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusChange("confirmada")}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Confirmar
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
                     </Button>
                   )}
                   {detailAg.status !== "realizada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusChange("realizada")}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Realizada
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                     </Button>
                   )}
                   {detailAg.status !== "cancelada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusChange("cancelada")}
-                    >
-                      <XCircle className="h-3.5 w-3.5" />
-                      Cancelar
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
+                      <XCircle className="h-3.5 w-3.5" />Cancelar
                     </Button>
                   )}
-                  {detailAg.status !== "reagendada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusChange("reagendada")}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Reagendar
+                  {detailAg.status !== "no_show" && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
+                      <AlertCircle className="h-3.5 w-3.5" />No-show
+                    </Button>
+                  )}
+                  {(detailAg.status === "cancelada" || detailAg.status === "no_show") && detailAg.status !== "reagendada" && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("reagendada")}>
+                      <RotateCcw className="h-3.5 w-3.5" />Reagendar
+                    </Button>
+                  )}
+                  {detailAg.status !== "nao_confirmada" && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("nao_confirmada")}>
+                      <AlertCircle className="h-3.5 w-3.5" />Não confirmada
                     </Button>
                   )}
                 </div>
