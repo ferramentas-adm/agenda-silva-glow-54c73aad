@@ -136,21 +136,35 @@ export default function DashboardPage() {
     },
   });
 
-  // Realtime subscription
-  useEffect(() => {
-    const channel = supabase
-      .channel("agendamentos-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "agendamentos" },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-        }
-      )
-      .subscribe();
+  // Fetch Google Calendar events for all selected closers
+  const calDateStart = viewMode === "week" ? format(weekStart, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
+  const calDateEnd = viewMode === "week" ? format(weekEnd, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
 
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
+  const closerIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+
+  const calendarQueries = closerIds.map((cid) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useGoogleCalendarEvents(cid, `${calDateStart}T00:00:00`, `${calDateEnd}T23:59:59`)
+  );
+
+  const googleBusyBlocks: GoogleBusyBlock[] = useMemo(() => {
+    const blocks: GoogleBusyBlock[] = [];
+    closerIds.forEach((cid, idx) => {
+      const data = calendarQueries[idx]?.data;
+      if (!data?.connected || !data.events) return;
+      data.events.forEach((ev) => {
+        const startDate = ev.start ? new Date(ev.start) : null;
+        if (!startDate) return;
+        blocks.push({
+          closer_id: cid,
+          date: format(startDate, "yyyy-MM-dd"),
+          time: format(startDate, "HH:mm"),
+          summary: "Ocupado",
+        });
+      });
+    });
+    return blocks;
+  }, [closerIds, calendarQueries.map(q => q.data)]);
 
   // Filter by selected closers
   const filtered = useMemo(
