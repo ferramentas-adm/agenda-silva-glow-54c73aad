@@ -10,6 +10,7 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import AgendarPage from "@/pages/AgendarPage";
 import AdminPage from "@/pages/AdminPage";
+import AuditLogsPage from "@/pages/AuditLogsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();

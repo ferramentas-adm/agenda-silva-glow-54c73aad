@@ -14,7 +14,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { to: "/", label: "Agenda", icon: CalendarDays },
     { to: "/agendar", label: "Agendar", icon: PlusCircle },
-    ...(isGestor ? [{ to: "/admin", label: "Admin", icon: Settings }] : []),
+    ...(isGestor ? [
+      { to: "/admin", label: "Admin", icon: Settings },
+      { to: "/audit-logs", label: "Logs", icon: ScrollText },
+    ] : []),
   ];
 
   const isActive = (path: string) => location.pathname === path;
