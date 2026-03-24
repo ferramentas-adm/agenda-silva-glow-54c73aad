@@ -2,16 +2,18 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
-type AppRole = "sdr" | "gestor";
+type AppRole = "sdr" | "gestor" | "closer";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
   loading: boolean;
+  mustChangePassword: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   isGestor: boolean;
+  clearMustChangePassword: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   const fetchRole = async (userId: string) => {
     const { data } = await supabase
@@ -33,15 +36,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole((data?.role as AppRole) ?? null);
   };
 
+  const fetchMustChangePassword = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("must_change_password")
+      .eq("user_id", userId)
+      .limit(1)
+      .single();
+    
+    setMustChangePassword(data?.must_change_password ?? false);
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchRole(session.user.id), 0);
+          setTimeout(() => {
+            fetchRole(session.user.id);
+            fetchMustChangePassword(session.user.id);
+          }, 0);
         } else {
           setRole(null);
+          setMustChangePassword(false);
         }
         setLoading(false);
       }
@@ -52,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchRole(session.user.id);
+        fetchMustChangePassword(session.user.id);
       }
       setLoading(false);
     });
@@ -67,10 +86,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setRole(null);
+    setMustChangePassword(false);
   };
 
+  const clearMustChangePassword = () => setMustChangePassword(false);
+
   return (
-    <AuthContext.Provider value={{ user, session, role, loading, signIn, signOut, isGestor: role === "gestor" }}>
+    <AuthContext.Provider value={{
+      user, session, role, loading, mustChangePassword,
+      signIn, signOut, isGestor: role === "gestor", clearMustChangePassword,
+    }}>
       {children}
     </AuthContext.Provider>
   );

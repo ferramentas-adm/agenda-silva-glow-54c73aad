@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import ForceChangePasswordPage from "@/pages/ForceChangePasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import AgendarPage from "@/pages/AgendarPage";
 import AdminPage from "@/pages/AdminPage";
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/alterar-senha" element={<ProtectedRoute><ForceChangePasswordPage /></ProtectedRoute>} />
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/agendar" element={<ProtectedRoute><AgendarPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireGestor><AdminPage /></ProtectedRoute>} />
