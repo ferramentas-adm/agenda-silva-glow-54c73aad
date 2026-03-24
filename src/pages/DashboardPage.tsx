@@ -618,7 +618,7 @@ function WeekView({
               </span>
             </div>
 
-            {dayAgendamentos.length === 0 ? (
+            {dayAgendamentos.length === 0 && dayBusy.length === 0 ? (
               <p className="text-[10px] text-muted-foreground/50 text-center pt-4">—</p>
             ) : (
               <div className="space-y-1.5">
@@ -631,6 +631,15 @@ function WeekView({
                     onDelete={onDelete}
                     onClick={() => onClickAg(ag)}
                   />
+                ))}
+                {dayBusy.map((b, idx) => (
+                  <div
+                    key={`busy-${idx}`}
+                    className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5"
+                  >
+                    <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground font-medium">{b.time} — Ocupado</span>
+                  </div>
                 ))}
               </div>
             )}
