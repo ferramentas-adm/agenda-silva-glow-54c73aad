@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { User } from "lucide-react";
 
 interface CloserSelectorProps {
   selectedDate: Date | undefined;
@@ -15,7 +14,7 @@ interface CloserWithAvailability {
   bookedSlots: number;
 }
 
-const MAX_SLOTS_PER_DAY = 8; // 8h-16h, 60min slots
+const MAX_SLOTS_PER_DAY = 8;
 
 export default function CloserSelector({ selectedDate, selectedCloserId, onSelect }: CloserSelectorProps) {
   const dateStr = selectedDate
@@ -77,16 +76,6 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
                 : "border-input bg-card hover:border-primary/40",
             )}
           >
-            <div
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold",
-                isSelected
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-foreground"
-              )}
-            >
-              {closer.name.charAt(0).toUpperCase()}
-            </div>
             <span className="text-sm font-medium text-center leading-tight">{closer.name}</span>
 
             {selectedDate && (

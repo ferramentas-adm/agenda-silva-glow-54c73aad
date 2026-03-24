@@ -7,7 +7,7 @@ import { CalendarIcon, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import AppLayout from "@/components/AppLayout";
-import LeadSearch from "@/components/agendar/LeadSearch";
+import LeadSearch, { type Lead } from "@/components/agendar/LeadSearch";
 import CloserSelector from "@/components/agendar/CloserSelector";
 import TimeSlotPicker from "@/components/agendar/TimeSlotPicker";
 import SuccessScreen from "@/components/agendar/SuccessScreen";
@@ -21,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
-import type { Lead } from "@/data/mockLeads";
+import { reuniaoAgendada } from "@/services/datacrazy";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
 
@@ -42,7 +42,7 @@ export default function AgendarPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
-  const { send: sendToDataCrazy, pendingCount, syncing, syncNow } = useDataCrazySync();
+  const { pendingCount, syncing, syncNow, refreshCount } = useDataCrazySync();
 
   const [step, setStep] = useState<Step>("lead");
   const [lead, setLead] = useState<Lead | null>(null);
@@ -118,6 +118,7 @@ export default function AgendarPage() {
     setSubmitting(true);
 
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
       // If reagendamento, update old status
@@ -132,7 +133,6 @@ export default function AgendarPage() {
       let meetLink: string | null = null;
       let meetError = false;
 
-      const sdrName = user.user_metadata?.full_name || user.email || "";
       const googleResult = await createGoogleCalendarEvent({
         closer_id: closerId,
         lead_name: lead.name,
@@ -168,22 +168,19 @@ export default function AgendarPage() {
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
 
-      // Send DataCrazy webhook with pipeline action
+      // DataCrazy integration — full event
       const dateTimeISO = new Date(`${dateStr}T${time}:00`).toISOString();
-      sendToDataCrazy({
-        evento: "agendamento_criado",
-        pipeline_acao: "mover_para_reuniao_agendada",
-        pipeline_origem: "pre-vendas",
-        etapa_destino: "Reunião Agendada",
-        lead_nome: lead.name,
-        lead_telefone: lead.phone,
-        closer_nome: closerName,
-        data_hora: dateTimeISO,
-        meet_url: meetLink || "",
-        sdr_responsavel: sdrName,
-        status: "pendente",
+      reuniaoAgendada({
+        leadNome: lead.name,
+        leadTelefone: lead.phone,
+        closerNome: closerName,
+        closerId,
+        sdrNome: sdrName,
+        sdrId: user.id,
+        dataHoraISO: dateTimeISO,
+        meetUrl: meetLink || "",
         observacao: observation || "",
-      });
+      }).catch(console.error).finally(refreshCount);
 
       setSuccess({
         lead,
@@ -294,7 +291,7 @@ export default function AgendarPage() {
             <>
               <h2 className="text-lg font-semibold">Buscar Lead</h2>
               <p className="text-sm text-muted-foreground">
-                Pesquise pelo nome ou telefone do lead.
+                Leads com a tag "agendamento" no DataCrazy.
               </p>
               <LeadSearch
                 selectedLead={lead}
@@ -346,7 +343,7 @@ export default function AgendarPage() {
                       selected={date}
                       onSelect={(d) => {
                         setDate(d);
-                        setTime(null); // reset time when date changes
+                        setTime(null);
                       }}
                       disabled={(d) => {
                         const today = new Date();

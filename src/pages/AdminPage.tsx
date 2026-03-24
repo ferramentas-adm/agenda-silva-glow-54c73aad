@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,18 +16,18 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  UserPlus, Users, Briefcase, AlertCircle, CalendarCheck, ExternalLink,
-  Loader2, Pencil, Trash2, Settings, RefreshCw, Save, X, Check,
+  UserPlus, Users, AlertCircle,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check,
 } from "lucide-react";
 
-/* ─── SDR Management ──────────────────────────────────────────── */
+/* ─── Users Section (unified SDR + Closer management) ─────────── */
 
-function SdrSection() {
+function UsersSection() {
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"sdr" | "gestor">("sdr");
+  const [role, setRole] = useState<"sdr" | "gestor" | "closer">("sdr");
   const [creating, setCreating] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
@@ -38,21 +38,42 @@ function SdrSection() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Delete state
-  const [deleteTarget, setDeleteTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ userId: string; name: string; type: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // Toggle active
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const { data: users, isLoading } = useQuery({
-    queryKey: ["admin-profiles"],
+  // Fetch all users (profiles + roles) and closers
+  const { data: allUsers = [], isLoading } = useQuery({
+    queryKey: ["admin-all-users"],
     queryFn: async () => {
+      // Fetch profiles (SDRs and Gestors)
       const { data: profiles } = await supabase.from("profiles").select("*");
       const { data: roles } = await supabase.from("user_roles").select("*");
-      return (profiles ?? []).map((p: any) => ({
-        ...p,
+      const { data: closers } = await supabase.from("closers").select("*").order("name");
+
+      const profileUsers = (profiles ?? []).map((p: any) => ({
+        id: p.id,
+        userId: p.user_id,
+        name: p.full_name,
+        email: p.email,
         role: roles?.find((r: any) => r.user_id === p.user_id)?.role ?? "sdr",
+        active: p.active !== false,
+        type: "profile" as const,
       }));
+
+      const closerUsers = (closers ?? []).map((c: any) => ({
+        id: c.id,
+        userId: c.id,
+        name: c.name,
+        email: c.email || "",
+        role: "closer" as const,
+        active: c.active,
+        type: "closer" as const,
+      }));
+
+      return [...profileUsers, ...closerUsers];
     },
   });
 
@@ -66,6 +87,28 @@ function SdrSection() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (role === "closer") {
+      // Create closer directly in closers table
+      setCreating(true);
+      try {
+        const { error } = await supabase.from("closers").insert({
+          name: fullName,
+          email: email || null,
+        });
+        if (error) throw error;
+        toast.success("Closer criado com sucesso!");
+        setFullName(""); setEmail(""); setPassword(""); setPasswordErrors([]);
+        queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+        queryClient.invalidateQueries({ queryKey: ["closers"] });
+        queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+      } catch (err: any) {
+        toast.error(err.message || "Erro ao criar closer");
+      }
+      setCreating(false);
+      return;
+    }
+
     const errs = validatePassword(password);
     if (errs.length > 0) { setPasswordErrors(errs); return; }
     setCreating(true);
@@ -77,23 +120,32 @@ function SdrSection() {
       if (data?.error) throw new Error(data.error);
       toast.success("Usuário criado com sucesso!");
       setFullName(""); setEmail(""); setPassword(""); setPasswordErrors([]);
-      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar usuário");
     }
     setCreating(false);
   };
 
-  const handleSaveEdit = async (userId: string) => {
+  const handleSaveEdit = async (user: any) => {
     setSavingEdit(true);
     try {
-      const { error } = await supabase.from("profiles")
-        .update({ full_name: editName, email: editEmail })
-        .eq("user_id", userId);
-      if (error) throw error;
+      if (user.type === "closer") {
+        const { error } = await supabase.from("closers")
+          .update({ name: editName, email: editEmail || null })
+          .eq("id", user.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["closers"] });
+        queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+      } else {
+        const { error } = await supabase.from("profiles")
+          .update({ full_name: editName, email: editEmail })
+          .eq("user_id", user.userId);
+        if (error) throw error;
+      }
       toast.success("Usuário atualizado!");
       setEditingId(null);
-      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar");
     }
@@ -104,13 +156,20 @@ function SdrSection() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("manage-user", {
-        body: { user_id: deleteTarget.userId, action: "delete" },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (deleteTarget.type === "closer") {
+        const { error } = await supabase.from("closers").delete().eq("id", deleteTarget.userId);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["closers"] });
+        queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+      } else {
+        const { data, error } = await supabase.functions.invoke("manage-user", {
+          body: { user_id: deleteTarget.userId, action: "delete" },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      }
       toast.success("Usuário excluído!");
-      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao excluir");
     }
@@ -118,20 +177,38 @@ function SdrSection() {
     setDeleteTarget(null);
   };
 
-  const handleToggleActive = async (userId: string) => {
-    setTogglingId(userId);
+  const handleToggleActive = async (user: any) => {
+    setTogglingId(user.userId);
     try {
-      const { data, error } = await supabase.functions.invoke("manage-user", {
-        body: { user_id: userId, action: "toggle_active" },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success(data.active ? "Usuário ativado" : "Usuário desativado");
-      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+      if (user.type === "closer") {
+        const { error } = await supabase.from("closers")
+          .update({ active: !user.active })
+          .eq("id", user.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["closers"] });
+        queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+      } else {
+        const { data, error } = await supabase.functions.invoke("manage-user", {
+          body: { user_id: user.userId, action: "toggle_active" },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      }
+      toast.success(!user.active ? "Usuário ativado" : "Usuário desativado");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao alterar status");
     }
     setTogglingId(null);
+  };
+
+  const roleLabel = (r: string) => {
+    switch (r) {
+      case "gestor": return "Admin";
+      case "sdr": return "SDR";
+      case "closer": return "Closer";
+      default: return r;
+    }
   };
 
   return (
@@ -140,30 +217,40 @@ function SdrSection() {
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <UserPlus className="h-4 w-4 text-primary" />
-          Criar Usuário
+          Novo Usuário
         </h3>
         <form onSubmit={handleCreateUser} className="grid gap-3 sm:grid-cols-2">
           <Input placeholder="Nome completo" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-          <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <div className="space-y-1.5">
-            <Input
-              type="password" placeholder="Senha" value={password}
-              onChange={(e) => { setPassword(e.target.value); setPasswordErrors(e.target.value ? validatePassword(e.target.value) : []); }}
-              required minLength={8}
-            />
-            {passwordErrors.length > 0 && (
-              <div className="flex flex-col gap-0.5">
-                {passwordErrors.map((err) => (
-                  <p key={err} className="flex items-center gap-1 text-xs text-destructive">
-                    <AlertCircle className="h-3 w-3" />{err}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
+          <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required={role !== "closer"} />
+          {role !== "closer" && (
+            <div className="space-y-1.5">
+              <Input
+                type="password" placeholder="Senha" value={password}
+                onChange={(e) => { setPassword(e.target.value); setPasswordErrors(e.target.value ? validatePassword(e.target.value) : []); }}
+                required minLength={8}
+              />
+              {passwordErrors.length > 0 && (
+                <div className="flex flex-col gap-0.5">
+                  {passwordErrors.map((err) => (
+                    <p key={err} className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="h-3 w-3" />{err}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex gap-2">
-            <Button type="button" variant={role === "sdr" ? "default" : "secondary"} size="sm" onClick={() => setRole("sdr")} className="flex-1">SDR</Button>
-            <Button type="button" variant={role === "gestor" ? "default" : "secondary"} size="sm" onClick={() => setRole("gestor")} className="flex-1">Gestor</Button>
+            <Select value={role} onValueChange={(v) => setRole(v as any)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sdr">SDR</SelectItem>
+                <SelectItem value="gestor">Administrador</SelectItem>
+                <SelectItem value="closer">Closer</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button type="submit" disabled={creating} className="sm:col-span-2">
             {creating ? <Loader2 className="animate-spin" /> : "Criar Usuário"}
@@ -175,7 +262,7 @@ function SdrSection() {
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <Users className="h-4 w-4 text-primary" />
-          Usuários ({users?.length ?? 0})
+          Usuários ({allUsers.length})
         </h3>
 
         {isLoading ? (
@@ -184,25 +271,25 @@ function SdrSection() {
           </div>
         ) : (
           <div className="space-y-2">
-            {users?.map((u: any) => {
-              const isEditing = editingId === u.user_id;
+            {allUsers.map((u: any) => {
+              const isEditing = editingId === u.userId;
               return (
-                <div key={u.id} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
+                <div key={`${u.type}-${u.id}`} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
                   {isEditing ? (
                     <div className="flex flex-1 items-center gap-2">
                       <Input className="h-8 text-sm" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                      <Input className="h-8 text-sm" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+                      <Input className="h-8 text-sm" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="E-mail" />
                     </div>
                   ) : (
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{u.full_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="font-medium truncate">{u.name}</p>
+                      {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
                     </div>
                   )}
                   <div className="flex items-center gap-2 shrink-0">
                     {isEditing ? (
                       <>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSaveEdit(u.user_id)} disabled={savingEdit}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSaveEdit(u)} disabled={savingEdit}>
                           {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-primary" />}
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
@@ -212,17 +299,17 @@ function SdrSection() {
                     ) : (
                       <>
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
-                          {u.role}
+                          {roleLabel(u.role)}
                         </span>
                         <Switch
-                          checked={u.active !== false}
-                          onCheckedChange={() => handleToggleActive(u.user_id)}
-                          disabled={togglingId === u.user_id}
+                          checked={u.active}
+                          onCheckedChange={() => handleToggleActive(u)}
+                          disabled={togglingId === u.userId}
                         />
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.user_id); setEditName(u.full_name); setEditEmail(u.email); }}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget({ userId: u.user_id, name: u.full_name })}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget({ userId: u.userId, name: u.name, type: u.type })}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </>
@@ -231,7 +318,7 @@ function SdrSection() {
                 </div>
               );
             })}
-            {(!users || users.length === 0) && (
+            {allUsers.length === 0 && (
               <p className="text-sm text-muted-foreground py-4 text-center">Nenhum usuário cadastrado.</p>
             )}
           </div>
@@ -259,244 +346,6 @@ function SdrSection() {
   );
 }
 
-/* ─── Closer Management ───────────────────────────────────────── */
-
-function CloserSection() {
-  const queryClient = useQueryClient();
-  const { getAuthUrl } = useGoogleAuthUrl();
-
-  const [closerName, setCloserName] = useState("");
-  const [closerEmail, setCloserEmail] = useState("");
-  const [addingCloser, setAddingCloser] = useState(false);
-  const [connectingCloserId, setConnectingCloserId] = useState<string | null>(null);
-
-  // Edit
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [savingEdit, setSavingEdit] = useState(false);
-
-  // Delete
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; hasFuture: boolean } | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-
-  const { data: closers, isLoading } = useQuery({
-    queryKey: ["closers"],
-    queryFn: async () => {
-      const { data } = await supabase.from("closers").select("*").order("name");
-      return data ?? [];
-    },
-  });
-
-  const { data: connectedCloserIds = [] } = useQuery({
-    queryKey: ["closer-google-tokens"],
-    queryFn: async () => {
-      const { data } = await supabase.from("closer_google_tokens" as any).select("closer_id");
-      return (data ?? []).map((d: any) => d.closer_id);
-    },
-  });
-
-  const handleAddCloser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddingCloser(true);
-    try {
-      const { error } = await supabase.from("closers").insert({ name: closerName, email: closerEmail || null });
-      if (error) throw error;
-      toast.success("Closer adicionado!");
-      setCloserName(""); setCloserEmail("");
-      queryClient.invalidateQueries({ queryKey: ["closers"] });
-    } catch (err: any) { toast.error(err.message || "Erro ao adicionar closer"); }
-    setAddingCloser(false);
-  };
-
-  const handleSaveEdit = async (id: string) => {
-    setSavingEdit(true);
-    try {
-      const { error } = await supabase.from("closers").update({ name: editName, email: editEmail || null }).eq("id", id);
-      if (error) throw error;
-      toast.success("Closer atualizado!");
-      setEditingId(null);
-      queryClient.invalidateQueries({ queryKey: ["closers"] });
-    } catch (err: any) { toast.error(err.message || "Erro ao atualizar"); }
-    setSavingEdit(false);
-  };
-
-  const handleDeleteCloser = async () => {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    try {
-      const { error } = await supabase.from("closers").delete().eq("id", deleteTarget.id);
-      if (error) throw error;
-      toast.success("Closer excluído!");
-      queryClient.invalidateQueries({ queryKey: ["closers"] });
-    } catch (err: any) { toast.error(err.message || "Erro ao excluir"); }
-    setDeleting(false);
-    setDeleteTarget(null);
-  };
-
-  const handleToggleActive = async (id: string, currentActive: boolean) => {
-    setTogglingId(id);
-    try {
-      const { error } = await supabase.from("closers").update({ active: !currentActive }).eq("id", id);
-      if (error) throw error;
-      toast.success(!currentActive ? "Closer ativado" : "Closer desativado");
-      queryClient.invalidateQueries({ queryKey: ["closers"] });
-      queryClient.invalidateQueries({ queryKey: ["closers-active"] });
-    } catch (err: any) { toast.error(err.message || "Erro ao alterar status"); }
-    setTogglingId(null);
-  };
-
-  const handleConnectGoogle = async (closerId: string) => {
-    setConnectingCloserId(closerId);
-    try {
-      const url = await getAuthUrl(closerId);
-      window.open(url, "_blank", "width=600,height=700");
-    } catch (err: any) { toast.error(err.message || "Erro ao gerar link de autorização"); }
-    setConnectingCloserId(null);
-  };
-
-  const checkFutureMeetings = async (closerId: string) => {
-    const today = new Date().toISOString().split("T")[0];
-    const { count } = await supabase
-      .from("agendamentos")
-      .select("id", { count: "exact", head: true })
-      .eq("closer_id", closerId)
-      .gte("scheduled_date", today)
-      .in("status", ["pendente", "confirmada"]);
-    return (count ?? 0) > 0;
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Add closer form */}
-      <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <Briefcase className="h-4 w-4 text-primary" />
-          Adicionar Closer
-        </h3>
-        <form onSubmit={handleAddCloser} className="flex flex-col gap-3 sm:flex-row">
-          <Input placeholder="Nome do closer" value={closerName} onChange={(e) => setCloserName(e.target.value)} required className="flex-1" />
-          <Input type="email" placeholder="E-mail Google (opcional)" value={closerEmail} onChange={(e) => setCloserEmail(e.target.value)} className="flex-1" />
-          <Button type="submit" disabled={addingCloser} size="sm" className="gap-2">
-            {addingCloser ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
-          </Button>
-        </form>
-      </div>
-
-      {/* Closers list */}
-      <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <Briefcase className="h-4 w-4 text-primary" />
-          Closers ({closers?.length ?? 0})
-        </h3>
-
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {closers?.map((c: any) => {
-              const isGoogleConnected = connectedCloserIds.includes(c.id);
-              const isEditing = editingId === c.id;
-
-              return (
-                <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
-                  {isEditing ? (
-                    <div className="flex flex-1 items-center gap-2">
-                      <Input className="h-8 text-sm" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                      <Input className="h-8 text-sm" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="E-mail Google" />
-                    </div>
-                  ) : (
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{c.name}</p>
-                      {c.email && <p className="text-xs text-muted-foreground truncate">{c.email}</p>}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {isEditing ? (
-                      <>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSaveEdit(c.id)} disabled={savingEdit}>
-                          {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-primary" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        {isGoogleConnected ? (
-                          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-primary" onClick={() => handleConnectGoogle(c.id)} disabled={connectingCloserId === c.id}>
-                            <CalendarCheck className="h-3 w-3" />
-                            {connectingCloserId === c.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                            Reconectar
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="sm" onClick={() => handleConnectGoogle(c.id)} disabled={connectingCloserId === c.id} className="h-7 gap-1 text-xs">
-                            {connectingCloserId === c.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}
-                            Conectar Google
-                          </Button>
-                        )}
-                        <Switch
-                          checked={c.active}
-                          onCheckedChange={() => handleToggleActive(c.id, c.active)}
-                          disabled={togglingId === c.id}
-                        />
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(c.id); setEditName(c.name); setEditEmail(c.email || ""); }}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={async () => {
-                            const hasFuture = await checkFutureMeetings(c.id);
-                            setDeleteTarget({ id: c.id, name: c.name, hasFuture });
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {(!closers || closers.length === 0) && (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nenhum closer cadastrado.</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Delete confirmation */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir closer</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTarget?.hasFuture ? (
-                <>
-                  <strong className="text-destructive">⚠️ Atenção:</strong> {deleteTarget.name} possui reuniões futuras pendentes/confirmadas.
-                  Excluir o closer removerá o vínculo com essas reuniões. Considere desativá-lo ao invés de excluir.
-                </>
-              ) : (
-                <>Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>? Esta ação não pode ser desfeita.</>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCloser} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir mesmo assim"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
 /* ─── Settings Section ────────────────────────────────────────── */
 
 function SettingsSection() {
@@ -513,32 +362,29 @@ function SettingsSection() {
     },
   });
 
-  const [hoursStart, setHoursStart] = useState("");
-  const [hoursEnd, setHoursEnd] = useState("");
-  const [meetingDuration, setMeetingDuration] = useState("");
+  const [hoursStart, setHoursStart] = useState("09:00");
+  const [hoursEnd, setHoursEnd] = useState("23:00");
+  const [meetingDuration, setMeetingDuration] = useState("60");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [stageReuniaoAgendada, setStageReuniaoAgendada] = useState("");
+  const [stageNoShowCancelado, setStageNoShowCancelado] = useState("");
+  const [stageReuniaoRealizada, setStageReuniaoRealizada] = useState("");
+  const [pipelinePreVendas, setPipelinePreVendas] = useState("");
+  const [pipelineVendas, setPipelineVendas] = useState("");
 
-  // Sync from loaded settings
-  useState(() => {
+  useEffect(() => {
     if (settings) {
       setHoursStart(settings.business_hours_start || "09:00");
       setHoursEnd(settings.business_hours_end || "23:00");
       setMeetingDuration(settings.meeting_duration || "60");
       setWebhookUrl(settings.datacrazy_webhook_url || "");
+      setStageReuniaoAgendada(settings.datacrazy_stage_reuniao_agendada || "");
+      setStageNoShowCancelado(settings.datacrazy_stage_noshow_cancelado || "");
+      setStageReuniaoRealizada(settings.datacrazy_stage_reuniao_realizada || "");
+      setPipelinePreVendas(settings.datacrazy_pipeline_pre_vendas || "");
+      setPipelineVendas(settings.datacrazy_pipeline_vendas || "");
     }
-  });
-
-  // Update local state when settings load
-  const loaded = settings && hoursStart === "" && hoursEnd === "";
-  if (loaded) {
-    // Will trigger re-render with correct values
-    setTimeout(() => {
-      setHoursStart(settings.business_hours_start || "09:00");
-      setHoursEnd(settings.business_hours_end || "23:00");
-      setMeetingDuration(settings.meeting_duration || "60");
-      setWebhookUrl(settings.datacrazy_webhook_url || "");
-    }, 0);
-  }
+  }, [settings]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -548,10 +394,30 @@ function SettingsSection() {
         { key: "business_hours_end", value: hoursEnd },
         { key: "meeting_duration", value: meetingDuration },
         { key: "datacrazy_webhook_url", value: webhookUrl },
+        { key: "datacrazy_stage_reuniao_agendada", value: stageReuniaoAgendada },
+        { key: "datacrazy_stage_noshow_cancelado", value: stageNoShowCancelado },
+        { key: "datacrazy_stage_reuniao_realizada", value: stageReuniaoRealizada },
+        { key: "datacrazy_pipeline_pre_vendas", value: pipelinePreVendas },
+        { key: "datacrazy_pipeline_vendas", value: pipelineVendas },
       ];
 
       for (const u of updates) {
-        await supabase.from("app_settings").update({ value: u.value, updated_at: new Date().toISOString() }).eq("key", u.key);
+        // Upsert: try update first, if no rows affected, insert
+        const { data: existing } = await supabase
+          .from("app_settings")
+          .select("id")
+          .eq("key", u.key)
+          .limit(1)
+          .single();
+
+        if (existing) {
+          await supabase.from("app_settings")
+            .update({ value: u.value, updated_at: new Date().toISOString() })
+            .eq("key", u.key);
+        } else {
+          await supabase.from("app_settings")
+            .insert({ key: u.key, value: u.value });
+        }
       }
 
       toast.success("Configurações salvas!");
@@ -590,16 +456,21 @@ function SettingsSection() {
 
       <div className="space-y-1.5">
         <label className="text-sm font-medium">Duração padrão das reuniões</label>
-        <Select value={meetingDuration} onValueChange={setMeetingDuration}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="30">30 minutos</SelectItem>
-            <SelectItem value="45">45 minutos</SelectItem>
-            <SelectItem value="60">60 minutos</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-3">
+          {["30", "45", "60"].map((d) => (
+            <label key={d} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="meeting_duration"
+                value={d}
+                checked={meetingDuration === d}
+                onChange={() => setMeetingDuration(d)}
+                className="accent-[hsl(var(--primary))]"
+              />
+              <span className="text-sm">{d}min</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-1.5">
@@ -611,7 +482,37 @@ function SettingsSection() {
           onChange={(e) => setWebhookUrl(e.target.value)}
           className="font-mono text-sm"
         />
-        <p className="text-xs text-muted-foreground">Editável sem republicar. Eventos são enviados para esta URL.</p>
+        <p className="text-xs text-muted-foreground">Editável sem republicar.</p>
+      </div>
+
+      <div className="border-t border-primary/10 pt-4 space-y-4">
+        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">IDs das Etapas DataCrazy</h4>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Etapa "Reunião Agendada" (Pré-Vendas)</label>
+            <Input placeholder="UUID da etapa" value={stageReuniaoAgendada} onChange={(e) => setStageReuniaoAgendada(e.target.value)} className="font-mono text-xs" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Etapa "No-show/Cancelado" (Pré-Vendas)</label>
+            <Input placeholder="UUID da etapa" value={stageNoShowCancelado} onChange={(e) => setStageNoShowCancelado(e.target.value)} className="font-mono text-xs" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Etapa "Reunião Realizada" (Vendas)</label>
+            <Input placeholder="UUID da etapa" value={stageReuniaoRealizada} onChange={(e) => setStageReuniaoRealizada(e.target.value)} className="font-mono text-xs" />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">ID Pipeline Pré-Vendas</label>
+            <Input placeholder="UUID do pipeline" value={pipelinePreVendas} onChange={(e) => setPipelinePreVendas(e.target.value)} className="font-mono text-xs" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">ID Pipeline Vendas</label>
+            <Input placeholder="UUID do pipeline" value={pipelineVendas} onChange={(e) => setPipelineVendas(e.target.value)} className="font-mono text-xs" />
+          </div>
+        </div>
       </div>
 
       <Button onClick={handleSave} disabled={saving} className="gap-2">
@@ -630,18 +531,14 @@ export default function AdminPage() {
       <div className="animate-fade-in space-y-6 max-w-3xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Administração</h1>
-          <p className="text-sm text-muted-foreground">Gerencie usuários, closers e configurações.</p>
+          <p className="text-sm text-muted-foreground">Gerencie usuários e configurações.</p>
         </div>
 
-        <Tabs defaultValue="sdrs" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 bg-secondary">
-            <TabsTrigger value="sdrs" className="gap-1.5 text-xs sm:text-sm">
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2 bg-secondary">
+            <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
               <Users className="h-3.5 w-3.5" />
-              SDRs
-            </TabsTrigger>
-            <TabsTrigger value="closers" className="gap-1.5 text-xs sm:text-sm">
-              <Briefcase className="h-3.5 w-3.5" />
-              Closers
+              Usuários
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
               <Settings className="h-3.5 w-3.5" />
@@ -649,11 +546,8 @@ export default function AdminPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="sdrs">
-            <SdrSection />
-          </TabsContent>
-          <TabsContent value="closers">
-            <CloserSection />
+          <TabsContent value="users">
+            <UsersSection />
           </TabsContent>
           <TabsContent value="settings">
             <SettingsSection />
