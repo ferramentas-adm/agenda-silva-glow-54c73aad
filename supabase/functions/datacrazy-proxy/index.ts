@@ -111,16 +111,27 @@ serve(async (req) => {
       fetchOptions.body = JSON.stringify(payload);
     }
 
-    let response = await fetch(url, fetchOptions);
+    let requestUrl = url;
+    let response = await fetch(requestUrl, fetchOptions);
 
     if (response.status === 404) {
-      const fallbackUrl = buildG1FallbackUrl(url);
+      const fallbackUrl = buildG1FallbackUrl(requestUrl);
       if (fallbackUrl) {
-        response = await fetch(fallbackUrl, fetchOptions);
+        requestUrl = fallbackUrl;
+        response = await fetch(requestUrl, fetchOptions);
       }
     }
 
     const responseData = await response.text();
+
+    if (!response.ok) {
+      console.error("DataCrazy request failed", {
+        method,
+        requestUrl,
+        status: response.status,
+        response: responseData.slice(0, 500),
+      });
+    }
 
     let parsed;
     try {
