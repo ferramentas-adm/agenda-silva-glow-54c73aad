@@ -463,7 +463,7 @@ export default function DashboardPage() {
                       <AlertCircle className="h-3.5 w-3.5" />No-show
                     </Button>
                   )}
-                  {(detailAg.status === "cancelada" || detailAg.status === "no_show") && detailAg.status !== "reagendada" && (
+                  {(detailAg.status === "cancelada" || detailAg.status === "no_show") && (
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("reagendada")}>
                       <RotateCcw className="h-3.5 w-3.5" />Reagendar
                     </Button>
