@@ -17,8 +17,8 @@ serve(async (req) => {
     const closerId = url.searchParams.get('state');
 
     if (!code || !closerId) {
-      return new Response('<html><body><h2>Erro: parâmetros inválidos</h2></body></html>', {
-        status: 400, headers: { 'Content-Type': 'text/html' },
+      return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro: parâmetros inválidos</h2></body></html>', {
+        status: 400, headers: { 'Content-Type': 'text/html; charset=UTF-8' },
       });
     }
 
