@@ -22,6 +22,7 @@ import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
 import { reuniaoAgendada } from "@/services/datacrazy";
+import { logAudit } from "@/services/auditLog";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
 
