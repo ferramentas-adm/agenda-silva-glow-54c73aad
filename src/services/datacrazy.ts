@@ -210,6 +210,20 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
   const stageId = await getStageId("datacrazy_stage_reuniao_agendada");
   const agObj = ag as unknown as Record<string, unknown>;
 
+  // Resolve DataCrazy IDs from the database
+  let closerDatacrazyId = ag.closerId;
+  let sdrDatacrazyId = ag.sdrId;
+
+  try {
+    const { data: closerData } = await supabase.from("closers").select("datacrazy_id").eq("id", ag.closerId).single();
+    if (closerData?.datacrazy_id) closerDatacrazyId = closerData.datacrazy_id;
+
+    const { data: profileData } = await supabase.from("profiles").select("datacrazy_id").eq("user_id", ag.sdrId).single();
+    if (profileData?.datacrazy_id) sdrDatacrazyId = profileData.datacrazy_id;
+  } catch {
+    console.warn("Could not resolve DataCrazy IDs, using internal IDs");
+  }
+
   // Step 1: Find lead
   let lead: DataCrazyLead | null;
   try {
@@ -222,7 +236,7 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
   try {
     negocio = await buscarNegocioAtivo(lead.id);
     if (!negocio) {
-      negocio = await criarNegocio(lead.id, stageId, ag.closerId);
+      negocio = await criarNegocio(lead.id, stageId, closerDatacrazyId);
     }
   } catch { addToQueue("reuniaoAgendada", 2, agObj); return; }
 
@@ -233,12 +247,12 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
 
   // Step 4: Create activity for SDR
   try {
-    await criarAtividade(lead.id, ag.sdrId, ag);
+    await criarAtividade(lead.id, sdrDatacrazyId, ag);
   } catch { addToQueue("atividade_sdr", 4, agObj); }
 
   // Step 5: Create activity for Closer
   try {
-    await criarAtividade(lead.id, ag.closerId, ag);
+    await criarAtividade(lead.id, closerDatacrazyId, ag);
   } catch { addToQueue("atividade_closer", 5, agObj); }
 
   // Step 6: Remove "agendamento" tag
