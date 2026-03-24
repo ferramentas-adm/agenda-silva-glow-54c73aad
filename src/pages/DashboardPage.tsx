@@ -382,6 +382,7 @@ export default function DashboardPage() {
             days={weekDays}
             agendamentos={filtered}
             closerMap={closerMap}
+            busyBlocks={googleBusyBlocks}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
           />
@@ -390,6 +391,7 @@ export default function DashboardPage() {
             date={currentDate}
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
+            busyBlocks={googleBusyBlocks}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
           />
