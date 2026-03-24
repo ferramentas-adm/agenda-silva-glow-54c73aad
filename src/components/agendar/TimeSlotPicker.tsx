@@ -39,13 +39,13 @@ function isSlotBlockedByGoogle(
   });
 }
 
-function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date): boolean {
+function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date, startH: number, endH: number): boolean {
   const match = time.match(/^(\d{2}):(\d{2})$/);
   if (!match) return false;
   const h = parseInt(match[1], 10);
   const m = parseInt(match[2], 10);
-  if (h < 9 || h > 23 || m < 0 || m > 59) return false;
-  if (h === 23 && m > 0) return false; // end would be after 00:00
+  if (h < startH || h > endH || m < 0 || m > 59) return false;
+  if (h === endH && m > 0) return false;
 
   if (isToday) {
     const slotStart = new Date(`${dateStr}T${time}:00`);
