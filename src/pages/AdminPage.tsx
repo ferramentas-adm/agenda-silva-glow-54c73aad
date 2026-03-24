@@ -407,7 +407,7 @@ function UsersSection() {
                         )}
                         {u.role === "closer" && u.closerId && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Horário de trabalho"
-                            onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, start: u.hoursStart, end: u.hoursEnd }); setEditHoursStart(u.hoursStart); setEditHoursEnd(u.hoursEnd); }}>
+                            onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, ranges: u.ranges }); setEditRanges([...u.ranges]); }}>
                             <Clock className="h-3.5 w-3.5" />
                           </Button>
                         )}
