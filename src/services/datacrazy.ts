@@ -100,10 +100,11 @@ export interface DataCrazyLead {
 }
 
 export async function buscarLeadsComTag(tagName: string): Promise<DataCrazyLead[]> {
-  const data = await api("GET", `/leads?search=&filter=tags`);
+  // DataCrazy expects `filter` as object/array; fetching leads and filtering locally avoids 400s.
+  const data = await api("GET", "/leads");
   const leads: DataCrazyLead[] = data?.data || data || [];
-  return leads.filter(
-    (l) => l.tags?.some((t) => t.name.toLowerCase() === tagName.toLowerCase())
+  return leads.filter((l) =>
+    l.tags?.some((t) => t.name.toLowerCase() === tagName.toLowerCase())
   );
 }
 
