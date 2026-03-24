@@ -224,6 +224,31 @@ export default function DashboardPage() {
       <div className="animate-fade-in space-y-4">
         <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
 
+        {/* Status counters */}
+        {!loadingAgendamentos && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[
+              { key: "total", label: "Total", icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
+              { key: "pendente", label: "Pendentes", icon: AlertCircle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
+              { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
+              { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+              { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
+              { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
+            ].map(({ key, label, icon: Icon, color, bg }) => {
+              const count = key === "total" ? filtered.length : filtered.filter(a => a.status === key).length;
+              return (
+                <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
+                  <Icon className={cn("h-5 w-5 shrink-0", color)} />
+                  <div>
+                    <p className="text-lg font-bold leading-none">{count}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
