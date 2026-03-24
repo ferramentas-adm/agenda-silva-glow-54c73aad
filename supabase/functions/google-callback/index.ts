@@ -43,8 +43,8 @@ serve(async (req) => {
 
     if (!tokenRes.ok || !tokenData.access_token) {
       console.error('Token exchange failed:', tokenData);
-      return new Response('<html><body><h2>Erro ao autenticar com Google</h2></body></html>', {
-        status: 400, headers: { 'Content-Type': 'text/html' },
+      return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro ao autenticar com Google</h2></body></html>', {
+        status: 400, headers: { 'Content-Type': 'text/html; charset=UTF-8' },
       });
     }
 
