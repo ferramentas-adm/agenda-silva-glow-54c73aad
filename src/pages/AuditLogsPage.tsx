@@ -332,11 +332,12 @@ export default function AuditLogsPage() {
 }
 
 const STATUS_LABELS_AG: Record<string, string> = {
-  pendente: "Pendente",
   confirmada: "Confirmada",
   realizada: "Realizada",
   cancelada: "Cancelada",
+  no_show: "No-show",
   reagendada: "Reagendada",
+  nao_confirmada: "Não confirmada",
 };
 
 function formatDetails(log: AuditLog): string {

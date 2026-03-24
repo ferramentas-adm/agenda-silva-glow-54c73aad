@@ -52,19 +52,21 @@ interface Agendamento {
 // ─── Status helpers ──────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  pendente: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   confirmada: "bg-primary/20 text-primary border-primary/30",
   realizada: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   cancelada: "bg-destructive/20 text-destructive border-destructive/30",
+  no_show: "bg-orange-500/20 text-orange-400 border-orange-500/30",
   reagendada: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  nao_confirmada: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pendente: "Pendente",
   confirmada: "Confirmada",
   realizada: "Realizada",
   cancelada: "Cancelada",
+  no_show: "No-show",
   reagendada: "Reagendada",
+  nao_confirmada: "Não confirmada",
 };
 
 // ─── Delete Dialog State (shared) ────────────────────────────────
@@ -226,14 +228,15 @@ export default function DashboardPage() {
 
         {/* Status counters */}
         {!loadingAgendamentos && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
             {[
               { key: "total", label: "Total", icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
-              { key: "pendente", label: "Pendentes", icon: AlertCircle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
               { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
               { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
               { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
+              { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
               { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
+              { key: "nao_confirmada", label: "Não confirmadas", icon: AlertCircle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
             ].map(({ key, label, icon: Icon, color, bg }) => {
               const count = key === "total" ? filtered.length : filtered.filter(a => a.status === key).length;
               return (
@@ -441,51 +444,33 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
                 <div className="flex flex-wrap gap-2">
                   {detailAg.status !== "confirmada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusChange("confirmada")}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Confirmar
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
                     </Button>
                   )}
                   {detailAg.status !== "realizada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusChange("realizada")}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Realizada
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                     </Button>
                   )}
                   {detailAg.status !== "cancelada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusChange("cancelada")}
-                    >
-                      <XCircle className="h-3.5 w-3.5" />
-                      Cancelar
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
+                      <XCircle className="h-3.5 w-3.5" />Cancelar
                     </Button>
                   )}
-                  {detailAg.status !== "reagendada" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusChange("reagendada")}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Reagendar
+                  {detailAg.status !== "no_show" && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
+                      <AlertCircle className="h-3.5 w-3.5" />No-show
+                    </Button>
+                  )}
+                  {(detailAg.status === "cancelada" || detailAg.status === "no_show") && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("reagendada")}>
+                      <RotateCcw className="h-3.5 w-3.5" />Reagendar
+                    </Button>
+                  )}
+                  {detailAg.status !== "nao_confirmada" && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("nao_confirmada")}>
+                      <AlertCircle className="h-3.5 w-3.5" />Não confirmada
                     </Button>
                   )}
                 </div>
