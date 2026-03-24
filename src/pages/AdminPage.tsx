@@ -97,40 +97,22 @@ function UsersSection() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (role === "closer") {
-      // Create closer directly in closers table
-      setCreating(true);
-      try {
-        const { error } = await supabase.from("closers").insert({
-          name: fullName,
-          email: email || null,
-        });
-        if (error) throw error;
-        toast.success("Closer criado com sucesso!");
-        setFullName(""); setEmail(""); setPassword(""); setPasswordErrors([]);
-        queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
-        queryClient.invalidateQueries({ queryKey: ["closers"] });
-        queryClient.invalidateQueries({ queryKey: ["closers-active"] });
-      } catch (err: any) {
-        toast.error(err.message || "Erro ao criar closer");
-      }
-      setCreating(false);
-      return;
-    }
-
-    const errs = validatePassword(password);
-    if (errs.length > 0) { setPasswordErrors(errs); return; }
     setCreating(true);
+    setGeneratedPassword(null);
     try {
+      // All users (including closers) now go through create-user edge function
       const { data, error } = await supabase.functions.invoke("create-user", {
-        body: { email, password, full_name: fullName, role },
+        body: { email, full_name: fullName, role },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      
+      setGeneratedPassword(data.generated_password);
       toast.success("Usuário criado com sucesso!");
-      setFullName(""); setEmail(""); setPassword(""); setPasswordErrors([]);
+      setFullName(""); setEmail("");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["closers"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-active"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar usuário");
     }
