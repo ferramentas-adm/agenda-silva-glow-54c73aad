@@ -90,8 +90,8 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Callback error:', error);
-    return new Response('<html><body><h2>Erro interno</h2></body></html>', {
-      status: 500, headers: { 'Content-Type': 'text/html' },
+    return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro interno</h2></body></html>', {
+      status: 500, headers: { 'Content-Type': 'text/html; charset=UTF-8' },
     });
   }
 });
