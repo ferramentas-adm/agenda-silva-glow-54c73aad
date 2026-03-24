@@ -100,12 +100,36 @@ export interface DataCrazyLead {
 }
 
 export async function buscarLeadsComTag(tagName: string): Promise<DataCrazyLead[]> {
-  // DataCrazy expects `filter` as object/array; fetching leads and filtering locally avoids 400s.
-  const data = await api("GET", "/leads");
-  const leads: DataCrazyLead[] = data?.data || data || [];
-  return leads.filter((l) =>
-    l.tags?.some((t) => t.name.toLowerCase() === tagName.toLowerCase())
-  );
+  // The API paginates results. We need to fetch pages until we have all leads,
+  // then filter locally by tag. Use take=100 to reduce number of requests.
+  const allMatchingLeads: DataCrazyLead[] = [];
+  const pageSize = 100;
+  let skip = 0;
+  let totalCount = Infinity;
+
+  while (skip < totalCount) {
+    const data = await api("GET", `/leads?take=${pageSize}&skip=${skip}`);
+    const leads: DataCrazyLead[] = data?.data || [];
+    
+    if (data?.count !== undefined) {
+      totalCount = data.count;
+    }
+
+    // Filter this page for matching tags
+    const matched = leads.filter((l) =>
+      l.tags?.some((t) => t.name.toLowerCase() === tagName.toLowerCase())
+    );
+    allMatchingLeads.push(...matched);
+
+    // If we got fewer results than pageSize, we've reached the end
+    if (leads.length < pageSize) break;
+    skip += pageSize;
+
+    // Safety limit: don't fetch more than 5000 leads
+    if (skip >= 5000) break;
+  }
+
+  return allMatchingLeads;
 }
 
 export async function buscarLead(telefone: string): Promise<DataCrazyLead | null> {
