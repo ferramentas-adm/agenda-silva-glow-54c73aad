@@ -7,7 +7,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
-  Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle,
+  Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -15,6 +15,7 @@ import CloserFilterBar from "@/components/CloserFilterBar";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
+import { useGoogleCalendarEvents, GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
