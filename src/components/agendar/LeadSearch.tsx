@@ -1,7 +1,17 @@
 import { useState, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
-import { Search, X } from "lucide-react";
-import { searchLeads, type Lead } from "@/data/mockLeads";
+import { Search, X, Tag } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { buscarLeadsComTag, type DataCrazyLead } from "@/services/datacrazy";
+
+export interface Lead {
+  id: string;
+  name: string;
+  phone: string;
+  dataCrazyId?: string;
+  tags?: { id: string; name: string }[];
+}
 
 interface LeadSearchProps {
   selectedLead: Lead | null;
@@ -9,21 +19,48 @@ interface LeadSearchProps {
   onClear: () => void;
 }
 
+function mapToLead(dcLead: DataCrazyLead): Lead {
+  const phone =
+    dcLead.phone ||
+    (dcLead.phones && dcLead.phones.length > 0 ? dcLead.phones[0].phone : "") ||
+    "";
+  return {
+    id: dcLead.id,
+    name: dcLead.name,
+    phone: typeof phone === "string" ? phone : String(phone),
+    dataCrazyId: dcLead.id,
+    tags: dcLead.tags,
+  };
+}
+
 export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Lead[]>([]);
-  const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setResults(searchLeads(query));
-    setOpen(query.length >= 2);
-  }, [query]);
+  // Fetch leads with "agendamento" tag from DataCrazy
+  const { data: taggedLeads = [], isLoading, error } = useQuery<Lead[]>({
+    queryKey: ["datacrazy-leads-agendamento"],
+    queryFn: async () => {
+      const dcLeads = await buscarLeadsComTag("agendamento");
+      return dcLeads.map(mapToLead);
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
+  // Local filter
+  const filteredLeads = query.length >= 2
+    ? taggedLeads.filter(
+        (l) =>
+          l.name.toLowerCase().includes(query.toLowerCase()) ||
+          l.phone.includes(query)
+      )
+    : taggedLeads;
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        // close dropdown if open
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -44,46 +81,65 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-16 w-full rounded-lg" />
+        <Skeleton className="h-16 w-full rounded-lg" />
+        <Skeleton className="h-16 w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  if (error || taggedLeads.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-primary/30 bg-card py-10 text-center">
+        <Tag className="h-8 w-8 text-primary" />
+        <p className="text-sm font-medium text-foreground">
+          Nenhum lead disponível para agendamento.
+        </p>
+        <p className="text-xs text-muted-foreground max-w-xs">
+          Adicione a tag <span className="font-semibold text-primary">"agendamento"</span> ao lead no DataCrazy para que ele apareça aqui.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef} className="space-y-3">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Buscar lead por nome ou telefone..."
+          placeholder="Filtrar por nome ou telefone..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-9"
-          autoFocus
         />
       </div>
 
-      {open && (
-        <div className="absolute z-10 mt-1 w-full rounded-lg border border-input bg-popover shadow-lg overflow-hidden">
-          {results.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum lead encontrado.</p>
-          ) : (
-            results.map((lead) => (
-              <button
-                key={lead.id}
-                onClick={() => {
-                  onSelect(lead);
-                  setQuery("");
-                  setOpen(false);
-                }}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-secondary/60 transition-colors"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                  {lead.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{lead.name}</p>
-                  <p className="text-xs text-muted-foreground">{lead.phone}</p>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      )}
+      <div className="max-h-64 overflow-y-auto rounded-lg border border-input bg-popover">
+        {filteredLeads.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum lead encontrado.</p>
+        ) : (
+          filteredLeads.map((lead) => (
+            <button
+              key={lead.id}
+              onClick={() => onSelect(lead)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-secondary/60 transition-colors border-b border-input/30 last:border-b-0"
+            >
+              <div>
+                <p className="text-sm font-medium">{lead.name}</p>
+                <p className="text-xs text-muted-foreground">{lead.phone}</p>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        {taggedLeads.length} lead{taggedLeads.length !== 1 ? "s" : ""} com tag "agendamento"
+      </p>
     </div>
   );
 }

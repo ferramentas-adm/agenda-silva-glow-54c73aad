@@ -18,7 +18,6 @@ export default function CloserFilterBar({ closers, selectedIds, onToggle }: Clos
     <div className="flex flex-wrap gap-2">
       {closers.map((closer) => {
         const selected = selectedIds.has(closer.id);
-        const initial = closer.name.charAt(0).toUpperCase();
 
         return (
           <button
@@ -31,13 +30,7 @@ export default function CloserFilterBar({ closers, selectedIds, onToggle }: Clos
                 : "bg-[hsl(0_0%_20%)] text-[hsl(0_0%_53%)]"
             )}
           >
-            <span
-              className={cn(
-                "inline-block h-2 w-2 rounded-full",
-                selected ? "bg-primary-foreground/60" : "bg-[hsl(0_0%_35%)]"
-              )}
-            />
-            {initial} {closer.name}
+            {closer.name}
           </button>
         );
       })}
