@@ -1,15 +1,64 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hoursOpen, setHoursOpen] = useState(false);
+  const [editStart, setEditStart] = useState("09:00");
+  const [editEnd, setEditEnd] = useState("23:00");
+  const [saving, setSaving] = useState(false);
+
+  const isCloser = role === "closer";
+
+  // Fetch closer record for current user (by email)
+  const { data: closerRecord } = useQuery({
+    queryKey: ["my-closer-record", user?.email],
+    enabled: isCloser && !!user?.email,
+    queryFn: async () => {
+      const { data } = await supabase.from("closers").select("id, business_hours_start, business_hours_end").eq("email", user!.email!).single();
+      return data;
+    },
+  });
+
+  const openHoursDialog = () => {
+    setEditStart(closerRecord?.business_hours_start || "09:00");
+    setEditEnd(closerRecord?.business_hours_end || "23:00");
+    setHoursOpen(true);
+  };
+
+  const handleSaveHours = async () => {
+    if (!closerRecord) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("closers")
+        .update({ business_hours_start: editStart, business_hours_end: editEnd })
+        .eq("id", closerRecord.id);
+      if (error) throw error;
+      toast.success("Horário atualizado!");
+      queryClient.invalidateQueries({ queryKey: ["my-closer-record"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-hours"] });
+      setHoursOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar horário");
+    }
+    setSaving(false);
+  };
 
   const navItems = [
     { to: "/", label: "Agenda", icon: CalendarDays },
@@ -46,6 +95,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Button>
               </Link>
             ))}
+            {isCloser && closerRecord && (
+              <Button variant="ghost" size="sm" onClick={openHoursDialog} className="gap-2" title="Meu horário de trabalho">
+                <Clock className="h-4 w-4" />
+                <span className="hidden lg:inline">Meu Horário</span>
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={signOut} className="ml-2 gap-2 text-muted-foreground">
               <LogOut className="h-4 w-4" />
               Sair
@@ -73,6 +128,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Button>
               </Link>
             ))}
+            {isCloser && closerRecord && (
+              <Button variant="ghost" size="sm" onClick={() => { openHoursDialog(); setMenuOpen(false); }} className="w-full justify-start gap-2">
+                <Clock className="h-4 w-4" />
+                Meu Horário ({closerRecord.business_hours_start}–{closerRecord.business_hours_end})
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start gap-2 text-muted-foreground">
               <LogOut className="h-4 w-4" />
               Sair
@@ -90,6 +151,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="container flex-1 py-6">
         {children}
       </main>
+
+      {/* Closer hours dialog */}
+      <AlertDialog open={hoursOpen} onOpenChange={setHoursOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Meu Horário de Trabalho</AlertDialogTitle>
+            <AlertDialogDescription>
+              Configure os horários em que você está disponível para agendamentos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Início</label>
+              <Input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className="font-mono" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Fim</label>
+              <Input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className="font-mono" />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveHours} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
