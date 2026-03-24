@@ -40,7 +40,7 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
         .from("agendamentos")
         .select("closer_id")
         .eq("scheduled_date", dateStr)
-        .in("status", ["pendente", "confirmada"]);
+        .in("status", ["confirmada"]);
 
       const countMap = new Map<string, number>();
       (agendamentos ?? []).forEach((a) => {
