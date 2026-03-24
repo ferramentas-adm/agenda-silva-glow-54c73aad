@@ -110,7 +110,15 @@ serve(async (req) => {
       fetchOptions.body = JSON.stringify(payload);
     }
 
-    const response = await fetch(url, fetchOptions);
+    let response = await fetch(url, fetchOptions);
+
+    if (response.status === 404) {
+      const fallbackUrl = buildG1FallbackUrl(url);
+      if (fallbackUrl) {
+        response = await fetch(fallbackUrl, fetchOptions);
+      }
+    }
+
     const responseData = await response.text();
 
     let parsed;
