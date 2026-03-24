@@ -226,8 +226,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             </label>
             <Input
               type="time"
-              min="09:00"
-              max="23:00"
+              min={hoursStart}
+              max={hoursEnd}
               value={customInput}
               onChange={(e) => {
                 setCustomInput(e.target.value);
