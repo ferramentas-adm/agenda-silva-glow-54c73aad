@@ -395,6 +395,12 @@ function UsersSection() {
                             <ArrowRightLeft className="h-3.5 w-3.5" />
                           </Button>
                         )}
+                        {u.type === "profile" && u.role === "closer" && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
+                            onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole("sdr"); }}>
+                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         {u.role === "closer" && u.closerId && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Horário de trabalho"
                             onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, start: u.hoursStart, end: u.hoursEnd }); setEditHoursStart(u.hoursStart); setEditHoursEnd(u.hoursEnd); }}>
