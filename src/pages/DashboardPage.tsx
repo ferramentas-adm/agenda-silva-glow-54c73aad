@@ -300,11 +300,16 @@ export default function DashboardPage() {
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goPrev}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={goToday}>
-              Hoje
-            </Button>
+            <span className="text-xs font-medium min-w-[100px] text-center">
+              {viewMode === "week"
+                ? `${format(weekStart, "dd/MM")} — ${format(weekEnd, "dd/MM")}`
+                : format(currentDate, "dd/MM/yyyy")}
+            </span>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goNext}>
               <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs ml-1" onClick={goToday}>
+              Hoje
             </Button>
           </div>
         </div>
