@@ -361,7 +361,12 @@ function UsersSection() {
                   ) : (
                     <div className="min-w-0">
                       <p className="font-medium truncate">{u.name}</p>
-                      {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
+                      <div className="flex items-center gap-2">
+                        {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
+                        {u.role === "closer" && u.closerId && (
+                          <span className="text-xs text-muted-foreground">({u.hoursStart}–{u.hoursEnd})</span>
+                        )}
+                      </div>
                     </div>
                   )}
                   <div className="flex items-center gap-2 shrink-0">
