@@ -58,30 +58,38 @@ function UsersSection() {
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
     queryFn: async () => {
-      // Fetch profiles (SDRs and Gestors)
       const { data: profiles } = await supabase.from("profiles").select("*");
       const { data: roles } = await supabase.from("user_roles").select("*");
       const { data: closers } = await supabase.from("closers").select("*").order("name");
 
-      const profileUsers = (profiles ?? []).map((p: any) => ({
-        id: p.id,
-        userId: p.user_id,
-        name: p.full_name,
-        email: p.email,
-        role: roles?.find((r: any) => r.user_id === p.user_id)?.role ?? "sdr",
-        active: p.active !== false,
-        type: "profile" as const,
-      }));
+      // Profile-based users (SDR, Gestor, Closer with auth)
+      const profileEmails = new Set<string>();
+      const profileUsers = (profiles ?? []).map((p: any) => {
+        profileEmails.add(p.email?.toLowerCase());
+        const userRole = roles?.find((r: any) => r.user_id === p.user_id)?.role ?? "sdr";
+        return {
+          id: p.id,
+          userId: p.user_id,
+          name: p.full_name,
+          email: p.email,
+          role: userRole,
+          active: p.active !== false,
+          type: "profile" as const,
+        };
+      });
 
-      const closerUsers = (closers ?? []).map((c: any) => ({
-        id: c.id,
-        userId: c.id,
-        name: c.name,
-        email: c.email || "",
-        role: "closer" as const,
-        active: c.active,
-        type: "closer" as const,
-      }));
+      // Only show closers without auth accounts (legacy closers)
+      const closerUsers = (closers ?? [])
+        .filter((c: any) => !c.email || !profileEmails.has(c.email.toLowerCase()))
+        .map((c: any) => ({
+          id: c.id,
+          userId: c.id,
+          name: c.name,
+          email: c.email || "",
+          role: "closer" as const,
+          active: c.active,
+          type: "closer" as const,
+        }));
 
       return [...profileUsers, ...closerUsers];
     },
