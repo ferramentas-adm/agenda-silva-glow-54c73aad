@@ -108,6 +108,16 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
         <p className="text-xs text-muted-foreground max-w-xs">
           Adicione a tag <span className="font-semibold text-primary">"agendamento"</span> ao lead no DataCrazy para que ele apareça aqui.
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isFetching}
+          className="mt-2 gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          Atualizar
+        </Button>
       </div>
     );
   }
