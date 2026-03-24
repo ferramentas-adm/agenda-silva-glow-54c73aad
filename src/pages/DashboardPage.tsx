@@ -228,7 +228,7 @@ export default function DashboardPage() {
 
         {/* Status counters */}
         {!loadingAgendamentos && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
             {[
               { key: "total", label: "Total", icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
               { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
