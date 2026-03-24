@@ -352,17 +352,15 @@ function UsersSection() {
                           disabled={togglingId === u.userId}
                         />
                         {u.type === "profile" && (
-                          <>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
-                              onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
-                              <ArrowRightLeft className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
-                              onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
-                              <KeyRound className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
+                            onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
+                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
                         )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
+                          onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
+                          <KeyRound className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
