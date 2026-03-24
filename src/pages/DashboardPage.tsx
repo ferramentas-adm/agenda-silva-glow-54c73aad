@@ -50,6 +50,13 @@ interface Agendamento {
   created_at: string;
 }
 
+interface GoogleBusyBlock {
+  closer_id: string;
+  date: string;       // yyyy-MM-dd
+  time: string;       // HH:mm
+  summary: string;
+}
+
 // ─── Status helpers ──────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
