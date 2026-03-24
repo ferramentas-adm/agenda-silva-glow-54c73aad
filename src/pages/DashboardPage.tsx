@@ -539,12 +539,14 @@ function WeekView({
   days,
   agendamentos,
   closerMap,
+  busyBlocks,
   onDelete,
   onClickAg,
 }: {
   days: Date[];
   agendamentos: Agendamento[];
   closerMap: Map<string, string>;
+  busyBlocks: GoogleBusyBlock[];
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
 }) {
