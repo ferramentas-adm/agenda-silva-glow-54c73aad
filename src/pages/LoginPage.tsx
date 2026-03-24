@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 
 export default function LoginPage() {
@@ -13,6 +15,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const from = (location.state as any)?.from?.pathname || "/";
 
@@ -25,6 +31,21 @@ export default function LoginPage() {
     const { error } = await signIn(email, password);
     if (error) setError(error);
     setLoading(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
+      setForgotMode(false);
+    }
+    setForgotLoading(false);
   };
 
   return (
@@ -40,35 +61,78 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        {forgotMode ? (
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Informe seu e-mail para receber o link de recuperação de senha.
+            </p>
             <Input
               type="email"
               placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
               required
               autoFocus
             />
-          </div>
-          <div>
-            <Input
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+            <Button type="submit" className="w-full" disabled={forgotLoading}>
+              {forgotLoading ? <Loader2 className="animate-spin" /> : "Enviar link de recuperação"}
+            </Button>
+            <button
+              type="button"
+              className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
+              onClick={() => setForgotMode(false)}
+            >
+              Voltar ao login
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Input
+                type="email"
+                placeholder="E-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : "Entrar"}
-          </Button>
-        </form>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <Loader2 className="animate-spin" /> : "Entrar"}
+            </Button>
+
+            <button
+              type="button"
+              className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
+              onClick={() => { setForgotMode(true); setForgotEmail(email); }}
+            >
+              Esqueci minha senha
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
