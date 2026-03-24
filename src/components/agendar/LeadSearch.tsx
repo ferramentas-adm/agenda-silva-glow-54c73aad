@@ -37,9 +37,10 @@ function mapToLead(dcLead: DataCrazyLead): Lead {
 export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSearchProps) {
   const [query, setQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   // Fetch leads with "agendamento" tag from DataCrazy
-  const { data: taggedLeads = [], isLoading, error } = useQuery<Lead[]>({
+  const { data: taggedLeads = [], isLoading, error, isFetching } = useQuery<Lead[]>({
     queryKey: ["datacrazy-leads-agendamento"],
     queryFn: async () => {
       const dcLeads = await buscarLeadsComTag("agendamento");
@@ -48,6 +49,10 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
     staleTime: 0,
     refetchOnMount: "always",
   });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["datacrazy-leads-agendamento"] });
+  };
 
   // Local filter
   const filteredLeads = query.length >= 2
