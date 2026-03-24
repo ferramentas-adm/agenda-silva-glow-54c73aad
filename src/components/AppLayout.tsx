@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X } from "lucide-react";
+import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
@@ -14,7 +14,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { to: "/", label: "Agenda", icon: CalendarDays },
     { to: "/agendar", label: "Agendar", icon: PlusCircle },
-    ...(isGestor ? [{ to: "/admin", label: "Admin", icon: Settings }] : []),
+    ...(isGestor ? [
+      { to: "/admin", label: "Admin", icon: Settings },
+      { to: "/audit-logs", label: "Logs", icon: ScrollText },
+    ] : []),
   ];
 
   const isActive = (path: string) => location.pathname === path;

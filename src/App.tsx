@@ -10,6 +10,7 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import AgendarPage from "@/pages/AgendarPage";
 import AdminPage from "@/pages/AdminPage";
+import AuditLogsPage from "@/pages/AuditLogsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/agendar" element={<ProtectedRoute><AgendarPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireGestor><AdminPage /></ProtectedRoute>} />
+            <Route path="/audit-logs" element={<ProtectedRoute requireGestor><AuditLogsPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

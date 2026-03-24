@@ -19,6 +19,9 @@ export type Database = {
           closer_id: string
           created_at: string
           created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           id: string
           lead_name: string
           lead_phone: string
@@ -34,6 +37,9 @@ export type Database = {
           closer_id: string
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           id?: string
           lead_name: string
           lead_phone: string
@@ -49,6 +55,9 @@ export type Database = {
           closer_id?: string
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           id?: string
           lead_name?: string
           lead_phone?: string
@@ -95,6 +104,39 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: string
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          user_id?: string
+          user_name?: string
         }
         Relationships: []
       }

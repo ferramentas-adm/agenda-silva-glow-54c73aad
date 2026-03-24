@@ -146,12 +146,22 @@ export async function criarAtividade(
     sdrNome: string;
     meetUrl: string;
     dataHoraISO: string;
+    observacao?: string;
   }
 ) {
+  const descParts = [
+    `Closer: ${dados.closerNome}`,
+    `SDR: ${dados.sdrNome}`,
+    `Link Meet: ${dados.meetUrl}`,
+  ];
+  if (dados.observacao) {
+    descParts.push(`\nObservações: ${dados.observacao}`);
+  }
+
   return api("POST", `/leads/${leadId}/activities`, {
     type: "Reunião",
     title: `Diagnóstico Comercial — ${dados.leadNome}`,
-    description: `Closer: ${dados.closerNome}\nSDR: ${dados.sdrNome}\nLink Meet: ${dados.meetUrl}`,
+    description: descParts.join("\n"),
     scheduledAt: dados.dataHoraISO,
     attendantId,
   });

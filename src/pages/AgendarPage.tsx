@@ -22,6 +22,7 @@ import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
 import { reuniaoAgendada } from "@/services/datacrazy";
+import { logAudit } from "@/services/auditLog";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
 
@@ -164,6 +165,13 @@ export default function AgendarPage() {
       }).select("id").single();
 
       if (error) throw error;
+
+      await logAudit("create_agendamento", "agendamento", insertedData?.id, {
+        lead_name: lead.name,
+        closer_name: closerName,
+        date: dateStr,
+        time,
+      });
 
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
