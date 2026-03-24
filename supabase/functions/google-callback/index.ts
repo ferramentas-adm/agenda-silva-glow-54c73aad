@@ -67,8 +67,8 @@ serve(async (req) => {
 
     if (error) {
       console.error('Error saving token:', error);
-      return new Response('<html><body><h2>Erro ao salvar token</h2></body></html>', {
-        status: 500, headers: { 'Content-Type': 'text/html' },
+      return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro ao salvar token</h2></body></html>', {
+        status: 500, headers: { 'Content-Type': 'text/html; charset=UTF-8' },
       });
     }
 
