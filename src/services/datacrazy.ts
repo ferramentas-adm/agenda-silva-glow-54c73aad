@@ -1,19 +1,43 @@
 /**
  * DataCrazy API Service Layer
- * All interactions with the DataCrazy API go through here.
+ * All interactions with the DataCrazy API go through the edge function proxy.
  */
 
-const API_URL = import.meta.env.VITE_DATACRAZY_API_URL || "https://api.g1.datacrazy.io/api/v1";
-const API_TOKEN = import.meta.env.VITE_DATACRAZY_API_TOKEN || "";
-const WEBHOOK_URL = import.meta.env.VITE_DATACRAZY_WEBHOOK_URL || "";
+import { supabase } from "@/integrations/supabase/client";
 
-// Fallback stage/pipeline IDs from env
-const STAGE_REUNIAO_AGENDADA = import.meta.env.VITE_DATACRAZY_STAGE_REUNIAO_AGENDADA || "";
-const STAGE_REUNIAO_REALIZADA = import.meta.env.VITE_DATACRAZY_STAGE_REUNIAO_REALIZADA || "";
-const STAGE_NOSHOW_CANCELADO = import.meta.env.VITE_DATACRAZY_STAGE_NOSHOW_CANCELADO || "";
-const PIPELINE_PRE_VENDAS = import.meta.env.VITE_DATACRAZY_PIPELINE_PRE_VENDAS || "";
-const PIPELINE_VENDAS = import.meta.env.VITE_DATACRAZY_PIPELINE_VENDAS || "";
-const ACTIVITY_TYPE = import.meta.env.VITE_DATACRAZY_ACTIVITY_TYPE_REUNIAO || "Reunião";
+// ─── Proxy helper ────────────────────────────────────────────────
+
+async function api(method: string, path: string, payload?: unknown) {
+  const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
+    body: { method, path, payload },
+  });
+
+  if (error) throw new Error(`DataCrazy proxy error: ${error.message}`);
+  if (data?.error) throw new Error(`DataCrazy API error: ${data.error}`);
+  return data;
+}
+
+// Settings from app_settings (loaded at runtime)
+let settingsCache: Record<string, string> | null = null;
+
+async function getSettings(): Promise<Record<string, string>> {
+  if (settingsCache) return settingsCache;
+  const { data } = await supabase.from("app_settings").select("key, value");
+  const map: Record<string, string> = {};
+  (data ?? []).forEach((s: any) => { map[s.key] = s.value; });
+  settingsCache = map;
+  return map;
+}
+
+// Clear cache (call when settings are updated)
+export function clearSettingsCache() {
+  settingsCache = null;
+}
+
+async function getStageId(key: string): Promise<string> {
+  const settings = await getSettings();
+  return settings[key] || "";
+}
 
 // ─── Queue ───────────────────────────────────────────────────────
 
@@ -64,33 +88,6 @@ export function markResolved(id: string) {
   setQueue(queue.filter(i => i.id !== id));
 }
 
-// ─── HTTP helpers ────────────────────────────────────────────────
-
-async function api(method: string, path: string, body?: unknown) {
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: API_TOKEN,
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`DataCrazy API [${res.status}]: ${text}`);
-  }
-  return res.json();
-}
-
-async function webhookPost(payload: Record<string, unknown>) {
-  if (!WEBHOOK_URL) return;
-  await fetch(WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-}
-
 // ─── Core functions ──────────────────────────────────────────────
 
 export interface DataCrazyLead {
@@ -117,10 +114,11 @@ export async function buscarLead(telefone: string): Promise<DataCrazyLead | null
 }
 
 export async function buscarNegocioAtivo(leadId: string) {
+  const pipelineId = await getStageId("datacrazy_pipeline_pre_vendas");
   const data = await api("GET", `/businesses?leadId=${leadId}`);
   const businesses = data?.data || data || [];
   return businesses.find(
-    (b: any) => b.pipelineId === PIPELINE_PRE_VENDAS && !b.deletedAt
+    (b: any) => b.pipelineId === pipelineId && !b.deletedAt
   ) || null;
 }
 
@@ -151,7 +149,7 @@ export async function criarAtividade(
   }
 ) {
   return api("POST", `/leads/${leadId}/activities`, {
-    type: ACTIVITY_TYPE,
+    type: "Reunião",
     title: `Diagnóstico Comercial — ${dados.leadNome}`,
     description: `Closer: ${dados.closerNome}\nSDR: ${dados.sdrNome}\nLink Meet: ${dados.meetUrl}`,
     scheduledAt: dados.dataHoraISO,
@@ -163,49 +161,14 @@ export async function removerTag(leadId: string, tagId: string) {
   return api("DELETE", `/leads/${leadId}/tags/${tagId}`);
 }
 
-// ─── Pipeline config (dynamic fetch with env fallback) ───────────
+// ─── Webhook (still through edge function) ───────────────────────
 
-interface PipelineConfig {
-  stageReuniaoAgendada: string;
-  stageReuniaoRealizada: string;
-  stageNoShowCancelado: string;
-  pipelinePreVendas: string;
-  pipelineVendas: string;
-}
-
-let cachedConfig: PipelineConfig | null = null;
-
-export async function getPipelineConfig(): Promise<PipelineConfig> {
-  if (cachedConfig) return cachedConfig;
-
+async function webhookPost(payload: Record<string, unknown>) {
   try {
-    const data = await api("GET", "/pipelines");
-    // Try to match pipelines — this is a best-effort approach
-    // The admin can set exact IDs in app_settings
-    console.log("DataCrazy pipelines loaded:", data);
+    await supabase.functions.invoke("datacrazy-webhook", { body: payload });
   } catch (e) {
-    console.warn("Failed to fetch DataCrazy pipelines, using env fallback:", e);
+    console.warn("Webhook post failed:", e);
   }
-
-  cachedConfig = {
-    stageReuniaoAgendada: STAGE_REUNIAO_AGENDADA,
-    stageReuniaoRealizada: STAGE_REUNIAO_REALIZADA,
-    stageNoShowCancelado: STAGE_NOSHOW_CANCELADO,
-    pipelinePreVendas: PIPELINE_PRE_VENDAS,
-    pipelineVendas: PIPELINE_VENDAS,
-  };
-
-  return cachedConfig;
-}
-
-export function updatePipelineConfig(config: Partial<PipelineConfig>) {
-  cachedConfig = { ...(cachedConfig || {
-    stageReuniaoAgendada: STAGE_REUNIAO_AGENDADA,
-    stageReuniaoRealizada: STAGE_REUNIAO_REALIZADA,
-    stageNoShowCancelado: STAGE_NOSHOW_CANCELADO,
-    pipelinePreVendas: PIPELINE_PRE_VENDAS,
-    pipelineVendas: PIPELINE_VENDAS,
-  }), ...config };
 }
 
 // ─── Events ──────────────────────────────────────────────────────
@@ -223,7 +186,7 @@ export interface AgendamentoData {
 }
 
 export async function reuniaoAgendada(ag: AgendamentoData) {
-  const config = await getPipelineConfig();
+  const stageId = await getStageId("datacrazy_stage_reuniao_agendada");
   const agObj = ag as unknown as Record<string, unknown>;
 
   // Step 1: Find lead
@@ -238,21 +201,21 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
   try {
     negocio = await buscarNegocioAtivo(lead.id);
     if (!negocio) {
-      negocio = await criarNegocio(lead.id, config.stageReuniaoAgendada, ag.closerId);
+      negocio = await criarNegocio(lead.id, stageId, ag.closerId);
     }
   } catch { addToQueue("reuniaoAgendada", 2, agObj); return; }
 
   // Step 3: Move business
   try {
-    await moverNegocio(negocio.id, config.stageReuniaoAgendada);
+    await moverNegocio(negocio.id, stageId);
   } catch { addToQueue("reuniaoAgendada", 3, agObj); return; }
 
-  // Step 4: Create activity for SDR (don't block on failure)
+  // Step 4: Create activity for SDR
   try {
     await criarAtividade(lead.id, ag.sdrId, ag);
   } catch { addToQueue("atividade_sdr", 4, agObj); }
 
-  // Step 5: Create activity for Closer (don't block on failure)
+  // Step 5: Create activity for Closer
   try {
     await criarAtividade(lead.id, ag.closerId, ag);
   } catch { addToQueue("atividade_closer", 5, agObj); }
@@ -281,7 +244,7 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
 }
 
 export async function reuniaoRealizada(ag: AgendamentoData) {
-  const config = await getPipelineConfig();
+  const stageId = await getStageId("datacrazy_stage_reuniao_realizada");
   const agObj = ag as unknown as Record<string, unknown>;
 
   let lead: DataCrazyLead | null;
@@ -299,7 +262,7 @@ export async function reuniaoRealizada(ag: AgendamentoData) {
   try { await ganharNegocio(negocio.id); } catch { addToQueue("reuniaoRealizada", 3, agObj); return; }
 
   try {
-    await criarNegocio(lead.id, config.stageReuniaoRealizada, ag.closerId);
+    await criarNegocio(lead.id, stageId, ag.closerId);
   } catch { addToQueue("reuniaoRealizada", 4, agObj); }
 
   try {
@@ -316,7 +279,7 @@ export async function reuniaoRealizada(ag: AgendamentoData) {
 }
 
 export async function noShowOuCancelado(ag: AgendamentoData, status: "cancelada" | "no-show") {
-  const config = await getPipelineConfig();
+  const stageId = await getStageId("datacrazy_stage_noshow_cancelado");
   const agObj = ag as unknown as Record<string, unknown>;
 
   let lead: DataCrazyLead | null;
@@ -331,7 +294,7 @@ export async function noShowOuCancelado(ag: AgendamentoData, status: "cancelada"
     if (!negocio) { addToQueue("noShowOuCancelado", 2, agObj); return; }
   } catch { addToQueue("noShowOuCancelado", 2, agObj); return; }
 
-  try { await moverNegocio(negocio.id, config.stageNoShowCancelado); } catch { addToQueue("noShowOuCancelado", 3, agObj); return; }
+  try { await moverNegocio(negocio.id, stageId); } catch { addToQueue("noShowOuCancelado", 3, agObj); return; }
 
   try {
     await webhookPost({
@@ -358,7 +321,6 @@ export async function processRetryQueue(): Promise<number> {
     }
 
     try {
-      // Re-run the event based on type
       const ag = item.agendamento as unknown as AgendamentoData;
       if (item.tipo.startsWith("reuniaoAgendada") || item.tipo === "lead_nao_encontrado" || item.tipo === "atividade_sdr" || item.tipo === "atividade_closer") {
         await reuniaoAgendada(ag);
@@ -367,7 +329,6 @@ export async function processRetryQueue(): Promise<number> {
       } else if (item.tipo === "noShowOuCancelado") {
         await noShowOuCancelado(ag, (ag as any).status_novo || "cancelada");
       }
-      // If we get here without error, it was re-queued or succeeded — don't re-add
     } catch {
       item.tentativas += 1;
       if (item.tentativas >= 5) {
