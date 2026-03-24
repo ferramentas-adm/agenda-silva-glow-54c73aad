@@ -36,8 +36,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   const openHoursDialog = () => {
-    setEditStart(closerRecord?.business_hours_start || "09:00");
-    setEditEnd(closerRecord?.business_hours_end || "23:00");
+    const ranges = (closerRecord as any)?.business_hours_ranges && Array.isArray((closerRecord as any).business_hours_ranges) && (closerRecord as any).business_hours_ranges.length > 0
+      ? [...(closerRecord as any).business_hours_ranges]
+      : [{ start: closerRecord?.business_hours_start || "09:00", end: closerRecord?.business_hours_end || "23:00" }];
+    setEditRanges(ranges);
     setHoursOpen(true);
   };
 
