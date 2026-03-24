@@ -12,14 +12,14 @@ export async function logAudit(
 
     const userName = user.user_metadata?.full_name || user.email || "Desconhecido";
 
-    await supabase.from("audit_logs").insert({
+    await supabase.from("audit_logs").insert([{
       user_id: user.id,
       user_name: userName,
       action,
       entity_type: entityType,
       entity_id: entityId || null,
       details: details || {},
-    });
+    }]);
   } catch (e) {
     console.warn("Audit log failed:", e);
   }
