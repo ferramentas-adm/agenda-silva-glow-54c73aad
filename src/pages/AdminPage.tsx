@@ -534,18 +534,30 @@ function UsersSection() {
           <AlertDialogHeader>
             <AlertDialogTitle>Horário de trabalho</AlertDialogTitle>
             <AlertDialogDescription>
-              Configure o horário de trabalho de <strong>{hoursTarget?.name}</strong>.
+              Configure os turnos de trabalho de <strong>{hoursTarget?.name}</strong>. Adicione múltiplos turnos para intervalos (ex: almoço).
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2 py-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Início</label>
-              <Input type="time" value={editHoursStart} onChange={(e) => setEditHoursStart(e.target.value)} className="font-mono" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Fim</label>
-              <Input type="time" value={editHoursEnd} onChange={(e) => setEditHoursEnd(e.target.value)} className="font-mono" />
-            </div>
+          <div className="space-y-3 py-2">
+            {editRanges.map((range, idx) => (
+              <div key={idx} className="flex items-end gap-2">
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Turno {idx + 1} - Início</label>
+                  <Input type="time" value={range.start} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], start: e.target.value }; setEditRanges(nr); }} className="font-mono" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Fim</label>
+                  <Input type="time" value={range.end} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], end: e.target.value }; setEditRanges(nr); }} className="font-mono" />
+                </div>
+                {editRanges.length > 1 && (
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive" onClick={() => setEditRanges(editRanges.filter((_, i) => i !== idx))}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="w-full" onClick={() => setEditRanges([...editRanges, { start: "14:00", end: "18:00" }])}>
+              + Adicionar turno
+            </Button>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -555,19 +567,27 @@ function UsersSection() {
                 if (!hoursTarget) return;
                 setSavingHours(true);
                 try {
+                  const firstStart = editRanges[0]?.start || "09:00";
+                  const lastEnd = editRanges[editRanges.length - 1]?.end || "23:00";
                   const { error } = await supabase.from("closers")
-                    .update({ business_hours_start: editHoursStart, business_hours_end: editHoursEnd })
+                    .update({
+                      business_hours_start: firstStart,
+                      business_hours_end: lastEnd,
+                      business_hours_ranges: editRanges,
+                    } as any)
                     .eq("id", hoursTarget.closerId);
                   if (error) throw error;
                   toast.success("Horário atualizado!");
                   queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
                   queryClient.invalidateQueries({ queryKey: ["closers"] });
+                  queryClient.invalidateQueries({ queryKey: ["closer-hours"] });
                   setHoursTarget(null);
                 } catch (err: any) {
                   toast.error(err.message || "Erro ao salvar horário");
                 }
                 setSavingHours(false);
               }}
+            >
             >
               {savingHours ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
             </AlertDialogAction>
