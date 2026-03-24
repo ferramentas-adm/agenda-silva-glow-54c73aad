@@ -138,7 +138,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {isCloser && closerRecord && (
               <Button variant="ghost" size="sm" onClick={() => { openHoursDialog(); setMenuOpen(false); }} className="w-full justify-start gap-2">
                 <Clock className="h-4 w-4" />
-                Meu Horário ({closerRecord.business_hours_start}–{closerRecord.business_hours_end})
+                Meu Horário
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start gap-2 text-muted-foreground">
