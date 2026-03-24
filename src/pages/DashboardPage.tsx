@@ -170,6 +170,8 @@ export default function DashboardPage() {
           });
           if (error || !data?.connected || !data.events) return;
           (data.events as GoogleCalendarEvent[]).forEach((ev) => {
+            // Skip events created by the system
+            if (ev.summary && ev.summary.startsWith("Grupo Silva &")) return;
             const startDate = ev.start ? new Date(ev.start) : null;
             if (!startDate) return;
             blocks.push({

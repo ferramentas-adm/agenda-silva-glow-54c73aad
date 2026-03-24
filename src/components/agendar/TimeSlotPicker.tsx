@@ -136,8 +136,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const handleCustomConfirm = () => {
     setCustomError(null);
 
-    if (!isCustomTimeValid(customInput, dateStr, isToday, now)) {
-      setCustomError("Horário inválido. Use o formato HH:MM entre 09:00 e 23:00.");
+    if (!isCustomTimeValid(customInput, dateStr, isToday, now, startH, endH)) {
+      setCustomError(`Horário inválido. Use o formato HH:MM entre ${hoursStart} e ${hoursEnd}.`);
       return;
     }
 
