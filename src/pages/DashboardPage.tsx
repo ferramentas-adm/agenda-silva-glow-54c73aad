@@ -560,7 +560,7 @@ function WeekView({
     return map;
   }, [agendamentos]);
 
-  const hasAny = agendamentos.length > 0;
+  const hasAny = agendamentos.length > 0 || busyBlocks.length > 0;
 
   if (!hasAny) {
     return (
