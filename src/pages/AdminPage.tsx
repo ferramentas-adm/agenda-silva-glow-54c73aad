@@ -516,6 +516,53 @@ function UsersSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Closer hours dialog */}
+      <AlertDialog open={!!hoursTarget} onOpenChange={(open) => { if (!open) setHoursTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Horário de trabalho</AlertDialogTitle>
+            <AlertDialogDescription>
+              Configure o horário de trabalho de <strong>{hoursTarget?.name}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Início</label>
+              <Input type="time" value={editHoursStart} onChange={(e) => setEditHoursStart(e.target.value)} className="font-mono" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Fim</label>
+              <Input type="time" value={editHoursEnd} onChange={(e) => setEditHoursEnd(e.target.value)} className="font-mono" />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingHours}
+              onClick={async () => {
+                if (!hoursTarget) return;
+                setSavingHours(true);
+                try {
+                  const { error } = await supabase.from("closers")
+                    .update({ business_hours_start: editHoursStart, business_hours_end: editHoursEnd })
+                    .eq("id", hoursTarget.closerId);
+                  if (error) throw error;
+                  toast.success("Horário atualizado!");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  queryClient.invalidateQueries({ queryKey: ["closers"] });
+                  setHoursTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao salvar horário");
+                }
+                setSavingHours(false);
+              }}
+            >
+              {savingHours ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
