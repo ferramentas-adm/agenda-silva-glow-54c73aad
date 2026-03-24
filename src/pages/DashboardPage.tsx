@@ -659,12 +659,14 @@ function DayView({
   date,
   closers,
   agendamentos,
+  busyBlocks,
   onDelete,
   onClickAg,
 }: {
   date: Date;
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
+  busyBlocks: GoogleBusyBlock[];
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
 }) {
@@ -676,6 +678,16 @@ function DayView({
     });
     return m;
   }, [agendamentos]);
+
+  const busyMap = useMemo(() => {
+    const m = new Map<string, GoogleBusyBlock>();
+    busyBlocks.forEach((b) => {
+      const hourPrefix = b.time.slice(0, 2);
+      const key = `${b.closer_id}-${hourPrefix}`;
+      if (!m.has(key)) m.set(key, b);
+    });
+    return m;
+  }, [busyBlocks]);
 
   if (closers.length === 0) {
     return (
