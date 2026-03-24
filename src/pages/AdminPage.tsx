@@ -107,18 +107,24 @@ function UsersSection() {
       // Only show closers without auth accounts (legacy closers)
       const closerUsers = (closers ?? [])
         .filter((c: any) => !c.email || !profileEmails.has(c.email.toLowerCase()))
-        .map((c: any) => ({
-          id: c.id,
-          userId: c.id,
-          name: c.name,
-          email: c.email || "",
-          role: "closer" as const,
-          active: c.active,
-          type: "closer" as const,
-          closerId: c.id,
-          hoursStart: c.business_hours_start || "09:00",
-          hoursEnd: c.business_hours_end || "23:00",
-        }));
+        .map((c: any) => {
+          const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
+            ? c.business_hours_ranges
+            : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
+          return {
+            id: c.id,
+            userId: c.id,
+            name: c.name,
+            email: c.email || "",
+            role: "closer" as const,
+            active: c.active,
+            type: "closer" as const,
+            closerId: c.id,
+            hoursStart: c.business_hours_start || "09:00",
+            hoursEnd: c.business_hours_end || "23:00",
+            ranges,
+          };
+        });
 
       return [...profileUsers, ...closerUsers];
     },
