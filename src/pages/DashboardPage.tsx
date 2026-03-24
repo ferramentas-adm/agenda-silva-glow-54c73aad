@@ -52,19 +52,21 @@ interface Agendamento {
 // ─── Status helpers ──────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  pendente: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   confirmada: "bg-primary/20 text-primary border-primary/30",
   realizada: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   cancelada: "bg-destructive/20 text-destructive border-destructive/30",
+  no_show: "bg-orange-500/20 text-orange-400 border-orange-500/30",
   reagendada: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  nao_confirmada: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pendente: "Pendente",
   confirmada: "Confirmada",
   realizada: "Realizada",
   cancelada: "Cancelada",
+  no_show: "No-show",
   reagendada: "Reagendada",
+  nao_confirmada: "Não confirmada",
 };
 
 // ─── Delete Dialog State (shared) ────────────────────────────────
