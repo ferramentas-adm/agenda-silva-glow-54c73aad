@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2,
 } from "lucide-react";
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
@@ -59,6 +59,11 @@ function UsersSection() {
   const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [savingHours, setSavingHours] = useState(false);
 
+  // DataCrazy ID edit state
+  const [datacrazyTarget, setDatacrazyTarget] = useState<{ userId: string; name: string; type: string; currentId: string; closerId?: string } | null>(null);
+  const [editDatacrazyId, setEditDatacrazyId] = useState("");
+  const [savingDatacrazyId, setSavingDatacrazyId] = useState(false);
+
   // Fetch all users (profiles + roles) and closers
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
@@ -68,7 +73,7 @@ function UsersSection() {
       const { data: closers } = await supabase.from("closers").select("*").order("name");
 
       // Build a map of closer info by email
-      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[] }>();
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string }>();
       (closers ?? []).forEach((c: any) => {
         if (c.email) {
           const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
@@ -79,6 +84,7 @@ function UsersSection() {
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
+            datacrazyId: c.datacrazy_id || "",
           });
         }
       });
@@ -101,6 +107,7 @@ function UsersSection() {
           hoursStart: closerInfo?.hoursStart || "09:00",
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
+          datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
         };
       });
 
@@ -123,6 +130,7 @@ function UsersSection() {
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
+            datacrazyId: c.datacrazy_id || "",
           };
         });
 
@@ -413,6 +421,10 @@ function UsersSection() {
                             <Clock className="h-3.5 w-3.5" />
                           </Button>
                         )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
+                          onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
+                          <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
                           onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
                           <KeyRound className="h-3.5 w-3.5" />
@@ -591,6 +603,62 @@ function UsersSection() {
               }}
             >
               {savingHours ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* DataCrazy ID dialog */}
+      <AlertDialog open={!!datacrazyTarget} onOpenChange={(open) => { if (!open) setDatacrazyTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ID DataCrazy</AlertDialogTitle>
+            <AlertDialogDescription>
+              Configure o ID do DataCrazy para <strong>{datacrazyTarget?.name}</strong>. Este ID é usado para criar atividades e vincular ações no CRM.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Input
+              placeholder="Ex: fca47567-94b8-418f-b087-e6c4d10e71bb"
+              value={editDatacrazyId}
+              onChange={(e) => setEditDatacrazyId(e.target.value.trim())}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Encontre este ID na plataforma DataCrazy, na página do usuário.
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingDatacrazyId}
+              onClick={async () => {
+                if (!datacrazyTarget) return;
+                setSavingDatacrazyId(true);
+                try {
+                  if (datacrazyTarget.type === "closer" || datacrazyTarget.closerId) {
+                    const closerId = datacrazyTarget.closerId || datacrazyTarget.userId;
+                    const { error } = await supabase.from("closers")
+                      .update({ datacrazy_id: editDatacrazyId || null } as any)
+                      .eq("id", closerId);
+                    if (error) throw error;
+                  }
+                  if (datacrazyTarget.type === "profile") {
+                    const { error } = await supabase.from("profiles")
+                      .update({ datacrazy_id: editDatacrazyId || null } as any)
+                      .eq("user_id", datacrazyTarget.userId);
+                    if (error) throw error;
+                  }
+                  toast.success("ID DataCrazy atualizado!");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  setDatacrazyTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao salvar");
+                }
+                setSavingDatacrazyId(false);
+              }}
+            >
+              {savingDatacrazyId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
