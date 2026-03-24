@@ -114,14 +114,25 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
 
   return (
     <div ref={wrapperRef} className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Filtrar por nome ou telefone..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Filtrar por nome ou telefone..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleRefresh}
+          disabled={isFetching}
+          title="Atualizar lista de leads"
+        >
+          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+        </Button>
       </div>
 
       <div className="max-h-64 overflow-y-auto rounded-lg border border-input bg-popover">
