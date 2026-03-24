@@ -59,6 +59,11 @@ function UsersSection() {
   const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [savingHours, setSavingHours] = useState(false);
 
+  // DataCrazy ID edit state
+  const [datacrazyTarget, setDatacrazyTarget] = useState<{ userId: string; name: string; type: string; currentId: string; closerId?: string } | null>(null);
+  const [editDatacrazyId, setEditDatacrazyId] = useState("");
+  const [savingDatacrazyId, setSavingDatacrazyId] = useState(false);
+
   // Fetch all users (profiles + roles) and closers
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
