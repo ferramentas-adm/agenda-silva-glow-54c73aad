@@ -55,9 +55,8 @@ function UsersSection() {
   const [changingRole, setChangingRole] = useState(false);
 
   // Closer hours edit state
-  const [hoursTarget, setHoursTarget] = useState<{ closerId: string; name: string; start: string; end: string } | null>(null);
-  const [editHoursStart, setEditHoursStart] = useState("09:00");
-  const [editHoursEnd, setEditHoursEnd] = useState("23:00");
+  const [hoursTarget, setHoursTarget] = useState<{ closerId: string; name: string; ranges: { start: string; end: string }[] } | null>(null);
+  const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [savingHours, setSavingHours] = useState(false);
 
   // Fetch all users (profiles + roles) and closers
@@ -68,14 +67,18 @@ function UsersSection() {
       const { data: roles } = await supabase.from("user_roles").select("*");
       const { data: closers } = await supabase.from("closers").select("*").order("name");
 
-      // Build a map of closer hours by email
-      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string }>();
+      // Build a map of closer info by email
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[] }>();
       (closers ?? []).forEach((c: any) => {
         if (c.email) {
+          const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
+            ? c.business_hours_ranges
+            : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
           closerMap.set(c.email.toLowerCase(), {
             closerId: c.id,
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
+            ranges,
           });
         }
       });
@@ -97,24 +100,31 @@ function UsersSection() {
           closerId: closerInfo?.closerId || null,
           hoursStart: closerInfo?.hoursStart || "09:00",
           hoursEnd: closerInfo?.hoursEnd || "23:00",
+          ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
         };
       });
 
       // Only show closers without auth accounts (legacy closers)
       const closerUsers = (closers ?? [])
         .filter((c: any) => !c.email || !profileEmails.has(c.email.toLowerCase()))
-        .map((c: any) => ({
-          id: c.id,
-          userId: c.id,
-          name: c.name,
-          email: c.email || "",
-          role: "closer" as const,
-          active: c.active,
-          type: "closer" as const,
-          closerId: c.id,
-          hoursStart: c.business_hours_start || "09:00",
-          hoursEnd: c.business_hours_end || "23:00",
-        }));
+        .map((c: any) => {
+          const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
+            ? c.business_hours_ranges
+            : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
+          return {
+            id: c.id,
+            userId: c.id,
+            name: c.name,
+            email: c.email || "",
+            role: "closer" as const,
+            active: c.active,
+            type: "closer" as const,
+            closerId: c.id,
+            hoursStart: c.business_hours_start || "09:00",
+            hoursEnd: c.business_hours_end || "23:00",
+            ranges,
+          };
+        });
 
       return [...profileUsers, ...closerUsers];
     },
@@ -364,7 +374,9 @@ function UsersSection() {
                       <div className="flex items-center gap-2">
                         {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
                         {u.role === "closer" && u.closerId && (
-                          <span className="text-xs text-muted-foreground">({u.hoursStart}–{u.hoursEnd})</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({u.ranges.map((r: any) => `${r.start}–${r.end}`).join(", ")})
+                          </span>
                         )}
                       </div>
                     </div>
@@ -397,7 +409,7 @@ function UsersSection() {
                         )}
                         {u.role === "closer" && u.closerId && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Horário de trabalho"
-                            onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, start: u.hoursStart, end: u.hoursEnd }); setEditHoursStart(u.hoursStart); setEditHoursEnd(u.hoursEnd); }}>
+                            onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, ranges: u.ranges }); setEditRanges([...u.ranges]); }}>
                             <Clock className="h-3.5 w-3.5" />
                           </Button>
                         )}
@@ -505,6 +517,7 @@ function UsersSection() {
               <SelectContent>
                 <SelectItem value="sdr">SDR</SelectItem>
                 <SelectItem value="gestor">Administrador</SelectItem>
+                <SelectItem value="closer">Closer</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -523,18 +536,30 @@ function UsersSection() {
           <AlertDialogHeader>
             <AlertDialogTitle>Horário de trabalho</AlertDialogTitle>
             <AlertDialogDescription>
-              Configure o horário de trabalho de <strong>{hoursTarget?.name}</strong>.
+              Configure os turnos de trabalho de <strong>{hoursTarget?.name}</strong>. Adicione múltiplos turnos para intervalos (ex: almoço).
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2 py-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Início</label>
-              <Input type="time" value={editHoursStart} onChange={(e) => setEditHoursStart(e.target.value)} className="font-mono" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Fim</label>
-              <Input type="time" value={editHoursEnd} onChange={(e) => setEditHoursEnd(e.target.value)} className="font-mono" />
-            </div>
+          <div className="space-y-3 py-2">
+            {editRanges.map((range, idx) => (
+              <div key={idx} className="flex items-end gap-2">
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Turno {idx + 1} - Início</label>
+                  <Input type="time" value={range.start} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], start: e.target.value }; setEditRanges(nr); }} className="font-mono" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Fim</label>
+                  <Input type="time" value={range.end} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], end: e.target.value }; setEditRanges(nr); }} className="font-mono" />
+                </div>
+                {editRanges.length > 1 && (
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive" onClick={() => setEditRanges(editRanges.filter((_, i) => i !== idx))}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="w-full" onClick={() => setEditRanges([...editRanges, { start: "14:00", end: "18:00" }])}>
+              + Adicionar turno
+            </Button>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -544,13 +569,20 @@ function UsersSection() {
                 if (!hoursTarget) return;
                 setSavingHours(true);
                 try {
+                  const firstStart = editRanges[0]?.start || "09:00";
+                  const lastEnd = editRanges[editRanges.length - 1]?.end || "23:00";
                   const { error } = await supabase.from("closers")
-                    .update({ business_hours_start: editHoursStart, business_hours_end: editHoursEnd })
+                    .update({
+                      business_hours_start: firstStart,
+                      business_hours_end: lastEnd,
+                      business_hours_ranges: editRanges,
+                    } as any)
                     .eq("id", hoursTarget.closerId);
                   if (error) throw error;
                   toast.success("Horário atualizado!");
                   queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
                   queryClient.invalidateQueries({ queryKey: ["closers"] });
+                  queryClient.invalidateQueries({ queryKey: ["closer-hours"] });
                   setHoursTarget(null);
                 } catch (err: any) {
                   toast.error(err.message || "Erro ao salvar horário");

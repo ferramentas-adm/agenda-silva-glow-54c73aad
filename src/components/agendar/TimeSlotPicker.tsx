@@ -14,14 +14,33 @@ interface TimeSlotPickerProps {
   onSelect: (time: string) => void;
 }
 
-function generateSlots(start: string, end: string): string[] {
-  const startH = parseInt(start.split(":")[0], 10);
-  const endH = parseInt(end.split(":")[0], 10);
+interface TimeRange {
+  start: string;
+  end: string;
+}
+
+function generateSlotsFromRanges(ranges: TimeRange[]): string[] {
   const slots: string[] = [];
-  for (let h = startH; h <= endH; h++) {
-    slots.push(`${String(h).padStart(2, "0")}:00`);
+  for (const range of ranges) {
+    const startH = parseInt(range.start.split(":")[0], 10);
+    const endH = parseInt(range.end.split(":")[0], 10);
+    for (let h = startH; h <= endH; h++) {
+      const slot = `${String(h).padStart(2, "0")}:00`;
+      if (!slots.includes(slot)) slots.push(slot);
+    }
   }
-  return slots;
+  return slots.sort();
+}
+
+function parseBusinessHours(closerData: any): TimeRange[] {
+  if (closerData?.business_hours_ranges && Array.isArray(closerData.business_hours_ranges) && closerData.business_hours_ranges.length > 0) {
+    return closerData.business_hours_ranges as TimeRange[];
+  }
+  // Fallback to legacy start/end
+  return [{
+    start: closerData?.business_hours_start || "09:00",
+    end: closerData?.business_hours_end || "23:00",
+  }];
 }
 
 function isSlotBlockedByGoogle(
@@ -39,13 +58,26 @@ function isSlotBlockedByGoogle(
   });
 }
 
-function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date, startH: number, endH: number): boolean {
+function isTimeInRanges(time: string, ranges: TimeRange[]): boolean {
   const match = time.match(/^(\d{2}):(\d{2})$/);
   if (!match) return false;
   const h = parseInt(match[1], 10);
   const m = parseInt(match[2], 10);
-  if (h < startH || h > endH || m < 0 || m > 59) return false;
-  if (h === endH && m > 0) return false;
+  const totalMin = h * 60 + m;
+
+  return ranges.some((r) => {
+    const sH = parseInt(r.start.split(":")[0], 10);
+    const sM = parseInt(r.start.split(":")[1] || "0", 10);
+    const eH = parseInt(r.end.split(":")[0], 10);
+    const eM = parseInt(r.end.split(":")[1] || "0", 10);
+    return totalMin >= sH * 60 + sM && totalMin <= eH * 60 + eM;
+  });
+}
+
+function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date, ranges: TimeRange[]): boolean {
+  const match = time.match(/^(\d{2}):(\d{2})$/);
+  if (!match) return false;
+  if (!isTimeInRanges(time, ranges)) return false;
 
   if (isToday) {
     const slotStart = new Date(`${dateStr}T${time}:00`);
@@ -63,7 +95,6 @@ function isCustomTimeConflicting(
   const slotStart = new Date(`${dateStr}T${time}:00`);
   const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
 
-  // Check Google Calendar conflicts
   const googleConflict = googleEvents.some((ev) => {
     const evStart = new Date(ev.start);
     const evEnd = new Date(ev.end);
@@ -71,7 +102,6 @@ function isCustomTimeConflicting(
   });
   if (googleConflict) return true;
 
-  // Check booked slot conflicts (booked slots are 60-min blocks)
   const bookedConflict = bookedTimes.some((bt) => {
     const bookedStart = new Date(`${dateStr}T${bt}:00`);
     const bookedEnd = new Date(bookedStart.getTime() + 60 * 60 * 1000);
@@ -92,16 +122,13 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const { data: closerData } = useQuery({
     queryKey: ["closer-hours", closerId],
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("business_hours_start, business_hours_end").eq("id", closerId).single();
+      const { data } = await supabase.from("closers").select("business_hours_start, business_hours_end, business_hours_ranges").eq("id", closerId).single();
       return data;
     },
   });
 
-  const hoursStart = closerData?.business_hours_start || "09:00";
-  const hoursEnd = closerData?.business_hours_end || "23:00";
-  const startH = parseInt(hoursStart.split(":")[0], 10);
-  const endH = parseInt(hoursEnd.split(":")[0], 10);
-  const ALL_SLOTS = useMemo(() => generateSlots(hoursStart, hoursEnd), [hoursStart, hoursEnd]);
+  const ranges = useMemo(() => parseBusinessHours(closerData), [closerData]);
+  const ALL_SLOTS = useMemo(() => generateSlotsFromRanges(ranges), [ranges]);
 
   const { data: bookedTimes = [] } = useQuery<string[]>({
     queryKey: ["booked-slots", closerId, dateStr],
@@ -111,7 +138,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         .select("scheduled_time")
         .eq("closer_id", closerId)
         .eq("scheduled_date", dateStr)
-        .in("status", ["pendente", "confirmada"]);
+        .in("status", ["confirmada"]);
       return (data ?? []).map((a) => a.scheduled_time);
     },
   });
@@ -136,8 +163,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const handleCustomConfirm = () => {
     setCustomError(null);
 
-    if (!isCustomTimeValid(customInput, dateStr, isToday, now, startH, endH)) {
-      setCustomError(`Horário inválido. Use o formato HH:MM entre ${hoursStart} e ${hoursEnd}.`);
+    if (!isCustomTimeValid(customInput, dateStr, isToday, now, ranges)) {
+      setCustomError("Horário inválido ou fora do expediente do closer.");
       return;
     }
 
@@ -226,8 +253,6 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             </label>
             <Input
               type="time"
-              min={hoursStart}
-              max={hoursEnd}
               value={customInput}
               onChange={(e) => {
                 setCustomInput(e.target.value);
@@ -257,3 +282,6 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     </div>
   );
 }
+
+export { parseBusinessHours };
+export type { TimeRange };

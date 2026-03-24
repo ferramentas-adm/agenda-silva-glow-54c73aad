@@ -110,7 +110,6 @@ Deno.serve(async (req) => {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: new_password });
       if (error) throw error;
 
-      // Set must_change_password = true so user is forced to change on next login
       await supabaseAdmin
         .from("profiles")
         .update({ must_change_password: true })
@@ -125,12 +124,21 @@ Deno.serve(async (req) => {
     // Change role
     if (action === "change_role") {
       const { new_role } = body;
-      if (!["sdr", "gestor"].includes(new_role)) {
+      if (!["sdr", "gestor", "closer"].includes(new_role)) {
         return new Response(JSON.stringify({ error: "Role inválida" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // Get current role
+      const { data: currentRoleData } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user_id)
+        .single();
+
+      const oldRole = currentRoleData?.role;
 
       // Update role in user_roles table
       const { error } = await supabaseAdmin
@@ -139,6 +147,38 @@ Deno.serve(async (req) => {
         .eq("user_id", user_id);
 
       if (error) throw error;
+
+      // Get user profile for email/name
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("email, full_name")
+        .eq("user_id", user_id)
+        .single();
+
+      // If changing TO closer, create closer record if not exists
+      if (new_role === "closer" && profile?.email) {
+        const { data: existing } = await supabaseAdmin
+          .from("closers")
+          .select("id")
+          .eq("email", profile.email)
+          .maybeSingle();
+
+        if (!existing) {
+          await supabaseAdmin.from("closers").insert({
+            name: profile.full_name || profile.email,
+            email: profile.email,
+          });
+        }
+      }
+
+      // If changing FROM closer, deactivate closer record
+      if (oldRole === "closer" && new_role !== "closer" && profile?.email) {
+        await supabaseAdmin
+          .from("closers")
+          .update({ active: false })
+          .eq("email", profile.email);
+      }
+
       return new Response(JSON.stringify({ message: `Role alterada para ${new_role}` }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
