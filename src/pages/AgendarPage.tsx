@@ -166,6 +166,13 @@ export default function AgendarPage() {
 
       if (error) throw error;
 
+      await logAudit("create_agendamento", "agendamento", insertedData?.id, {
+        lead_name: lead.name,
+        closer_name: closerName,
+        date: dateStr,
+        time,
+      });
+
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
 
