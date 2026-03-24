@@ -55,9 +55,8 @@ function UsersSection() {
   const [changingRole, setChangingRole] = useState(false);
 
   // Closer hours edit state
-  const [hoursTarget, setHoursTarget] = useState<{ closerId: string; name: string; start: string; end: string } | null>(null);
-  const [editHoursStart, setEditHoursStart] = useState("09:00");
-  const [editHoursEnd, setEditHoursEnd] = useState("23:00");
+  const [hoursTarget, setHoursTarget] = useState<{ closerId: string; name: string; ranges: { start: string; end: string }[] } | null>(null);
+  const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [savingHours, setSavingHours] = useState(false);
 
   // Fetch all users (profiles + roles) and closers
