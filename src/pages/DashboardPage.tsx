@@ -585,6 +585,7 @@ function WeekView({
       {days.map((day) => {
         const dateStr = format(day, "yyyy-MM-dd");
         const dayAgendamentos = byDate.get(dateStr) || [];
+        const dayBusy = busyBlocks.filter((b) => b.date === dateStr);
         const today = isToday(day);
         const weekend = day.getDay() === 0 || day.getDay() === 6;
 
