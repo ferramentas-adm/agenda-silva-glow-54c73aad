@@ -159,7 +159,8 @@ export default function AgendarPage() {
         meet_link: meetLink,
         created_by: user.id,
         original_agendamento_id: editId || null,
-      }).select("id").single();
+        meeting_reason: meetingReason || null,
+      } as any).select("id").single();
 
       if (error) throw error;
 
@@ -216,6 +217,7 @@ export default function AgendarPage() {
     setDate(undefined);
     setTime(null);
     setObservation("");
+    setMeetingReason(null);
     setSuccess(null);
     setStep("lead");
   };
@@ -389,6 +391,22 @@ export default function AgendarPage() {
                 <SummaryRow label="Data" value={format(date, "dd/MM/yyyy")} />
                 <SummaryRow label="Horário" value={time} />
               </div>
+
+              {(role === "closer" || role === "gestor") && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Motivo da reunião</label>
+                  <Select value={meetingReason ?? ""} onValueChange={setMeetingReason}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o motivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="segunda_reuniao">Segunda Reunião</SelectItem>
+                      <SelectItem value="fechamento">Fechamento</SelectItem>
+                      <SelectItem value="remarcado">Remarcado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Observação interna (opcional)</label>
