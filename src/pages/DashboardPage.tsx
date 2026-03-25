@@ -277,7 +277,7 @@ export default function DashboardPage() {
     setUpdatingStatus(false);
   };
 
-  const navigate = useNavigate();
+  
 
   return (
     <AppLayout>
