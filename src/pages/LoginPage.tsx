@@ -67,7 +67,7 @@ export default function LoginPage() {
         </div>
 
         {/* Vertical divider — desktop only */}
-        <div className="hidden md:block w-px h-48 bg-primary/60" />
+        <div className="hidden md:block w-px self-stretch my-[-1rem] bg-primary/60" />
 
         {/* Login card */}
         <div className="w-full max-w-sm glass-card-intense rounded-2xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
