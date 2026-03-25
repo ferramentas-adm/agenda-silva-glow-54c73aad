@@ -54,6 +54,19 @@ export function useCloserFilter() {
     setInitialized(true);
   }, [closers, user, initialized]);
 
+  // Clean up selectedIds when closers list changes (e.g. closer deleted/deactivated)
+  useEffect(() => {
+    if (!initialized || !closers.length) return;
+    const activeIds = new Set(closers.map((c) => c.id));
+    setSelectedIds((prev) => {
+      const cleaned = new Set([...prev].filter((id) => activeIds.has(id)));
+      // If all were removed, select all active
+      if (cleaned.size === 0) return activeIds;
+      if (cleaned.size === prev.size) return prev; // no change
+      return cleaned;
+    });
+  }, [closers, initialized]);
+
   // Persist to localStorage
   useEffect(() => {
     if (!user || !initialized) return;
