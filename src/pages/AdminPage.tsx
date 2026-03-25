@@ -257,13 +257,19 @@ function UsersSection() {
       const { data, error } = await supabase.functions.invoke("manage-user", {
         body: { user_id: passwordChangeTarget.userId, action: "change_password", new_password: newPassword },
       });
-      if (error) throw error;
+      if (error) {
+        // Try to parse error body for detailed message
+        const errorBody = typeof error === 'object' && 'context' in error ? await (error as any).context?.json?.() : null;
+        throw new Error(errorBody?.error || error.message || "Erro ao alterar senha");
+      }
       if (data?.error) throw new Error(data.error);
-      toast.success("Senha alterada com sucesso!");
+      toast.success("Senha alterada com sucesso! O usuário precisará trocar a senha no próximo login.");
       setPasswordChangeTarget(null);
       setNewPassword("");
       setShowNewPassword(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
+      console.error("[handleChangePassword] Error:", err);
       toast.error(err.message || "Erro ao alterar senha");
     }
     setChangingPassword(false);
