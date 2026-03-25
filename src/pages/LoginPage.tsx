@@ -64,6 +64,9 @@ export default function LoginPage() {
             alt="Grupo Silva"
             className="h-auto max-h-44 w-auto drop-shadow-[0_0_24px_hsl(66_83%_55%/0.25)]"
           />
+          <p className="hidden md:block text-xs font-display font-medium tracking-[0.3em] text-muted-foreground uppercase">
+            Painel de Agendamentos
+          </p>
         </div>
 
         {/* Vertical divider — desktop only */}
