@@ -1,13 +1,12 @@
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  startOfWeek, endOfWeek, addWeeks, format, addDays, isToday,
-} from "date-fns";
+import { format, addDays, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
   Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban,
+  CalendarDays,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -15,10 +14,12 @@ import CloserFilterBar from "@/components/CloserFilterBar";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
-import { useGoogleCalendarEvents, GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
+import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -32,8 +33,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
 import { toast } from "sonner";
-
-type ViewMode = "week" | "day";
 
 interface Agendamento {
   id: string;
@@ -52,20 +51,35 @@ interface Agendamento {
 
 interface GoogleBusyBlock {
   closer_id: string;
-  date: string;       // yyyy-MM-dd
-  time: string;       // HH:mm
+  date: string;
+  time: string;
   summary: string;
 }
 
-// ─── Status helpers ──────────────────────────────────────────────
+// ─── Closer colors ──────────────────────────────────────────────
+// Each closer gets a distinct color for their slot background
+const CLOSER_COLORS: Record<string, { bg: string; border: string; text: string }> = {};
+const CLOSER_COLOR_PALETTE = [
+  { bg: "bg-blue-500/15", border: "border-blue-500/40", text: "text-blue-300" },       // André - azul
+  { bg: "bg-orange-500/15", border: "border-orange-500/40", text: "text-orange-300" }, // Igor - laranja
+  { bg: "bg-emerald-500/15", border: "border-emerald-500/40", text: "text-emerald-300" }, // Pedro - verde
+  { bg: "bg-purple-500/15", border: "border-purple-500/40", text: "text-purple-300" }, // Emanuelle - roxo
+  { bg: "bg-pink-500/15", border: "border-pink-500/40", text: "text-pink-300" },       // extra
+  { bg: "bg-cyan-500/15", border: "border-cyan-500/40", text: "text-cyan-300" },       // extra
+];
 
-const STATUS_COLORS: Record<string, string> = {
-  confirmada: "bg-primary/20 text-primary border-primary/30",
-  realizada: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  cancelada: "bg-destructive/20 text-destructive border-destructive/30",
-  no_show: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  reagendada: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  nao_confirmada: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+function getCloserColor(closerId: string, closerIndex: number) {
+  return CLOSER_COLOR_PALETTE[closerIndex % CLOSER_COLOR_PALETTE.length];
+}
+
+// ─── Status helpers ──────────────────────────────────────────────
+const STATUS_BADGE_COLORS: Record<string, string> = {
+  confirmada: "bg-primary/20 text-primary",
+  realizada: "bg-emerald-500/20 text-emerald-400",
+  cancelada: "bg-destructive/20 text-destructive",
+  no_show: "bg-orange-500/20 text-orange-400",
+  reagendada: "bg-blue-500/20 text-blue-400",
+  nao_confirmada: "bg-yellow-500/20 text-yellow-400",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -77,15 +91,15 @@ const STATUS_LABELS: Record<string, string> = {
   nao_confirmada: "Não confirmada",
 };
 
-// ─── Delete Dialog State (shared) ────────────────────────────────
+const CANCELLED_STATUSES = ["cancelada", "no_show"];
 
+// ─── Delete Dialog State ─────────────────────────────────────────
 interface DeleteTarget {
   id: string;
   lead_name: string;
 }
 
 // ─── Main Page ───────────────────────────────────────────────────
-
 export default function DashboardPage() {
   const { closers, selectedIds, toggle, isLoading } = useCloserFilter();
   const { pendingCount, syncing, syncNow } = useDataCrazySync();
@@ -93,49 +107,45 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
-  // Delete state
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
-
-  // Detail dialog state
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-
-  // Reschedule offer state (shown after marking as cancelada or no_show)
   const [rescheduleOffer, setRescheduleOffer] = useState<Agendamento | null>(null);
 
-  // Week range
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const dateStr = format(currentDate, "yyyy-MM-dd");
 
-  const dateRangeStr = viewMode === "week"
-    ? `${format(weekStart, "yyyy-MM-dd")}|${format(weekEnd, "yyyy-MM-dd")}`
-    : format(currentDate, "yyyy-MM-dd");
+  // Build closer index map for consistent coloring
+  const closerIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    // Fixed order: André=0(blue), Igor=1(orange), Pedro=2(green), Emanuelle=3(purple)
+    const nameOrder = ["andré", "igor", "pedro", "emanuelle"];
+    const sorted = [...closers].sort((a, b) => {
+      const aIdx = nameOrder.findIndex(n => a.name.toLowerCase().includes(n));
+      const bIdx = nameOrder.findIndex(n => b.name.toLowerCase().includes(n));
+      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+      if (aIdx !== -1) return -1;
+      if (bIdx !== -1) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    sorted.forEach((c, i) => map.set(c.id, i));
+    return map;
+  }, [closers]);
 
-  // Fetch agendamentos
+  // Fetch agendamentos for the day
   const { data: agendamentos = [], isLoading: loadingAgendamentos } = useQuery<Agendamento[]>({
-    queryKey: ["agendamentos", dateRangeStr, viewMode],
+    queryKey: ["agendamentos", dateStr],
     queryFn: async () => {
-      let query = supabase
+      const { data } = await supabase
         .from("agendamentos")
         .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at, created_by, created_at")
         .is("deleted_at", null)
+        .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
-
-      if (viewMode === "week") {
-        query = query
-          .gte("scheduled_date", format(weekStart, "yyyy-MM-dd"))
-          .lte("scheduled_date", format(weekEnd, "yyyy-MM-dd"));
-      } else {
-        query = query.eq("scheduled_date", format(currentDate, "yyyy-MM-dd"));
-      }
-
-      const { data } = await query;
       return (data ?? []) as Agendamento[];
     },
   });
@@ -144,37 +154,29 @@ export default function DashboardPage() {
   useEffect(() => {
     const channel = supabase
       .channel("agendamentos-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "agendamentos" },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
   // Fetch Google Calendar events for all selected closers
-  const calDateStart = viewMode === "week" ? format(weekStart, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
-  const calDateEnd = viewMode === "week" ? format(weekEnd, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
   const closerIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
   const closerIdsKey = closerIds.join(",");
 
   const { data: googleBusyBlocks = [] } = useQuery<GoogleBusyBlock[]>({
-    queryKey: ["google-busy-blocks", closerIdsKey, calDateStart, calDateEnd],
+    queryKey: ["google-busy-blocks", closerIdsKey, dateStr],
     enabled: closerIds.length > 0,
     queryFn: async () => {
       const blocks: GoogleBusyBlock[] = [];
-      const results = await Promise.allSettled(
+      await Promise.allSettled(
         closerIds.map(async (cid) => {
           const { data, error } = await supabase.functions.invoke("google-calendar-events", {
-            body: { closer_id: cid, date_start: `${calDateStart}T00:00:00`, date_end: `${calDateEnd}T23:59:59` },
+            body: { closer_id: cid, date_start: `${dateStr}T00:00:00`, date_end: `${dateStr}T23:59:59` },
           });
           if (error || !data?.connected || !data.events) return;
           (data.events as GoogleCalendarEvent[]).forEach((ev) => {
-            // Skip events created by the system
             if (ev.summary && ev.summary.startsWith("Grupo Silva &")) return;
             const startDate = ev.start ? new Date(ev.start) : null;
             if (!startDate) return;
@@ -193,18 +195,14 @@ export default function DashboardPage() {
     refetchInterval: 5 * 60 * 1000,
   });
 
-  // Filter by selected closers
   const filtered = useMemo(
     () => agendamentos.filter((a) => selectedIds.has(a.closer_id)),
     [agendamentos, selectedIds]
   );
 
-  // Navigation
+  const goPrev = () => setCurrentDate((d) => addDays(d, -1));
+  const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
-  const goPrev = () =>
-    setCurrentDate((d) => (viewMode === "week" ? addWeeks(d, -1) : addDays(d, -1)));
-  const goNext = () =>
-    setCurrentDate((d) => (viewMode === "week" ? addWeeks(d, 1) : addDays(d, 1)));
 
   const closerMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -219,20 +217,10 @@ export default function DashboardPage() {
     try {
       const { error } = await supabase
         .from("agendamentos")
-        .update({
-          deleted_at: new Date().toISOString(),
-          deleted_by: user?.id,
-          deletion_reason: deleteReason.trim(),
-        })
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id, deletion_reason: deleteReason.trim() })
         .eq("id", deleteTarget.id);
-
       if (error) throw error;
-
-      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, {
-        lead_name: deleteTarget.lead_name,
-        reason: deleteReason.trim(),
-      });
-
+      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, { lead_name: deleteTarget.lead_name, reason: deleteReason.trim() });
       toast.success("Agendamento excluído com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
@@ -252,21 +240,12 @@ export default function DashboardPage() {
         .from("agendamentos")
         .update({ status: newStatus as any })
         .eq("id", detailAg.id);
-
       if (error) throw error;
-
-      await logAudit("update_status", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        old_status: detailAg.status,
-        new_status: newStatus,
-      });
-
+      await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, old_status: detailAg.status, new_status: newStatus });
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
       const updatedAg = { ...detailAg, status: newStatus };
       setDetailAg(updatedAg);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-
-      // If marking as cancelada or no_show, offer reschedule
       if (newStatus === "cancelada" || newStatus === "no_show") {
         setDetailAg(null);
         setRescheduleOffer(updatedAg);
@@ -276,8 +255,6 @@ export default function DashboardPage() {
     }
     setUpdatingStatus(false);
   };
-
-  
 
   return (
     <AppLayout>
@@ -314,9 +291,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
             <p className="text-sm text-muted-foreground">
-              {viewMode === "week"
-                ? `${format(weekStart, "dd MMM", { locale: ptBR })} — ${format(weekEnd, "dd MMM yyyy", { locale: ptBR })}`
-                : format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
           </div>
           <Link to="/agendar">
@@ -329,39 +304,12 @@ export default function DashboardPage() {
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex gap-1 rounded-lg bg-secondary p-1">
-            <button
-              onClick={() => setViewMode("week")}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                viewMode === "week"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => setViewMode("day")}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                viewMode === "day"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Dia
-            </button>
-          </div>
-
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goPrev}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-xs font-medium min-w-[100px] text-center">
-              {viewMode === "week"
-                ? `${format(weekStart, "dd/MM")} — ${format(weekEnd, "dd/MM")}`
-                : format(currentDate, "dd/MM/yyyy")}
+              {format(currentDate, "dd/MM/yyyy")}
             </span>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goNext}>
               <ChevronRight className="h-4 w-4" />
@@ -369,6 +317,28 @@ export default function DashboardPage() {
             <Button variant="ghost" size="sm" className="h-7 text-xs ml-1" onClick={goToday}>
               Hoje
             </Button>
+
+            {/* Calendar picker */}
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 ml-1" title="Selecionar data">
+                  <CalendarDays className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={currentDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setCurrentDate(date);
+                      setCalendarOpen(false);
+                    }
+                  }}
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
@@ -392,21 +362,13 @@ export default function DashboardPage() {
               <Skeleton key={i} className="h-20 w-full rounded-xl" />
             ))}
           </div>
-        ) : viewMode === "week" ? (
-          <WeekView
-            days={weekDays}
-            agendamentos={filtered}
-            closerMap={closerMap}
-            busyBlocks={googleBusyBlocks}
-            onDelete={setDeleteTarget}
-            onClickAg={setDetailAg}
-          />
         ) : (
           <DayView
             date={currentDate}
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
             busyBlocks={googleBusyBlocks}
+            closerIndexMap={closerIndexMap}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
           />
@@ -424,20 +386,11 @@ export default function DashboardPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-2">
-            <Textarea
-              placeholder="Justificativa da exclusão (obrigatório)"
-              value={deleteReason}
-              onChange={(e) => setDeleteReason(e.target.value)}
-              className="min-h-[80px]"
-            />
+            <Textarea placeholder="Justificativa da exclusão (obrigatório)" value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} className="min-h-[80px]" />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting || !deleteReason.trim()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDelete} disabled={deleting || !deleteReason.trim()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -457,7 +410,6 @@ export default function DashboardPage() {
 
           {detailAg && (
             <div className="space-y-4">
-              {/* Info */}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs">Data</p>
@@ -477,26 +429,22 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Status */}
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs">Status atual</p>
-                <Badge variant="outline" className={cn("text-xs", STATUS_COLORS[detailAg.status])}>
+                <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[detailAg.status])}>
                   {STATUS_LABELS[detailAg.status] || detailAg.status}
                 </Badge>
               </div>
 
-              {/* Meet link */}
               {detailAg.meet_link && (
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs">Link da reunião</p>
                   <a href={detailAg.meet_link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
-                    <Video className="h-3.5 w-3.5" />
-                    Abrir reunião
+                    <Video className="h-3.5 w-3.5" />Abrir reunião
                   </a>
                 </div>
               )}
 
-              {/* Observation */}
               {detailAg.observation && (
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs flex items-center gap-1"><FileText className="h-3.5 w-3.5" />Observações</p>
@@ -504,7 +452,6 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Status actions */}
               <div className="space-y-2">
                 <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
                 <div className="flex flex-wrap gap-2">
@@ -559,9 +506,7 @@ export default function DashboardPage() {
             <AlertDialogAction
               className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
               onClick={() => {
-                if (rescheduleOffer) {
-                  navigate(`/agendar?edit=${rescheduleOffer.id}`);
-                }
+                if (rescheduleOffer) navigate(`/agendar?edit=${rescheduleOffer.id}`);
                 setRescheduleOffer(null);
               }}
             >
@@ -575,126 +520,7 @@ export default function DashboardPage() {
   );
 }
 
-// ─── Week View ───────────────────────────────────────────────────
-
-function WeekView({
-  days,
-  agendamentos,
-  closerMap,
-  busyBlocks,
-  onDelete,
-  onClickAg,
-}: {
-  days: Date[];
-  agendamentos: Agendamento[];
-  closerMap: Map<string, string>;
-  busyBlocks: GoogleBusyBlock[];
-  onDelete: (target: DeleteTarget) => void;
-  onClickAg: (ag: Agendamento) => void;
-}) {
-  const byDate = useMemo(() => {
-    const map = new Map<string, Agendamento[]>();
-    agendamentos.forEach((a) => {
-      const list = map.get(a.scheduled_date) || [];
-      list.push(a);
-      map.set(a.scheduled_date, list);
-    });
-    return map;
-  }, [agendamentos]);
-
-  const hasAny = agendamentos.length > 0 || busyBlocks.length > 0;
-
-  if (!hasAny) {
-    return (
-      <div className="rounded-xl border border-dashed border-primary/20 bg-card flex flex-col items-center justify-center py-16 text-center">
-        <CalendarOff className="h-10 w-10 text-muted-foreground/40 mb-3" />
-        <p className="text-muted-foreground font-medium">Sem reuniões nesta semana</p>
-        <p className="mt-1 text-xs text-muted-foreground max-w-xs">
-          Crie um novo agendamento para começar.
-        </p>
-        <Link to="/agendar" className="mt-4">
-          <Button size="sm" className="gap-2">
-            <PlusCircle className="h-4 w-4" />
-            Agendar lead
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
-      {days.map((day) => {
-        const dateStr = format(day, "yyyy-MM-dd");
-        const dayAgendamentos = byDate.get(dateStr) || [];
-        const dayBusy = busyBlocks.filter((b) => b.date === dateStr);
-        const today = isToday(day);
-        const weekend = day.getDay() === 0 || day.getDay() === 6;
-
-        return (
-          <div
-            key={dateStr}
-            className={cn(
-              "rounded-xl border bg-card p-3 space-y-2 min-h-[120px]",
-              today ? "border-primary/40" : "border-primary/10",
-              weekend && "opacity-60"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <span
-                className={cn(
-                  "text-xs font-semibold uppercase",
-                  today ? "text-primary" : "text-muted-foreground"
-                )}
-              >
-                {format(day, "EEE", { locale: ptBR })}
-              </span>
-              <span
-                className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-                  today
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground"
-                )}
-              >
-                {format(day, "dd")}
-              </span>
-            </div>
-
-            {dayAgendamentos.length === 0 && dayBusy.length === 0 ? (
-              <p className="text-[10px] text-muted-foreground/50 text-center pt-4">—</p>
-            ) : (
-              <div className="space-y-1.5">
-                {dayAgendamentos.map((ag) => (
-                  <AgendamentoCard
-                    key={ag.id}
-                    ag={ag}
-                    closerName={closerMap.get(ag.closer_id) || ""}
-                    compact
-                    onDelete={onDelete}
-                    onClick={() => onClickAg(ag)}
-                  />
-                ))}
-                {dayBusy.map((b, idx) => (
-                  <div
-                    key={`busy-${idx}`}
-                    className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5"
-                  >
-                    <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground font-medium">{b.time} — Ocupado</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Day View ────────────────────────────────────────────────────
-
 const DAY_HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
 
 function DayView({
@@ -702,6 +528,7 @@ function DayView({
   closers,
   agendamentos,
   busyBlocks,
+  closerIndexMap,
   onDelete,
   onClickAg,
 }: {
@@ -709,14 +536,19 @@ function DayView({
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
   busyBlocks: GoogleBusyBlock[];
+  closerIndexMap: Map<string, number>;
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
 }) {
+  // Group agendamentos by closer+hour — allow MULTIPLE per slot (stacking)
   const slotMap = useMemo(() => {
-    const m = new Map<string, Agendamento>();
+    const m = new Map<string, Agendamento[]>();
     agendamentos.forEach((a) => {
       const hourPrefix = a.scheduled_time.slice(0, 2);
-      m.set(`${a.closer_id}-${hourPrefix}`, a);
+      const key = `${a.closer_id}-${hourPrefix}`;
+      const list = m.get(key) || [];
+      list.push(a);
+      m.set(key, list);
     });
     return m;
   }, [agendamentos]);
@@ -743,17 +575,19 @@ function DayView({
     <div className="overflow-x-auto rounded-xl border border-primary/10 bg-card">
       <div
         className="grid"
-        style={{
-          gridTemplateColumns: `60px repeat(${closers.length}, minmax(160px, 1fr))`,
-        }}
+        style={{ gridTemplateColumns: `60px repeat(${closers.length}, minmax(160px, 1fr))` }}
       >
         {/* Header */}
         <div className="border-b border-primary/10 p-2" />
-        {closers.map((c) => (
-          <div key={c.id} className="border-b border-l border-primary/10 p-2 text-center">
-            <span className="text-xs font-medium">{c.name}</span>
-          </div>
-        ))}
+        {closers.map((c) => {
+          const idx = closerIndexMap.get(c.id) ?? 0;
+          const color = getCloserColor(c.id, idx);
+          return (
+            <div key={c.id} className={cn("border-b border-l border-primary/10 p-2 text-center", color.text)}>
+              <span className="text-xs font-semibold">{c.name}</span>
+            </div>
+          );
+        })}
 
         {/* Time rows */}
         {DAY_HOURS.map((hour) => {
@@ -764,44 +598,60 @@ function DayView({
                 <span className="text-[10px] text-muted-foreground font-mono">{hour}</span>
               </div>
               {closers.map((c) => {
-                const ag = slotMap.get(`${c.id}-${hourPrefix}`);
-                const busy = !ag ? busyMap.get(`${c.id}-${hourPrefix}`) : null;
+                const agList = slotMap.get(`${c.id}-${hourPrefix}`) || [];
+                const busy = agList.length === 0 ? busyMap.get(`${c.id}-${hourPrefix}`) : null;
+                const idx = closerIndexMap.get(c.id) ?? 0;
+                const closerColor = getCloserColor(c.id, idx);
+
                 return (
                   <div
                     key={`${c.id}-${hour}`}
                     className="border-b border-l border-primary/5 px-1 py-1 min-h-[52px]"
                   >
-                    {ag ? (
-                      <div
-                        className={cn(
-                          "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer",
-                          STATUS_COLORS[ag.status] || "bg-secondary"
-                        )}
-                        onClick={() => onClickAg(ag)}
-                      >
-                        <div className="font-semibold truncate">{ag.lead_name}</div>
-                        <div className="flex items-center gap-1 text-[10px] opacity-80">
-                          <Clock className="h-2.5 w-2.5" />
-                          {ag.scheduled_time}
-                          {ag.meet_link && (
-                            <a
-                              href={ag.meet_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-auto"
-                              onClick={(e) => e.stopPropagation()}
+                    {agList.length > 0 ? (
+                      <div className="space-y-1">
+                        {agList.map((ag) => {
+                          const isCancelled = CANCELLED_STATUSES.includes(ag.status);
+                          return (
+                            <div
+                              key={ag.id}
+                              className={cn(
+                                "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer",
+                                closerColor.bg,
+                                closerColor.border,
+                                isCancelled && "opacity-60"
+                              )}
+                              onClick={() => onClickAg(ag)}
                             >
-                              <Video className="h-2.5 w-2.5" />
-                            </a>
-                          )}
-                          <button
-                            className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                            onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name }); }}
-                            title="Excluir agendamento"
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                          </button>
-                        </div>
+                              <div className={cn("font-semibold truncate", isCancelled && "line-through")}>
+                                {ag.lead_name}
+                              </div>
+                              <div className="flex items-center gap-1 text-[10px] opacity-80">
+                                <Clock className="h-2.5 w-2.5" />
+                                <span className={cn(isCancelled && "line-through")}>{ag.scheduled_time}</span>
+                                {ag.meet_link && (
+                                  <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                                    <Video className="h-2.5 w-2.5" />
+                                  </a>
+                                )}
+                                <button
+                                  className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name }); }}
+                                  title="Excluir agendamento"
+                                >
+                                  <Trash2 className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                              {/* Status badge with its own color */}
+                              <span className={cn(
+                                "inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider",
+                                STATUS_BADGE_COLORS[ag.status]
+                              )}>
+                                {STATUS_LABELS[ag.status] || ag.status}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : busy ? (
                       <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5">
@@ -815,63 +665,6 @@ function DayView({
             </Fragment>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Agendamento Card (compact for week view) ────────────────────
-
-function AgendamentoCard({
-  ag,
-  closerName,
-  compact,
-  onDelete,
-  onClick,
-}: {
-  ag: Agendamento;
-  closerName: string;
-  compact?: boolean;
-  onDelete: (target: DeleteTarget) => void;
-  onClick: () => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-md border px-2 py-1.5 space-y-0.5 group relative cursor-pointer",
-        STATUS_COLORS[ag.status] || "bg-secondary"
-      )}
-      onClick={onClick}
-    >
-      <div className="flex items-center justify-between gap-1">
-        <span className="text-[11px] font-semibold truncate">{ag.lead_name}</span>
-        <div className="flex items-center gap-1 shrink-0">
-          {ag.meet_link && (
-            <a
-              href={ag.meet_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Video className="h-3 w-3" />
-            </a>
-          )}
-          <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-            onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name }); }}
-            title="Excluir agendamento"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-      <div className="flex items-center gap-1.5 text-[10px] opacity-80">
-        <Clock className="h-2.5 w-2.5" />
-        <span>{ag.scheduled_time}</span>
-        {!compact && <span>· {closerName}</span>}
-      </div>
-      <div className="text-[9px] font-medium uppercase tracking-wider">
-        {STATUS_LABELS[ag.status] || ag.status}
       </div>
     </div>
   );

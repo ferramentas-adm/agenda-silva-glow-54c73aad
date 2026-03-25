@@ -38,14 +38,17 @@ export default function GoogleCalendarBanner() {
     queryKey: ["closer-has-google-token", closerMatch?.id],
     enabled: !!closerMatch?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("closer_google_tokens")
         .select("id")
         .eq("closer_id", closerMatch!.id)
         .limit(1)
-        .single();
+        .maybeSingle();
+      // If no row found, data is null → return false
+      // If row found, return true
       return !!data;
     },
+    refetchInterval: 10_000, // Re-check every 10s after OAuth flow
   });
 
   // Only show for closers without token
