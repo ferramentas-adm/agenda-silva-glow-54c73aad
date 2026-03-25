@@ -104,6 +104,9 @@ export default function DashboardPage() {
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  // Reschedule offer state (shown after marking as cancelada or no_show)
+  const [rescheduleOffer, setRescheduleOffer] = useState<Agendamento | null>(null);
+
   // Week range
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
