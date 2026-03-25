@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
+import loginBg from "@/assets/login-bg.webp";
 
 export default function LoginPage() {
   const { signIn, user } = useAuth();
