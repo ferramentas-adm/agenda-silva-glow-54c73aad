@@ -121,18 +121,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="flex h-20 items-center justify-center border-b border-[hsl(0_0%_100%/0.06)]">
-          <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
+          <Link to="/">
             <img
               src={logo}
               alt="Grupo Silva"
-              className={cn("shrink-0 transition-all duration-300", expanded ? "h-10 w-10" : "h-7 w-7")}
+              className={cn("shrink-0 transition-all duration-300", expanded ? "h-10" : "h-7")}
             />
-            <span className={cn(
-              "font-display text-lg font-bold tracking-tight whitespace-nowrap transition-all duration-300",
-              expanded ? "opacity-100 w-auto" : "opacity-0 w-0"
-            )}>
-              Grupo <span className="text-primary">Silva</span>
-            </span>
           </Link>
         </div>
 
