@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
@@ -39,7 +40,7 @@ interface AgendamentoData {
 }
 
 export default function AgendarPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
@@ -51,6 +52,7 @@ export default function AgendarPage() {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState<string | null>(null);
   const [observation, setObservation] = useState("");
+  const [meetingReason, setMeetingReason] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
 
@@ -157,7 +159,8 @@ export default function AgendarPage() {
         meet_link: meetLink,
         created_by: user.id,
         original_agendamento_id: editId || null,
-      }).select("id").single();
+        meeting_reason: meetingReason || null,
+      } as any).select("id").single();
 
       if (error) throw error;
 
@@ -214,6 +217,7 @@ export default function AgendarPage() {
     setDate(undefined);
     setTime(null);
     setObservation("");
+    setMeetingReason(null);
     setSuccess(null);
     setStep("lead");
   };
@@ -387,6 +391,22 @@ export default function AgendarPage() {
                 <SummaryRow label="Data" value={format(date, "dd/MM/yyyy")} />
                 <SummaryRow label="Horário" value={time} />
               </div>
+
+              {(role === "closer" || role === "gestor") && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Motivo da reunião</label>
+                  <Select value={meetingReason ?? ""} onValueChange={setMeetingReason}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o motivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="segunda_reuniao">Segunda Reunião</SelectItem>
+                      <SelectItem value="fechamento">Fechamento</SelectItem>
+                      <SelectItem value="remarcado">Remarcado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Observação interna (opcional)</label>

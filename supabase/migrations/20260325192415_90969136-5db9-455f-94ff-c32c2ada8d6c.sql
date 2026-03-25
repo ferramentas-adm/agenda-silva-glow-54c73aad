@@ -1,0 +1,1 @@
+ALTER TABLE public.agendamentos ADD COLUMN meeting_reason text;

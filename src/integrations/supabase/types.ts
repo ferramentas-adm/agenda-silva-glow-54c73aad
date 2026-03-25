@@ -26,6 +26,7 @@ export type Database = {
           lead_name: string
           lead_phone: string
           meet_link: string | null
+          meeting_reason: string | null
           observation: string | null
           original_agendamento_id: string | null
           scheduled_date: string
@@ -44,6 +45,7 @@ export type Database = {
           lead_name: string
           lead_phone: string
           meet_link?: string | null
+          meeting_reason?: string | null
           observation?: string | null
           original_agendamento_id?: string | null
           scheduled_date: string
@@ -62,6 +64,7 @@ export type Database = {
           lead_name?: string
           lead_phone?: string
           meet_link?: string | null
+          meeting_reason?: string | null
           observation?: string | null
           original_agendamento_id?: string | null
           scheduled_date?: string
