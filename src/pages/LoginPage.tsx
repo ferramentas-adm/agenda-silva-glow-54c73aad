@@ -51,9 +51,9 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
-      {/* Background overlay */}
-      <div className="absolute inset-0 bg-background" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(66_83%_55%/0.04),transparent_60%)]" />
+      {/* Background image + overlay */}
+      <img src={loginBg} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-black/55" />
 
       {/* Content */}
       <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 md:gap-12 px-6 animate-fade-in">
