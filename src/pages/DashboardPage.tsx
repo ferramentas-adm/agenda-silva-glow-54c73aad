@@ -92,6 +92,7 @@ export default function DashboardPage() {
   const { pendingCount, syncing, syncNow } = useDataCrazySync();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
