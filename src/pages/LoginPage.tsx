@@ -62,7 +62,7 @@ export default function LoginPage() {
           <img
             src={logo}
             alt="Grupo Silva"
-            className="h-12 md:h-28 drop-shadow-[0_0_24px_hsl(66_83%_55%/0.25)]"
+            className="h-auto max-h-44 w-auto drop-shadow-[0_0_24px_hsl(66_83%_55%/0.25)]"
           />
         </div>
 
