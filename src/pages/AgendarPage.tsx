@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
@@ -39,7 +40,7 @@ interface AgendamentoData {
 }
 
 export default function AgendarPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
@@ -51,6 +52,7 @@ export default function AgendarPage() {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState<string | null>(null);
   const [observation, setObservation] = useState("");
+  const [meetingReason, setMeetingReason] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
 
