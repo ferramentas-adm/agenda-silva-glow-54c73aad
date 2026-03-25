@@ -9,21 +9,42 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
   const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [saving, setSaving] = useState(false);
 
+  // Sidebar hover-expand state
+  const [expanded, setExpanded] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isCloser = role === "closer";
+
+  const handleMouseEnter = useCallback(() => {
+    if (collapseTimer.current) clearTimeout(collapseTimer.current);
+    setExpanded(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    collapseTimer.current = setTimeout(() => setExpanded(false), 500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimer.current) clearTimeout(collapseTimer.current);
+    };
+  }, []);
 
   // Fetch closer record for current user (by email)
   const { data: closerRecord } = useQuery({
@@ -78,93 +99,181 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const roleLabel = role === "gestor" ? "Gestor" : role === "closer" ? "Closer" : "SDR";
+
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-primary/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="container flex h-14 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight">
-            <img src={logo} alt="Grupo Silva" className="h-7 w-7" />
-            <span>Grupo <span className="text-primary">Silva</span></span>
+    <div className="flex min-h-screen">
+      {/* Desktop Sidebar — hover-expand */}
+      <aside
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 hidden md:flex flex-col transition-all duration-300 border-r",
+          "border-r-[hsl(0_0%_100%/0.06)]",
+          expanded ? "w-64" : "w-[4.5rem]"
+        )}
+        style={{
+          background: "hsl(240 5% 5% / 0.85)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          backgroundImage: "linear-gradient(135deg, hsl(0 0% 100% / 0.03) 0%, transparent 50%)",
+        }}
+      >
+        {/* Logo */}
+        <div className="flex h-20 items-center justify-center border-b border-[hsl(0_0%_100%/0.06)]">
+          <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
+            <img
+              src={logo}
+              alt="Grupo Silva"
+              className={cn("shrink-0 transition-all duration-300", expanded ? "h-10 w-10" : "h-7 w-7")}
+            />
+            <span className={cn(
+              "font-display text-lg font-bold tracking-tight whitespace-nowrap transition-all duration-300",
+              expanded ? "opacity-100 w-auto" : "opacity-0 w-0"
+            )}>
+              Grupo <span className="text-primary">Silva</span>
+            </span>
           </Link>
-
-          {/* Desktop nav */}
-          <nav className="hidden items-center gap-1 md:flex">
-            {navItems.map(({ to, label, icon: Icon }) => (
-              <Link key={to} to={to}>
-                <Button
-                  variant={isActive(to) ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Button>
-              </Link>
-            ))}
-            {isCloser && closerRecord && (
-              <Button variant="ghost" size="sm" onClick={openHoursDialog} className="gap-2" title="Meu horário de trabalho">
-                <Clock className="h-4 w-4" />
-                <span className="hidden lg:inline">Meu Horário</span>
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={signOut} className="ml-2 gap-2 text-muted-foreground">
-              <LogOut className="h-4 w-4" />
-              Sair
-            </Button>
-          </nav>
-
-          {/* Mobile menu toggle */}
-          <button className="md:hidden" onClick={() => setMenuOpen(!menuOpen)}>
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
         </div>
 
-        {/* Mobile nav */}
-        {menuOpen && (
-          <nav className="flex flex-col gap-1 border-t border-primary/10 p-3 md:hidden">
+        {/* Nav items */}
+        <nav className="flex-1 flex flex-col gap-1 px-3 pt-4">
+          {navItems.map(({ to, label, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                isActive(to)
+                  ? "bg-primary/15 text-primary border border-primary/20 shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
+                  : "text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground border border-transparent"
+              )}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <span className={cn(
+                "whitespace-nowrap transition-all duration-300",
+                expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+              )}>
+                {label}
+              </span>
+            </Link>
+          ))}
+
+          <div className="h-2" />
+
+          {isCloser && closerRecord && (
+            <button
+              onClick={openHoursDialog}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground transition-all duration-200 border border-transparent"
+            >
+              <Clock className="h-5 w-5 shrink-0" />
+              <span className={cn(
+                "whitespace-nowrap transition-all duration-300",
+                expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+              )}>
+                Meu Horário
+              </span>
+            </button>
+          )}
+        </nav>
+
+        {/* Footer */}
+        <div className={cn(
+          "border-t border-[hsl(0_0%_100%/0.06)] px-3 py-4 transition-all duration-300",
+          expanded ? "opacity-100" : "opacity-0"
+        )}>
+          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+          <div className="flex items-center gap-2 mt-1.5">
+            <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30 text-[10px]">
+              {roleLabel}
+            </Badge>
+          </div>
+          <button
+            onClick={signOut}
+            className="flex items-center gap-2 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Sair
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile header */}
+      <header className="fixed top-0 left-0 right-0 z-50 flex md:hidden items-center justify-between h-14 px-4 glass border-b border-[hsl(0_0%_100%/0.06)]">
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logo} alt="Grupo Silva" className="h-7 w-7" />
+          <span className="font-display text-lg font-bold tracking-tight">
+            Grupo <span className="text-primary">Silva</span>
+          </span>
+        </Link>
+        <button onClick={() => setMobileOpen(!mobileOpen)}>
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </header>
+
+      {/* Mobile nav overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
+          <nav className="absolute top-14 left-0 right-0 glass-card-intense flex flex-col gap-1 p-4">
             {navItems.map(({ to, label, icon: Icon }) => (
-              <Link key={to} to={to} onClick={() => setMenuOpen(false)}>
-                <Button
-                  variant={isActive(to) ? "default" : "ghost"}
-                  size="sm"
-                  className="w-full justify-start gap-2"
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Button>
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                  isActive(to)
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                {label}
               </Link>
             ))}
             {isCloser && closerRecord && (
-              <Button variant="ghost" size="sm" onClick={() => { openHoursDialog(); setMenuOpen(false); }} className="w-full justify-start gap-2">
-                <Clock className="h-4 w-4" />
+              <button
+                onClick={() => { openHoursDialog(); setMobileOpen(false); }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                <Clock className="h-5 w-5" />
                 Meu Horário
-              </Button>
+              </button>
             )}
-            <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start gap-2 text-muted-foreground">
-              <LogOut className="h-4 w-4" />
+            <button
+              onClick={signOut}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-5 w-5" />
               Sair
-            </Button>
+            </button>
           </nav>
-        )}
-      </header>
+        </div>
+      )}
 
-      {/* Google Calendar Banner for closers */}
-      <div className="container pt-2">
-        <GoogleCalendarBanner />
+      {/* Main content */}
+      <div className={cn(
+        "flex-1 flex flex-col min-h-screen transition-all duration-300",
+        "pt-14 md:pt-0",
+        expanded ? "md:ml-64" : "md:ml-[4.5rem]"
+      )}>
+        {/* Google Calendar Banner */}
+        <div className="px-4 pt-3">
+          <GoogleCalendarBanner />
+        </div>
+
+        <main className="flex-1 px-4 py-6 max-w-7xl mx-auto w-full">
+          {children}
+        </main>
       </div>
-
-      {/* Main */}
-      <main className="container flex-1 py-6">
-        {children}
-      </main>
 
       {/* Closer hours dialog */}
       <AlertDialog open={hoursOpen} onOpenChange={setHoursOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="glass-card-intense border-[hsl(0_0%_100%/0.1)]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Meu Horário de Trabalho</AlertDialogTitle>
-          <AlertDialogDescription>
+            <AlertDialogTitle className="font-display">Meu Horário de Trabalho</AlertDialogTitle>
+            <AlertDialogDescription>
               Configure os turnos em que você está disponível. Adicione múltiplos turnos para intervalos (ex: almoço).
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -173,11 +282,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div key={idx} className="flex items-end gap-2">
                 <div className="flex-1 space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">Turno {idx + 1} - Início</label>
-                  <Input type="time" value={range.start} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], start: e.target.value }; setEditRanges(nr); }} className="font-mono" />
+                  <Input type="time" value={range.start} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], start: e.target.value }; setEditRanges(nr); }} className="font-mono glass-input" />
                 </div>
                 <div className="flex-1 space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">Fim</label>
-                  <Input type="time" value={range.end} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], end: e.target.value }; setEditRanges(nr); }} className="font-mono" />
+                  <Input type="time" value={range.end} onChange={(e) => { const nr = [...editRanges]; nr[idx] = { ...nr[idx], end: e.target.value }; setEditRanges(nr); }} className="font-mono glass-input" />
                 </div>
                 {editRanges.length > 1 && (
                   <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive" onClick={() => setEditRanges(editRanges.filter((_, i) => i !== idx))}>

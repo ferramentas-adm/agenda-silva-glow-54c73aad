@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Space+Grotesk:wght@300..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,44 +6,61 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    --background: 240 5% 4%;
+    --foreground: 0 0% 92%;
 
-    --card: 0 0% 6.7%;
-    --card-foreground: 0 0% 100%;
+    --card: 240 4% 8%;
+    --card-foreground: 0 0% 92%;
 
-    --popover: 0 0% 6.7%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 240 4% 10%;
+    --popover-foreground: 0 0% 92%;
 
-    --primary: 73 97% 49%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 66 83% 55%;
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 0 0% 13%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 240 3% 13%;
+    --secondary-foreground: 0 0% 85%;
 
-    --muted: 0 0% 13%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 240 3% 12%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 73 97% 49%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 66 70% 45%;
+    --accent-foreground: 0 0% 4%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 73 97% 49%;
-    --input: 0 0% 20%;
-    --ring: 73 97% 49%;
+    --success: 145 65% 42%;
+    --success-foreground: 0 0% 4%;
 
-    --radius: 0.5rem;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 4%;
 
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 73 97% 49%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 73 97% 49%;
+    --border: 240 3% 16%;
+    --input: 240 3% 16%;
+    --ring: 66 83% 55%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 240 5% 5%;
+    --sidebar-foreground: 0 0% 80%;
+    --sidebar-primary: 66 83% 55%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 240 3% 12%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 240 3% 14%;
+    --sidebar-ring: 66 83% 55%;
+
+    /* Glass tokens */
+    --glass-bg: 240 4% 8% / 0.6;
+    --glass-border: 0 0% 100% / 0.06;
+    --glass-blur: 12px;
+    --glass-shine: linear-gradient(135deg, hsl(0 0% 100% / 0.04) 0%, transparent 50%);
+
+    /* Fonts */
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
   }
 }
 
@@ -53,12 +70,83 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
   }
 }
 
 @layer utilities {
   .card-meeting {
-    @apply bg-card border border-border rounded-lg;
+    @apply glass-card rounded-lg;
+  }
+}
+
+@layer components {
+  /* Glass — Level 1: basic (sidebars, headers) */
+  .glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-color: hsl(var(--glass-border));
+  }
+
+  /* Glass — Level 2: cards (metrics, listings) */
+  .glass-card {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid hsl(var(--glass-border));
+    background-image: var(--glass-shine);
+    background-size: 100% 100%;
+  }
+
+  /* Glass — Level 3: intense (login, important modals) */
+  .glass-card-intense {
+    background: hsl(240 5% 6% / 0.45);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid hsl(0 0% 100% / 0.1);
+    background-image: linear-gradient(135deg, hsl(0 0% 100% / 0.08) 0%, transparent 50%);
+    box-shadow: 0 0 80px hsl(0 0% 0% / 0.5), 0 0 40px hsl(66 83% 55% / 0.05), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  /* Glow verde-limão em box */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(66 83% 55% / 0.15), 0 0 60px hsl(66 83% 55% / 0.05);
+  }
+
+  /* Glow verde-limão em texto */
+  .glow-text {
+    text-shadow: 0 0 20px hsl(66 83% 55% / 0.3);
+  }
+
+  /* Hover com borda e glow */
+  .glass-hover:hover {
+    border-color: hsl(66 83% 55% / 0.25);
+    box-shadow: 0 0 24px hsl(66 83% 55% / 0.08), inset 0 0 0 1px hsl(66 83% 55% / 0.06);
+  }
+
+  /* Inputs com fundo escuro e foco verde-limão */
+  .glass-input {
+    background: hsl(0 0% 0% / 0.35) !important;
+    border-color: hsl(0 0% 100% / 0.1) !important;
+    backdrop-filter: blur(8px);
+  }
+  .glass-input:focus {
+    border-color: hsl(66 83% 55% / 0.3) !important;
+    box-shadow: 0 0 12px hsl(66 83% 55% / 0.1);
+  }
+
+  /* Pulse glow para indicadores */
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 8px hsl(var(--primary) / 0.3); }
+    50% { box-shadow: 0 0 20px hsl(var(--primary) / 0.6); }
+  }
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
   }
 }
