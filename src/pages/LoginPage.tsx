@@ -62,14 +62,8 @@ export default function LoginPage() {
           <img
             src={logo}
             alt="Grupo Silva"
-            className="h-14 md:h-44 drop-shadow-[0_0_24px_hsl(66_83%_55%/0.25)]"
+            className="h-12 md:h-28 drop-shadow-[0_0_24px_hsl(66_83%_55%/0.25)]"
           />
-          <div className="hidden md:block">
-            <h1 className="font-display text-3xl font-bold tracking-tight glow-text">
-              Grupo <span className="text-primary">Silva</span>
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Painel de Agendamentos</p>
-          </div>
         </div>
 
         {/* Vertical divider — desktop only */}
@@ -77,18 +71,10 @@ export default function LoginPage() {
 
         {/* Login card */}
         <div className="w-full max-w-sm glass-card-intense rounded-2xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-          {/* Mobile title */}
-          <div className="mb-6 text-center md:hidden">
-            <h1 className="font-display text-2xl font-bold tracking-tight glow-text">
-              Grupo <span className="text-primary">Silva</span>
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Painel de Agendamentos</p>
-          </div>
-
-          {/* Desktop card title */}
-          <div className="hidden md:block mb-6">
-            <h2 className="font-display text-lg font-semibold glow-text">Entrar</h2>
-            <div className="mt-2 h-px w-12 bg-primary/40" />
+          {/* Card title */}
+          <div className="mb-6 text-center md:text-left">
+            <h2 className="font-display text-lg font-semibold glow-text">Bem-vindo <span className="text-primary">Silva</span></h2>
+            <div className="mt-2 h-px w-12 bg-primary/40 mx-auto md:mx-0" />
           </div>
 
           {forgotMode ? (
