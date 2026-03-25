@@ -122,13 +122,8 @@ export default function AgendarPage() {
     const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
-      // If reagendamento, update old status
-      if (editId) {
-        await supabase
-          .from("agendamentos")
-          .update({ status: "reagendada" })
-          .eq("id", editId);
-      }
+      // Note: old agendamento keeps its current status (cancelada/no_show)
+      // The NEW agendamento will get "reagendada" status if it comes from an edit
 
       // Try to create Google Calendar event + Meet link
       let meetLink: string | null = null;
@@ -158,7 +153,7 @@ export default function AgendarPage() {
         scheduled_date: dateStr,
         scheduled_time: time,
         observation: observation || null,
-        status: "confirmada",
+        status: editId ? "reagendada" : "confirmada",
         meet_link: meetLink,
         created_by: user.id,
         original_agendamento_id: editId || null,

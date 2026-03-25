@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, Fragment } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   startOfWeek, endOfWeek, addWeeks, format, addDays, isToday,
@@ -91,6 +91,7 @@ export default function DashboardPage() {
   const { pendingCount, syncing, syncNow } = useDataCrazySync();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -103,6 +104,9 @@ export default function DashboardPage() {
   // Detail dialog state
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Reschedule offer state (shown after marking as cancelada or no_show)
+  const [rescheduleOffer, setRescheduleOffer] = useState<Agendamento | null>(null);
 
   // Week range
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -258,13 +262,22 @@ export default function DashboardPage() {
       });
 
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
-      setDetailAg({ ...detailAg, status: newStatus });
+      const updatedAg = { ...detailAg, status: newStatus };
+      setDetailAg(updatedAg);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+
+      // If marking as cancelada or no_show, offer reschedule
+      if (newStatus === "cancelada" || newStatus === "no_show") {
+        setDetailAg(null);
+        setRescheduleOffer(updatedAg);
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar status");
     }
     setUpdatingStatus(false);
   };
+
+  
 
   return (
     <AppLayout>
@@ -505,19 +518,14 @@ export default function DashboardPage() {
                       <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                     </Button>
                   )}
-                  {detailAg.status !== "cancelada" && (
+                  {detailAg.status !== "cancelada" && detailAg.status !== "reagendada" && (
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
                       <XCircle className="h-3.5 w-3.5" />Cancelar
                     </Button>
                   )}
-                  {detailAg.status !== "no_show" && (
+                  {detailAg.status !== "no_show" && detailAg.status !== "reagendada" && (
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
                       <AlertCircle className="h-3.5 w-3.5" />No-show
-                    </Button>
-                  )}
-                  {(detailAg.status === "cancelada" || detailAg.status === "no_show") && (
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("reagendada")}>
-                      <RotateCcw className="h-3.5 w-3.5" />Reagendar
                     </Button>
                   )}
                   {detailAg.status !== "nao_confirmada" && (
@@ -531,6 +539,38 @@ export default function DashboardPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Reschedule offer dialog */}
+      <AlertDialog open={!!rescheduleOffer} onOpenChange={(open) => { if (!open) setRescheduleOffer(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-blue-400" />
+              Deseja reagendar?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              O agendamento de <strong>{rescheduleOffer?.lead_name}</strong> foi marcado como{" "}
+              <strong>{rescheduleOffer?.status === "no_show" ? "No-show" : "Cancelado"}</strong>.
+              Deseja reagendar uma nova reunião para este lead agora?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Pular</AlertDialogCancel>
+            <AlertDialogAction
+              className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => {
+                if (rescheduleOffer) {
+                  navigate(`/agendar?edit=${rescheduleOffer.id}`);
+                }
+                setRescheduleOffer(null);
+              }}
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reagendar agora
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
