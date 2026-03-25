@@ -262,13 +262,22 @@ export default function DashboardPage() {
       });
 
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
-      setDetailAg({ ...detailAg, status: newStatus });
+      const updatedAg = { ...detailAg, status: newStatus };
+      setDetailAg(updatedAg);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+
+      // If marking as cancelada or no_show, offer reschedule
+      if (newStatus === "cancelada" || newStatus === "no_show") {
+        setDetailAg(null);
+        setRescheduleOffer(updatedAg);
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar status");
     }
     setUpdatingStatus(false);
   };
+
+  const navigate = useNavigate();
 
   return (
     <AppLayout>
