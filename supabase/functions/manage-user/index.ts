@@ -107,13 +107,35 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: new_password });
-      if (error) throw error;
 
-      await supabaseAdmin
+      console.log(`[change_password] Updating password for user_id: ${user_id}`);
+
+      // Verify user exists in auth first
+      const { data: authUser, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(user_id);
+      if (getUserError || !authUser?.user) {
+        console.error(`[change_password] User not found in auth: ${user_id}`, getUserError);
+        return new Response(JSON.stringify({ error: "Usuário não encontrado no sistema de autenticação. Pode ter sido excluído." }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: new_password });
+      if (updateError) {
+        console.error(`[change_password] Failed to update password for ${user_id}:`, updateError);
+        throw updateError;
+      }
+
+      console.log(`[change_password] Password updated successfully for ${user_id}`);
+
+      const { error: profileError } = await supabaseAdmin
         .from("profiles")
         .update({ must_change_password: true })
         .eq("user_id", user_id);
+
+      if (profileError) {
+        console.error(`[change_password] Failed to set must_change_password for ${user_id}:`, profileError);
+      }
 
       return new Response(JSON.stringify({ message: "Senha alterada com sucesso" }), {
         status: 200,
