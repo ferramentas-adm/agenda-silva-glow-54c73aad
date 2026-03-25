@@ -224,19 +224,28 @@ function UsersSection() {
     setTogglingId(user.userId);
     try {
       if (user.type === "closer") {
+        // Legacy closer without auth account
         const { error } = await supabase.from("closers")
           .update({ active: !user.active })
           .eq("id", user.id);
         if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["closers"] });
-        queryClient.invalidateQueries({ queryKey: ["closers-active"] });
       } else {
+        // Profile-based user: toggle profile active
         const { data, error } = await supabase.functions.invoke("manage-user", {
           body: { user_id: user.userId, action: "toggle_active" },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
+
+        // If this user is a closer with a linked closer record, also toggle it
+        if (user.role === "closer" && user.closerId) {
+          await supabase.from("closers")
+            .update({ active: !user.active })
+            .eq("id", user.closerId);
+        }
       }
+      queryClient.invalidateQueries({ queryKey: ["closers"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-active"] });
       toast.success(!user.active ? "Usuário ativado" : "Usuário desativado");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
