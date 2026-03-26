@@ -37,6 +37,8 @@ interface AgendamentoData {
   meetLink: string | null;
   meetError: boolean;
   agendamentoId: string | null;
+  meetingReason: string | null;
+  meetingReasonCustom: string | null;
 }
 
 export default function AgendarPage() {
@@ -53,6 +55,7 @@ export default function AgendarPage() {
   const [time, setTime] = useState<string | null>(null);
   const [observation, setObservation] = useState("");
   const [meetingReason, setMeetingReason] = useState<string | null>(null);
+  const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
 
@@ -116,8 +119,13 @@ export default function AgendarPage() {
     if (stepIndex > 0) setStep(steps[stepIndex - 1]);
   };
 
+  const isReasonRequired = role === "closer";
+  const needsReason = role === "closer" || role === "gestor" || role === "moderador";
+  const resolvedReason = meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason;
+
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user || !observation.trim()) return;
+    if (isReasonRequired && !resolvedReason) return;
     setSubmitting(true);
 
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -159,7 +167,7 @@ export default function AgendarPage() {
         meet_link: meetLink,
         created_by: user.id,
         original_agendamento_id: editId || null,
-        meeting_reason: meetingReason || null,
+        meeting_reason: resolvedReason || null,
       } as any).select("id").single();
 
       if (error) throw error;
@@ -198,6 +206,8 @@ export default function AgendarPage() {
         meetLink,
         meetError,
         agendamentoId: insertedData?.id ?? null,
+        meetingReason: resolvedReason,
+        meetingReasonCustom: meetingReason === "outros" ? meetingReasonCustom : null,
       });
 
       if (meetError) {
@@ -218,6 +228,7 @@ export default function AgendarPage() {
     setTime(null);
     setObservation("");
     setMeetingReason(null);
+    setMeetingReasonCustom("");
     setSuccess(null);
     setStep("lead");
   };
@@ -392,10 +403,12 @@ export default function AgendarPage() {
                 <SummaryRow label="Horário" value={time} />
               </div>
 
-              {(role === "closer" || role === "gestor") && (
+              {needsReason && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Motivo da reunião</label>
-                  <Select value={meetingReason ?? ""} onValueChange={setMeetingReason}>
+                  <label className="text-sm font-medium">
+                    Motivo da reunião{isReasonRequired ? " (obrigatório)" : ""}
+                  </label>
+                  <Select value={meetingReason ?? ""} onValueChange={(v) => { setMeetingReason(v); if (v !== "outros") setMeetingReasonCustom(""); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o motivo" />
                     </SelectTrigger>
@@ -403,8 +416,18 @@ export default function AgendarPage() {
                       <SelectItem value="segunda_reuniao">Segunda Reunião</SelectItem>
                       <SelectItem value="fechamento">Fechamento</SelectItem>
                       <SelectItem value="remarcado">Remarcado</SelectItem>
+                      <SelectItem value="outros">Outros</SelectItem>
                     </SelectContent>
                   </Select>
+                  {meetingReason === "outros" && (
+                    <Textarea
+                      placeholder="Descreva o motivo da reunião..."
+                      value={meetingReasonCustom}
+                      onChange={(e) => setMeetingReasonCustom(e.target.value.slice(0, 200))}
+                      className="resize-none mt-2"
+                      rows={2}
+                    />
+                  )}
                 </div>
               )}
 
@@ -438,7 +461,7 @@ export default function AgendarPage() {
           {step === "confirm" ? (
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !canGoNext.confirm || !observation.trim()}
+              disabled={submitting || !canGoNext.confirm || !observation.trim() || (isReasonRequired && !resolvedReason)}
               className="gap-2"
             >
               {submitting ? "Agendando..." : editId ? "Reagendar" : "Confirmar Agendamento"}
