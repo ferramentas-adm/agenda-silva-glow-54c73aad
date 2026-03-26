@@ -8,7 +8,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2, CalendarOff } from "lucide-react";
+import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2, CalendarOff, List } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
@@ -94,6 +94,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { to: "/", label: "Calendário", icon: CalendarDays },
+    { to: "/reunioes", label: "Reuniões", icon: List },
     ...((isGestor || isModerador) ? [
       { to: "/admin", label: "Admin", icon: Settings },
     ] : []),
