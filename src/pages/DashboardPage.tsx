@@ -126,6 +126,11 @@ export default function DashboardPage() {
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [rescheduleOffer, setRescheduleOffer] = useState<Agendamento | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editDate, setEditDate] = useState<Date | undefined>(undefined);
+  const [editTime, setEditTime] = useState<string | null>(null);
+  const [editCalendarOpen, setEditCalendarOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
