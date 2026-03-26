@@ -755,7 +755,16 @@ function DayView({
                 return (
                   <div
                     key={`${c.id}-${hour}`}
-                    className="border-b border-l border-primary/5 px-1 py-1 min-h-[52px]"
+                    className={cn(
+                      "border-b border-l border-primary/5 px-1 py-1 min-h-[52px]",
+                      agList.length === 0 && !busy && !block && "cursor-pointer hover:bg-primary/5 transition-colors"
+                    )}
+                    onClick={() => {
+                      if (agList.length === 0 && !busy && !block) {
+                        onClickEmptySlot(c.id, hour);
+                      }
+                    }}
+                    title={agList.length === 0 && !busy && !block ? `Agendar às ${hour} com ${c.name}` : undefined}
                   >
                     {agList.length > 0 ? (
                       <div className="space-y-1">
@@ -825,7 +834,11 @@ function DayView({
                         )}
                         <p className="text-[9px] text-muted-foreground">{block.start_time}–{block.end_time}</p>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center opacity-0 hover:opacity-40 transition-opacity">
+                        <PlusCircle className="h-4 w-4 text-primary" />
+                      </div>
+                    )}
                   </div>
                 );
               })}
