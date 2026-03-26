@@ -53,6 +53,7 @@ export default function AgendarPage() {
   const preTime = searchParams.get("time");
   const { pendingCount, syncing, syncNow, refreshCount } = useDataCrazySync();
 
+  const isReschedule = !!editId;
   // Determine initial step based on URL params
   const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
 
