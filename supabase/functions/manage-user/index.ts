@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", caller.id)
+      .eq("user_id", callerId)
       .eq("role", "gestor");
 
     if (!roles || roles.length === 0) {
