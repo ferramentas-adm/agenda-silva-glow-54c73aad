@@ -23,6 +23,7 @@ import {
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
 function UsersSection() {
+  const { isGestor } = useAuth();
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
