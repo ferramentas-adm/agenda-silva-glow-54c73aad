@@ -233,6 +233,7 @@ export default function AgendarPage() {
         agendamentoId: insertedData?.id ?? null,
         meetingReason: resolvedReason,
         meetingReasonCustom: meetingReason === "outros" ? meetingReasonCustom : null,
+        channelType: channelType,
       });
 
       if (meetError) {
