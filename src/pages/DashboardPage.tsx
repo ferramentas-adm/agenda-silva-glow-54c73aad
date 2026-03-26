@@ -28,6 +28,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -457,8 +458,19 @@ export default function DashboardPage() {
               Informe a justificativa abaixo.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="py-2">
-            <Textarea placeholder="Justificativa da exclusão (obrigatório)" value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} className="min-h-[80px]" />
+          <div className="py-2 space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Justificativa (obrigatório)</label>
+              <Select value={deleteReason} onValueChange={setDeleteReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a justificativa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
+                  <SelectItem value="Data errada">Data errada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
