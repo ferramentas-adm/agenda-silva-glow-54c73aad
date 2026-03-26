@@ -194,6 +194,7 @@ export default function AgendarPage() {
         dataHoraISO: dateTimeISO,
         meetUrl: meetLink || "",
         observacao: observation || "",
+        meetingReason: resolvedReason || null,
       }).catch(console.error).finally(refreshCount);
 
       setSuccess({
