@@ -143,6 +143,47 @@ export type Database = {
         }
         Relationships: []
       }
+      closer_blocks: {
+        Row: {
+          block_date: string
+          block_type: string
+          closer_id: string
+          created_at: string
+          description: string | null
+          end_time: string
+          id: string
+          start_time: string
+        }
+        Insert: {
+          block_date: string
+          block_type?: string
+          closer_id: string
+          created_at?: string
+          description?: string | null
+          end_time: string
+          id?: string
+          start_time: string
+        }
+        Update: {
+          block_date?: string
+          block_type?: string
+          closer_id?: string
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closer_blocks_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closer_google_tokens: {
         Row: {
           access_token: string
@@ -288,7 +329,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "sdr" | "gestor" | "closer"
+      app_role: "sdr" | "gestor" | "closer" | "moderador"
       appointment_status:
         | "pendente"
         | "confirmada"
@@ -424,7 +465,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["sdr", "gestor", "closer"],
+      app_role: ["sdr", "gestor", "closer", "moderador"],
       appointment_status: [
         "pendente",
         "confirmada",
