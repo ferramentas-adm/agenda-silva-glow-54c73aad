@@ -869,3 +869,102 @@ function DayView({
     </div>
   );
 }
+
+// ─── Edit Time Slots (simplified picker for edit mode) ───────────
+function EditTimeSlots({
+  closerId,
+  date,
+  selectedTime,
+  onSelect,
+  currentAgId,
+}: {
+  closerId: string;
+  date: Date;
+  selectedTime: string | null;
+  onSelect: (time: string) => void;
+  currentAgId: string;
+}) {
+  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  // Fetch closer hours
+  const { data: closer } = useQuery({
+    queryKey: ["closer-hours-edit", closerId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("business_hours_start, business_hours_end, business_hours_ranges")
+        .eq("id", closerId)
+        .single();
+      return data;
+    },
+  });
+
+  // Fetch booked slots for the date
+  const { data: booked = [] } = useQuery({
+    queryKey: ["booked-slots-edit", closerId, dateStr],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, scheduled_time")
+        .eq("closer_id", closerId)
+        .eq("scheduled_date", dateStr)
+        .is("deleted_at", null)
+        .not("status", "in", '("cancelada","reagendada")');
+      return data ?? [];
+    },
+  });
+
+  const slots = useMemo(() => {
+    if (!closer) return [];
+    const ranges = closer.business_hours_ranges as { start: string; end: string }[] | null;
+    const allSlots: string[] = [];
+
+    if (ranges && Array.isArray(ranges) && ranges.length > 0) {
+      for (const r of ranges) {
+        const sH = parseInt(r.start.split(":")[0], 10);
+        const eH = parseInt(r.end.split(":")[0], 10);
+        for (let h = sH; h <= eH; h++) {
+          const s = `${String(h).padStart(2, "0")}:00`;
+          if (!allSlots.includes(s)) allSlots.push(s);
+        }
+      }
+    } else {
+      const sH = parseInt(closer.business_hours_start.split(":")[0], 10);
+      const eH = parseInt(closer.business_hours_end.split(":")[0], 10);
+      for (let h = sH; h <= eH; h++) {
+        allSlots.push(`${String(h).padStart(2, "0")}:00`);
+      }
+    }
+    return allSlots;
+  }, [closer]);
+
+  // Booked times (excluding the current agendamento being edited)
+  const bookedTimes = useMemo(() => {
+    return new Set(booked.filter(b => b.id !== currentAgId).map(b => b.scheduled_time));
+  }, [booked, currentAgId]);
+
+  if (!closer) return <Skeleton className="h-10 w-full" />;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {slots.map((slot) => {
+        const isBooked = bookedTimes.has(slot);
+        return (
+          <Button
+            key={slot}
+            variant={selectedTime === slot ? "default" : "outline"}
+            size="sm"
+            className="text-xs"
+            disabled={isBooked}
+            onClick={() => onSelect(slot)}
+          >
+            {slot}
+          </Button>
+        );
+      })}
+      {slots.length === 0 && (
+        <p className="text-sm text-muted-foreground">Nenhum horário disponível.</p>
+      )}
+    </div>
+  );
+}
