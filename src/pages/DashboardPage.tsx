@@ -578,64 +578,29 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Edit mode */}
+          {/* Edit mode — time only (same day) */}
           {detailAg && editMode && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Selecione uma nova data e horário. Se a data for diferente do dia atual da reunião, você será redirecionado para o fluxo de reagendamento.
+                Selecione um novo horário para hoje ({format(new Date(detailAg.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}).
               </p>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Data</label>
-                <Popover open={editCalendarOpen} onOpenChange={setEditCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn("w-full justify-start text-left font-normal", !editDate && "text-muted-foreground")}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {editDate ? format(editDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione a data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={editDate}
-                      onSelect={(d) => {
-                        setEditDate(d);
-                        setEditTime(null);
-                        setEditCalendarOpen(false);
-                      }}
-                      disabled={(d) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return d < today || d.getDay() === 0 || d.getDay() === 6;
-                      }}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <label className="text-sm font-medium">Horário</label>
+                <EditTimeSlots
+                  closerId={detailAg.closer_id}
+                  date={new Date(detailAg.scheduled_date + "T12:00:00")}
+                  selectedTime={editTime}
+                  onSelect={setEditTime}
+                  currentAgId={detailAg.id}
+                />
               </div>
-
-              {editDate && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Horário</label>
-                  <EditTimeSlots
-                    closerId={detailAg.closer_id}
-                    date={editDate}
-                    selectedTime={editTime}
-                    onSelect={setEditTime}
-                    currentAgId={detailAg.id}
-                  />
-                </div>
-              )}
 
               <div className="flex gap-2">
                 <Button variant="secondary" className="flex-1" onClick={() => setEditMode(false)}>
                   Cancelar
                 </Button>
-                <Button className="flex-1" disabled={!editTime || savingEdit} onClick={handleEditSave}>
+                <Button className="flex-1" disabled={!editTime || editTime === detailAg.scheduled_time || savingEdit} onClick={handleEditSave}>
                   {savingEdit ? "Salvando..." : "Salvar"}
                 </Button>
               </div>
