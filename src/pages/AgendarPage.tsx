@@ -437,12 +437,12 @@ export default function AgendarPage() {
                 <Textarea
                   placeholder="Notas sobre o lead, contexto da reunião..."
                   value={observation}
-                  onChange={(e) => setObservation(e.target.value.slice(0, 300))}
+                  onChange={(e) => setObservation(e.target.value.slice(0, 1000))}
                   className="resize-none"
                   rows={3}
                   required
                 />
-                <p className="text-xs text-muted-foreground text-right">{observation.length}/300</p>
+                <p className="text-xs text-muted-foreground text-right">{observation.length}/1000</p>
               </div>
             </>
           )}
