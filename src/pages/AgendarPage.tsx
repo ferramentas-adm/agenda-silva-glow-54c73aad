@@ -46,13 +46,28 @@ export default function AgendarPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
+  const rescheduleLeadName = searchParams.get("lead_name");
+  const rescheduleLeadPhone = searchParams.get("lead_phone");
+  const preCloserId = searchParams.get("closer");
+  const preDateStr = searchParams.get("date");
+  const preTime = searchParams.get("time");
   const { pendingCount, syncing, syncNow, refreshCount } = useDataCrazySync();
 
-  const [step, setStep] = useState<Step>("lead");
-  const [lead, setLead] = useState<Lead | null>(null);
-  const [closerId, setCloserId] = useState<string | null>(null);
-  const [date, setDate] = useState<Date | undefined>(undefined);
-  const [time, setTime] = useState<string | null>(null);
+  const isReschedule = !!editId;
+  // Determine initial step based on URL params
+  const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
+
+  const [step, setStep] = useState<Step>(isReschedule ? "closer" : hasPreselection ? "lead" : "lead");
+  const [lead, setLead] = useState<Lead | null>(
+    isReschedule && rescheduleLeadName
+      ? { id: "reschedule", name: decodeURIComponent(rescheduleLeadName), phone: decodeURIComponent(rescheduleLeadPhone || "") }
+      : null
+  );
+  const [closerId, setCloserId] = useState<string | null>(preCloserId || null);
+  const [date, setDate] = useState<Date | undefined>(
+    preDateStr ? new Date(preDateStr + "T12:00:00") : undefined
+  );
+  const [time, setTime] = useState<string | null>(preTime || null);
   const [observation, setObservation] = useState("");
   const [meetingReason, setMeetingReason] = useState<string | null>(null);
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
@@ -75,7 +90,7 @@ export default function AgendarPage() {
   // If editing, load existing agendamento
   const { data: editData } = useQuery({
     queryKey: ["agendamento-edit", editId],
-    enabled: !!editId,
+    enabled: !!editId && !rescheduleLeadName,
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
@@ -86,14 +101,10 @@ export default function AgendarPage() {
     },
   });
 
-  // Pre-fill from edit data
+  // Pre-fill from edit data (when no lead info in URL params)
   useState(() => {
-    if (editData) {
+    if (editData && !lead) {
       setLead({ id: "edit", name: editData.lead_name, phone: editData.lead_phone });
-      setCloserId(editData.closer_id);
-      setDate(new Date(editData.scheduled_date + "T12:00:00"));
-      setTime(editData.scheduled_time);
-      setObservation(editData.observation ?? "");
     }
   });
 
@@ -109,7 +120,7 @@ export default function AgendarPage() {
     confirm: true,
   };
 
-  const steps: Step[] = ["lead", "closer", "datetime", "confirm"];
+  const steps: Step[] = isReschedule ? ["closer", "datetime", "confirm"] : ["lead", "closer", "datetime", "confirm"];
   const stepIndex = steps.indexOf(step);
 
   const goNext = () => {
@@ -437,12 +448,12 @@ export default function AgendarPage() {
                 <Textarea
                   placeholder="Notas sobre o lead, contexto da reunião..."
                   value={observation}
-                  onChange={(e) => setObservation(e.target.value.slice(0, 300))}
+                  onChange={(e) => setObservation(e.target.value.slice(0, 1000))}
                   className="resize-none"
                   rows={3}
                   required
                 />
-                <p className="text-xs text-muted-foreground text-right">{observation.length}/300</p>
+                <p className="text-xs text-muted-foreground text-right">{observation.length}/1000</p>
               </div>
             </>
           )}

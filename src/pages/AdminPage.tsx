@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search,
 } from "lucide-react";
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
@@ -25,6 +25,7 @@ import {
 function UsersSection() {
   const { isGestor } = useAuth();
   const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"sdr" | "gestor" | "closer" | "moderador">("sdr");
@@ -381,13 +382,30 @@ function UsersSection() {
           Usuários ({allUsers.length})
         </h3>
 
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome ou e-mail..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
           </div>
         ) : (
           <div className="space-y-2">
-            {allUsers.map((u: any) => {
+            {allUsers
+              .filter((u: any) => {
+                if (!searchQuery.trim()) return true;
+                const q = searchQuery.toLowerCase();
+                return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+              })
+              .map((u: any) => {
               const isEditing = editingId === u.userId;
               return (
                 <div key={`${u.type}-${u.id}`} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">

@@ -80,9 +80,11 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
           <p className="font-medium">{selectedLead.name}</p>
           <p className="text-xs text-muted-foreground">{selectedLead.phone}</p>
         </div>
-        <button onClick={onClear} className="text-muted-foreground hover:text-foreground transition-colors">
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={onClear} className="text-muted-foreground hover:text-foreground transition-colors" title="Limpar seleção">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     );
   }

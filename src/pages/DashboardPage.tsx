@@ -127,9 +127,7 @@ export default function DashboardPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [rescheduleOffer, setRescheduleOffer] = useState<Agendamento | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [editDate, setEditDate] = useState<Date | undefined>(undefined);
   const [editTime, setEditTime] = useState<string | null>(null);
-  const [editCalendarOpen, setEditCalendarOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
@@ -288,25 +286,14 @@ export default function DashboardPage() {
   // Open edit mode
   const startEdit = () => {
     if (!detailAg) return;
-    setEditDate(new Date(detailAg.scheduled_date + "T12:00:00"));
     setEditTime(detailAg.scheduled_time);
     setEditMode(true);
   };
 
-  // Handle edit save — same day only; different day → Reagendar
+  // Handle edit save — same day only, just update time
   const handleEditSave = async () => {
-    if (!detailAg || !editDate || !editTime) return;
-    const newDateStr = `${editDate.getFullYear()}-${String(editDate.getMonth() + 1).padStart(2, "0")}-${String(editDate.getDate()).padStart(2, "0")}`;
-    
-    if (newDateStr !== detailAg.scheduled_date) {
-      // Different day → redirect to Reagendar flow
-      setEditMode(false);
-      setDetailAg(null);
-      navigate(`/agendar?edit=${detailAg.id}`);
-      return;
-    }
+    if (!detailAg || !editTime) return;
 
-    // Same day → update time inline
     if (editTime === detailAg.scheduled_time) {
       setEditMode(false);
       return;
@@ -367,7 +354,7 @@ export default function DashboardPage() {
 
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Calendário</h1>
             <p className="text-sm text-muted-foreground">
               {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
@@ -452,6 +439,10 @@ export default function DashboardPage() {
             closerIndexMap={closerIndexMap}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
+            onClickEmptySlot={(closerId, time) => {
+              const dateStr = format(currentDate, "yyyy-MM-dd");
+              navigate(`/agendar?closer=${closerId}&date=${dateStr}&time=${time}`);
+            }}
           />
         )}
       </div>
@@ -536,7 +527,7 @@ export default function DashboardPage() {
               {detailAg.observation && (
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs flex items-center gap-1"><FileText className="h-3.5 w-3.5" />Observações</p>
-                  <p className="text-sm bg-secondary/50 rounded-md p-2">{detailAg.observation}</p>
+                  <p className="text-sm bg-secondary/50 rounded-md p-2 whitespace-pre-wrap break-words">{detailAg.observation}</p>
                 </div>
               )}
 
@@ -558,12 +549,12 @@ export default function DashboardPage() {
                       <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                     </Button>
                   )}
-                  {detailAg.status !== "cancelada" && detailAg.status !== "reagendada" && (
+                  {detailAg.status !== "cancelada" && (
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
                       <XCircle className="h-3.5 w-3.5" />Cancelar
                     </Button>
                   )}
-                  {detailAg.status !== "no_show" && detailAg.status !== "reagendada" && (
+                  {detailAg.status !== "no_show" && (
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
                       <AlertCircle className="h-3.5 w-3.5" />No-show
                     </Button>
@@ -578,64 +569,29 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Edit mode */}
+          {/* Edit mode — time only (same day) */}
           {detailAg && editMode && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Selecione uma nova data e horário. Se a data for diferente do dia atual da reunião, você será redirecionado para o fluxo de reagendamento.
+                Selecione um novo horário para hoje ({format(new Date(detailAg.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}).
               </p>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Data</label>
-                <Popover open={editCalendarOpen} onOpenChange={setEditCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn("w-full justify-start text-left font-normal", !editDate && "text-muted-foreground")}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {editDate ? format(editDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione a data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={editDate}
-                      onSelect={(d) => {
-                        setEditDate(d);
-                        setEditTime(null);
-                        setEditCalendarOpen(false);
-                      }}
-                      disabled={(d) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return d < today || d.getDay() === 0 || d.getDay() === 6;
-                      }}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <label className="text-sm font-medium">Horário</label>
+                <EditTimeSlots
+                  closerId={detailAg.closer_id}
+                  date={new Date(detailAg.scheduled_date + "T12:00:00")}
+                  selectedTime={editTime}
+                  onSelect={setEditTime}
+                  currentAgId={detailAg.id}
+                />
               </div>
-
-              {editDate && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Horário</label>
-                  <EditTimeSlots
-                    closerId={detailAg.closer_id}
-                    date={editDate}
-                    selectedTime={editTime}
-                    onSelect={setEditTime}
-                    currentAgId={detailAg.id}
-                  />
-                </div>
-              )}
 
               <div className="flex gap-2">
                 <Button variant="secondary" className="flex-1" onClick={() => setEditMode(false)}>
                   Cancelar
                 </Button>
-                <Button className="flex-1" disabled={!editTime || savingEdit} onClick={handleEditSave}>
+                <Button className="flex-1" disabled={!editTime || editTime === detailAg.scheduled_time || savingEdit} onClick={handleEditSave}>
                   {savingEdit ? "Salvando..." : "Salvar"}
                 </Button>
               </div>
@@ -663,7 +619,14 @@ export default function DashboardPage() {
             <AlertDialogAction
               className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
               onClick={() => {
-                if (rescheduleOffer) navigate(`/agendar?edit=${rescheduleOffer.id}`);
+                if (rescheduleOffer) {
+                  const params = new URLSearchParams({
+                    edit: rescheduleOffer.id,
+                    lead_name: rescheduleOffer.lead_name,
+                    lead_phone: rescheduleOffer.lead_phone,
+                  });
+                  navigate(`/agendar?${params.toString()}`);
+                }
                 setRescheduleOffer(null);
               }}
             >
@@ -689,6 +652,7 @@ function DayView({
   closerIndexMap,
   onDelete,
   onClickAg,
+  onClickEmptySlot,
 }: {
   date: Date;
   closers: { id: string; name: string }[];
@@ -698,6 +662,7 @@ function DayView({
   closerIndexMap: Map<string, number>;
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
+  onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
   const BLOCK_TYPE_LABELS: Record<string, string> = {
     almoco: "Almoço",
@@ -788,7 +753,16 @@ function DayView({
                 return (
                   <div
                     key={`${c.id}-${hour}`}
-                    className="border-b border-l border-primary/5 px-1 py-1 min-h-[52px]"
+                    className={cn(
+                      "border-b border-l border-primary/5 px-1 py-1 min-h-[52px]",
+                      agList.length === 0 && !busy && !block && "cursor-pointer hover:bg-primary/5 transition-colors"
+                    )}
+                    onClick={() => {
+                      if (agList.length === 0 && !busy && !block) {
+                        onClickEmptySlot(c.id, hour);
+                      }
+                    }}
+                    title={agList.length === 0 && !busy && !block ? `Agendar às ${hour} com ${c.name}` : undefined}
                   >
                     {agList.length > 0 ? (
                       <div className="space-y-1">
@@ -858,7 +832,11 @@ function DayView({
                         )}
                         <p className="text-[9px] text-muted-foreground">{block.start_time}–{block.end_time}</p>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center opacity-0 hover:opacity-40 transition-opacity">
+                        <PlusCircle className="h-4 w-4 text-primary" />
+                      </div>
+                    )}
                   </div>
                 );
               })}

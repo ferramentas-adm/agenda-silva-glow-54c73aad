@@ -28,7 +28,7 @@ export default function GoogleCalendarBanner() {
         .eq("email", user!.email!)
         .eq("active", true)
         .limit(1)
-        .single();
+        .maybeSingle();
       return data;
     },
   });

@@ -11,10 +11,21 @@ interface CloserSelectorProps {
 interface CloserWithAvailability {
   id: string;
   name: string;
-  bookedSlots: number;
+  freeSlots: number;
+  totalSlots: number;
 }
 
-const MAX_SLOTS_PER_DAY = 8;
+function countSlotsFromRanges(ranges: { start: string; end: string }[]): number {
+  const slots = new Set<string>();
+  for (const r of ranges) {
+    const sH = parseInt(r.start.split(":")[0], 10);
+    const eH = parseInt(r.end.split(":")[0], 10);
+    for (let h = sH; h <= eH; h++) {
+      slots.add(`${String(h).padStart(2, "0")}:00`);
+    }
+  }
+  return slots.size;
+}
 
 export default function CloserSelector({ selectedDate, selectedCloserId, onSelect }: CloserSelectorProps) {
   const dateStr = selectedDate
@@ -26,31 +37,89 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
     queryFn: async () => {
       const { data: activeClosers } = await supabase
         .from("closers")
-        .select("id, name")
+        .select("id, name, business_hours_start, business_hours_end, business_hours_ranges")
         .eq("active", true)
         .order("name");
 
       if (!activeClosers?.length) return [];
 
       if (!dateStr) {
-        return activeClosers.map((c) => ({ ...c, bookedSlots: 0 }));
+        return activeClosers.map((c: any) => {
+          const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
+            ? c.business_hours_ranges
+            : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
+          const totalSlots = countSlotsFromRanges(ranges);
+          return { id: c.id, name: c.name, freeSlots: totalSlots, totalSlots };
+        });
       }
 
+      // Fetch booked agendamentos (confirmed status, not deleted)
       const { data: agendamentos } = await supabase
         .from("agendamentos")
-        .select("closer_id")
+        .select("closer_id, scheduled_time")
         .eq("scheduled_date", dateStr)
-        .in("status", ["confirmada"]);
+        .is("deleted_at", null)
+        .not("status", "in", '("cancelada","reagendada")');
 
-      const countMap = new Map<string, number>();
-      (agendamentos ?? []).forEach((a) => {
-        countMap.set(a.closer_id, (countMap.get(a.closer_id) ?? 0) + 1);
+      // Fetch closer blocks for the date
+      const { data: blocks } = await supabase
+        .from("closer_blocks")
+        .select("closer_id, start_time, end_time")
+        .eq("block_date", dateStr);
+
+      // Count booked times per closer (unique hours)
+      const bookedMap = new Map<string, Set<string>>();
+      (agendamentos ?? []).forEach((a: any) => {
+        const hourKey = a.scheduled_time.slice(0, 5);
+        if (!bookedMap.has(a.closer_id)) bookedMap.set(a.closer_id, new Set());
+        bookedMap.get(a.closer_id)!.add(hourKey);
       });
 
-      return activeClosers.map((c) => ({
-        ...c,
-        bookedSlots: countMap.get(c.id) ?? 0,
-      }));
+      // Count blocked hours per closer
+      const blockedMap = new Map<string, Set<string>>();
+      (blocks ?? []).forEach((b: any) => {
+        const startH = parseInt(b.start_time.slice(0, 2), 10);
+        const endH = parseInt(b.end_time.slice(0, 2), 10);
+        if (!blockedMap.has(b.closer_id)) blockedMap.set(b.closer_id, new Set());
+        for (let h = startH; h < endH; h++) {
+          blockedMap.get(b.closer_id)!.add(`${String(h).padStart(2, "0")}:00`);
+        }
+      });
+
+      // Check past hours for today
+      const now = new Date();
+      const isToday = dateStr === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const currentHourStr = isToday ? `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}` : null;
+
+      return activeClosers.map((c: any) => {
+        const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
+          ? c.business_hours_ranges
+          : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
+        
+        // Generate all slots
+        const allSlots: string[] = [];
+        for (const r of ranges) {
+          const sH = parseInt(r.start.split(":")[0], 10);
+          const eH = parseInt(r.end.split(":")[0], 10);
+          for (let h = sH; h <= eH; h++) {
+            const s = `${String(h).padStart(2, "0")}:00`;
+            if (!allSlots.includes(s)) allSlots.push(s);
+          }
+        }
+
+        const booked = bookedMap.get(c.id) ?? new Set();
+        const blocked = blockedMap.get(c.id) ?? new Set();
+        
+        let freeCount = 0;
+        for (const slot of allSlots) {
+          if (booked.has(slot)) continue;
+          if (blocked.has(slot)) continue;
+          if (currentHourStr && slot <= currentHourStr) continue;
+          freeCount++;
+        }
+
+        return { id: c.id, name: c.name, freeSlots: freeCount, totalSlots: allSlots.length };
+      });
     },
   });
 
@@ -61,9 +130,8 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
       {closers.map((closer) => {
-        const isFull = closer.bookedSlots >= MAX_SLOTS_PER_DAY;
+        const isFull = closer.freeSlots <= 0;
         const isSelected = selectedCloserId === closer.id;
-        const freeSlots = MAX_SLOTS_PER_DAY - closer.bookedSlots;
 
         return (
           <button
@@ -93,7 +161,7 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
                     isFull ? "bg-[hsl(45_90%_55%)]" : "bg-primary"
                   )}
                 />
-                {isFull ? "Cheio" : `${freeSlots} livre${freeSlots > 1 ? "s" : ""}`}
+                {isFull ? "Cheio" : `${closer.freeSlots} livre${closer.freeSlots > 1 ? "s" : ""}`}
               </span>
             )}
           </button>
