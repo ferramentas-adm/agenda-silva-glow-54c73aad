@@ -26,7 +26,7 @@ function UsersSection() {
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"sdr" | "gestor" | "closer">("sdr");
+  const [role, setRole] = useState<"sdr" | "gestor" | "closer" | "moderador">("sdr");
   const [creating, setCreating] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
@@ -308,6 +308,7 @@ function UsersSection() {
       case "gestor": return "Admin";
       case "sdr": return "SDR";
       case "closer": return "Closer";
+      case "moderador": return "Moderador";
       default: return r;
     }
   };
@@ -332,6 +333,7 @@ function UsersSection() {
                 <SelectItem value="sdr">SDR</SelectItem>
                 <SelectItem value="gestor">Administrador</SelectItem>
                 <SelectItem value="closer">Closer</SelectItem>
+                <SelectItem value="moderador">Moderador</SelectItem>
               </SelectContent>
             </Select>
           </div>
