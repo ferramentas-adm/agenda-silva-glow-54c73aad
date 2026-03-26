@@ -24,21 +24,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claims?.claims?.sub) {
+    const { data: { user: caller }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !caller) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const callerId = claims.claims.sub;
+    const callerId = caller.id;
 
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
