@@ -47,6 +47,7 @@ interface Agendamento {
   deleted_at: string | null;
   created_by: string;
   created_at: string;
+  meeting_reason: string | null;
 }
 
 interface GoogleBusyBlock {
@@ -151,7 +152,7 @@ export default function DashboardPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at, created_by, created_at")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at, created_by, created_at, meeting_reason")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -457,9 +458,16 @@ export default function DashboardPage() {
 
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs">Status atual</p>
-                <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[detailAg.status])}>
-                  {STATUS_LABELS[detailAg.status] || detailAg.status}
-                </Badge>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[detailAg.status])}>
+                    {STATUS_LABELS[detailAg.status] || detailAg.status}
+                  </Badge>
+                  {detailAg.meeting_reason && (
+                    <Badge variant="outline" className="text-xs bg-violet-500/20 text-violet-400 border-violet-500/30">
+                      {detailAg.meeting_reason}
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               {detailAg.meet_link && (
@@ -693,13 +701,20 @@ function DayView({
                                   <Trash2 className="h-2.5 w-2.5" />
                                 </button>
                               </div>
-                              {/* Status badge with its own color */}
-                              <span className={cn(
-                                "inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider",
-                                STATUS_BADGE_COLORS[ag.status]
-                              )}>
-                                {STATUS_LABELS[ag.status] || ag.status}
-                              </span>
+                              {/* Status badge */}
+                              <div className="flex flex-wrap gap-1">
+                                <span className={cn(
+                                  "inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider",
+                                  STATUS_BADGE_COLORS[ag.status]
+                                )}>
+                                  {STATUS_LABELS[ag.status] || ag.status}
+                                </span>
+                                {ag.meeting_reason && (
+                                  <span className="inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider bg-violet-500/20 text-violet-400">
+                                    {ag.meeting_reason}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
