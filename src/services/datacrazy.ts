@@ -253,15 +253,29 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
     await moverNegocio(negocio.id, stageId);
   } catch { addToQueue("reuniaoAgendada", 3, agObj); return; }
 
-  // Step 4: Create activity for SDR
-  try {
-    await criarAtividade(lead.id, sdrDatacrazyId, ag);
-  } catch { addToQueue("atividade_sdr", 4, agObj); }
+  // Determine activity type based on meeting reason
+  const activityType = ag.meetingReason || "Reunião";
+  const isDefaultReuniao = !ag.meetingReason || ag.meetingReason === "Reunião";
 
-  // Step 5: Create activity for Closer
-  try {
-    await criarAtividade(lead.id, closerDatacrazyId, ag);
-  } catch { addToQueue("atividade_closer", 5, agObj); }
+  if (isDefaultReuniao) {
+    // SDR-created meeting: create activity for both SDR and Closer
+    // Step 4: Create activity for SDR
+    try {
+      await criarAtividade(lead.id, sdrDatacrazyId, ag, "Reunião");
+    } catch { addToQueue("atividade_sdr", 4, agObj); }
+
+    // Step 5: Create activity for Closer
+    try {
+      await criarAtividade(lead.id, closerDatacrazyId, ag, "Reunião");
+    } catch { addToQueue("atividade_closer", 5, agObj); }
+  } else {
+    // Closer/Moderador/Admin-created meeting with specific reason
+    // Create activity assigned to the creator (SDR field contains the creator)
+    // Step 4: Create activity for the creator
+    try {
+      await criarAtividade(lead.id, sdrDatacrazyId, ag, activityType);
+    } catch { addToQueue("atividade_creator", 4, agObj); }
+  }
 
   // Step 5.5: Create note on lead with observation
   if (ag.observacao) {
