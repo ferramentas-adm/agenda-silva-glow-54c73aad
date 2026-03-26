@@ -159,18 +159,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="h-2" />
 
           {isCloser && closerRecord && (
-            <button
-              onClick={openHoursDialog}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground transition-all duration-200 border border-transparent"
-            >
-              <Clock className="h-5 w-5 shrink-0" />
-              <span className={cn(
-                "whitespace-nowrap transition-all duration-300",
-                expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-              )}>
-                Meu Horário
-              </span>
-            </button>
+            <>
+              <button
+                onClick={openHoursDialog}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground transition-all duration-200 border border-transparent"
+              >
+                <Clock className="h-5 w-5 shrink-0" />
+                <span className={cn(
+                  "whitespace-nowrap transition-all duration-300",
+                  expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                )}>
+                  Meu Horário
+                </span>
+              </button>
+              <button
+                onClick={() => setBlocksOpen(true)}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground transition-all duration-200 border border-transparent"
+              >
+                <CalendarOff className="h-5 w-5 shrink-0" />
+                <span className={cn(
+                  "whitespace-nowrap transition-all duration-300",
+                  expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                )}>
+                  Compromissos
+                </span>
+              </button>
+            </>
           )}
         </nav>
 
