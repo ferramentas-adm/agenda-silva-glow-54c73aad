@@ -210,6 +210,7 @@ export interface AgendamentoData {
   dataHoraISO: string;
   meetUrl: string;
   observacao?: string;
+  meetingReason?: string | null;
 }
 
 export async function reuniaoAgendada(ag: AgendamentoData) {
