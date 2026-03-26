@@ -60,6 +60,13 @@ Deno.serve(async (req) => {
 
     // Delete user
     if (action === "delete") {
+      // Clean up dependent records first
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
+      await supabaseAdmin.from("audit_logs").delete().eq("user_id", user_id);
+      await supabaseAdmin.from("profiles").delete().eq("user_id", user_id);
+      // Nullify created_by references in agendamentos instead of deleting them
+      await supabaseAdmin.from("agendamentos").update({ created_by: callerId }).eq("created_by", user_id);
+
       const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
       if (error) throw error;
       return new Response(JSON.stringify({ message: "Usuário excluído" }), {
