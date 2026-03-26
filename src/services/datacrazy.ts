@@ -158,7 +158,8 @@ export async function criarAtividade(
     meetUrl: string;
     dataHoraISO: string;
     observacao?: string;
-  }
+  },
+  activityType: string = "Reunião"
 ) {
   const descParts = [
     `Closer: ${dados.closerNome}`,
@@ -170,8 +171,8 @@ export async function criarAtividade(
   }
 
   return api("POST", `/leads/${leadId}/activities`, {
-    type: "Reunião",
-    title: `Diagnóstico Comercial — ${dados.leadNome}`,
+    type: activityType,
+    title: `${activityType} — ${dados.leadNome}`,
     description: descParts.join("\n"),
     scheduledAt: dados.dataHoraISO,
     attendantId,
