@@ -1,8 +1,8 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 
-export default function ProtectedRoute({ children, requireGestor = false }: { children: React.ReactNode; requireGestor?: boolean }) {
-  const { user, loading, isGestor, mustChangePassword } = useAuth();
+export default function ProtectedRoute({ children, requireGestor = false, requireAdmin = false }: { children: React.ReactNode; requireGestor?: boolean; requireAdmin?: boolean }) {
+  const { user, loading, isGestor, isModerador, mustChangePassword } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -22,6 +22,10 @@ export default function ProtectedRoute({ children, requireGestor = false }: { ch
   }
 
   if (requireGestor && !isGestor) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requireAdmin && !isGestor && !isModerador) {
     return <Navigate to="/" replace />;
   }
 
