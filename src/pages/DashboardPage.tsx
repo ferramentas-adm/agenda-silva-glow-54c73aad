@@ -101,7 +101,7 @@ interface DeleteTarget {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { closers, selectedIds, toggle, isLoading } = useCloserFilter();
+  const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
   const { pendingCount, syncing, syncNow } = useDataCrazySync();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -342,17 +342,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Closer filter */}
-        {isLoading ? (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-8 w-24 rounded-full shrink-0" />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto -mx-1 px-1">
-            <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
-          </div>
+        {/* Closer filter — hidden for closer role (they only see their own) */}
+        {!isCloserRole && (
+          isLoading ? (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-8 w-24 rounded-full shrink-0" />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-1 px-1">
+              <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
+            </div>
+          )
         )}
 
         {/* Content */}
