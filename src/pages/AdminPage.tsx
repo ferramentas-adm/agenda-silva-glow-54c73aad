@@ -316,7 +316,8 @@ function UsersSection() {
 
   return (
     <div className="space-y-6">
-      {/* Create user form */}
+      {/* Create user form — gestor only */}
+      {isGestor && (
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <UserPlus className="h-4 w-4 text-primary" />
@@ -371,6 +372,7 @@ function UsersSection() {
           </div>
         )}
       </div>
+      )}
 
       {/* Users list */}
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
