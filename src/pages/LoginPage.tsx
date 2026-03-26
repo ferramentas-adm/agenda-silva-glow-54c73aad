@@ -24,6 +24,15 @@ export default function LoginPage() {
 
   const from = (location.state as any)?.from?.pathname || "/";
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      toast.error(detail || "Acesso negado");
+    };
+    window.addEventListener("auth-blocked", handler);
+    return () => window.removeEventListener("auth-blocked", handler);
+  }, []);
+
   if (user) return <Navigate to={from} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
