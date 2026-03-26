@@ -244,13 +244,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
             {isCloser && closerRecord && (
-              <button
-                onClick={() => { openHoursDialog(); setMobileOpen(false); }}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                <Clock className="h-5 w-5" />
-                Meu Horário
-              </button>
+              <>
+                <button
+                  onClick={() => { openHoursDialog(); setMobileOpen(false); }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <Clock className="h-5 w-5" />
+                  Meu Horário
+                </button>
+                <button
+                  onClick={() => { setBlocksOpen(true); setMobileOpen(false); }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <CalendarOff className="h-5 w-5" />
+                  Compromissos
+                </button>
+              </>
             )}
             <button
               onClick={signOut}
