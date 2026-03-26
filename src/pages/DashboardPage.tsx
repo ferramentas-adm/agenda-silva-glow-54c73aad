@@ -204,6 +204,20 @@ export default function DashboardPage() {
     refetchInterval: 5 * 60 * 1000,
   });
 
+  // Fetch closer personal blocks for the day
+  const { data: closerBlocks = [] } = useQuery<CloserBlock[]>({
+    queryKey: ["closer-blocks-day", closerIdsKey, dateStr],
+    enabled: closerIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closer_blocks")
+        .select("closer_id, block_date, start_time, end_time, block_type, description")
+        .eq("block_date", dateStr)
+        .in("closer_id", closerIds);
+      return (data ?? []) as CloserBlock[];
+    },
+  });
+
   const filtered = useMemo(
     () => agendamentos.filter((a) => selectedIds.has(a.closer_id)),
     [agendamentos, selectedIds]
