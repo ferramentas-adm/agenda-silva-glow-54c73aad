@@ -1,0 +1,1 @@
+UPDATE closers SET active = false WHERE id IN ('06f4fc48-a160-43ef-91fc-ce4808fb82fb', 'c13cc7bb-ab2d-493a-a9ae-c88558f3497f');
