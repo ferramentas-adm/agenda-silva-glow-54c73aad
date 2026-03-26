@@ -143,6 +143,28 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     },
   });
 
+  // Closer personal blocks
+  const { data: closerBlocks = [] } = useQuery({
+    queryKey: ["closer-blocks-slots", closerId, dateStr],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closer_blocks")
+        .select("start_time, end_time, block_type")
+        .eq("closer_id", closerId)
+        .eq("block_date", dateStr);
+      return data ?? [];
+    },
+  });
+
+  function isSlotBlockedByPersonal(slot: string): boolean {
+    const slotH = parseInt(slot.slice(0, 2), 10);
+    return closerBlocks.some((b: any) => {
+      const startH = parseInt(b.start_time.slice(0, 2), 10);
+      const endH = parseInt(b.end_time.slice(0, 2), 10);
+      return slotH >= startH && slotH <= endH;
+    });
+  }
+
   // Google Calendar events
   const dateStart = `${dateStr}T00:00:00`;
   const dateEnd = `${dateStr}T23:59:59`;
@@ -190,8 +212,9 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         {ALL_SLOTS.map((slot) => {
           const isBooked = bookedTimes.includes(slot);
           const isGoogleBlocked = isSlotBlockedByGoogle(slot, googleEvents, dateStr);
+          const isPersonalBlock = isSlotBlockedByPersonal(slot);
           const isPast = isToday && slot <= `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-          const isDisabled = isBooked || isGoogleBlocked || isPast;
+          const isDisabled = isBooked || isGoogleBlocked || isPersonalBlock || isPast;
           const isSelected = selectedTime === slot;
 
           return (
@@ -203,7 +226,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                 setCustomMode(false);
                 setCustomError(null);
               }}
-              title={isGoogleBlocked ? "Indisponível (Google Calendar)" : isBooked ? "Já agendado" : undefined}
+              title={isPersonalBlock ? "Compromisso pessoal" : isGoogleBlocked ? "Indisponível (Google Calendar)" : isBooked ? "Já agendado" : undefined}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
                 isSelected
