@@ -650,6 +650,7 @@ function DayView({
               {closers.map((c) => {
                 const agList = slotMap.get(`${c.id}-${hourPrefix}`) || [];
                 const busy = agList.length === 0 ? busyMap.get(`${c.id}-${hourPrefix}`) : null;
+                const block = agList.length === 0 && !busy ? blockMap.get(`${c.id}-${hourPrefix}`) : null;
                 const idx = closerIndexMap.get(c.id) ?? 0;
                 const closerColor = getCloserColor(c.id, idx);
 
@@ -707,6 +708,17 @@ function DayView({
                       <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5">
                         <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="text-muted-foreground font-medium">Ocupado</span>
+                      </div>
+                    ) : block ? (
+                      <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[11px] space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarOff className="h-3 w-3 text-amber-400 shrink-0" />
+                          <span className="text-amber-400 font-medium">{BLOCK_TYPE_LABELS[block.block_type] || block.block_type}</span>
+                        </div>
+                        {block.description && (
+                          <p className="text-[10px] text-muted-foreground truncate">{block.description}</p>
+                        )}
+                        <p className="text-[9px] text-muted-foreground">{block.start_time}–{block.end_time}</p>
                       </div>
                     ) : null}
                   </div>
