@@ -10,6 +10,10 @@ interface Closer {
   email: string | null;
 }
 
+function getStorageKey(userId: string) {
+  return `closer-filter-${userId}`;
+}
+
 export function useCloserFilter() {
   const { user, role } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

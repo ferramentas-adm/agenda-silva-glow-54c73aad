@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
+  const isModerador = role === "moderador";
   const location = useLocation();
   const queryClient = useQueryClient();
   const [hoursOpen, setHoursOpen] = useState(false);
@@ -99,7 +100,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const roleLabel = role === "gestor" ? "Gestor" : role === "closer" ? "Closer" : "SDR";
+  const roleLabel = role === "gestor" ? "Gestor" : role === "closer" ? "Closer" : role === "moderador" ? "Moderador" : "SDR";
 
   return (
     <div className="flex min-h-screen">
