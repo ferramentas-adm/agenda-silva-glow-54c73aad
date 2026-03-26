@@ -29,18 +29,21 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user: caller } } = await supabaseClient.auth.getUser();
-    if (!caller) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claims, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claims?.claims?.sub) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const callerId = claims.claims.sub;
+
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", caller.id)
+      .eq("user_id", callerId)
       .eq("role", "gestor");
 
     if (!roles || roles.length === 0) {
