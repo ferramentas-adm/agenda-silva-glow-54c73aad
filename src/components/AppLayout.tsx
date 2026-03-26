@@ -92,7 +92,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = [
-    { to: "/", label: "Agenda", icon: CalendarDays },
+    { to: "/", label: "Calendário", icon: CalendarDays },
     { to: "/agendar", label: "Agendar", icon: PlusCircle },
     ...(isGestor ? [
       { to: "/admin", label: "Admin", icon: Settings },
