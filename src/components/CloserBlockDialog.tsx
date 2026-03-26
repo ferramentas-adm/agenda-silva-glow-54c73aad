@@ -1,0 +1,202 @@
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+const BLOCK_TYPES = [
+  { value: "almoco", label: "Almoço" },
+  { value: "pessoal", label: "Compromisso pessoal" },
+  { value: "externo", label: "Compromisso externo" },
+  { value: "folga", label: "Folga / Day off" },
+  { value: "outro", label: "Outro" },
+];
+
+interface CloserBlockDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDialogProps) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [startTime, setStartTime] = useState("12:00");
+  const [endTime, setEndTime] = useState("13:00");
+  const [blockType, setBlockType] = useState("almoco");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // Find closer record for current user
+  const { data: closerRecord } = useQuery({
+    queryKey: ["my-closer-record", user?.email],
+    enabled: !!user?.email,
+    queryFn: async () => {
+      const { data } = await supabase.from("closers").select("id").eq("email", user!.email!).single();
+      return data;
+    },
+  });
+
+  // List existing blocks
+  const { data: myBlocks = [] } = useQuery({
+    queryKey: ["closer-blocks", closerRecord?.id],
+    enabled: !!closerRecord?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closer_blocks")
+        .select("*")
+        .eq("closer_id", closerRecord!.id)
+        .gte("block_date", new Date().toISOString().split("T")[0])
+        .order("block_date")
+        .order("start_time");
+      return data ?? [];
+    },
+  });
+
+  const handleSubmit = async () => {
+    if (!closerRecord || !date) return;
+    setSubmitting(true);
+    try {
+      const dateStr = format(date, "yyyy-MM-dd");
+      const { error } = await supabase.from("closer_blocks").insert({
+        closer_id: closerRecord.id,
+        block_date: dateStr,
+        start_time: startTime,
+        end_time: endTime,
+        block_type: blockType,
+        description: description || null,
+      } as any);
+      if (error) throw error;
+      toast.success("Compromisso adicionado!");
+      queryClient.invalidateQueries({ queryKey: ["closer-blocks"] });
+      setDate(undefined);
+      setDescription("");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao adicionar compromisso");
+    }
+    setSubmitting(false);
+  };
+
+  const handleDelete = async (blockId: string) => {
+    try {
+      const { error } = await supabase.from("closer_blocks").delete().eq("id", blockId);
+      if (error) throw error;
+      toast.success("Compromisso removido!");
+      queryClient.invalidateQueries({ queryKey: ["closer-blocks"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao remover");
+    }
+  };
+
+  const typeLabel = (t: string) => BLOCK_TYPES.find((bt) => bt.value === t)?.label || t;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Meus Compromissos Pessoais</DialogTitle>
+          <DialogDescription>
+            Adicione bloqueios na sua agenda. O time de SDR verá o motivo e horário bloqueado.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-3 rounded-lg border border-primary/10 p-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal text-sm", !date && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "dd/MM/yyyy") : "Data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    disabled={(d) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return d < today;
+                    }}
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <Select value={blockType} onValueChange={setBlockType}>
+                <SelectTrigger className="text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BLOCK_TYPES.map((bt) => (
+                    <SelectItem key={bt.value} value={bt.value}>{bt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Início</label>
+                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="font-mono text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Fim</label>
+                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="font-mono text-sm" />
+              </div>
+            </div>
+
+            <Input
+              placeholder="Descrição (opcional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value.slice(0, 100))}
+              className="text-sm"
+            />
+
+            <Button onClick={handleSubmit} disabled={submitting || !date} className="w-full gap-2" size="sm">
+              <Plus className="h-4 w-4" />
+              Adicionar
+            </Button>
+          </div>
+
+          {myBlocks.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Próximos compromissos</p>
+              {myBlocks.map((block: any) => (
+                <div key={block.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-sm">
+                  <div>
+                    <span className="font-medium">{typeLabel(block.block_type)}</span>
+                    <span className="text-muted-foreground ml-2">
+                      {format(new Date(block.block_date + "T12:00:00"), "dd/MM")} · {block.start_time}–{block.end_time}
+                    </span>
+                    {block.description && (
+                      <span className="text-muted-foreground ml-2">— {block.description}</span>
+                    )}
+                  </div>
+                  <button onClick={() => handleDelete(block.id)} className="text-destructive hover:text-destructive/80">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
