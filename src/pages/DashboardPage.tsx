@@ -393,6 +393,7 @@ export default function DashboardPage() {
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
             busyBlocks={googleBusyBlocks}
+            closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
