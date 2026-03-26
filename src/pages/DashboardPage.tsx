@@ -288,25 +288,14 @@ export default function DashboardPage() {
   // Open edit mode
   const startEdit = () => {
     if (!detailAg) return;
-    setEditDate(new Date(detailAg.scheduled_date + "T12:00:00"));
     setEditTime(detailAg.scheduled_time);
     setEditMode(true);
   };
 
-  // Handle edit save — same day only; different day → Reagendar
+  // Handle edit save — same day only, just update time
   const handleEditSave = async () => {
-    if (!detailAg || !editDate || !editTime) return;
-    const newDateStr = `${editDate.getFullYear()}-${String(editDate.getMonth() + 1).padStart(2, "0")}-${String(editDate.getDate()).padStart(2, "0")}`;
-    
-    if (newDateStr !== detailAg.scheduled_date) {
-      // Different day → redirect to Reagendar flow
-      setEditMode(false);
-      setDetailAg(null);
-      navigate(`/agendar?edit=${detailAg.id}`);
-      return;
-    }
+    if (!detailAg || !editTime) return;
 
-    // Same day → update time inline
     if (editTime === detailAg.scheduled_time) {
       setEditMode(false);
       return;
