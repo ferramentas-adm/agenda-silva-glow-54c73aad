@@ -8,19 +8,22 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2 } from "lucide-react";
+import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2, CalendarOff } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
+import CloserBlockDialog from "@/components/CloserBlockDialog";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
+  const isModerador = role === "moderador";
   const location = useLocation();
   const queryClient = useQueryClient();
   const [hoursOpen, setHoursOpen] = useState(false);
+  const [blocksOpen, setBlocksOpen] = useState(false);
   const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [saving, setSaving] = useState(false);
 
@@ -99,7 +102,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const roleLabel = role === "gestor" ? "Gestor" : role === "closer" ? "Closer" : "SDR";
+  const roleLabel = role === "gestor" ? "Gestor" : role === "closer" ? "Closer" : role === "moderador" ? "Moderador" : "SDR";
 
   return (
     <div className="flex min-h-screen">
@@ -156,18 +159,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="h-2" />
 
           {isCloser && closerRecord && (
-            <button
-              onClick={openHoursDialog}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground transition-all duration-200 border border-transparent"
-            >
-              <Clock className="h-5 w-5 shrink-0" />
-              <span className={cn(
-                "whitespace-nowrap transition-all duration-300",
-                expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-              )}>
-                Meu Horário
-              </span>
-            </button>
+            <>
+              <button
+                onClick={openHoursDialog}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground transition-all duration-200 border border-transparent"
+              >
+                <Clock className="h-5 w-5 shrink-0" />
+                <span className={cn(
+                  "whitespace-nowrap transition-all duration-300",
+                  expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                )}>
+                  Meu Horário
+                </span>
+              </button>
+              <button
+                onClick={() => setBlocksOpen(true)}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground transition-all duration-200 border border-transparent"
+              >
+                <CalendarOff className="h-5 w-5 shrink-0" />
+                <span className={cn(
+                  "whitespace-nowrap transition-all duration-300",
+                  expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                )}>
+                  Compromissos
+                </span>
+              </button>
+            </>
           )}
         </nav>
 
@@ -227,13 +244,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
             {isCloser && closerRecord && (
-              <button
-                onClick={() => { openHoursDialog(); setMobileOpen(false); }}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                <Clock className="h-5 w-5" />
-                Meu Horário
-              </button>
+              <>
+                <button
+                  onClick={() => { openHoursDialog(); setMobileOpen(false); }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <Clock className="h-5 w-5" />
+                  Meu Horário
+                </button>
+                <button
+                  onClick={() => { setBlocksOpen(true); setMobileOpen(false); }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <CalendarOff className="h-5 w-5" />
+                  Compromissos
+                </button>
+              </>
             )}
             <button
               onClick={signOut}
@@ -301,6 +327,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Closer blocks dialog */}
+      <CloserBlockDialog open={blocksOpen} onOpenChange={setBlocksOpen} />
     </div>
   );
 }

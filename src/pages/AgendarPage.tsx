@@ -117,7 +117,7 @@ export default function AgendarPage() {
   };
 
   const handleSubmit = async () => {
-    if (!lead || !closerId || !date || !time || !user) return;
+    if (!lead || !closerId || !date || !time || !user || !observation.trim()) return;
     setSubmitting(true);
 
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -409,13 +409,14 @@ export default function AgendarPage() {
               )}
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Observação interna (opcional)</label>
+                <label className="text-sm font-medium">Observação interna (obrigatório)</label>
                 <Textarea
                   placeholder="Notas sobre o lead, contexto da reunião..."
                   value={observation}
                   onChange={(e) => setObservation(e.target.value.slice(0, 300))}
                   className="resize-none"
                   rows={3}
+                  required
                 />
                 <p className="text-xs text-muted-foreground text-right">{observation.length}/300</p>
               </div>
@@ -437,7 +438,7 @@ export default function AgendarPage() {
           {step === "confirm" ? (
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !canGoNext.confirm}
+              disabled={submitting || !canGoNext.confirm || !observation.trim()}
               className="gap-2"
             >
               {submitting ? "Agendando..." : editId ? "Reagendar" : "Confirmar Agendamento"}

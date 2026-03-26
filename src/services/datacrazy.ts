@@ -178,6 +178,12 @@ export async function criarAtividade(
   });
 }
 
+export async function criarNota(leadId: string, content: string) {
+  return api("POST", `/leads/${leadId}/notes`, {
+    content,
+  });
+}
+
 export async function removerTag(leadId: string, tagId: string) {
   return api("DELETE", `/leads/${leadId}/tags/${tagId}`);
 }
@@ -254,6 +260,13 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
   try {
     await criarAtividade(lead.id, closerDatacrazyId, ag);
   } catch { addToQueue("atividade_closer", 5, agObj); }
+
+  // Step 5.5: Create note on lead with observation
+  if (ag.observacao) {
+    try {
+      await criarNota(lead.id, ag.observacao);
+    } catch { addToQueue("nota_lead", 5, agObj); }
+  }
 
   // Step 6: Remove "agendamento" tag
   try {

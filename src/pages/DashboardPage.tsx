@@ -56,6 +56,15 @@ interface GoogleBusyBlock {
   summary: string;
 }
 
+interface CloserBlock {
+  closer_id: string;
+  block_date: string;
+  start_time: string;
+  end_time: string;
+  block_type: string;
+  description: string | null;
+}
+
 // ─── Closer colors ──────────────────────────────────────────────
 // Each closer gets a distinct color for their slot background
 const CLOSER_COLORS: Record<string, { bg: string; border: string; text: string }> = {};
@@ -101,7 +110,7 @@ interface DeleteTarget {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { closers, selectedIds, toggle, isLoading } = useCloserFilter();
+  const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
   const { pendingCount, syncing, syncNow } = useDataCrazySync();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -193,6 +202,20 @@ export default function DashboardPage() {
     },
     staleTime: 4 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+  });
+
+  // Fetch closer personal blocks for the day
+  const { data: closerBlocks = [] } = useQuery<CloserBlock[]>({
+    queryKey: ["closer-blocks-day", closerIdsKey, dateStr],
+    enabled: closerIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closer_blocks")
+        .select("closer_id, block_date, start_time, end_time, block_type, description")
+        .eq("block_date", dateStr)
+        .in("closer_id", closerIds);
+      return (data ?? []) as CloserBlock[];
+    },
   });
 
   const filtered = useMemo(
@@ -342,17 +365,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Closer filter */}
-        {isLoading ? (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-8 w-24 rounded-full shrink-0" />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto -mx-1 px-1">
-            <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
-          </div>
+        {/* Closer filter — hidden for closer role (they only see their own) */}
+        {!isCloserRole && (
+          isLoading ? (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-8 w-24 rounded-full shrink-0" />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-1 px-1">
+              <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
+            </div>
+          )
         )}
 
         {/* Content */}
@@ -368,6 +393,7 @@ export default function DashboardPage() {
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
             busyBlocks={googleBusyBlocks}
+            closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
@@ -528,6 +554,7 @@ function DayView({
   closers,
   agendamentos,
   busyBlocks,
+  closerBlocks,
   closerIndexMap,
   onDelete,
   onClickAg,
@@ -536,10 +563,19 @@ function DayView({
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
   busyBlocks: GoogleBusyBlock[];
+  closerBlocks: CloserBlock[];
   closerIndexMap: Map<string, number>;
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
 }) {
+  const BLOCK_TYPE_LABELS: Record<string, string> = {
+    almoco: "Almoço",
+    pessoal: "Pessoal",
+    externo: "Externo",
+    folga: "Folga",
+    outro: "Outro",
+  };
+
   // Group agendamentos by closer+hour — allow MULTIPLE per slot (stacking)
   const slotMap = useMemo(() => {
     const m = new Map<string, Agendamento[]>();
@@ -562,6 +598,20 @@ function DayView({
     });
     return m;
   }, [busyBlocks]);
+
+  // Map closer blocks by closer+hour
+  const blockMap = useMemo(() => {
+    const m = new Map<string, CloserBlock>();
+    closerBlocks.forEach((b) => {
+      const startHour = parseInt(b.start_time.slice(0, 2));
+      const endHour = parseInt(b.end_time.slice(0, 2));
+      for (let h = startHour; h <= endHour; h++) {
+        const key = `${b.closer_id}-${String(h).padStart(2, "0")}`;
+        if (!m.has(key)) m.set(key, b);
+      }
+    });
+    return m;
+  }, [closerBlocks]);
 
   if (closers.length === 0) {
     return (
@@ -600,6 +650,7 @@ function DayView({
               {closers.map((c) => {
                 const agList = slotMap.get(`${c.id}-${hourPrefix}`) || [];
                 const busy = agList.length === 0 ? busyMap.get(`${c.id}-${hourPrefix}`) : null;
+                const block = agList.length === 0 && !busy ? blockMap.get(`${c.id}-${hourPrefix}`) : null;
                 const idx = closerIndexMap.get(c.id) ?? 0;
                 const closerColor = getCloserColor(c.id, idx);
 
@@ -657,6 +708,17 @@ function DayView({
                       <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5">
                         <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="text-muted-foreground font-medium">Ocupado</span>
+                      </div>
+                    ) : block ? (
+                      <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[11px] space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarOff className="h-3 w-3 text-amber-400 shrink-0" />
+                          <span className="text-amber-400 font-medium">{BLOCK_TYPE_LABELS[block.block_type] || block.block_type}</span>
+                        </div>
+                        {block.description && (
+                          <p className="text-[10px] text-muted-foreground truncate">{block.description}</p>
+                        )}
+                        <p className="text-[9px] text-muted-foreground">{block.start_time}–{block.end_time}</p>
                       </div>
                     ) : null}
                   </div>

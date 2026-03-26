@@ -7,6 +7,7 @@ interface Closer {
   id: string;
   name: string;
   active: boolean;
+  email: string | null;
 }
 
 function getStorageKey(userId: string) {
@@ -14,7 +15,7 @@ function getStorageKey(userId: string) {
 }
 
 export function useCloserFilter() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
 
@@ -23,17 +24,27 @@ export function useCloserFilter() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name, active")
+        .select("id, name, active, email")
         .eq("active", true)
         .order("name");
       return (data ?? []) as Closer[];
     },
   });
 
-  // Initialize from localStorage or select all
+  // Initialize from localStorage or select all (closers only see their own)
   useEffect(() => {
     if (!closers.length || initialized) return;
     const allIds = closers.map((c) => c.id);
+
+    // Closers can only see their own calendar
+    if (role === "closer" && user?.email) {
+      const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
+      if (myCloser) {
+        setSelectedIds(new Set([myCloser.id]));
+        setInitialized(true);
+        return;
+      }
+    }
 
     if (user) {
       try {
@@ -52,7 +63,7 @@ export function useCloserFilter() {
 
     setSelectedIds(new Set(allIds));
     setInitialized(true);
-  }, [closers, user, initialized]);
+  }, [closers, user, initialized, role]);
 
   // Clean up selectedIds when closers list changes (e.g. closer deleted/deactivated)
   useEffect(() => {
@@ -89,5 +100,7 @@ export function useCloserFilter() {
     []
   );
 
-  return { closers, selectedIds, toggle, isLoading };
+  const isCloserRole = role === "closer";
+
+  return { closers, selectedIds, toggle, isLoading, isCloserRole };
 }

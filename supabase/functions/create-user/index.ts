@@ -81,8 +81,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!["sdr", "gestor", "closer"].includes(role)) {
-      return new Response(JSON.stringify({ error: "Role inválida. Use 'sdr', 'gestor' ou 'closer'." }), {
+    if (!["sdr", "gestor", "closer", "moderador"].includes(role)) {
+      return new Response(JSON.stringify({ error: "Role inválida. Use 'sdr', 'gestor', 'closer' ou 'moderador'." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
     // Change role
     if (action === "change_role") {
       const { new_role } = body;
-      if (!["sdr", "gestor", "closer"].includes(new_role)) {
+      if (!["sdr", "gestor", "closer", "moderador"].includes(new_role)) {
         return new Response(JSON.stringify({ error: "Role inválida" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
