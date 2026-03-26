@@ -24,21 +24,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claims?.claims?.sub) {
+    const { data: { user: caller }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !caller) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const callerId = claims.claims.sub;
+    const callerId = caller.id;
 
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
@@ -65,8 +60,46 @@ Deno.serve(async (req) => {
 
     // Delete user
     if (action === "delete") {
+      console.log(`[delete] Deleting user ${user_id}, cleaning up dependent records...`);
+      
+      // Get profile to find associated closer
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("email")
+        .eq("user_id", user_id)
+        .single();
+
+      // Clean up closer-related records if user has an email match
+      if (profile?.email) {
+        const { data: closer } = await supabaseAdmin
+          .from("closers")
+          .select("id")
+          .eq("email", profile.email)
+          .maybeSingle();
+        
+        if (closer) {
+          console.log(`[delete] Found closer ${closer.id}, cleaning closer data...`);
+          await supabaseAdmin.from("closer_blocks").delete().eq("closer_id", closer.id);
+          await supabaseAdmin.from("closer_google_tokens").delete().eq("closer_id", closer.id);
+          await supabaseAdmin.from("agendamentos").update({ created_by: callerId }).eq("created_by", user_id);
+          // Reassign agendamentos where this closer was assigned
+          await supabaseAdmin.from("agendamentos").delete().eq("closer_id", closer.id).is("deleted_at", null).not("status", "in", '("realizada")');
+          await supabaseAdmin.from("closers").delete().eq("id", closer.id);
+        }
+      }
+
+      // Clean up user records
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
+      await supabaseAdmin.from("audit_logs").delete().eq("user_id", user_id);
+      await supabaseAdmin.from("profiles").delete().eq("user_id", user_id);
+
+      console.log(`[delete] Deleting auth user ${user_id}...`);
       const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
-      if (error) throw error;
+      if (error) {
+        console.error(`[delete] Auth delete error:`, error);
+        throw error;
+      }
+      console.log(`[delete] User ${user_id} deleted successfully`);
       return new Response(JSON.stringify({ message: "Usuário excluído" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
