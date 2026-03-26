@@ -424,12 +424,14 @@ function UsersSection() {
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
                         </span>
-                        <Switch
-                          checked={u.active}
-                          onCheckedChange={() => handleToggleActive(u)}
-                          disabled={togglingId === u.userId}
-                        />
-                        {u.type === "profile" && (
+                        {isGestor && (
+                          <Switch
+                            checked={u.active}
+                            onCheckedChange={() => handleToggleActive(u)}
+                            disabled={togglingId === u.userId}
+                          />
+                        )}
+                        {isGestor && u.type === "profile" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
                             onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
                             <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -441,20 +443,24 @@ function UsersSection() {
                             <Clock className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
-                          onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
-                          <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
-                          onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
-                          <KeyRound className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget({ userId: u.userId, name: u.name, type: u.type })}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {isGestor && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
+                              onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
+                              <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
+                              onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
+                              <KeyRound className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget({ userId: u.userId, name: u.name, type: u.type })}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
