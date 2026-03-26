@@ -458,9 +458,16 @@ export default function DashboardPage() {
 
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs">Status atual</p>
-                <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[detailAg.status])}>
-                  {STATUS_LABELS[detailAg.status] || detailAg.status}
-                </Badge>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[detailAg.status])}>
+                    {STATUS_LABELS[detailAg.status] || detailAg.status}
+                  </Badge>
+                  {detailAg.meeting_reason && (
+                    <Badge variant="outline" className="text-xs bg-violet-500/20 text-violet-400 border-violet-500/30">
+                      {detailAg.meeting_reason}
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               {detailAg.meet_link && (
