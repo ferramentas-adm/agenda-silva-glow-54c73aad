@@ -650,6 +650,7 @@ function DayView({
   closerIndexMap,
   onDelete,
   onClickAg,
+  onClickEmptySlot,
 }: {
   date: Date;
   closers: { id: string; name: string }[];
@@ -659,6 +660,7 @@ function DayView({
   closerIndexMap: Map<string, number>;
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
+  onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
   const BLOCK_TYPE_LABELS: Record<string, string> = {
     almoco: "Almoço",
