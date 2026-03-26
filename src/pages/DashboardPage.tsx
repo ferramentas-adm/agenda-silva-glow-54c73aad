@@ -367,7 +367,7 @@ export default function DashboardPage() {
 
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Calendário</h1>
             <p className="text-sm text-muted-foreground">
               {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
@@ -536,7 +536,7 @@ export default function DashboardPage() {
               {detailAg.observation && (
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs flex items-center gap-1"><FileText className="h-3.5 w-3.5" />Observações</p>
-                  <p className="text-sm bg-secondary/50 rounded-md p-2">{detailAg.observation}</p>
+                  <p className="text-sm bg-secondary/50 rounded-md p-2 whitespace-pre-wrap break-words">{detailAg.observation}</p>
                 </div>
               )}
 
@@ -558,12 +558,12 @@ export default function DashboardPage() {
                       <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                     </Button>
                   )}
-                  {detailAg.status !== "cancelada" && detailAg.status !== "reagendada" && (
+                  {detailAg.status !== "cancelada" && (
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
                       <XCircle className="h-3.5 w-3.5" />Cancelar
                     </Button>
                   )}
-                  {detailAg.status !== "no_show" && detailAg.status !== "reagendada" && (
+                  {detailAg.status !== "no_show" && (
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
                       <AlertCircle className="h-3.5 w-3.5" />No-show
                     </Button>
@@ -663,7 +663,14 @@ export default function DashboardPage() {
             <AlertDialogAction
               className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
               onClick={() => {
-                if (rescheduleOffer) navigate(`/agendar?edit=${rescheduleOffer.id}`);
+                if (rescheduleOffer) {
+                  const params = new URLSearchParams({
+                    edit: rescheduleOffer.id,
+                    lead_name: rescheduleOffer.lead_name,
+                    lead_phone: rescheduleOffer.lead_phone,
+                  });
+                  navigate(`/agendar?${params.toString()}`);
+                }
                 setRescheduleOffer(null);
               }}
             >
