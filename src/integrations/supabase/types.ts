@@ -18,7 +18,7 @@ export type Database = {
         Row: {
           closer_id: string
           created_at: string
-          created_by: string
+          created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
           deletion_reason: string | null
@@ -37,7 +37,7 @@ export type Database = {
         Insert: {
           closer_id: string
           created_at?: string
-          created_by: string
+          created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
@@ -56,7 +56,7 @@ export type Database = {
         Update: {
           closer_id?: string
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
