@@ -206,6 +206,8 @@ export default function AgendarPage() {
         meetLink,
         meetError,
         agendamentoId: insertedData?.id ?? null,
+        meetingReason: resolvedReason,
+        meetingReasonCustom: meetingReason === "outros" ? meetingReasonCustom : null,
       });
 
       if (meetError) {
