@@ -95,8 +95,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { to: "/", label: "Calendário", icon: CalendarDays },
     { to: "/agendar", label: "Agendar", icon: PlusCircle },
-    ...(isGestor ? [
+    ...((isGestor || isModerador) ? [
       { to: "/admin", label: "Admin", icon: Settings },
+    ] : []),
+    ...(isGestor ? [
       { to: "/audit-logs", label: "Logs", icon: ScrollText },
     ] : []),
   ];

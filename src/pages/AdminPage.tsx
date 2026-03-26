@@ -23,6 +23,7 @@ import {
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
 function UsersSection() {
+  const { isGestor } = useAuth();
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -315,7 +316,8 @@ function UsersSection() {
 
   return (
     <div className="space-y-6">
-      {/* Create user form */}
+      {/* Create user form — gestor only */}
+      {isGestor && (
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <UserPlus className="h-4 w-4 text-primary" />
@@ -370,6 +372,7 @@ function UsersSection() {
           </div>
         )}
       </div>
+      )}
 
       {/* Users list */}
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
@@ -421,12 +424,14 @@ function UsersSection() {
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
                         </span>
-                        <Switch
-                          checked={u.active}
-                          onCheckedChange={() => handleToggleActive(u)}
-                          disabled={togglingId === u.userId}
-                        />
-                        {u.type === "profile" && (
+                        {isGestor && (
+                          <Switch
+                            checked={u.active}
+                            onCheckedChange={() => handleToggleActive(u)}
+                            disabled={togglingId === u.userId}
+                          />
+                        )}
+                        {isGestor && u.type === "profile" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
                             onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
                             <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -438,20 +443,24 @@ function UsersSection() {
                             <Clock className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
-                          onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
-                          <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
-                          onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
-                          <KeyRound className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget({ userId: u.userId, name: u.name, type: u.type })}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {isGestor && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
+                              onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
+                              <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
+                              onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
+                              <KeyRound className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget({ userId: u.userId, name: u.name, type: u.type })}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
@@ -865,6 +874,8 @@ function SettingsSection() {
 /* ─── Main Admin Page ─────────────────────────────────────────── */
 
 export default function AdminPage() {
+  const { isGestor } = useAuth();
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-6 max-w-3xl mx-auto">
@@ -873,25 +884,30 @@ export default function AdminPage() {
           <p className="text-sm text-muted-foreground">Gerencie usuários e configurações.</p>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 bg-secondary">
-            <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
-              <Users className="h-3.5 w-3.5" />
-              Usuários
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
-              <Settings className="h-3.5 w-3.5" />
-              Configurações
-            </TabsTrigger>
-          </TabsList>
+        {isGestor ? (
+          <Tabs defaultValue="users" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+              <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-3.5 w-3.5" />
+                Usuários
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
+                <Settings className="h-3.5 w-3.5" />
+                Configurações
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="users">
-            <UsersSection />
-          </TabsContent>
-          <TabsContent value="settings">
-            <SettingsSection />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="users">
+              <UsersSection />
+            </TabsContent>
+            <TabsContent value="settings">
+              <SettingsSection />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          /* Moderador view — only users section (limited actions) */
+          <UsersSection />
+        )}
       </div>
     </AppLayout>
   );
