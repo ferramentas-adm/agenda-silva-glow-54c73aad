@@ -161,7 +161,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     return closerBlocks.some((b: any) => {
       const startH = parseInt(b.start_time.slice(0, 2), 10);
       const endH = parseInt(b.end_time.slice(0, 2), 10);
-      return slotH >= startH && slotH <= endH;
+      return slotH >= startH && slotH < endH;
     });
   }
 

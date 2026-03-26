@@ -73,13 +73,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     try {
       const firstStart = editRanges[0]?.start || "09:00";
       const lastEnd = editRanges[editRanges.length - 1]?.end || "23:00";
-      const { error } = await supabase.from("closers")
+      const { error, count } = await supabase.from("closers")
         .update({
           business_hours_start: firstStart,
           business_hours_end: lastEnd,
           business_hours_ranges: editRanges,
         } as any)
-        .eq("id", closerRecord.id);
+        .eq("id", closerRecord.id)
+        .select();
       if (error) throw error;
       toast.success("Horário atualizado!");
       queryClient.invalidateQueries({ queryKey: ["my-closer-record"] });
