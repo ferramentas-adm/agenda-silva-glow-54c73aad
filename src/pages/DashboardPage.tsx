@@ -441,6 +441,10 @@ export default function DashboardPage() {
             closerIndexMap={closerIndexMap}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
+            onClickEmptySlot={(closerId, time) => {
+              const dateStr = format(currentDate, "yyyy-MM-dd");
+              navigate(`/agendar?closer=${closerId}&date=${dateStr}&time=${time}`);
+            }}
           />
         )}
       </div>
