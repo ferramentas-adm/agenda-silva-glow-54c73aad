@@ -285,6 +285,55 @@ export default function DashboardPage() {
     setUpdatingStatus(false);
   };
 
+  // Open edit mode
+  const startEdit = () => {
+    if (!detailAg) return;
+    setEditDate(new Date(detailAg.scheduled_date + "T12:00:00"));
+    setEditTime(detailAg.scheduled_time);
+    setEditMode(true);
+  };
+
+  // Handle edit save — same day only; different day → Reagendar
+  const handleEditSave = async () => {
+    if (!detailAg || !editDate || !editTime) return;
+    const newDateStr = `${editDate.getFullYear()}-${String(editDate.getMonth() + 1).padStart(2, "0")}-${String(editDate.getDate()).padStart(2, "0")}`;
+    
+    if (newDateStr !== detailAg.scheduled_date) {
+      // Different day → redirect to Reagendar flow
+      setEditMode(false);
+      setDetailAg(null);
+      navigate(`/agendar?edit=${detailAg.id}`);
+      return;
+    }
+
+    // Same day → update time inline
+    if (editTime === detailAg.scheduled_time) {
+      setEditMode(false);
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ scheduled_time: editTime } as any)
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      await logAudit("edit_agendamento", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        old_time: detailAg.scheduled_time,
+        new_time: editTime,
+      });
+      toast.success("Horário atualizado com sucesso!");
+      setDetailAg({ ...detailAg, scheduled_time: editTime });
+      setEditMode(false);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao atualizar horário");
+    }
+    setSavingEdit(false);
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
