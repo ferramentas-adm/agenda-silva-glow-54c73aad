@@ -327,6 +327,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Closer blocks dialog */}
+      <CloserBlockDialog open={blocksOpen} onOpenChange={setBlocksOpen} />
     </div>
   );
 }
