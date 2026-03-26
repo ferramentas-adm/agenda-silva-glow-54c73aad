@@ -865,6 +865,8 @@ function SettingsSection() {
 /* ─── Main Admin Page ─────────────────────────────────────────── */
 
 export default function AdminPage() {
+  const { isGestor } = useAuth();
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-6 max-w-3xl mx-auto">
@@ -873,25 +875,30 @@ export default function AdminPage() {
           <p className="text-sm text-muted-foreground">Gerencie usuários e configurações.</p>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 bg-secondary">
-            <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
-              <Users className="h-3.5 w-3.5" />
-              Usuários
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
-              <Settings className="h-3.5 w-3.5" />
-              Configurações
-            </TabsTrigger>
-          </TabsList>
+        {isGestor ? (
+          <Tabs defaultValue="users" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+              <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-3.5 w-3.5" />
+                Usuários
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
+                <Settings className="h-3.5 w-3.5" />
+                Configurações
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="users">
-            <UsersSection />
-          </TabsContent>
-          <TabsContent value="settings">
-            <SettingsSection />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="users">
+              <UsersSection />
+            </TabsContent>
+            <TabsContent value="settings">
+              <SettingsSection />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          /* Moderador view — only users section (limited actions) */
+          <UsersSection />
+        )}
       </div>
     </AppLayout>
   );
