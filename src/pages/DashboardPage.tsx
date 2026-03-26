@@ -457,8 +457,19 @@ export default function DashboardPage() {
               Informe a justificativa abaixo.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="py-2">
-            <Textarea placeholder="Justificativa da exclusão (obrigatório)" value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} className="min-h-[80px]" />
+          <div className="py-2 space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Justificativa (obrigatório)</label>
+              <Select value={deleteReason} onValueChange={setDeleteReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a justificativa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
+                  <SelectItem value="Data errada">Data errada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
