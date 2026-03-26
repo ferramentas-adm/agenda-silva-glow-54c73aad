@@ -56,6 +56,15 @@ interface GoogleBusyBlock {
   summary: string;
 }
 
+interface CloserBlock {
+  closer_id: string;
+  block_date: string;
+  start_time: string;
+  end_time: string;
+  block_type: string;
+  description: string | null;
+}
+
 // ─── Closer colors ──────────────────────────────────────────────
 // Each closer gets a distinct color for their slot background
 const CLOSER_COLORS: Record<string, { bg: string; border: string; text: string }> = {};
