@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,15 @@ export default function LoginPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
 
   const from = (location.state as any)?.from?.pathname || "/";
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      toast.error(detail || "Acesso negado");
+    };
+    window.addEventListener("auth-blocked", handler);
+    return () => window.removeEventListener("auth-blocked", handler);
+  }, []);
 
   if (user) return <Navigate to={from} replace />;
 

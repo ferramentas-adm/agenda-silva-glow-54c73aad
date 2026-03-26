@@ -54,6 +54,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
+          // Check if OAuth user is pre-registered
+          const isOAuth = session.user.app_metadata?.provider && session.user.app_metadata.provider !== "email";
+          if (isOAuth) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("user_id")
+              .eq("email", session.user.email ?? "")
+              .maybeSingle();
+
+            if (!profile) {
+              await supabase.auth.signOut();
+              setUser(null);
+              setSession(null);
+              setRole(null);
+              setLoading(false);
+              window.dispatchEvent(new CustomEvent("auth-blocked", { detail: "Acesso negado. Seu e-mail não está cadastrado no sistema." }));
+              return;
+            }
+          }
+
           setTimeout(() => {
             fetchRole(session.user.id);
             fetchMustChangePassword(session.user.id);
