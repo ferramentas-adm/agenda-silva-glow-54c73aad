@@ -39,7 +39,18 @@ interface AgendamentoData {
   agendamentoId: string | null;
   meetingReason: string | null;
   meetingReasonCustom: string | null;
+  channelType: string | null;
 }
+
+const CHANNEL_TYPES = [
+  "CTA",
+  "Tráfego Pago",
+  "Reativação",
+  "Social Selling",
+  "Renovação",
+  "Indicação",
+  "Formulário Bio",
+];
 
 export default function AgendarPage() {
   const { user, role } = useAuth();
@@ -71,6 +82,7 @@ export default function AgendarPage() {
   const [observation, setObservation] = useState("");
   const [meetingReason, setMeetingReason] = useState<string | null>(null);
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
+  const [channelType, setChannelType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
 
@@ -179,6 +191,7 @@ export default function AgendarPage() {
         created_by: user.id,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason || null,
+        channel_type: channelType || null,
       } as any).select("id").single();
 
       if (error) throw error;
@@ -241,6 +254,7 @@ export default function AgendarPage() {
     setObservation("");
     setMeetingReason(null);
     setMeetingReasonCustom("");
+    setChannelType(null);
     setSuccess(null);
     setStep("lead");
   };
@@ -378,7 +392,7 @@ export default function AgendarPage() {
                       disabled={(d) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
-                        return d < today || d.getDay() === 0 || d.getDay() === 6;
+                        return d < today;
                       }}
                       initialFocus
                       className={cn("p-3 pointer-events-auto")}
