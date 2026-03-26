@@ -554,6 +554,7 @@ function DayView({
   closers,
   agendamentos,
   busyBlocks,
+  closerBlocks,
   closerIndexMap,
   onDelete,
   onClickAg,
@@ -562,10 +563,19 @@ function DayView({
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
   busyBlocks: GoogleBusyBlock[];
+  closerBlocks: CloserBlock[];
   closerIndexMap: Map<string, number>;
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
 }) {
+  const BLOCK_TYPE_LABELS: Record<string, string> = {
+    almoco: "Almoço",
+    pessoal: "Pessoal",
+    externo: "Externo",
+    folga: "Folga",
+    outro: "Outro",
+  };
+
   // Group agendamentos by closer+hour — allow MULTIPLE per slot (stacking)
   const slotMap = useMemo(() => {
     const m = new Map<string, Agendamento[]>();
@@ -588,6 +598,20 @@ function DayView({
     });
     return m;
   }, [busyBlocks]);
+
+  // Map closer blocks by closer+hour
+  const blockMap = useMemo(() => {
+    const m = new Map<string, CloserBlock>();
+    closerBlocks.forEach((b) => {
+      const startHour = parseInt(b.start_time.slice(0, 2));
+      const endHour = parseInt(b.end_time.slice(0, 2));
+      for (let h = startHour; h <= endHour; h++) {
+        const key = `${b.closer_id}-${String(h).padStart(2, "0")}`;
+        if (!m.has(key)) m.set(key, b);
+      }
+    });
+    return m;
+  }, [closerBlocks]);
 
   if (closers.length === 0) {
     return (
