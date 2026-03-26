@@ -48,19 +48,25 @@ export default function AgendarPage() {
   const editId = searchParams.get("edit");
   const rescheduleLeadName = searchParams.get("lead_name");
   const rescheduleLeadPhone = searchParams.get("lead_phone");
+  const preCloserId = searchParams.get("closer");
+  const preDateStr = searchParams.get("date");
+  const preTime = searchParams.get("time");
   const { pendingCount, syncing, syncNow, refreshCount } = useDataCrazySync();
 
-  const isReschedule = !!editId;
+  // Determine initial step based on URL params
+  const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
 
-  const [step, setStep] = useState<Step>(isReschedule ? "closer" : "lead");
+  const [step, setStep] = useState<Step>(isReschedule ? "closer" : hasPreselection ? "lead" : "lead");
   const [lead, setLead] = useState<Lead | null>(
     isReschedule && rescheduleLeadName
       ? { id: "reschedule", name: decodeURIComponent(rescheduleLeadName), phone: decodeURIComponent(rescheduleLeadPhone || "") }
       : null
   );
-  const [closerId, setCloserId] = useState<string | null>(null);
-  const [date, setDate] = useState<Date | undefined>(undefined);
-  const [time, setTime] = useState<string | null>(null);
+  const [closerId, setCloserId] = useState<string | null>(preCloserId || null);
+  const [date, setDate] = useState<Date | undefined>(
+    preDateStr ? new Date(preDateStr + "T12:00:00") : undefined
+  );
+  const [time, setTime] = useState<string | null>(preTime || null);
   const [observation, setObservation] = useState("");
   const [meetingReason, setMeetingReason] = useState<string | null>(null);
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
