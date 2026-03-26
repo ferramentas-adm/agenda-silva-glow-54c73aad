@@ -479,7 +479,7 @@ export default function DashboardPage() {
       </AlertDialog>
 
       {/* Detail / Status change dialog */}
-      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) setDetailAg(null); }}>
+      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -489,7 +489,7 @@ export default function DashboardPage() {
             <DialogDescription>Detalhes do agendamento</DialogDescription>
           </DialogHeader>
 
-          {detailAg && (
+          {detailAg && !editMode && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="space-y-1">
@@ -540,6 +540,11 @@ export default function DashboardPage() {
                 </div>
               )}
 
+              {/* Edit button */}
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
+                <Pencil className="h-3.5 w-3.5" />Editar dia/horário
+              </Button>
+
               <div className="space-y-2">
                 <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
                 <div className="flex flex-wrap gap-2">
@@ -569,6 +574,70 @@ export default function DashboardPage() {
                     </Button>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit mode */}
+          {detailAg && editMode && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Selecione uma nova data e horário. Se a data for diferente do dia atual da reunião, você será redirecionado para o fluxo de reagendamento.
+              </p>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data</label>
+                <Popover open={editCalendarOpen} onOpenChange={setEditCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn("w-full justify-start text-left font-normal", !editDate && "text-muted-foreground")}
+                    >
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      {editDate ? format(editDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione a data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editDate}
+                      onSelect={(d) => {
+                        setEditDate(d);
+                        setEditTime(null);
+                        setEditCalendarOpen(false);
+                      }}
+                      disabled={(d) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return d < today || d.getDay() === 0 || d.getDay() === 6;
+                      }}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {editDate && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Horário</label>
+                  <EditTimeSlots
+                    closerId={detailAg.closer_id}
+                    date={editDate}
+                    selectedTime={editTime}
+                    onSelect={setEditTime}
+                    currentAgId={detailAg.id}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button variant="secondary" className="flex-1" onClick={() => setEditMode(false)}>
+                  Cancelar
+                </Button>
+                <Button className="flex-1" disabled={!editTime || savingEdit} onClick={handleEditSave}>
+                  {savingEdit ? "Salvando..." : "Salvar"}
+                </Button>
               </div>
             </div>
           )}
