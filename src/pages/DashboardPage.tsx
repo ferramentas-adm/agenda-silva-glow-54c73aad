@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
   Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban,
-  CalendarDays,
+  CalendarDays, Pencil,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -126,6 +126,11 @@ export default function DashboardPage() {
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [rescheduleOffer, setRescheduleOffer] = useState<Agendamento | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editDate, setEditDate] = useState<Date | undefined>(undefined);
+  const [editTime, setEditTime] = useState<string | null>(null);
+  const [editCalendarOpen, setEditCalendarOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
@@ -280,6 +285,55 @@ export default function DashboardPage() {
     setUpdatingStatus(false);
   };
 
+  // Open edit mode
+  const startEdit = () => {
+    if (!detailAg) return;
+    setEditDate(new Date(detailAg.scheduled_date + "T12:00:00"));
+    setEditTime(detailAg.scheduled_time);
+    setEditMode(true);
+  };
+
+  // Handle edit save — same day only; different day → Reagendar
+  const handleEditSave = async () => {
+    if (!detailAg || !editDate || !editTime) return;
+    const newDateStr = `${editDate.getFullYear()}-${String(editDate.getMonth() + 1).padStart(2, "0")}-${String(editDate.getDate()).padStart(2, "0")}`;
+    
+    if (newDateStr !== detailAg.scheduled_date) {
+      // Different day → redirect to Reagendar flow
+      setEditMode(false);
+      setDetailAg(null);
+      navigate(`/agendar?edit=${detailAg.id}`);
+      return;
+    }
+
+    // Same day → update time inline
+    if (editTime === detailAg.scheduled_time) {
+      setEditMode(false);
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ scheduled_time: editTime } as any)
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      await logAudit("edit_agendamento", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        old_time: detailAg.scheduled_time,
+        new_time: editTime,
+      });
+      toast.success("Horário atualizado com sucesso!");
+      setDetailAg({ ...detailAg, scheduled_time: editTime });
+      setEditMode(false);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao atualizar horário");
+    }
+    setSavingEdit(false);
+  };
+
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
@@ -425,7 +479,7 @@ export default function DashboardPage() {
       </AlertDialog>
 
       {/* Detail / Status change dialog */}
-      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) setDetailAg(null); }}>
+      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -435,7 +489,7 @@ export default function DashboardPage() {
             <DialogDescription>Detalhes do agendamento</DialogDescription>
           </DialogHeader>
 
-          {detailAg && (
+          {detailAg && !editMode && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="space-y-1">
@@ -486,6 +540,11 @@ export default function DashboardPage() {
                 </div>
               )}
 
+              {/* Edit button */}
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
+                <Pencil className="h-3.5 w-3.5" />Editar dia/horário
+              </Button>
+
               <div className="space-y-2">
                 <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
                 <div className="flex flex-wrap gap-2">
@@ -515,6 +574,70 @@ export default function DashboardPage() {
                     </Button>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit mode */}
+          {detailAg && editMode && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Selecione uma nova data e horário. Se a data for diferente do dia atual da reunião, você será redirecionado para o fluxo de reagendamento.
+              </p>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data</label>
+                <Popover open={editCalendarOpen} onOpenChange={setEditCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn("w-full justify-start text-left font-normal", !editDate && "text-muted-foreground")}
+                    >
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      {editDate ? format(editDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione a data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editDate}
+                      onSelect={(d) => {
+                        setEditDate(d);
+                        setEditTime(null);
+                        setEditCalendarOpen(false);
+                      }}
+                      disabled={(d) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return d < today || d.getDay() === 0 || d.getDay() === 6;
+                      }}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {editDate && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Horário</label>
+                  <EditTimeSlots
+                    closerId={detailAg.closer_id}
+                    date={editDate}
+                    selectedTime={editTime}
+                    onSelect={setEditTime}
+                    currentAgId={detailAg.id}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button variant="secondary" className="flex-1" onClick={() => setEditMode(false)}>
+                  Cancelar
+                </Button>
+                <Button className="flex-1" disabled={!editTime || savingEdit} onClick={handleEditSave}>
+                  {savingEdit ? "Salvando..." : "Salvar"}
+                </Button>
               </div>
             </div>
           )}
@@ -743,6 +866,105 @@ function DayView({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ─── Edit Time Slots (simplified picker for edit mode) ───────────
+function EditTimeSlots({
+  closerId,
+  date,
+  selectedTime,
+  onSelect,
+  currentAgId,
+}: {
+  closerId: string;
+  date: Date;
+  selectedTime: string | null;
+  onSelect: (time: string) => void;
+  currentAgId: string;
+}) {
+  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  // Fetch closer hours
+  const { data: closer } = useQuery({
+    queryKey: ["closer-hours-edit", closerId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("business_hours_start, business_hours_end, business_hours_ranges")
+        .eq("id", closerId)
+        .single();
+      return data;
+    },
+  });
+
+  // Fetch booked slots for the date
+  const { data: booked = [] } = useQuery({
+    queryKey: ["booked-slots-edit", closerId, dateStr],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, scheduled_time")
+        .eq("closer_id", closerId)
+        .eq("scheduled_date", dateStr)
+        .is("deleted_at", null)
+        .not("status", "in", '("cancelada","reagendada")');
+      return data ?? [];
+    },
+  });
+
+  const slots = useMemo(() => {
+    if (!closer) return [];
+    const ranges = closer.business_hours_ranges as { start: string; end: string }[] | null;
+    const allSlots: string[] = [];
+
+    if (ranges && Array.isArray(ranges) && ranges.length > 0) {
+      for (const r of ranges) {
+        const sH = parseInt(r.start.split(":")[0], 10);
+        const eH = parseInt(r.end.split(":")[0], 10);
+        for (let h = sH; h <= eH; h++) {
+          const s = `${String(h).padStart(2, "0")}:00`;
+          if (!allSlots.includes(s)) allSlots.push(s);
+        }
+      }
+    } else {
+      const sH = parseInt(closer.business_hours_start.split(":")[0], 10);
+      const eH = parseInt(closer.business_hours_end.split(":")[0], 10);
+      for (let h = sH; h <= eH; h++) {
+        allSlots.push(`${String(h).padStart(2, "0")}:00`);
+      }
+    }
+    return allSlots;
+  }, [closer]);
+
+  // Booked times (excluding the current agendamento being edited)
+  const bookedTimes = useMemo(() => {
+    return new Set(booked.filter(b => b.id !== currentAgId).map(b => b.scheduled_time));
+  }, [booked, currentAgId]);
+
+  if (!closer) return <Skeleton className="h-10 w-full" />;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {slots.map((slot) => {
+        const isBooked = bookedTimes.has(slot);
+        return (
+          <Button
+            key={slot}
+            variant={selectedTime === slot ? "default" : "outline"}
+            size="sm"
+            className="text-xs"
+            disabled={isBooked}
+            onClick={() => onSelect(slot)}
+          >
+            {slot}
+          </Button>
+        );
+      })}
+      {slots.length === 0 && (
+        <p className="text-sm text-muted-foreground">Nenhum horário disponível.</p>
+      )}
     </div>
   );
 }
