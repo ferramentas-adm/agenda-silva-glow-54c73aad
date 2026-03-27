@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   confirmada: { label: "Confirmada", color: "bg-green-500/20 text-green-400 border-green-500/30" },
-  pendente: { label: "Pendente", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
   realizada: { label: "Realizada", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   cancelada: { label: "Cancelada", color: "bg-red-500/20 text-red-400 border-red-500/30" },
   reagendada: { label: "Reagendada", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
@@ -31,6 +30,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const MEETING_REASONS = ["Segunda Reunião", "Fechamento", "Remarcado", "Outros"];
+const CHANNEL_TYPES = ["CTA", "Tráfego Pago", "Reativação", "Social Selling", "Renovação", "Indicação", "Formulário Bio"];
 const PAGE_SIZE = 20;
 
 export default function ReunioesListPage() {
@@ -41,6 +41,7 @@ export default function ReunioesListPage() {
   const [filterMeetingDate, setFilterMeetingDate] = useState<Date | undefined>();
   const [filterCreatedDate, setFilterCreatedDate] = useState<Date | undefined>();
   const [searchText, setSearchText] = useState("");
+  const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data: closers = [] } = useQuery({
@@ -55,6 +56,14 @@ export default function ReunioesListPage() {
     queryKey: ["profiles-list"],
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("user_id, full_name, email").eq("active", true).order("full_name");
+      return data || [];
+    },
+  });
+
+  const { data: userRoles = [] } = useQuery({
+    queryKey: ["user-roles-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_roles").select("user_id, role");
       return data || [];
     },
   });
@@ -84,11 +93,22 @@ export default function ReunioesListPage() {
     return m;
   }, [profiles]);
 
+  // Role map to filter closers and SDRs properly
+  const roleMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    userRoles.forEach((r: any) => (m[r.user_id] = r.role));
+    return m;
+  }, [userRoles]);
+
+  // Only profiles with SDR role for SDR filter
+  const sdrProfiles = useMemo(() => profiles.filter((p) => roleMap[p.user_id] === "sdr"), [profiles, roleMap]);
+
   const filtered = useMemo(() => {
     return agendamentos.filter((ag) => {
       if (filterCloser !== "all" && ag.closer_id !== filterCloser) return false;
       if (filterSDR !== "all" && ag.created_by !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
+      if (filterChannelType !== "all" && (ag as any).channel_type !== filterChannelType) return false;
       if (filterReason !== "all") {
         if (!ag.meeting_reason) return false;
         if (filterReason === "Outros" && !MEETING_REASONS.slice(0, 3).includes(ag.meeting_reason) && ag.meeting_reason !== "Outros") {
@@ -105,7 +125,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterMeetingDate, filterCreatedDate, searchText]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterChannelType, filterMeetingDate, filterCreatedDate, searchText]);
 
   // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -117,13 +137,14 @@ export default function ReunioesListPage() {
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterReason !== "all" || !!filterMeetingDate || !!filterCreatedDate || !!searchText;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterReason !== "all" || filterChannelType !== "all" || !!filterMeetingDate || !!filterCreatedDate || !!searchText;
 
   const clearFilters = () => {
     setFilterCloser("all");
     setFilterSDR("all");
     setFilterStatus("all");
     setFilterReason("all");
+    setFilterChannelType("all");
     setFilterMeetingDate(undefined);
     setFilterCreatedDate(undefined);
     setSearchText("");
@@ -216,10 +237,10 @@ export default function ReunioesListPage() {
             </Select>
 
             <Select value={filterSDR} onValueChange={(v) => { setFilterSDR(v); setCurrentPage(1); }}>
-              <SelectTrigger className="glass-input"><SelectValue placeholder="SDR / Criador" /></SelectTrigger>
+              <SelectTrigger className="glass-input"><SelectValue placeholder="SDR" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os SDRs</SelectItem>
-                {profiles.map((p) => (<SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>))}
+                {sdrProfiles.map((p) => (<SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>))}
               </SelectContent>
             </Select>
 
@@ -236,6 +257,14 @@ export default function ReunioesListPage() {
               <SelectContent>
                 <SelectItem value="all">Todos os Motivos</SelectItem>
                 {MEETING_REASONS.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterChannelType} onValueChange={(v) => { setFilterChannelType(v); setCurrentPage(1); }}>
+              <SelectTrigger className="glass-input"><SelectValue placeholder="Canal" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Canais</SelectItem>
+                {CHANNEL_TYPES.map((ct) => (<SelectItem key={ct} value={ct}>{ct}</SelectItem>))}
               </SelectContent>
             </Select>
 
@@ -320,8 +349,19 @@ export default function ReunioesListPage() {
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px] truncate" title={ag.observation || ""}>
-                          {ag.observation || "—"}
+                        <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px]">
+                          {(() => {
+                            const urlRegex = /https?:\/\/[^\s]+/g;
+                            const links = ag.observation?.match(urlRegex) || [];
+                            if (links.length > 0) {
+                              return links.map((url, i) => (
+                                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                                  Ver Briefing{links.length > 1 ? ` (${i + 1})` : ""}
+                                </a>
+                              ));
+                            }
+                            return "—";
+                          })()}
                         </td>
                       </tr>
                     );

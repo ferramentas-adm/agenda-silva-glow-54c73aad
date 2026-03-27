@@ -103,6 +103,16 @@ const STATUS_LABELS: Record<string, string> = {
   nao_confirmada: "Não confirmada",
 };
 
+const CHANNEL_TYPES = [
+  "CTA",
+  "Tráfego Pago",
+  "Reativação",
+  "Social Selling",
+  "Renovação",
+  "Indicação",
+  "Formulário Bio",
+];
+
 const CANCELLED_STATUSES = ["cancelada", "no_show"];
 
 // ─── Delete Dialog State ─────────────────────────────────────────
@@ -115,7 +125,7 @@ interface DeleteTarget {
 export default function DashboardPage() {
   const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
   const { pendingCount, syncing, syncNow } = useDataCrazySync();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -225,7 +235,7 @@ export default function DashboardPage() {
   });
 
   const filtered = useMemo(
-    () => agendamentos.filter((a) => selectedIds.has(a.closer_id)),
+    () => agendamentos.filter((a) => a.closer_id && selectedIds.has(a.closer_id)),
     [agendamentos, selectedIds]
   );
 
@@ -338,7 +348,7 @@ export default function DashboardPage() {
               { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
               { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
               { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
-              { key: "nao_confirmada", label: "Não confirmadas", icon: AlertCircle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
+              { key: "nao_confirmada", label: "Não confirm.", icon: AlertCircle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
             ].map(({ key, label, icon: Icon, color, bg }) => {
               const count = key === "total" ? filtered.length : filtered.filter(a => a.status === key).length;
               return (
@@ -467,8 +477,11 @@ export default function DashboardPage() {
                   <SelectValue placeholder="Selecione a justificativa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
+               <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
                   <SelectItem value="Data errada">Data errada</SelectItem>
+                  {(role === "gestor" || role === "moderador") && (
+                    <SelectItem value="Teste">Teste</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -550,7 +563,7 @@ export default function DashboardPage() {
                     {links.map((url, i) => (
                       <Button key={i} variant="outline" size="sm" className="gap-1.5 text-xs w-full" asChild>
                         <a href={url} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-3.5 w-3.5" />Abrir link {links.length > 1 ? `(${i + 1})` : "externo"}
+                          <FileText className="h-3.5 w-3.5" />Ver Briefing{links.length > 1 ? ` (${i + 1})` : ""}
                         </a>
                       </Button>
                     ))}
