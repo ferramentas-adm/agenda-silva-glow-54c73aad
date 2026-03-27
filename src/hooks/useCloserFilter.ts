@@ -63,7 +63,7 @@ export function useCloserFilter() {
 
     setSelectedIds(new Set(allIds));
     setInitialized(true);
-  }, [closers, user, initialized, role, authLoading]);
+  }, [closers, user, initialized, role]);
 
   // Clean up selectedIds when closers list changes (e.g. closer deleted/deactivated)
   useEffect(() => {
