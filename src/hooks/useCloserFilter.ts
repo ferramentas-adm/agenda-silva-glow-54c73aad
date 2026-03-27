@@ -15,7 +15,7 @@ function getStorageKey(userId: string) {
 }
 
 export function useCloserFilter() {
-  const { user, role } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
 
@@ -33,7 +33,7 @@ export function useCloserFilter() {
 
   // Initialize from localStorage or select all (closers only see their own)
   useEffect(() => {
-    if (!closers.length || initialized) return;
+    if (!closers.length || initialized || authLoading || role === null) return;
     const allIds = closers.map((c) => c.id);
 
     // Closers can only see their own calendar
@@ -63,7 +63,7 @@ export function useCloserFilter() {
 
     setSelectedIds(new Set(allIds));
     setInitialized(true);
-  }, [closers, user, initialized, role]);
+  }, [closers, user, initialized, role, authLoading]);
 
   // Clean up selectedIds when closers list changes (e.g. closer deleted/deactivated)
   useEffect(() => {
