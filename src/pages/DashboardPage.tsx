@@ -49,6 +49,7 @@ interface Agendamento {
   created_by: string;
   created_at: string;
   meeting_reason: string | null;
+  channel_type: string | null;
 }
 
 interface GoogleBusyBlock {
@@ -156,7 +157,7 @@ export default function DashboardPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at, created_by, created_at, meeting_reason")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at, created_by, created_at, meeting_reason, channel_type")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -524,6 +525,11 @@ export default function DashboardPage() {
                       {detailAg.meeting_reason}
                     </Badge>
                   )}
+                  {detailAg.channel_type && (
+                    <Badge variant="outline" className="text-xs bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+                      {detailAg.channel_type}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -539,7 +545,21 @@ export default function DashboardPage() {
               {detailAg.observation && (
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs flex items-center gap-1"><FileText className="h-3.5 w-3.5" />Observações</p>
-                  <p className="text-sm bg-secondary/50 rounded-md p-2 whitespace-pre-wrap break-words">{detailAg.observation}</p>
+                  {(() => {
+                    const urlRegex = /https?:\/\/[^\s]+/g;
+                    const hasLink = urlRegex.test(detailAg.observation);
+                    if (hasLink) {
+                      const firstUrl = detailAg.observation.match(/https?:\/\/[^\s]+/)?.[0];
+                      return (
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" asChild>
+                          <a href={firstUrl} target="_blank" rel="noopener noreferrer">
+                            <FileText className="h-3.5 w-3.5" />Abrir link da observação
+                          </a>
+                        </Button>
+                      );
+                    }
+                    return <p className="text-sm bg-secondary/50 rounded-md p-2 whitespace-pre-wrap break-words">{detailAg.observation}</p>;
+                  })()}
                 </div>
               )}
 

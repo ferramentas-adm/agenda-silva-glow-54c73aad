@@ -458,19 +458,21 @@ export default function AgendarPage() {
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Tipo de Canal</label>
-                <Select value={channelType ?? ""} onValueChange={setChannelType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o canal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CHANNEL_TYPES.map((ct) => (
-                      <SelectItem key={ct} value={ct}>{ct}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {(role === "sdr" || role === "moderador" || role === "gestor") && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Tipo de Canal</label>
+                  <Select value={channelType ?? ""} onValueChange={setChannelType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o canal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CHANNEL_TYPES.map((ct) => (
+                        <SelectItem key={ct} value={ct}>{ct}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Observação interna (obrigatório)</label>
                 <Textarea
