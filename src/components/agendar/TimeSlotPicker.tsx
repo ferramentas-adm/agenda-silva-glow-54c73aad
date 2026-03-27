@@ -206,35 +206,33 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           const isGoogleBlocked = isSlotBlockedByGoogle(slot, googleEvents, dateStr);
           const isPersonalBlock = isSlotBlockedByPersonal(slot);
           const isPast = isToday && slot <= `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-          const isDisabled = isGoogleBlocked || isPersonalBlock || isPast;
+          const isBusy = isGoogleBlocked || isPersonalBlock || isBooked;
           const isSelected = selectedTime === slot;
 
           return (
             <button
               key={slot}
-              disabled={isDisabled}
+              disabled={isPast}
               onClick={() => {
                 onSelect(slot);
                 setCustomMode(false);
                 setCustomError(null);
               }}
-              title={isPersonalBlock ? "Compromisso pessoal" : isGoogleBlocked ? "Indisponível (Google Calendar)" : isBooked ? "Já agendado (permite novo)" : undefined}
+              title={isPersonalBlock ? "Compromisso pessoal (permite agendar)" : isGoogleBlocked ? "Ocupado no Google Calendar (permite agendar)" : isBooked ? "Já agendado (permite novo)" : undefined}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
                 isSelected
                   ? "border-primary bg-primary text-primary-foreground"
-                  : isGoogleBlocked
-                    ? "cursor-not-allowed border-muted bg-muted/50 text-muted-foreground/60"
-                    : isDisabled
-                      ? "cursor-not-allowed border-input/50 bg-secondary/30 text-muted-foreground/40 line-through"
-                      : isBooked
-                        ? "border-amber-500/50 bg-amber-500/10 hover:border-primary/50 active:scale-[0.97]"
-                        : "border-input bg-card hover:border-primary/50 active:scale-[0.97]"
+                  : isPast
+                    ? "cursor-not-allowed border-input/50 bg-secondary/30 text-muted-foreground/40 line-through"
+                    : isBusy
+                      ? "border-amber-500/50 bg-amber-500/10 hover:border-primary/50 active:scale-[0.97]"
+                      : "border-input bg-card hover:border-primary/50 active:scale-[0.97]"
               )}
             >
-              {isGoogleBlocked ? (
-                <Ban className="h-3.5 w-3.5" />
-              ) : isBooked ? (
+              {isPast ? (
+                <Clock className="h-3.5 w-3.5" />
+              ) : isBusy ? (
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
               ) : (
                 <Clock className="h-3.5 w-3.5" />
