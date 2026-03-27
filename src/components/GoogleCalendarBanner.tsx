@@ -14,6 +14,7 @@ import { toast } from "sonner";
 export default function GoogleCalendarBanner() {
   const { user } = useAuth();
   const { getAuthUrl } = useGoogleAuthUrl();
+  const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
