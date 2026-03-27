@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Clock, Ban, AlertTriangle, PenLine } from "lucide-react";
+import { Clock, AlertTriangle, PenLine, CalendarDays, Lock } from "lucide-react";
 import { useGoogleCalendarEvents } from "@/hooks/useGoogleCalendar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -200,14 +200,44 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         </div>
       )}
 
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Disponível</span>
+        <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3 text-amber-500" /> Agendado (interno)</span>
+        <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-blue-500" /> Google Calendar</span>
+        <span className="flex items-center gap-1"><Lock className="h-3 w-3 text-rose-400" /> Bloqueio pessoal</span>
+      </div>
+
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
         {ALL_SLOTS.map((slot) => {
           const isBooked = bookedTimes.includes(slot);
           const isGoogleBlocked = isSlotBlockedByGoogle(slot, googleEvents, dateStr);
           const isPersonalBlock = isSlotBlockedByPersonal(slot);
           const isPast = isToday && slot <= `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-          const isBusy = isGoogleBlocked || isPersonalBlock || isBooked;
           const isSelected = selectedTime === slot;
+
+          // Priority: personal block > google > internal booking
+          let slotStyle = "border-input bg-card hover:border-primary/50 active:scale-[0.97]";
+          let SlotIcon = Clock;
+          let iconClass = "h-3.5 w-3.5";
+          let title: string | undefined;
+
+          if (isPersonalBlock) {
+            slotStyle = "border-rose-400/50 bg-rose-500/10 hover:border-primary/50 active:scale-[0.97]";
+            SlotIcon = Lock;
+            iconClass = "h-3.5 w-3.5 text-rose-400";
+            title = "Bloqueio pessoal (permite agendar)";
+          } else if (isGoogleBlocked) {
+            slotStyle = "border-blue-400/50 bg-blue-500/10 hover:border-primary/50 active:scale-[0.97]";
+            SlotIcon = CalendarDays;
+            iconClass = "h-3.5 w-3.5 text-blue-500";
+            title = "Ocupado no Google Calendar (permite agendar)";
+          } else if (isBooked) {
+            slotStyle = "border-amber-500/50 bg-amber-500/10 hover:border-primary/50 active:scale-[0.97]";
+            SlotIcon = AlertTriangle;
+            iconClass = "h-3.5 w-3.5 text-amber-500";
+            title = "Já agendado internamente (permite novo)";
+          }
 
           return (
             <button
@@ -218,24 +248,22 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                 setCustomMode(false);
                 setCustomError(null);
               }}
-              title={isPersonalBlock ? "Compromisso pessoal (permite agendar)" : isGoogleBlocked ? "Ocupado no Google Calendar (permite agendar)" : isBooked ? "Já agendado (permite novo)" : undefined}
+              title={title}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
                 isSelected
                   ? "border-primary bg-primary text-primary-foreground"
                   : isPast
                     ? "cursor-not-allowed border-input/50 bg-secondary/30 text-muted-foreground/40 line-through"
-                    : isBusy
-                      ? "border-amber-500/50 bg-amber-500/10 hover:border-primary/50 active:scale-[0.97]"
-                      : "border-input bg-card hover:border-primary/50 active:scale-[0.97]"
+                    : slotStyle
               )}
             >
               {isPast ? (
                 <Clock className="h-3.5 w-3.5" />
-              ) : isBusy ? (
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-              ) : (
+              ) : isSelected ? (
                 <Clock className="h-3.5 w-3.5" />
+              ) : (
+                <SlotIcon className={iconClass} />
               )}
               {slot}
             </button>
