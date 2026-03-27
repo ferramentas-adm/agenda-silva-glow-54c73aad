@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   confirmada: { label: "Confirmada", color: "bg-green-500/20 text-green-400 border-green-500/30" },
-  pendente: { label: "Pendente", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
   realizada: { label: "Realizada", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   cancelada: { label: "Cancelada", color: "bg-red-500/20 text-red-400 border-red-500/30" },
   reagendada: { label: "Reagendada", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
@@ -31,6 +30,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const MEETING_REASONS = ["Segunda Reunião", "Fechamento", "Remarcado", "Outros"];
+const CHANNEL_TYPES = ["CTA", "Tráfego Pago", "Reativação", "Social Selling", "Renovação", "Indicação", "Formulário Bio"];
 const PAGE_SIZE = 20;
 
 export default function ReunioesListPage() {
@@ -41,6 +41,7 @@ export default function ReunioesListPage() {
   const [filterMeetingDate, setFilterMeetingDate] = useState<Date | undefined>();
   const [filterCreatedDate, setFilterCreatedDate] = useState<Date | undefined>();
   const [searchText, setSearchText] = useState("");
+  const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data: closers = [] } = useQuery({
@@ -55,6 +56,14 @@ export default function ReunioesListPage() {
     queryKey: ["profiles-list"],
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("user_id, full_name, email").eq("active", true).order("full_name");
+      return data || [];
+    },
+  });
+
+  const { data: userRoles = [] } = useQuery({
+    queryKey: ["user-roles-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_roles").select("user_id, role");
       return data || [];
     },
   });
@@ -83,6 +92,16 @@ export default function ReunioesListPage() {
     profiles.forEach((p) => (m[p.user_id] = p.full_name));
     return m;
   }, [profiles]);
+
+  // Role map to filter closers and SDRs properly
+  const roleMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    userRoles.forEach((r: any) => (m[r.user_id] = r.role));
+    return m;
+  }, [userRoles]);
+
+  // Only profiles with SDR role for SDR filter
+  const sdrProfiles = useMemo(() => profiles.filter((p) => roleMap[p.user_id] === "sdr"), [profiles, roleMap]);
 
   const filtered = useMemo(() => {
     return agendamentos.filter((ag) => {
