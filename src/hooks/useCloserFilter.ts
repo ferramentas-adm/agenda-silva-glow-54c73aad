@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -102,5 +102,13 @@ export function useCloserFilter() {
 
   const isCloserRole = role === "closer";
 
-  return { closers, selectedIds, toggle, isLoading, isCloserRole };
+  // For closer role, only return their own closer in the list
+  const visibleClosers = useMemo(() => {
+    if (isCloserRole && user?.email) {
+      return closers.filter((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
+    }
+    return closers;
+  }, [closers, isCloserRole, user?.email]);
+
+  return { closers: visibleClosers, selectedIds, toggle, isLoading, isCloserRole };
 }
