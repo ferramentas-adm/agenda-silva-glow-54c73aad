@@ -108,6 +108,7 @@ export default function ReunioesListPage() {
       if (filterCloser !== "all" && ag.closer_id !== filterCloser) return false;
       if (filterSDR !== "all" && ag.created_by !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
+      if (filterChannelType !== "all" && (ag as any).channel_type !== filterChannelType) return false;
       if (filterReason !== "all") {
         if (!ag.meeting_reason) return false;
         if (filterReason === "Outros" && !MEETING_REASONS.slice(0, 3).includes(ag.meeting_reason) && ag.meeting_reason !== "Outros") {
@@ -124,7 +125,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterMeetingDate, filterCreatedDate, searchText]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterChannelType, filterMeetingDate, filterCreatedDate, searchText]);
 
   // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -136,13 +137,14 @@ export default function ReunioesListPage() {
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterReason !== "all" || !!filterMeetingDate || !!filterCreatedDate || !!searchText;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterReason !== "all" || filterChannelType !== "all" || !!filterMeetingDate || !!filterCreatedDate || !!searchText;
 
   const clearFilters = () => {
     setFilterCloser("all");
     setFilterSDR("all");
     setFilterStatus("all");
     setFilterReason("all");
+    setFilterChannelType("all");
     setFilterMeetingDate(undefined);
     setFilterCreatedDate(undefined);
     setSearchText("");
