@@ -237,10 +237,10 @@ export default function ReunioesListPage() {
             </Select>
 
             <Select value={filterSDR} onValueChange={(v) => { setFilterSDR(v); setCurrentPage(1); }}>
-              <SelectTrigger className="glass-input"><SelectValue placeholder="SDR / Criador" /></SelectTrigger>
+              <SelectTrigger className="glass-input"><SelectValue placeholder="SDR" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os SDRs</SelectItem>
-                {profiles.map((p) => (<SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>))}
+                {sdrProfiles.map((p) => (<SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>))}
               </SelectContent>
             </Select>
 
@@ -257,6 +257,14 @@ export default function ReunioesListPage() {
               <SelectContent>
                 <SelectItem value="all">Todos os Motivos</SelectItem>
                 {MEETING_REASONS.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterChannelType} onValueChange={(v) => { setFilterChannelType(v); setCurrentPage(1); }}>
+              <SelectTrigger className="glass-input"><SelectValue placeholder="Canal" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Canais</SelectItem>
+                {CHANNEL_TYPES.map((ct) => (<SelectItem key={ct} value={ct}>{ct}</SelectItem>))}
               </SelectContent>
             </Select>
 
