@@ -49,8 +49,17 @@ export default function GoogleCalendarBanner() {
       // If row found, return true
       return !!data;
     },
-    refetchInterval: 10_000, // Re-check every 10s after OAuth flow
+    refetchInterval: 5_000,
   });
+
+  // Refetch when window regains focus (after OAuth popup closes)
+  useEffect(() => {
+    const onFocus = () => {
+      queryClient.invalidateQueries({ queryKey: ["closer-has-google-token", closerMatch?.id] });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [queryClient, closerMatch?.id]);
 
   // Only show for closers without token
   if (!closerMatch || hasToken || dismissed) return null;
