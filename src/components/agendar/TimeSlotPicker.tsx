@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Clock, Ban, AlertTriangle, PenLine } from "lucide-react";
+import { Clock, AlertTriangle, PenLine, CalendarDays, Lock } from "lucide-react";
 import { useGoogleCalendarEvents } from "@/hooks/useGoogleCalendar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
