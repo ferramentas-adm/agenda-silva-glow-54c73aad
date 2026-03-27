@@ -797,7 +797,7 @@ function DayView({
                     }}
                     title={canClickToSchedule ? `Agendar às ${hour} com ${c.name}` : undefined}
                   >
-                    {agList.length > 0 ? (
+                    {agList.length > 0 && (
                       <div className="space-y-1">
                         {agList.map((ag) => {
                           const isCancelled = CANCELLED_STATUSES.includes(ag.status);
@@ -810,7 +810,7 @@ function DayView({
                                 closerColor.border,
                                 isCancelled && "opacity-60"
                               )}
-                              onClick={() => onClickAg(ag)}
+                              onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
                             >
                               <div className={cn("font-semibold truncate", isCancelled && "line-through")}>
                                 {ag.lead_name}
@@ -849,12 +849,14 @@ function DayView({
                           );
                         })}
                       </div>
-                    ) : busy ? (
+                    )}
+                    {busy && !block && (
                       <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5">
                         <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="text-muted-foreground font-medium">Ocupado</span>
                       </div>
-                    ) : block ? (
+                    )}
+                    {block && (
                       <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[11px] space-y-0.5">
                         <div className="flex items-center gap-1.5">
                           <CalendarOff className="h-3 w-3 text-amber-400 shrink-0" />
@@ -865,7 +867,8 @@ function DayView({
                         )}
                         <p className="text-[9px] text-muted-foreground">{block.start_time}–{block.end_time}</p>
                       </div>
-                    ) : (
+                    )}
+                    {agList.length === 0 && !busy && !block && (
                       <div className="h-full w-full flex items-center justify-center opacity-0 hover:opacity-40 transition-opacity">
                         <PlusCircle className="h-4 w-4 text-primary" />
                       </div>
