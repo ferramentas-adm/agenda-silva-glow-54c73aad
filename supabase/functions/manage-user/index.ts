@@ -81,29 +81,7 @@ Deno.serve(async (req) => {
           console.log(`[delete] Found closer ${closer.id}, cleaning closer data...`);
           await supabaseAdmin.from("closer_blocks").delete().eq("closer_id", closer.id);
           await supabaseAdmin.from("closer_google_tokens").delete().eq("closer_id", closer.id);
-          await supabaseAdmin.from("agendamentos").update({ created_by: callerId }).eq("created_by", user_id);
-          // Nullify closer_id on agendamentos referencing this closer (to avoid FK violation)
-          // First soft-delete non-realized ones
-          await supabaseAdmin.from("agendamentos")
-            .update({ deleted_at: new Date().toISOString(), deleted_by: callerId, deletion_reason: "Closer excluído do sistema" })
-            .eq("closer_id", closer.id)
-            .is("deleted_at", null)
-            .not("status", "in", '("realizada")');
-          // For all remaining (including realized), reassign closer_id to avoid FK constraint
-          // We need to remove the closer reference from agendamentos
-          // Since closer_id is NOT NULL, we soft-delete any remaining
-          const { data: remaining } = await supabaseAdmin
-            .from("agendamentos")
-            .select("id")
-            .eq("closer_id", closer.id);
-          if (remaining && remaining.length > 0) {
-            // Mark all remaining as soft-deleted
-            await supabaseAdmin.from("agendamentos")
-              .update({ deleted_at: new Date().toISOString(), deleted_by: callerId, deletion_reason: "Closer excluído do sistema" })
-              .eq("closer_id", closer.id)
-              .is("deleted_at", null);
-          }
-          // Now safe to delete closer
+          // closer_id on agendamentos will be SET NULL automatically by FK cascade
           await supabaseAdmin.from("closers").delete().eq("id", closer.id);
         }
       }

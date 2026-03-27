@@ -17,7 +17,7 @@ export type Database = {
       agendamentos: {
         Row: {
           channel_type: string | null
-          closer_id: string
+          closer_id: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -37,7 +37,7 @@ export type Database = {
         }
         Insert: {
           channel_type?: string | null
-          closer_id: string
+          closer_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -57,7 +57,7 @@ export type Database = {
         }
         Update: {
           channel_type?: string | null
-          closer_id?: string
+          closer_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
