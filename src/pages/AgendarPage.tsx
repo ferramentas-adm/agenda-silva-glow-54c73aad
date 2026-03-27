@@ -149,7 +149,7 @@ export default function AgendarPage() {
   const resolvedReason = meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason;
 
   const handleSubmit = async () => {
-    if (!lead || !closerId || !date || !time || !user || !observation.trim()) return;
+    if (!lead || !closerId || !date || !time || !user) return;
     if (isReasonRequired && !resolvedReason) return;
     setSubmitting(true);
 
@@ -476,18 +476,6 @@ export default function AgendarPage() {
                 </div>
               )}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Observação interna (obrigatório)</label>
-                <Textarea
-                  placeholder="Notas sobre o lead, contexto da reunião..."
-                  value={observation}
-                  onChange={(e) => setObservation(e.target.value.slice(0, 1000))}
-                  className="resize-none"
-                  rows={3}
-                  required
-                />
-                <p className="text-xs text-muted-foreground text-right">{observation.length}/1000</p>
-              </div>
-              <div className="space-y-1.5">
                 <label className="text-sm font-medium flex items-center gap-1.5">
                   <LinkIcon className="h-3.5 w-3.5" />
                   Link externo (opcional)
@@ -519,7 +507,7 @@ export default function AgendarPage() {
           {step === "confirm" ? (
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !canGoNext.confirm || !observation.trim() || (isReasonRequired && !resolvedReason)}
+              disabled={submitting || !canGoNext.confirm || (isReasonRequired && !resolvedReason)}
               className="gap-2"
             >
               {submitting ? "Agendando..." : editId ? "Reagendar" : "Confirmar Agendamento"}

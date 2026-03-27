@@ -33,7 +33,7 @@ export function useCloserFilter() {
 
   // Initialize from localStorage or select all (closers only see their own)
   useEffect(() => {
-    if (!closers.length || initialized) return;
+    if (!closers.length || initialized || !user || role === null) return;
     const allIds = closers.map((c) => c.id);
 
     // Closers can only see their own calendar
@@ -110,5 +110,5 @@ export function useCloserFilter() {
     return closers;
   }, [closers, isCloserRole, user?.email]);
 
-  return { closers: visibleClosers, selectedIds, toggle, isLoading, isCloserRole };
+  return { closers: visibleClosers, selectedIds, toggle, isLoading: isLoading || !initialized, isCloserRole };
 }
