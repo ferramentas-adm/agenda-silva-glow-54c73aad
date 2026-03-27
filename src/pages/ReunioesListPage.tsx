@@ -349,8 +349,19 @@ export default function ReunioesListPage() {
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px] truncate" title={ag.observation || ""}>
-                          {ag.observation || "—"}
+                        <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px]">
+                          {(() => {
+                            const urlRegex = /https?:\/\/[^\s]+/g;
+                            const links = ag.observation?.match(urlRegex) || [];
+                            if (links.length > 0) {
+                              return links.map((url, i) => (
+                                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                                  Ver Briefing{links.length > 1 ? ` (${i + 1})` : ""}
+                                </a>
+                              ));
+                            }
+                            return "—";
+                          })()}
                         </td>
                       </tr>
                     );
