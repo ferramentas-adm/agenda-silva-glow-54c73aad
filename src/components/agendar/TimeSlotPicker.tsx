@@ -89,7 +89,7 @@ function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now:
 function isCustomTimeConflicting(
   time: string,
   dateStr: string,
-  bookedTimes: string[],
+  _bookedTimes: string[],
   googleEvents: { start: string; end: string }[],
 ): boolean {
   const slotStart = new Date(`${dateStr}T${time}:00`);
@@ -100,15 +100,7 @@ function isCustomTimeConflicting(
     const evEnd = new Date(ev.end);
     return evStart < slotEnd && evEnd > slotStart;
   });
-  if (googleConflict) return true;
-
-  const bookedConflict = bookedTimes.some((bt) => {
-    const bookedStart = new Date(`${dateStr}T${bt}:00`);
-    const bookedEnd = new Date(bookedStart.getTime() + 60 * 60 * 1000);
-    return bookedStart < slotEnd && bookedEnd > slotStart;
-  });
-
-  return bookedConflict;
+  return googleConflict;
 }
 
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
@@ -214,7 +206,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           const isGoogleBlocked = isSlotBlockedByGoogle(slot, googleEvents, dateStr);
           const isPersonalBlock = isSlotBlockedByPersonal(slot);
           const isPast = isToday && slot <= `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-          const isDisabled = isBooked || isGoogleBlocked || isPersonalBlock || isPast;
+          const isDisabled = isGoogleBlocked || isPersonalBlock || isPast;
           const isSelected = selectedTime === slot;
 
           return (
@@ -226,7 +218,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                 setCustomMode(false);
                 setCustomError(null);
               }}
-              title={isPersonalBlock ? "Compromisso pessoal" : isGoogleBlocked ? "Indisponível (Google Calendar)" : isBooked ? "Já agendado" : undefined}
+              title={isPersonalBlock ? "Compromisso pessoal" : isGoogleBlocked ? "Indisponível (Google Calendar)" : isBooked ? "Já agendado (permite novo)" : undefined}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
                 isSelected
@@ -235,11 +227,15 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                     ? "cursor-not-allowed border-muted bg-muted/50 text-muted-foreground/60"
                     : isDisabled
                       ? "cursor-not-allowed border-input/50 bg-secondary/30 text-muted-foreground/40 line-through"
-                      : "border-input bg-card hover:border-primary/50 active:scale-[0.97]"
+                      : isBooked
+                        ? "border-amber-500/50 bg-amber-500/10 hover:border-primary/50 active:scale-[0.97]"
+                        : "border-input bg-card hover:border-primary/50 active:scale-[0.97]"
               )}
             >
               {isGoogleBlocked ? (
                 <Ban className="h-3.5 w-3.5" />
+              ) : isBooked ? (
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
               ) : (
                 <Clock className="h-3.5 w-3.5" />
               )}
