@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGoogleAuthUrl } from "@/hooks/useGoogleCalendar";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, X } from "lucide-react";
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 export default function GoogleCalendarBanner() {
   const { user } = useAuth();
   const { getAuthUrl } = useGoogleAuthUrl();
+  const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
@@ -48,8 +49,17 @@ export default function GoogleCalendarBanner() {
       // If row found, return true
       return !!data;
     },
-    refetchInterval: 10_000, // Re-check every 10s after OAuth flow
+    refetchInterval: 5_000,
   });
+
+  // Refetch when window regains focus (after OAuth popup closes)
+  useEffect(() => {
+    const onFocus = () => {
+      queryClient.invalidateQueries({ queryKey: ["closer-has-google-token", closerMatch?.id] });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [queryClient, closerMatch?.id]);
 
   // Only show for closers without token
   if (!closerMatch || hasToken || dismissed) return null;
