@@ -15,7 +15,7 @@ function getStorageKey(userId: string) {
 }
 
 export function useCloserFilter() {
-  const { user, role, loading: authLoading } = useAuth();
+  const { user, role } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
 
