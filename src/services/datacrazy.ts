@@ -232,6 +232,13 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
     console.warn("Could not resolve DataCrazy IDs, using internal IDs");
   }
 
+  // If no valid DataCrazy IDs, skip sync entirely to avoid "attendant not found" errors
+  const hasValidCloserDcId = closerDatacrazyId !== ag.closerId;
+  if (!hasValidCloserDcId) {
+    console.warn("Closer does not have a datacrazy_id configured — skipping DataCrazy sync");
+    return;
+  }
+
   // Step 1: Find lead
   let lead: DataCrazyLead | null;
   try {
