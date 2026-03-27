@@ -187,7 +187,7 @@ export default function AgendarPage() {
         closer_id: closerId,
         scheduled_date: dateStr,
         scheduled_time: time,
-        observation: observation || null,
+        observation: observationLink.trim() ? `${observation}\n${observationLink.trim()}` : (observation || null),
         status: editId ? "reagendada" : "confirmada",
         meet_link: meetLink,
         created_by: user.id,
@@ -486,6 +486,20 @@ export default function AgendarPage() {
                   required
                 />
                 <p className="text-xs text-muted-foreground text-right">{observation.length}/1000</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <LinkIcon className="h-3.5 w-3.5" />
+                  Link externo (opcional)
+                </label>
+                <Input
+                  type="url"
+                  placeholder="https://exemplo.com ou link do Slack..."
+                  value={observationLink}
+                  onChange={(e) => setObservationLink(e.target.value)}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">Cole um link que ficará disponível como botão nos detalhes do agendamento.</p>
               </div>
             </>
           )}
