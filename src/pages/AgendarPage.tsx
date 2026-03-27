@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, ArrowRight, ArrowLeft } from "lucide-react";
+import { CalendarIcon, ArrowRight, ArrowLeft, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import AppLayout from "@/components/AppLayout";
@@ -12,6 +12,7 @@ import CloserSelector from "@/components/agendar/CloserSelector";
 import TimeSlotPicker from "@/components/agendar/TimeSlotPicker";
 import SuccessScreen from "@/components/agendar/SuccessScreen";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -84,6 +85,7 @@ export default function AgendarPage() {
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
   const [channelType, setChannelType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [observationLink, setObservationLink] = useState("");
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
 
   // Fetch closers for name resolution
@@ -185,7 +187,7 @@ export default function AgendarPage() {
         closer_id: closerId,
         scheduled_date: dateStr,
         scheduled_time: time,
-        observation: observation || null,
+        observation: observationLink.trim() ? `${observation}\n${observationLink.trim()}` : (observation || null),
         status: editId ? "reagendada" : "confirmada",
         meet_link: meetLink,
         created_by: user.id,
@@ -484,6 +486,20 @@ export default function AgendarPage() {
                   required
                 />
                 <p className="text-xs text-muted-foreground text-right">{observation.length}/1000</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <LinkIcon className="h-3.5 w-3.5" />
+                  Link externo (opcional)
+                </label>
+                <Input
+                  type="url"
+                  placeholder="https://exemplo.com ou link do Slack..."
+                  value={observationLink}
+                  onChange={(e) => setObservationLink(e.target.value)}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">Cole um link que ficará disponível como botão nos detalhes do agendamento.</p>
               </div>
             </>
           )}

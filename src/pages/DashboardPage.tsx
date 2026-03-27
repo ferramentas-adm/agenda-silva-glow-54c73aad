@@ -543,22 +543,26 @@ export default function DashboardPage() {
               )}
 
               {detailAg.observation && (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <p className="text-muted-foreground text-xs flex items-center gap-1"><FileText className="h-3.5 w-3.5" />Observações</p>
                   {(() => {
                     const urlRegex = /https?:\/\/[^\s]+/g;
-                    const hasLink = urlRegex.test(detailAg.observation);
-                    if (hasLink) {
-                      const firstUrl = detailAg.observation.match(/https?:\/\/[^\s]+/)?.[0];
-                      return (
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" asChild>
-                          <a href={firstUrl} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-3.5 w-3.5" />Abrir link da observação
-                          </a>
-                        </Button>
-                      );
-                    }
-                    return <p className="text-sm bg-secondary/50 rounded-md p-2 whitespace-pre-wrap break-words">{detailAg.observation}</p>;
+                    const links = detailAg.observation.match(urlRegex) || [];
+                    const textOnly = detailAg.observation.replace(urlRegex, "").trim();
+                    return (
+                      <div className="space-y-2">
+                        {textOnly && (
+                          <p className="text-sm bg-secondary/50 rounded-md p-2 whitespace-pre-wrap break-words">{textOnly}</p>
+                        )}
+                        {links.map((url, i) => (
+                          <Button key={i} variant="outline" size="sm" className="gap-1.5 text-xs w-full" asChild>
+                            <a href={url} target="_blank" rel="noopener noreferrer">
+                              <FileText className="h-3.5 w-3.5" />Abrir link {links.length > 1 ? `(${i + 1})` : "da observação"}
+                            </a>
+                          </Button>
+                        ))}
+                      </div>
+                    );
                   })()}
                 </div>
               )}
