@@ -78,12 +78,12 @@ serve(async (req) => {
         .eq('closer_id', closer_id);
     }
 
-    // Build event
-    const startDateTime = `${scheduled_date}T${scheduled_time}:00`;
+    // Build event — use proper offset for America/Sao_Paulo (-03:00)
+    const startDateTime = `${scheduled_date}T${scheduled_time}:00-03:00`;
     const [hours, minutes] = scheduled_time.split(':').map(Number);
     const endHours = hours + 1;
     const endTime = `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    const endDateTime = `${scheduled_date}T${endTime}:00`;
+    const endDateTime = `${scheduled_date}T${endTime}:00-03:00`;
 
     const description = [
       `Lead: ${lead_name}`,
