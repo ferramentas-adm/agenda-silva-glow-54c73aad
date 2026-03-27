@@ -26,6 +26,7 @@ function UsersSection() {
   const { isGestor } = useAuth();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterRole, setFilterRole] = useState<string>("all");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"sdr" | "gestor" | "closer" | "moderador">("sdr");
@@ -377,10 +378,24 @@ function UsersSection() {
 
       {/* Users list */}
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <Users className="h-4 w-4 text-primary" />
-          Usuários ({allUsers.length})
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-base font-semibold">
+            <Users className="h-4 w-4 text-primary" />
+            Usuários ({allUsers.length})
+          </h3>
+          <Select value={filterRole} onValueChange={setFilterRole}>
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <SelectValue placeholder="Filtrar por função" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as funções</SelectItem>
+              <SelectItem value="sdr">SDR</SelectItem>
+              <SelectItem value="closer">Closer</SelectItem>
+              <SelectItem value="gestor">Administrador</SelectItem>
+              <SelectItem value="moderador">Moderador</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Search bar */}
         <div className="relative">
@@ -401,6 +416,7 @@ function UsersSection() {
           <div className="space-y-2">
             {allUsers
               .filter((u: any) => {
+                if (filterRole !== "all" && u.role !== filterRole) return false;
                 if (!searchQuery.trim()) return true;
                 const q = searchQuery.toLowerCase();
                 return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
