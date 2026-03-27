@@ -110,5 +110,5 @@ export function useCloserFilter() {
     return closers;
   }, [closers, isCloserRole, user?.email]);
 
-  return { closers: visibleClosers, selectedIds, toggle, isLoading, isCloserRole };
+  return { closers: visibleClosers, selectedIds, toggle, isLoading: isLoading || authLoading || !initialized, isCloserRole };
 }
