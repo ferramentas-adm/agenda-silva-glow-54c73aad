@@ -346,7 +346,6 @@ export default function DashboardPage() {
               { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
               { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
               { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
-              { key: "nao_confirmada", label: "Não confirm.", icon: AlertCircle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
             ].map(({ key, label, icon: Icon, color, bg }) => {
               const count = key === "total" ? filtered.length : filtered.filter(a => a.status === key).length;
               return (
