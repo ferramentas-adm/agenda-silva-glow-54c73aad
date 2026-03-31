@@ -99,7 +99,6 @@ const STATUS_LABELS: Record<string, string> = {
   cancelada: "Cancelada",
   no_show: "No-show",
   reagendada: "Reagendada",
-  nao_confirmada: "Não confirmada",
 };
 
 const CHANNEL_TYPES = [
