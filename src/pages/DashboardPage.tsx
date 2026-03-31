@@ -596,11 +596,6 @@ export default function DashboardPage() {
                       <AlertCircle className="h-3.5 w-3.5" />No-show
                     </Button>
                   )}
-                  {detailAg.status !== "nao_confirmada" && (
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("nao_confirmada")}>
-                      <AlertCircle className="h-3.5 w-3.5" />Não confirmada
-                    </Button>
-                  )}
                 </div>
               </div>
             </div>
