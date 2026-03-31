@@ -91,7 +91,6 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
   cancelada: "bg-destructive/20 text-destructive",
   no_show: "bg-orange-500/20 text-orange-400",
   reagendada: "bg-blue-500/20 text-blue-400",
-  nao_confirmada: "bg-yellow-500/20 text-yellow-400",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -100,7 +99,6 @@ const STATUS_LABELS: Record<string, string> = {
   cancelada: "Cancelada",
   no_show: "No-show",
   reagendada: "Reagendada",
-  nao_confirmada: "Não confirmada",
 };
 
 const CHANNEL_TYPES = [
@@ -348,7 +346,6 @@ export default function DashboardPage() {
               { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
               { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
               { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
-              { key: "nao_confirmada", label: "Não confirm.", icon: AlertCircle, color: "text-yellow-400", bg: "bg-yellow-500/10" },
             ].map(({ key, label, icon: Icon, color, bg }) => {
               const count = key === "total" ? filtered.length : filtered.filter(a => a.status === key).length;
               return (
@@ -597,11 +594,6 @@ export default function DashboardPage() {
                   {detailAg.status !== "no_show" && (
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
                       <AlertCircle className="h-3.5 w-3.5" />No-show
-                    </Button>
-                  )}
-                  {detailAg.status !== "nao_confirmada" && (
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("nao_confirmada")}>
-                      <AlertCircle className="h-3.5 w-3.5" />Não confirmada
                     </Button>
                   )}
                 </div>

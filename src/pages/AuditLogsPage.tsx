@@ -337,7 +337,6 @@ const STATUS_LABELS_AG: Record<string, string> = {
   cancelada: "Cancelada",
   no_show: "No-show",
   reagendada: "Reagendada",
-  nao_confirmada: "Não confirmada",
 };
 
 function formatDetails(log: AuditLog): string {
