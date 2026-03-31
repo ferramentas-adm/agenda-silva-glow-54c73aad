@@ -91,7 +91,6 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
   cancelada: "bg-destructive/20 text-destructive",
   no_show: "bg-orange-500/20 text-orange-400",
   reagendada: "bg-blue-500/20 text-blue-400",
-  nao_confirmada: "bg-yellow-500/20 text-yellow-400",
 };
 
 const STATUS_LABELS: Record<string, string> = {
