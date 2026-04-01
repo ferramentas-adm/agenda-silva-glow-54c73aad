@@ -142,6 +142,7 @@ export default function DashboardPage() {
   const [editBriefingMode, setEditBriefingMode] = useState(false);
   const [briefingLink, setBriefingLink] = useState("");
   const [savingBriefing, setSavingBriefing] = useState(false);
+  const [editingBriefingIndex, setEditingBriefingIndex] = useState<number | null>(null);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
@@ -367,28 +368,77 @@ export default function DashboardPage() {
     }
     setSavingEdit(false);
   };
+  const getBriefingLinks = (obs: string | null): string[] => {
+    if (!obs) return [];
+    return obs.match(/https?:\/\/[^\s]+/g) || [];
+  };
+
   const handleSaveBriefing = async () => {
     if (!detailAg || !briefingLink.trim()) return;
     setSavingBriefing(true);
     try {
       const oldObservation = detailAg.observation || "";
-      const newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
+      let newObservation: string;
+      const oldLinks = getBriefingLinks(oldObservation);
+
+      if (editingBriefingIndex !== null && editingBriefingIndex < oldLinks.length) {
+        // Replace existing link
+        const oldLink = oldLinks[editingBriefingIndex];
+        newObservation = oldObservation.replace(oldLink, briefingLink.trim());
+        await logAudit("edit_briefing", "agendamento", detailAg.id, {
+          lead_name: detailAg.lead_name,
+          old_briefing_link: oldLink,
+          new_briefing_link: briefingLink.trim(),
+        });
+        toast.success("Briefing atualizado com sucesso!");
+      } else {
+        // Add new link
+        newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
+        await logAudit("edit_briefing", "agendamento", detailAg.id, {
+          lead_name: detailAg.lead_name,
+          briefing_link: briefingLink.trim(),
+        });
+        toast.success("Briefing adicionado com sucesso!");
+      }
+
       const { error } = await supabase
         .from("agendamentos")
         .update({ observation: newObservation })
         .eq("id", detailAg.id);
       if (error) throw error;
-      await logAudit("edit_briefing", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        briefing_link: briefingLink.trim(),
-      });
-      toast.success("Briefing adicionado com sucesso!");
       setDetailAg({ ...detailAg, observation: newObservation });
       setEditBriefingMode(false);
       setBriefingLink("");
+      setEditingBriefingIndex(null);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar briefing");
+    }
+    setSavingBriefing(false);
+  };
+
+  const handleRemoveBriefing = async (linkIndex: number) => {
+    if (!detailAg) return;
+    setSavingBriefing(true);
+    try {
+      const oldObservation = detailAg.observation || "";
+      const links = getBriefingLinks(oldObservation);
+      const removedLink = links[linkIndex];
+      const newObservation = oldObservation.replace(removedLink, "").replace(/\n{2,}/g, "\n").trim();
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ observation: newObservation || null })
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      await logAudit("remove_briefing", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        removed_briefing_link: removedLink,
+      });
+      toast.success("Briefing removido com sucesso!");
+      setDetailAg({ ...detailAg, observation: newObservation || null });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao remover briefing");
     }
     setSavingBriefing(false);
   };
@@ -563,7 +613,7 @@ export default function DashboardPage() {
       </AlertDialog>
 
       {/* Detail / Status change dialog */}
-      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); setEditBriefingMode(false); } }}>
+      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); setEditBriefingMode(false); setEditingBriefingIndex(null); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -622,17 +672,24 @@ export default function DashboardPage() {
               )}
 
               {detailAg.observation && (() => {
-                const urlRegex = /https?:\/\/[^\s]+/g;
-                const links = detailAg.observation.match(urlRegex) || [];
+                const links = getBriefingLinks(detailAg.observation);
                 if (links.length === 0) return null;
                 return (
                   <div className="space-y-2">
                     {links.map((url, i) => (
-                      <Button key={i} variant="outline" size="sm" className="gap-1.5 text-xs w-full" asChild>
-                        <a href={url} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-3.5 w-3.5" />Ver Briefing{links.length > 1 ? ` (${i + 1})` : ""}
-                        </a>
-                      </Button>
+                      <div key={i} className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" asChild>
+                          <a href={url} target="_blank" rel="noopener noreferrer">
+                            <FileText className="h-3.5 w-3.5" />Ver Briefing{links.length > 1 ? ` (${i + 1})` : ""}
+                          </a>
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => { setEditBriefingMode(true); setBriefingLink(url); setEditingBriefingIndex(i); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" disabled={savingBriefing} onClick={() => handleRemoveBriefing(i)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 );
@@ -640,12 +697,14 @@ export default function DashboardPage() {
 
               {/* Add/Edit Briefing */}
               {!editBriefingMode ? (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingLink(""); }}>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingLink(""); setEditingBriefingIndex(null); }}>
                   <FileText className="h-3.5 w-3.5" />Adicionar Briefing
                 </Button>
               ) : (
                 <div className="space-y-2 rounded-md border border-primary/10 p-3">
-                  <label className="text-xs font-medium text-muted-foreground">Link do Briefing</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {editingBriefingIndex !== null ? "Editar link do Briefing" : "Link do Briefing"}
+                  </label>
                   <input
                     type="url"
                     placeholder="https://..."
@@ -655,9 +714,9 @@ export default function DashboardPage() {
                   />
                   <div className="flex gap-2">
                     <Button size="sm" className="text-xs flex-1" disabled={savingBriefing || !briefingLink.trim()} onClick={handleSaveBriefing}>
-                      {savingBriefing ? "Salvando..." : "Salvar"}
+                      {savingBriefing ? "Salvando..." : editingBriefingIndex !== null ? "Atualizar" : "Salvar"}
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditBriefingMode(false)}>
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => { setEditBriefingMode(false); setEditingBriefingIndex(null); }}>
                       Cancelar
                     </Button>
                   </div>
