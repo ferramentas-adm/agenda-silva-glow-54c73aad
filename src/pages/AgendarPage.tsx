@@ -371,37 +371,21 @@ export default function AgendarPage() {
               </p>
 
               <div className="space-y-4">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !date && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione a data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={(d) => {
-                        setDate(d);
-                        setTime(null);
-                      }}
-                      disabled={(d) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return d < today;
-                      }}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => {
+                    setDate(d);
+                    setTime(null);
+                  }}
+                  disabled={(d) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return d < today;
+                  }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto rounded-md border")}
+                />
 
                 {date && closerId && (
                   <TimeSlotPicker
