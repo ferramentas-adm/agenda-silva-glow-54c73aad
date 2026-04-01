@@ -222,11 +222,7 @@ function UsersSection() {
         queryClient.invalidateQueries({ queryKey: ["closers"] });
         queryClient.invalidateQueries({ queryKey: ["closers-active"] });
       } else {
-        const { data, error } = await supabase.functions.invoke("manage-user", {
-          body: { user_id: deleteTarget.userId, action: "delete" },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+        await invokeEdgeFunction("manage-user", { user_id: deleteTarget.userId, action: "delete" });
       }
       toast.success("Usuário excluído!");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
