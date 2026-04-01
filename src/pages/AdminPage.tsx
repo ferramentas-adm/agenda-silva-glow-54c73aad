@@ -244,11 +244,7 @@ function UsersSection() {
         if (error) throw error;
       } else {
         // Profile-based user: toggle profile active
-        const { data, error } = await supabase.functions.invoke("manage-user", {
-          body: { user_id: user.userId, action: "toggle_active" },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+        await invokeEdgeFunction("manage-user", { user_id: user.userId, action: "toggle_active" });
 
         // If this user is a closer with a linked closer record, also toggle it
         if (user.role === "closer" && user.closerId) {
