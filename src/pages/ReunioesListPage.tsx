@@ -220,7 +220,7 @@ export default function ReunioesListPage() {
     setDeleteReason("");
   };
 
-
+  const paginationPages = useMemo(() => {
     const pages: (number | "ellipsis")[] = [];
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
