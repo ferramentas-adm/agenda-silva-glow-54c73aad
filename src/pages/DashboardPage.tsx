@@ -356,6 +356,8 @@ export default function DashboardPage() {
       if (error) throw error;
       await logAudit("edit_agendamento", "agendamento", detailAg.id, {
         lead_name: detailAg.lead_name,
+        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+        scheduled_date: detailAg.scheduled_date,
         old_time: detailAg.scheduled_time,
         new_time: editTime,
       });
