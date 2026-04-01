@@ -393,7 +393,7 @@ export default function DashboardPage() {
     setSavingBriefing(false);
   };
 
-
+  return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
         <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
