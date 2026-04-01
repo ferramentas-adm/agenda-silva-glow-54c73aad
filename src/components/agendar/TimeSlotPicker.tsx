@@ -182,10 +182,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return;
     }
 
-    if (isCustomTimeConflicting(customInput, dateStr, bookedTimes, googleEvents)) {
-      setCustomError("Esse horário conflita com outro agendamento ou evento.");
-      return;
-    }
+    // Permite agendar mesmo com conflitos (interno ou Google Calendar)
 
     onSelect(customInput);
     setCustomMode(false);
