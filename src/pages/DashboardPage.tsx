@@ -367,28 +367,77 @@ export default function DashboardPage() {
     }
     setSavingEdit(false);
   };
+  const getBriefingLinks = (obs: string | null): string[] => {
+    if (!obs) return [];
+    return obs.match(/https?:\/\/[^\s]+/g) || [];
+  };
+
   const handleSaveBriefing = async () => {
     if (!detailAg || !briefingLink.trim()) return;
     setSavingBriefing(true);
     try {
       const oldObservation = detailAg.observation || "";
-      const newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
+      let newObservation: string;
+      const oldLinks = getBriefingLinks(oldObservation);
+
+      if (editingBriefingIndex !== null && editingBriefingIndex < oldLinks.length) {
+        // Replace existing link
+        const oldLink = oldLinks[editingBriefingIndex];
+        newObservation = oldObservation.replace(oldLink, briefingLink.trim());
+        await logAudit("edit_briefing", "agendamento", detailAg.id, {
+          lead_name: detailAg.lead_name,
+          old_briefing_link: oldLink,
+          new_briefing_link: briefingLink.trim(),
+        });
+        toast.success("Briefing atualizado com sucesso!");
+      } else {
+        // Add new link
+        newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
+        await logAudit("edit_briefing", "agendamento", detailAg.id, {
+          lead_name: detailAg.lead_name,
+          briefing_link: briefingLink.trim(),
+        });
+        toast.success("Briefing adicionado com sucesso!");
+      }
+
       const { error } = await supabase
         .from("agendamentos")
         .update({ observation: newObservation })
         .eq("id", detailAg.id);
       if (error) throw error;
-      await logAudit("edit_briefing", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        briefing_link: briefingLink.trim(),
-      });
-      toast.success("Briefing adicionado com sucesso!");
       setDetailAg({ ...detailAg, observation: newObservation });
       setEditBriefingMode(false);
       setBriefingLink("");
+      setEditingBriefingIndex(null);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar briefing");
+    }
+    setSavingBriefing(false);
+  };
+
+  const handleRemoveBriefing = async (linkIndex: number) => {
+    if (!detailAg) return;
+    setSavingBriefing(true);
+    try {
+      const oldObservation = detailAg.observation || "";
+      const links = getBriefingLinks(oldObservation);
+      const removedLink = links[linkIndex];
+      const newObservation = oldObservation.replace(removedLink, "").replace(/\n{2,}/g, "\n").trim();
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ observation: newObservation || null })
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      await logAudit("remove_briefing", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        removed_briefing_link: removedLink,
+      });
+      toast.success("Briefing removido com sucesso!");
+      setDetailAg({ ...detailAg, observation: newObservation || null });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao remover briefing");
     }
     setSavingBriefing(false);
   };
