@@ -1,11 +1,18 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Search, X, CalendarDays, Filter, Download } from "lucide-react";
+import { Phone, Search, X, CalendarDays, Filter, Download, Trash2 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { logAudit } from "@/services/auditLog";
+import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,6 +40,10 @@ const CHANNEL_TYPES = ["CTA", "Tráfego Pago", "Reativação", "Social Selling",
 const PAGE_SIZE = 20;
 
 export default function ReunioesListPage() {
+  const { user, role, isGestor, isModerador } = useAuth();
+  const queryClient = useQueryClient();
+  const canDelete = isGestor || isModerador;
+
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -42,6 +53,11 @@ export default function ReunioesListPage() {
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const { data: closers = [] } = useQuery({
     queryKey: ["closers-list"],
@@ -178,6 +194,31 @@ export default function ReunioesListPage() {
     link.click();
     URL.revokeObjectURL(url);
   };
+  const handleDelete = async () => {
+    if (!deleteTarget || !deleteReason.trim()) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id, deletion_reason: deleteReason.trim() })
+        .eq("id", deleteTarget.id);
+      if (error) throw error;
+      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, {
+        lead_name: deleteTarget.lead_name,
+        closer_name: closerMap[deleteTarget.closer_id] || "",
+        scheduled_date: deleteTarget.scheduled_date,
+        scheduled_time: deleteTarget.scheduled_time,
+        reason: deleteReason.trim(),
+      });
+      toast.success("Agendamento excluído com sucesso.");
+      queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
+    } catch {
+      toast.error("Erro ao excluir agendamento.");
+    }
+    setDeleting(false);
+    setDeleteTarget(null);
+    setDeleteReason("");
+  };
 
   const paginationPages = useMemo(() => {
     const pages: (number | "ellipsis")[] = [];
@@ -308,20 +349,21 @@ export default function ReunioesListPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Motivo</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Canal</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Observação</th>
+                  {canDelete && <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">Ações</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[hsl(0_0%_100%/0.04)]">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 9 }).map((_, j) => (
+                      {Array.from({ length: canDelete ? 10 : 9 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 w-20 bg-muted/30 rounded animate-pulse" /></td>
                       ))}
                     </tr>
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={canDelete ? 10 : 9} className="px-4 py-12 text-center text-muted-foreground">
                       Nenhuma reunião encontrada
                     </td>
                   </tr>
@@ -362,6 +404,18 @@ export default function ReunioesListPage() {
                             return "—";
                           })()}
                         </td>
+                        {canDelete && (
+                          <td className="px-4 py-3 text-center">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteTarget(ag)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
@@ -407,6 +461,40 @@ export default function ReunioesListPage() {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agendamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o agendamento de <strong>{deleteTarget?.lead_name}</strong>?
+              Informe a justificativa abaixo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2 space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Justificativa (obrigatório)</label>
+              <Select value={deleteReason} onValueChange={setDeleteReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a justificativa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
+                  <SelectItem value="Data errada">Data errada</SelectItem>
+                  <SelectItem value="Teste">Teste</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting || !deleteReason.trim()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
