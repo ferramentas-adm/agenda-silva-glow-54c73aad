@@ -672,17 +672,24 @@ export default function DashboardPage() {
               )}
 
               {detailAg.observation && (() => {
-                const urlRegex = /https?:\/\/[^\s]+/g;
-                const links = detailAg.observation.match(urlRegex) || [];
+                const links = getBriefingLinks(detailAg.observation);
                 if (links.length === 0) return null;
                 return (
                   <div className="space-y-2">
                     {links.map((url, i) => (
-                      <Button key={i} variant="outline" size="sm" className="gap-1.5 text-xs w-full" asChild>
-                        <a href={url} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-3.5 w-3.5" />Ver Briefing{links.length > 1 ? ` (${i + 1})` : ""}
-                        </a>
-                      </Button>
+                      <div key={i} className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" asChild>
+                          <a href={url} target="_blank" rel="noopener noreferrer">
+                            <FileText className="h-3.5 w-3.5" />Ver Briefing{links.length > 1 ? ` (${i + 1})` : ""}
+                          </a>
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => { setEditBriefingMode(true); setBriefingLink(url); setEditingBriefingIndex(i); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" disabled={savingBriefing} onClick={() => handleRemoveBriefing(i)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 );
@@ -690,12 +697,14 @@ export default function DashboardPage() {
 
               {/* Add/Edit Briefing */}
               {!editBriefingMode ? (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingLink(""); }}>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingLink(""); setEditingBriefingIndex(null); }}>
                   <FileText className="h-3.5 w-3.5" />Adicionar Briefing
                 </Button>
               ) : (
                 <div className="space-y-2 rounded-md border border-primary/10 p-3">
-                  <label className="text-xs font-medium text-muted-foreground">Link do Briefing</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {editingBriefingIndex !== null ? "Editar link do Briefing" : "Link do Briefing"}
+                  </label>
                   <input
                     type="url"
                     placeholder="https://..."
@@ -705,9 +714,9 @@ export default function DashboardPage() {
                   />
                   <div className="flex gap-2">
                     <Button size="sm" className="text-xs flex-1" disabled={savingBriefing || !briefingLink.trim()} onClick={handleSaveBriefing}>
-                      {savingBriefing ? "Salvando..." : "Salvar"}
+                      {savingBriefing ? "Salvando..." : editingBriefingIndex !== null ? "Atualizar" : "Salvar"}
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditBriefingMode(false)}>
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => { setEditBriefingMode(false); setEditingBriefingIndex(null); }}>
                       Cancelar
                     </Button>
                   </div>
