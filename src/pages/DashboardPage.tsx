@@ -638,6 +638,32 @@ export default function DashboardPage() {
                 );
               })()}
 
+              {/* Add/Edit Briefing */}
+              {!editBriefingMode ? (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingLink(""); }}>
+                  <FileText className="h-3.5 w-3.5" />Adicionar Briefing
+                </Button>
+              ) : (
+                <div className="space-y-2 rounded-md border border-primary/10 p-3">
+                  <label className="text-xs font-medium text-muted-foreground">Link do Briefing</label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={briefingLink}
+                    onChange={(e) => setBriefingLink(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="text-xs flex-1" disabled={savingBriefing || !briefingLink.trim()} onClick={handleSaveBriefing}>
+                      {savingBriefing ? "Salvando..." : "Salvar"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditBriefingMode(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Edit button */}
               <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
                 <Pencil className="h-3.5 w-3.5" />Editar horário
