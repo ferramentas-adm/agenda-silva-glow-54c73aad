@@ -142,6 +142,7 @@ export default function DashboardPage() {
   const [editBriefingMode, setEditBriefingMode] = useState(false);
   const [briefingLink, setBriefingLink] = useState("");
   const [savingBriefing, setSavingBriefing] = useState(false);
+  const [editingBriefingIndex, setEditingBriefingIndex] = useState<number | null>(null);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
