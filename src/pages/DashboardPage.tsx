@@ -117,6 +117,9 @@ const CANCELLED_STATUSES = ["cancelada", "no_show"];
 interface DeleteTarget {
   id: string;
   lead_name: string;
+  closer_id?: string | null;
+  scheduled_date: string;
+  scheduled_time: string;
 }
 
 // ─── Main Page ───────────────────────────────────────────────────
