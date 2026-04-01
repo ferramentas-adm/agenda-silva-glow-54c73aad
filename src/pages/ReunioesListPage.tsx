@@ -194,8 +194,33 @@ export default function ReunioesListPage() {
     link.click();
     URL.revokeObjectURL(url);
   };
+  const handleDelete = async () => {
+    if (!deleteTarget || !deleteReason.trim()) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id, deletion_reason: deleteReason.trim() })
+        .eq("id", deleteTarget.id);
+      if (error) throw error;
+      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, {
+        lead_name: deleteTarget.lead_name,
+        closer_name: closerMap[deleteTarget.closer_id] || "",
+        scheduled_date: deleteTarget.scheduled_date,
+        scheduled_time: deleteTarget.scheduled_time,
+        reason: deleteReason.trim(),
+      });
+      toast.success("Agendamento excluído com sucesso.");
+      queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
+    } catch {
+      toast.error("Erro ao excluir agendamento.");
+    }
+    setDeleting(false);
+    setDeleteTarget(null);
+    setDeleteReason("");
+  };
 
-  const paginationPages = useMemo(() => {
+
     const pages: (number | "ellipsis")[] = [];
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
