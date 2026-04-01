@@ -173,6 +173,20 @@ export default function DashboardPage() {
     },
   });
 
+  // Fetch user roles to differentiate SDR vs Closer created appointments
+  const { data: userRolesMap = new Map<string, string>() } = useQuery({
+    queryKey: ["user-roles-map"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+      const map = new Map<string, string>();
+      (data ?? []).forEach((r: { user_id: string; role: string }) => map.set(r.user_id, r.role));
+      return map;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Realtime subscription
   useEffect(() => {
     const channel = supabase
