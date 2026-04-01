@@ -570,7 +570,7 @@ export default function DashboardPage() {
 
               {/* Edit button */}
               <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
-                <Pencil className="h-3.5 w-3.5" />Editar dia/horário
+                <Pencil className="h-3.5 w-3.5" />Editar horário
               </Button>
 
               <div className="space-y-2">
