@@ -255,6 +255,26 @@ export default function DashboardPage() {
   const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
 
+  // SDR-only filtered agendamentos for metrics
+  const sdrFiltered = useMemo(
+    () => filtered.filter((a) => {
+      if (!a.created_by) return false;
+      const creatorRole = userRolesMap.get(a.created_by);
+      return creatorRole === "sdr";
+    }),
+    [filtered, userRolesMap]
+  );
+
+  // Closer-created agendamentos count for metrics
+  const closerCreatedCount = useMemo(
+    () => filtered.filter((a) => {
+      if (!a.created_by) return false;
+      const creatorRole = userRolesMap.get(a.created_by);
+      return creatorRole === "closer";
+    }).length,
+    [filtered, userRolesMap]
+  );
+
   const closerMap = useMemo(() => {
     const m = new Map<string, string>();
     closers.forEach((c) => m.set(c.id, c.name));
