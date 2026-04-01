@@ -367,8 +367,33 @@ export default function DashboardPage() {
     }
     setSavingEdit(false);
   };
+  const handleSaveBriefing = async () => {
+    if (!detailAg || !briefingLink.trim()) return;
+    setSavingBriefing(true);
+    try {
+      const oldObservation = detailAg.observation || "";
+      const newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ observation: newObservation })
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      await logAudit("edit_briefing", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        briefing_link: briefingLink.trim(),
+      });
+      toast.success("Briefing adicionado com sucesso!");
+      setDetailAg({ ...detailAg, observation: newObservation });
+      setEditBriefingMode(false);
+      setBriefingLink("");
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar briefing");
+    }
+    setSavingBriefing(false);
+  };
 
-  return (
+
     <AppLayout>
       <div className="animate-fade-in space-y-4">
         <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
