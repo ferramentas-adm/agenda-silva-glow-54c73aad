@@ -404,6 +404,18 @@ export default function ReunioesListPage() {
                             return "—";
                           })()}
                         </td>
+                        {canDelete && (
+                          <td className="px-4 py-3 text-center">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteTarget(ag)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
