@@ -374,14 +374,14 @@ export default function DashboardPage() {
         {!loadingAgendamentos && (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
             {[
-              { key: "total", label: "Total", icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
+              { key: "total", label: "Total SDRs", icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
               { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
               { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
               { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
               { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
               { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
             ].map(({ key, label, icon: Icon, color, bg }) => {
-              const count = key === "total" ? filtered.length : filtered.filter(a => a.status === key).length;
+              const count = key === "total" ? sdrFiltered.length : sdrFiltered.filter(a => a.status === key).length;
               return (
                 <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
                   <Icon className={cn("h-5 w-5 shrink-0", color)} />
@@ -392,6 +392,14 @@ export default function DashboardPage() {
                 </div>
               );
             })}
+            {/* Closer-created total */}
+            <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-purple-500/10")}>
+              <Users className={cn("h-5 w-5 shrink-0 text-purple-400")} />
+              <div>
+                <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Closers</p>
+              </div>
+            </div>
           </div>
         )}
 
