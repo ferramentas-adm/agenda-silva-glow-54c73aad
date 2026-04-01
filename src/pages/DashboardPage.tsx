@@ -824,11 +824,11 @@ function DayView({
                                   </a>
                                 )}
                                 <button
-                                  className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                  className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-1 -m-1 rounded"
                                   onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name }); }}
                                   title="Excluir agendamento"
                                 >
-                                  <Trash2 className="h-2.5 w-2.5" />
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
                               {/* Status badge */}
