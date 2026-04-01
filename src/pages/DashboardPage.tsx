@@ -316,7 +316,7 @@ export default function DashboardPage() {
         .update({ status: newStatus as any })
         .eq("id", detailAg.id);
       if (error) throw error;
-      await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, old_status: detailAg.status, new_status: newStatus });
+      await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, closer_name: closerMap.get(detailAg.closer_id ?? "") || "", scheduled_date: detailAg.scheduled_date, scheduled_time: detailAg.scheduled_time, old_status: detailAg.status, new_status: newStatus });
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
       const updatedAg = { ...detailAg, status: newStatus };
       setDetailAg(updatedAg);
