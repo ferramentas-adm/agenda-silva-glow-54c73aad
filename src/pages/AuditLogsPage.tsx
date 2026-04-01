@@ -211,6 +211,17 @@ export default function AuditLogsPage() {
               <SelectItem value="user">Usuários</SelectItem>
               <SelectItem value="closer">Closers</SelectItem>
               <SelectItem value="settings">Configurações</SelectItem>
+          </SelectContent>
+          </Select>
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filtrar por ação" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as ações</SelectItem>
+              {Object.entries(ACTION_LABELS).map(([key, label]) => (
+                <SelectItem key={key} value={key}>{label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
