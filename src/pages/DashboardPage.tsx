@@ -117,6 +117,9 @@ const CANCELLED_STATUSES = ["cancelada", "no_show"];
 interface DeleteTarget {
   id: string;
   lead_name: string;
+  closer_id?: string | null;
+  scheduled_date: string;
+  scheduled_time: string;
 }
 
 // ─── Main Page ───────────────────────────────────────────────────
@@ -295,7 +298,7 @@ export default function DashboardPage() {
         .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id, deletion_reason: deleteReason.trim() })
         .eq("id", deleteTarget.id);
       if (error) throw error;
-      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, { lead_name: deleteTarget.lead_name, reason: deleteReason.trim() });
+      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, { lead_name: deleteTarget.lead_name, closer_name: closerMap.get(deleteTarget.closer_id ?? "") || "", scheduled_date: deleteTarget.scheduled_date, scheduled_time: deleteTarget.scheduled_time, reason: deleteReason.trim() });
       toast.success("Agendamento excluído com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
@@ -316,7 +319,7 @@ export default function DashboardPage() {
         .update({ status: newStatus as any })
         .eq("id", detailAg.id);
       if (error) throw error;
-      await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, old_status: detailAg.status, new_status: newStatus });
+      await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, closer_name: closerMap.get(detailAg.closer_id ?? "") || "", scheduled_date: detailAg.scheduled_date, scheduled_time: detailAg.scheduled_time, old_status: detailAg.status, new_status: newStatus });
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
       const updatedAg = { ...detailAg, status: newStatus };
       setDetailAg(updatedAg);
@@ -356,6 +359,8 @@ export default function DashboardPage() {
       if (error) throw error;
       await logAudit("edit_agendamento", "agendamento", detailAg.id, {
         lead_name: detailAg.lead_name,
+        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+        scheduled_date: detailAg.scheduled_date,
         old_time: detailAg.scheduled_time,
         new_time: editTime,
       });
@@ -387,6 +392,9 @@ export default function DashboardPage() {
         newObservation = oldObservation.replace(oldLink, briefingLink.trim());
         await logAudit("edit_briefing", "agendamento", detailAg.id, {
           lead_name: detailAg.lead_name,
+          closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+          scheduled_date: detailAg.scheduled_date,
+          scheduled_time: detailAg.scheduled_time,
           old_briefing_link: oldLink,
           new_briefing_link: briefingLink.trim(),
         });
@@ -396,6 +404,9 @@ export default function DashboardPage() {
         newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
         await logAudit("edit_briefing", "agendamento", detailAg.id, {
           lead_name: detailAg.lead_name,
+          closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+          scheduled_date: detailAg.scheduled_date,
+          scheduled_time: detailAg.scheduled_time,
           briefing_link: briefingLink.trim(),
         });
         toast.success("Briefing adicionado com sucesso!");
@@ -432,6 +443,9 @@ export default function DashboardPage() {
       if (error) throw error;
       await logAudit("remove_briefing", "agendamento", detailAg.id, {
         lead_name: detailAg.lead_name,
+        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+        scheduled_date: detailAg.scheduled_date,
+        scheduled_time: detailAg.scheduled_time,
         removed_briefing_link: removedLink,
       });
       toast.success("Briefing removido com sucesso!");
@@ -980,7 +994,7 @@ function DayView({
                                 )}
                                 <button
                                   className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-1 -m-1 rounded"
-                                  onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name }); }}
+                                  onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name, closer_id: ag.closer_id, scheduled_date: ag.scheduled_date, scheduled_time: ag.scheduled_time }); }}
                                   title="Excluir agendamento"
                                 >
                                   <Trash2 className="h-4 w-4" />

@@ -364,6 +364,17 @@ function formatDetails(log: AuditLog): string {
   const parts: string[] = [];
   if (d.lead_name) parts.push(`Lead: ${d.lead_name}`);
   if (d.closer_name) parts.push(`Closer: ${d.closer_name}`);
+  if (d.scheduled_date) {
+    const dateStr = String(d.scheduled_date);
+    const timeStr = d.scheduled_time ? ` às ${d.scheduled_time}` : "";
+    // Try to format date nicely
+    try {
+      const [y, m, day] = dateStr.split("-");
+      parts.push(`Data: ${day}/${m}/${y}${timeStr}`);
+    } catch {
+      parts.push(`Data: ${dateStr}${timeStr}`);
+    }
+  }
   if (d.status) parts.push(`Status: ${d.status}`);
   if (d.reason) parts.push(`Motivo: ${d.reason}`);
   if (d.name) parts.push(`Nome: ${d.name}`);
