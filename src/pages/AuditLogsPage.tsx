@@ -89,6 +89,10 @@ export default function AuditLogsPage() {
     if (entityFilter !== "all") {
       result = result.filter((l) => l.entity_type === entityFilter);
     }
+    if (actionFilter !== "all") {
+      result = result.filter((l) => l.action === actionFilter);
+    }
+    }
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(
