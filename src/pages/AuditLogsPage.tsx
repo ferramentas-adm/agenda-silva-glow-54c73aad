@@ -92,7 +92,6 @@ export default function AuditLogsPage() {
     if (actionFilter !== "all") {
       result = result.filter((l) => l.action === actionFilter);
     }
-    }
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(
@@ -103,7 +102,7 @@ export default function AuditLogsPage() {
       );
     }
     return result;
-  }, [logs, search, entityFilter]);
+  }, [logs, search, entityFilter, actionFilter]);
 
   // CSV export for agendamentos report
   const handleExportCSV = async () => {
