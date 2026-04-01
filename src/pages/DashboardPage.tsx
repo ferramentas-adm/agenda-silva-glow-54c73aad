@@ -949,8 +949,28 @@ function EditTimeSlots({
         allSlots.push(`${String(h).padStart(2, "0")}:00`);
       }
     }
+
+    // Filter: only show slots from current time onward (São Paulo timezone)
+    const now = new Date();
+    const spFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    });
+    const parts = spFormatter.formatToParts(now);
+    const spYear = parts.find(p => p.type === "year")!.value;
+    const spMonth = parts.find(p => p.type === "month")!.value;
+    const spDay = parts.find(p => p.type === "day")!.value;
+    const spHour = parseInt(parts.find(p => p.type === "hour")!.value, 10);
+    const spToday = `${spYear}-${spMonth}-${spDay}`;
+
+    // If editing a date that is today, filter past slots
+    if (dateStr === spToday) {
+      return allSlots.filter(s => parseInt(s.split(":")[0], 10) > spHour);
+    }
+
     return allSlots;
-  }, [closer]);
+  }, [closer, dateStr]);
 
   // Booked times (excluding the current agendamento being edited)
   const bookedTimes = useMemo(() => {
