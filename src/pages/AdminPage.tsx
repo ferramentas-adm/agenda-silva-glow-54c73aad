@@ -289,11 +289,7 @@ function UsersSection() {
     if (!roleChangeTarget || !newRole) return;
     setChangingRole(true);
     try {
-      const { data, error } = await supabase.functions.invoke("manage-user", {
-        body: { user_id: roleChangeTarget.userId, action: "change_role", new_role: newRole },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      await invokeEdgeFunction("manage-user", { user_id: roleChangeTarget.userId, action: "change_role", new_role: newRole });
       toast.success(`Função alterada para ${roleLabel(newRole)}`);
       setRoleChangeTarget(null);
       setNewRole("");
