@@ -272,15 +272,7 @@ function UsersSection() {
     }
     setChangingPassword(true);
     try {
-      const { data, error } = await supabase.functions.invoke("manage-user", {
-        body: { user_id: passwordChangeTarget.userId, action: "change_password", new_password: newPassword },
-      });
-      if (error) {
-        // Try to parse error body for detailed message
-        const errorBody = typeof error === 'object' && 'context' in error ? await (error as any).context?.json?.() : null;
-        throw new Error(errorBody?.error || error.message || "Erro ao alterar senha");
-      }
-      if (data?.error) throw new Error(data.error);
+      await invokeEdgeFunction("manage-user", { user_id: passwordChangeTarget.userId, action: "change_password", new_password: newPassword });
       toast.success("Senha alterada com sucesso! O usuário precisará trocar a senha no próximo login.");
       setPasswordChangeTarget(null);
       setNewPassword("");
