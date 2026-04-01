@@ -40,6 +40,10 @@ const CHANNEL_TYPES = ["CTA", "Tráfego Pago", "Reativação", "Social Selling",
 const PAGE_SIZE = 20;
 
 export default function ReunioesListPage() {
+  const { user, role, isGestor, isModerador } = useAuth();
+  const queryClient = useQueryClient();
+  const canDelete = isGestor || isModerador;
+
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -49,6 +53,11 @@ export default function ReunioesListPage() {
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const { data: closers = [] } = useQuery({
     queryKey: ["closers-list"],
