@@ -139,6 +139,9 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editBriefingMode, setEditBriefingMode] = useState(false);
+  const [briefingLink, setBriefingLink] = useState("");
+  const [savingBriefing, setSavingBriefing] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
@@ -364,6 +367,31 @@ export default function DashboardPage() {
     }
     setSavingEdit(false);
   };
+  const handleSaveBriefing = async () => {
+    if (!detailAg || !briefingLink.trim()) return;
+    setSavingBriefing(true);
+    try {
+      const oldObservation = detailAg.observation || "";
+      const newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ observation: newObservation })
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      await logAudit("edit_briefing", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        briefing_link: briefingLink.trim(),
+      });
+      toast.success("Briefing adicionado com sucesso!");
+      setDetailAg({ ...detailAg, observation: newObservation });
+      setEditBriefingMode(false);
+      setBriefingLink("");
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar briefing");
+    }
+    setSavingBriefing(false);
+  };
 
   return (
     <AppLayout>
@@ -535,7 +563,7 @@ export default function DashboardPage() {
       </AlertDialog>
 
       {/* Detail / Status change dialog */}
-      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); } }}>
+      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); setEditBriefingMode(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -609,6 +637,32 @@ export default function DashboardPage() {
                   </div>
                 );
               })()}
+
+              {/* Add/Edit Briefing */}
+              {!editBriefingMode ? (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingLink(""); }}>
+                  <FileText className="h-3.5 w-3.5" />Adicionar Briefing
+                </Button>
+              ) : (
+                <div className="space-y-2 rounded-md border border-primary/10 p-3">
+                  <label className="text-xs font-medium text-muted-foreground">Link do Briefing</label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={briefingLink}
+                    onChange={(e) => setBriefingLink(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="text-xs flex-1" disabled={savingBriefing || !briefingLink.trim()} onClick={handleSaveBriefing}>
+                      {savingBriefing ? "Salvando..." : "Salvar"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditBriefingMode(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Edit button */}
               <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
