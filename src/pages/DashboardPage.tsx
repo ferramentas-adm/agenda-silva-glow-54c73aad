@@ -886,6 +886,11 @@ function DayView({
                                     {ag.meeting_reason}
                                   </span>
                                 )}
+                                {(!ag.observation || !/https?:\/\/[^\s]+/.test(ag.observation)) && (
+                                  <span className="inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider bg-yellow-500/20 text-yellow-400">
+                                    Sem Briefing
+                                  </span>
+                                )}
                               </div>
                             </div>
                           );
