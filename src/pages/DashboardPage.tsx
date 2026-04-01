@@ -139,6 +139,9 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editBriefingMode, setEditBriefingMode] = useState(false);
+  const [briefingLink, setBriefingLink] = useState("");
+  const [savingBriefing, setSavingBriefing] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
