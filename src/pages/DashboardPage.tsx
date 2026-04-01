@@ -401,6 +401,9 @@ export default function DashboardPage() {
         newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
         await logAudit("edit_briefing", "agendamento", detailAg.id, {
           lead_name: detailAg.lead_name,
+          closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+          scheduled_date: detailAg.scheduled_date,
+          scheduled_time: detailAg.scheduled_time,
           briefing_link: briefingLink.trim(),
         });
         toast.success("Briefing adicionado com sucesso!");
