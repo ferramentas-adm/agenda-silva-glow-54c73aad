@@ -36,7 +36,8 @@ const ACTION_LABELS: Record<string, string> = {
   update_settings: "Atualizou configurações",
   login: "Login",
   edit_agendamento: "Editou agendamento",
-  edit_briefing: "Adicionou briefing",
+  edit_briefing: "Adicionou/editou briefing",
+  remove_briefing: "Removeu briefing",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
