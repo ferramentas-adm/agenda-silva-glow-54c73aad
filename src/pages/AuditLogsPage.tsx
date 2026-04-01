@@ -49,6 +49,7 @@ const PAGE_SIZE = 25;
 export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState("all");
   const [page, setPage] = useState(0);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
@@ -88,6 +89,9 @@ export default function AuditLogsPage() {
     if (entityFilter !== "all") {
       result = result.filter((l) => l.entity_type === entityFilter);
     }
+    if (actionFilter !== "all") {
+      result = result.filter((l) => l.action === actionFilter);
+    }
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(
@@ -98,7 +102,7 @@ export default function AuditLogsPage() {
       );
     }
     return result;
-  }, [logs, search, entityFilter]);
+  }, [logs, search, entityFilter, actionFilter]);
 
   // CSV export for agendamentos report
   const handleExportCSV = async () => {
@@ -207,6 +211,17 @@ export default function AuditLogsPage() {
               <SelectItem value="user">Usuários</SelectItem>
               <SelectItem value="closer">Closers</SelectItem>
               <SelectItem value="settings">Configurações</SelectItem>
+          </SelectContent>
+          </Select>
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filtrar por ação" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as ações</SelectItem>
+              {Object.entries(ACTION_LABELS).map(([key, label]) => (
+                <SelectItem key={key} value={key}>{label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
