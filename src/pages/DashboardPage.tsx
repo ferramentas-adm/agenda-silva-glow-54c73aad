@@ -389,6 +389,9 @@ export default function DashboardPage() {
         newObservation = oldObservation.replace(oldLink, briefingLink.trim());
         await logAudit("edit_briefing", "agendamento", detailAg.id, {
           lead_name: detailAg.lead_name,
+          closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+          scheduled_date: detailAg.scheduled_date,
+          scheduled_time: detailAg.scheduled_time,
           old_briefing_link: oldLink,
           new_briefing_link: briefingLink.trim(),
         });
