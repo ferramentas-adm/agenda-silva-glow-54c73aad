@@ -149,17 +149,31 @@ function UsersSection() {
     return errs;
   };
 
+  const invokeEdgeFunction = async (fnName: string, body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke(fnName, { body });
+    if (error) {
+      // Try to get detailed message from response context
+      try {
+        const ctx = (error as any).context;
+        if (ctx && typeof ctx.json === "function") {
+          const body = await ctx.json();
+          if (body?.error) throw new Error(body.error);
+        }
+      } catch (e: any) {
+        if (e instanceof Error && e.message && e.message !== "Edge Function returned a non-2xx status code") throw e;
+      }
+      throw new Error(error.message || "Erro na operação");
+    }
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     setGeneratedPassword(null);
     try {
-      // All users (including closers) now go through create-user edge function
-      const { data, error } = await supabase.functions.invoke("create-user", {
-        body: { email, full_name: fullName, role },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const data = await invokeEdgeFunction("create-user", { email, full_name: fullName, role });
       
       setGeneratedPassword(data.generated_password);
       toast.success("Usuário criado com sucesso!");
@@ -208,11 +222,7 @@ function UsersSection() {
         queryClient.invalidateQueries({ queryKey: ["closers"] });
         queryClient.invalidateQueries({ queryKey: ["closers-active"] });
       } else {
-        const { data, error } = await supabase.functions.invoke("manage-user", {
-          body: { user_id: deleteTarget.userId, action: "delete" },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+        await invokeEdgeFunction("manage-user", { user_id: deleteTarget.userId, action: "delete" });
       }
       toast.success("Usuário excluído!");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
@@ -234,11 +244,7 @@ function UsersSection() {
         if (error) throw error;
       } else {
         // Profile-based user: toggle profile active
-        const { data, error } = await supabase.functions.invoke("manage-user", {
-          body: { user_id: user.userId, action: "toggle_active" },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+        await invokeEdgeFunction("manage-user", { user_id: user.userId, action: "toggle_active" });
 
         // If this user is a closer with a linked closer record, also toggle it
         if (user.role === "closer" && user.closerId) {
@@ -266,15 +272,7 @@ function UsersSection() {
     }
     setChangingPassword(true);
     try {
-      const { data, error } = await supabase.functions.invoke("manage-user", {
-        body: { user_id: passwordChangeTarget.userId, action: "change_password", new_password: newPassword },
-      });
-      if (error) {
-        // Try to parse error body for detailed message
-        const errorBody = typeof error === 'object' && 'context' in error ? await (error as any).context?.json?.() : null;
-        throw new Error(errorBody?.error || error.message || "Erro ao alterar senha");
-      }
-      if (data?.error) throw new Error(data.error);
+      await invokeEdgeFunction("manage-user", { user_id: passwordChangeTarget.userId, action: "change_password", new_password: newPassword });
       toast.success("Senha alterada com sucesso! O usuário precisará trocar a senha no próximo login.");
       setPasswordChangeTarget(null);
       setNewPassword("");
@@ -291,11 +289,7 @@ function UsersSection() {
     if (!roleChangeTarget || !newRole) return;
     setChangingRole(true);
     try {
-      const { data, error } = await supabase.functions.invoke("manage-user", {
-        body: { user_id: roleChangeTarget.userId, action: "change_role", new_role: newRole },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      await invokeEdgeFunction("manage-user", { user_id: roleChangeTarget.userId, action: "change_role", new_role: newRole });
       toast.success(`Função alterada para ${roleLabel(newRole)}`);
       setRoleChangeTarget(null);
       setNewRole("");

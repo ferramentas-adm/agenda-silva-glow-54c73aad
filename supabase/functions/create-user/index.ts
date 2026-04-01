@@ -100,7 +100,10 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
+      const msg = createError.message?.includes("already been registered")
+        ? "Este e-mail já está cadastrado no sistema."
+        : createError.message;
+      return new Response(JSON.stringify({ error: msg }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
