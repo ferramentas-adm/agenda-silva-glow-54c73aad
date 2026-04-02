@@ -43,6 +43,7 @@ interface Agendamento {
   status: string;
   meet_link: string | null;
   observation: string | null;
+  briefing: string | null;
   deleted_at: string | null;
   created_by: string;
   created_at: string;
