@@ -291,21 +291,25 @@ export default function ReunioesListPage() {
               <Input placeholder="Buscar lead..." value={searchText} onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }} className="pl-9 glass-input" />
             </div>
 
-            <Select value={filterCloser} onValueChange={(v) => { setFilterCloser(v); setCurrentPage(1); }}>
-              <SelectTrigger className="glass-input"><SelectValue placeholder="Closer" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Closers</SelectItem>
-                {closers.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
-              </SelectContent>
-            </Select>
+            {canSeeAllPeers && (
+              <Select value={filterCloser} onValueChange={(v) => { setFilterCloser(v); setCurrentPage(1); }}>
+                <SelectTrigger className="glass-input"><SelectValue placeholder="Closer" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Closers</SelectItem>
+                  {closers.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            )}
 
-            <Select value={filterSDR} onValueChange={(v) => { setFilterSDR(v); setCurrentPage(1); }}>
-              <SelectTrigger className="glass-input"><SelectValue placeholder="SDR" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os SDRs</SelectItem>
-                {sdrProfiles.map((p) => (<SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>))}
-              </SelectContent>
-            </Select>
+            {canSeeAllPeers && (
+              <Select value={filterSDR} onValueChange={(v) => { setFilterSDR(v); setCurrentPage(1); }}>
+                <SelectTrigger className="glass-input"><SelectValue placeholder="SDR" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os SDRs</SelectItem>
+                  {sdrProfiles.map((p) => (<SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            )}
 
             <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setCurrentPage(1); }}>
               <SelectTrigger className="glass-input"><SelectValue placeholder="Status" /></SelectTrigger>
