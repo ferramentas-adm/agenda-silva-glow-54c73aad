@@ -121,10 +121,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           expanded ? "w-64" : "w-[4.5rem]"
         )}
         style={{
-          background: "hsl(240 5% 5% / 0.85)",
+          background: "hsl(var(--sidebar-background) / 0.85)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          backgroundImage: "linear-gradient(135deg, hsl(0 0% 100% / 0.03) 0%, transparent 50%)",
+          backgroundImage: "var(--glass-shine)",
         }}
       >
         {/* Logo */}
