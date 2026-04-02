@@ -83,6 +83,7 @@ export default function AgendarPage() {
   const [channelType, setChannelType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
+  const [success, setSuccess] = useState<AgendamentoData | null>(null);
 
   // Fetch closers for name resolution
   const { data: closers = [] } = useQuery({
