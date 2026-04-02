@@ -395,10 +395,6 @@ export default function DashboardPage() {
     }
     setSavingEdit(false);
   };
-  const getBriefingLinks = (obs: string | null): string[] => {
-    if (!obs) return [];
-    return obs.match(/https?:\/\/[^\s]+/g) || [];
-  };
 
   const handleSaveBriefing = async () => {
     if (!detailAg || !briefingText.trim()) return;
