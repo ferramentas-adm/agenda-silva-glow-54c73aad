@@ -395,55 +395,6 @@ export default function DashboardPage() {
     setSavingEdit(false);
   };
 
-  const handleSaveBriefing = async () => {
-    if (!detailAg || !briefingText.trim()) return;
-    setSavingBriefing(true);
-    try {
-      const { error } = await supabase
-        .from("agendamentos")
-        .update({ briefing: briefingText.trim() } as any)
-        .eq("id", detailAg.id);
-      if (error) throw error;
-      await logAudit("edit_briefing", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
-        scheduled_date: detailAg.scheduled_date,
-        scheduled_time: detailAg.scheduled_time,
-      });
-      toast.success("Briefing salvo com sucesso!");
-      setDetailAg({ ...detailAg, briefing: briefingText.trim() });
-      setEditBriefingMode(false);
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao salvar briefing");
-    }
-    setSavingBriefing(false);
-  };
-
-  const handleRemoveBriefing = async () => {
-    if (!detailAg) return;
-    setSavingBriefing(true);
-    try {
-      const { error } = await supabase
-        .from("agendamentos")
-        .update({ briefing: null } as any)
-        .eq("id", detailAg.id);
-      if (error) throw error;
-      await logAudit("remove_briefing", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
-        scheduled_date: detailAg.scheduled_date,
-        scheduled_time: detailAg.scheduled_time,
-      });
-      toast.success("Briefing removido com sucesso!");
-      setDetailAg({ ...detailAg, briefing: null });
-      setViewBriefing(false);
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao remover briefing");
-    }
-    setSavingBriefing(false);
-  };
 
   return (
     <AppLayout>
