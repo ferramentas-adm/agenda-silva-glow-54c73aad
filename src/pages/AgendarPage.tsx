@@ -21,9 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
-import { useDataCrazySync } from "@/hooks/useDataCrazySync";
-import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
-import { reuniaoAgendada } from "@/services/datacrazy";
 import { logAudit } from "@/services/auditLog";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
@@ -63,7 +60,7 @@ export default function AgendarPage() {
   const preCloserId = searchParams.get("closer");
   const preDateStr = searchParams.get("date");
   const preTime = searchParams.get("time");
-  const { pendingCount, syncing, syncNow, refreshCount } = useDataCrazySync();
+  
 
   const isReschedule = !!editId;
   // Determine initial step based on URL params
@@ -208,20 +205,6 @@ export default function AgendarPage() {
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
 
-      // DataCrazy integration — full event
-      const dateTimeISO = new Date(`${dateStr}T${time}:00`).toISOString();
-      reuniaoAgendada({
-        leadNome: lead.name,
-        leadTelefone: lead.phone,
-        closerNome: closerName,
-        closerId,
-        sdrNome: sdrName,
-        sdrId: user.id,
-        dataHoraISO: dateTimeISO,
-        meetUrl: meetLink || "",
-        observacao: observation || "",
-        meetingReason: resolvedReason || null,
-      }).catch(console.error).finally(refreshCount);
 
       setSuccess({
         lead,
@@ -309,7 +292,7 @@ export default function AgendarPage() {
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-6 max-w-2xl mx-auto">
-        <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
+        
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             {editId ? "Reagendar Reunião" : "Novo Agendamento"}

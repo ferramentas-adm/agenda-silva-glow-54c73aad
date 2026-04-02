@@ -12,8 +12,6 @@ import {
 import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
-import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
-import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -125,7 +123,7 @@ interface DeleteTarget {
 // ─── Main Page ───────────────────────────────────────────────────
 export default function DashboardPage() {
   const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
-  const { pendingCount, syncing, syncNow } = useDataCrazySync();
+  
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -460,7 +458,7 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
-        <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
+        
 
         {/* Status counters */}
         {!loadingAgendamentos && (
