@@ -204,6 +204,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {roleLabel}
             </Badge>
           </div>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+            >
+              {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            </button>
+          </div>
           <button
             onClick={signOut}
             className="flex items-center gap-2 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
