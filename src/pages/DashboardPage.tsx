@@ -401,48 +401,23 @@ export default function DashboardPage() {
   };
 
   const handleSaveBriefing = async () => {
-    if (!detailAg || !briefingLink.trim()) return;
+    if (!detailAg || !briefingText.trim()) return;
     setSavingBriefing(true);
     try {
-      const oldObservation = detailAg.observation || "";
-      let newObservation: string;
-      const oldLinks = getBriefingLinks(oldObservation);
-
-      if (editingBriefingIndex !== null && editingBriefingIndex < oldLinks.length) {
-        // Replace existing link
-        const oldLink = oldLinks[editingBriefingIndex];
-        newObservation = oldObservation.replace(oldLink, briefingLink.trim());
-        await logAudit("edit_briefing", "agendamento", detailAg.id, {
-          lead_name: detailAg.lead_name,
-          closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
-          scheduled_date: detailAg.scheduled_date,
-          scheduled_time: detailAg.scheduled_time,
-          old_briefing_link: oldLink,
-          new_briefing_link: briefingLink.trim(),
-        });
-        toast.success("Briefing atualizado com sucesso!");
-      } else {
-        // Add new link
-        newObservation = oldObservation ? `${oldObservation}\n${briefingLink.trim()}` : briefingLink.trim();
-        await logAudit("edit_briefing", "agendamento", detailAg.id, {
-          lead_name: detailAg.lead_name,
-          closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
-          scheduled_date: detailAg.scheduled_date,
-          scheduled_time: detailAg.scheduled_time,
-          briefing_link: briefingLink.trim(),
-        });
-        toast.success("Briefing adicionado com sucesso!");
-      }
-
       const { error } = await supabase
         .from("agendamentos")
-        .update({ observation: newObservation })
+        .update({ briefing: briefingText.trim() } as any)
         .eq("id", detailAg.id);
       if (error) throw error;
-      setDetailAg({ ...detailAg, observation: newObservation });
+      await logAudit("edit_briefing", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+        scheduled_date: detailAg.scheduled_date,
+        scheduled_time: detailAg.scheduled_time,
+      });
+      toast.success("Briefing salvo com sucesso!");
+      setDetailAg({ ...detailAg, briefing: briefingText.trim() });
       setEditBriefingMode(false);
-      setBriefingLink("");
-      setEditingBriefingIndex(null);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar briefing");
@@ -450,17 +425,13 @@ export default function DashboardPage() {
     setSavingBriefing(false);
   };
 
-  const handleRemoveBriefing = async (linkIndex: number) => {
+  const handleRemoveBriefing = async () => {
     if (!detailAg) return;
     setSavingBriefing(true);
     try {
-      const oldObservation = detailAg.observation || "";
-      const links = getBriefingLinks(oldObservation);
-      const removedLink = links[linkIndex];
-      const newObservation = oldObservation.replace(removedLink, "").replace(/\n{2,}/g, "\n").trim();
       const { error } = await supabase
         .from("agendamentos")
-        .update({ observation: newObservation || null })
+        .update({ briefing: null } as any)
         .eq("id", detailAg.id);
       if (error) throw error;
       await logAudit("remove_briefing", "agendamento", detailAg.id, {
@@ -468,10 +439,10 @@ export default function DashboardPage() {
         closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
         scheduled_date: detailAg.scheduled_date,
         scheduled_time: detailAg.scheduled_time,
-        removed_briefing_link: removedLink,
       });
       toast.success("Briefing removido com sucesso!");
-      setDetailAg({ ...detailAg, observation: newObservation || null });
+      setDetailAg({ ...detailAg, briefing: null });
+      setViewBriefing(false);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao remover briefing");
