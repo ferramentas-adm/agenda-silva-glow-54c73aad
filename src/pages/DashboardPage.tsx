@@ -819,6 +819,60 @@ export default function DashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Briefing Drawer */}
+      <BriefingDrawer
+        open={viewBriefing}
+        briefing={detailAg?.briefing ?? null}
+        leadName={detailAg?.lead_name ?? ""}
+        closerName={detailAg ? (closerMap.get(detailAg.closer_id) || "—") : ""}
+        date={detailAg ? format(new Date(detailAg.scheduled_date + "T12:00:00"), "dd/MM/yyyy") : ""}
+        time={detailAg?.scheduled_time ?? ""}
+        onClose={() => setViewBriefing(false)}
+        onSave={async (text) => {
+          if (!detailAg) return;
+          setSavingBriefing(true);
+          try {
+            const { error } = await supabase
+              .from("agendamentos")
+              .update({ briefing: text.trim() } as any)
+              .eq("id", detailAg.id);
+            if (error) throw error;
+            await logAudit("edit_briefing", "agendamento", detailAg.id, {
+              lead_name: detailAg.lead_name,
+              closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+            });
+            toast.success("Briefing salvo com sucesso!");
+            setDetailAg({ ...detailAg, briefing: text.trim() });
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+          } catch (err: any) {
+            toast.error(err.message || "Erro ao salvar briefing");
+          }
+          setSavingBriefing(false);
+        }}
+        onRemove={async () => {
+          if (!detailAg) return;
+          setSavingBriefing(true);
+          try {
+            const { error } = await supabase
+              .from("agendamentos")
+              .update({ briefing: null } as any)
+              .eq("id", detailAg.id);
+            if (error) throw error;
+            await logAudit("remove_briefing", "agendamento", detailAg.id, {
+              lead_name: detailAg.lead_name,
+            });
+            toast.success("Briefing removido!");
+            setDetailAg({ ...detailAg, briefing: null });
+            setViewBriefing(false);
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+          } catch (err: any) {
+            toast.error(err.message || "Erro ao remover briefing");
+          }
+          setSavingBriefing(false);
+        }}
+        saving={savingBriefing}
+      />
     </AppLayout>
   );
 }
