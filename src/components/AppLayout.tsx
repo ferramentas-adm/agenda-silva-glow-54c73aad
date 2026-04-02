@@ -277,6 +277,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </>
             )}
             <button
+              onClick={toggleTheme}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            </button>
+            <button
               onClick={signOut}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
             >
