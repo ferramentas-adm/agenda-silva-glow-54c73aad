@@ -110,12 +110,14 @@ serve(async (req) => {
 
     const events = (calData.items || [])
       .filter((e: any) => e.status !== 'cancelled')
-      // Exclude events created by the system (pattern: "Grupo Silva & <lead>")
-      .filter((e: any) => !(e.summary && (e.summary.startsWith('Grupo Silva &') || e.summary.startsWith('Grupo Silva &') || e.summary.toLowerCase().startsWith('grupo silva'))))
+      // Exclude all-day events (they have date but no dateTime)
+      .filter((e: any) => e.start?.dateTime && e.end?.dateTime)
+      // Exclude events created by the system (pattern: "Grupo Silva")
+      .filter((e: any) => !(e.summary && e.summary.toLowerCase().startsWith('grupo silva')))
       .map((e: any) => ({
         summary: e.summary || 'Sem título',
-        start: e.start?.dateTime || e.start?.date,
-        end: e.end?.dateTime || e.end?.date,
+        start: e.start.dateTime,
+        end: e.end.dateTime,
         status: e.status,
       }));
 
