@@ -79,7 +79,10 @@ serve(async (req) => {
       sdrName = p?.full_name || "";
     }
 
-    // ─── DataCrazy API helper ───────────────────────────────────
+    // ─── DataCrazy API helper with automatic retry ─────────────
+    const MAX_RETRIES = 3;
+    const RETRY_BASE_MS = 1000;
+
     async function dcApi(method: string, path: string, payload?: unknown) {
       const url = `${datacrazyApiUrl}${path.startsWith("/") ? path : `/${path}`}`;
       const opts: RequestInit = {
@@ -88,16 +91,38 @@ serve(async (req) => {
       };
       if (payload && method !== "GET") opts.body = JSON.stringify(payload);
 
-      let res = await fetch(url, opts);
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          let res = await fetch(url, opts);
 
-      // g1 fallback on 404
-      if (res.status === 404 && url.includes("api.datacrazy.io")) {
-        const g1Url = url.replace("api.datacrazy.io", "api.g1.datacrazy.io");
-        res = await fetch(g1Url, opts);
+          // g1 fallback on 404
+          if (res.status === 404 && url.includes("api.datacrazy.io")) {
+            const g1Url = url.replace("api.datacrazy.io", "api.g1.datacrazy.io");
+            res = await fetch(g1Url, opts);
+          }
+
+          // Retry on 5xx or 429 (rate limit)
+          if ((res.status >= 500 || res.status === 429) && attempt < MAX_RETRIES) {
+            const delay = RETRY_BASE_MS * Math.pow(2, attempt);
+            console.warn(`DataCrazy ${method} ${path}: ${res.status} — retry ${attempt + 1}/${MAX_RETRIES} in ${delay}ms`);
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+
+          if (!res.ok) throw new Error(`DataCrazy ${method} ${path}: ${res.status}`);
+          return res.json();
+        } catch (e) {
+          // Retry on network errors (fetch failures)
+          if (attempt < MAX_RETRIES && !(e instanceof Error && e.message.includes("DataCrazy"))) {
+            const delay = RETRY_BASE_MS * Math.pow(2, attempt);
+            console.warn(`DataCrazy ${method} ${path}: network error — retry ${attempt + 1}/${MAX_RETRIES} in ${delay}ms`);
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          throw e;
+        }
       }
-
-      if (!res.ok) throw new Error(`DataCrazy ${method} ${path}: ${res.status}`);
-      return res.json();
+      throw new Error(`DataCrazy ${method} ${path}: max retries exceeded`);
     }
 
     const stageId = cfg["datacrazy_stage_reuniao_agendada"] || "";
