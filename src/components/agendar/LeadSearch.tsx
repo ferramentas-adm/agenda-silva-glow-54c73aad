@@ -40,12 +40,15 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
   const queryClient = useQueryClient();
 
   // Fetch leads with "agendamento" tag from DataCrazy
+  const tagAgendamentoId = import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO || "";
+
   const { data: taggedLeads = [], isLoading, error, isFetching } = useQuery<Lead[]>({
-    queryKey: ["datacrazy-leads-agendamento"],
+    queryKey: ["datacrazy-leads-agendamento", tagAgendamentoId],
     queryFn: async () => {
-      const dcLeads = await buscarLeadsComTag("agendamento");
+      const dcLeads = await buscarLeadsComTagId(tagAgendamentoId);
       return dcLeads.map(mapToLead);
     },
+    enabled: !!tagAgendamentoId,
     staleTime: 0,
     refetchOnMount: "always",
   });

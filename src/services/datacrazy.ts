@@ -99,23 +99,29 @@ export interface DataCrazyLead {
   [key: string]: unknown;
 }
 
+export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[]> {
+  if (!tagId) {
+    console.warn("No tag ID provided for lead search");
+    return [];
+  }
+
+  const data = await api("GET", `/leads?filter[tags]=${tagId}`);
+  const leads: DataCrazyLead[] = data?.data || data || [];
+  return leads;
+}
+
+/** @deprecated Use buscarLeadsComTagId instead */
 export async function buscarLeadsComTag(tagName: string): Promise<DataCrazyLead[]> {
-  // Step 1: Fetch all tags to find the ID of the target tag
   const tagsData = await api("GET", "/tags");
   const tags = Array.isArray(tagsData) ? tagsData : tagsData?.data || [];
   const targetTag = tags.find(
     (t: any) => t.name?.toLowerCase() === tagName.toLowerCase()
   );
-
   if (!targetTag) {
     console.warn(`Tag "${tagName}" not found in DataCrazy`);
     return [];
   }
-
-  // Step 2: Use filter[tags]=<tagId> to fetch only leads with this tag
-  const data = await api("GET", `/leads?filter[tags]=${targetTag.id}`);
-  const leads: DataCrazyLead[] = data?.data || data || [];
-  return leads;
+  return buscarLeadsComTagId(targetTag.id);
 }
 
 export async function buscarLead(telefone: string): Promise<DataCrazyLead | null> {
