@@ -678,53 +678,56 @@ export default function DashboardPage() {
                 </Button>
               )}
 
-              {detailAg.observation && (() => {
-                const links = getBriefingLinks(detailAg.observation);
-                if (links.length === 0) return null;
-                return (
-                  <div className="space-y-2">
-                    {links.map((url, i) => (
-                      <div key={i} className="flex items-center gap-1">
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" asChild>
-                          <a href={url} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-3.5 w-3.5" />Ver Briefing{links.length > 1 ? ` (${i + 1})` : ""}
-                          </a>
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => { setEditBriefingMode(true); setBriefingLink(url); setEditingBriefingIndex(i); }}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" disabled={savingBriefing} onClick={() => handleRemoveBriefing(i)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+              {/* Briefing section */}
+              {detailAg.briefing && !viewBriefing && !editBriefingMode && (
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={() => setViewBriefing(true)}>
+                    <FileText className="h-3.5 w-3.5" />Ver briefing
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => { setEditBriefingMode(true); setBriefingText(detailAg.briefing || ""); }}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" disabled={savingBriefing} onClick={handleRemoveBriefing}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
 
-              {/* Add/Edit Briefing - only show "Adicionar" when no briefing links exist */}
-              {!editBriefingMode && getBriefingLinks(detailAg.observation).length === 0 && (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingLink(""); setEditingBriefingIndex(null); }}>
+              {viewBriefing && detailAg.briefing && (
+                <div className="space-y-2 rounded-md border border-primary/10 p-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-muted-foreground">Briefing</label>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setViewBriefing(false)}>Fechar</Button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto rounded-md bg-secondary/50 p-3">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{detailAg.briefing}</p>
+                  </div>
+                </div>
+              )}
+
+              {!detailAg.briefing && !editBriefingMode && (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingText(""); }}>
                   <FileText className="h-3.5 w-3.5" />Adicionar Briefing
                 </Button>
               )}
+
               {editBriefingMode && (
                 <div className="space-y-2 rounded-md border border-primary/10 p-3">
                   <label className="text-xs font-medium text-muted-foreground">
-                    {editingBriefingIndex !== null ? "Editar link do Briefing" : "Link do Briefing"}
+                    {detailAg.briefing ? "Editar Briefing" : "Adicionar Briefing"}
                   </label>
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    value={briefingLink}
-                    onChange={(e) => setBriefingLink(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                  <Textarea
+                    placeholder="Escreva as anotações do briefing aqui..."
+                    value={briefingText}
+                    onChange={(e) => setBriefingText(e.target.value)}
+                    className="resize-none text-sm"
+                    rows={5}
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" className="text-xs flex-1" disabled={savingBriefing || !briefingLink.trim()} onClick={handleSaveBriefing}>
-                      {savingBriefing ? "Salvando..." : editingBriefingIndex !== null ? "Atualizar" : "Salvar"}
+                    <Button size="sm" className="text-xs flex-1" disabled={savingBriefing || !briefingText.trim()} onClick={handleSaveBriefing}>
+                      {savingBriefing ? "Salvando..." : "Salvar"}
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => { setEditBriefingMode(false); setEditingBriefingIndex(null); }}>
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditBriefingMode(false)}>
                       Cancelar
                     </Button>
                   </div>
