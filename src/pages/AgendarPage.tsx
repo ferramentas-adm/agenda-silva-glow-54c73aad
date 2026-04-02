@@ -205,20 +205,6 @@ export default function AgendarPage() {
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
 
-      // DataCrazy integration — full event
-      const dateTimeISO = new Date(`${dateStr}T${time}:00`).toISOString();
-      reuniaoAgendada({
-        leadNome: lead.name,
-        leadTelefone: lead.phone,
-        closerNome: closerName,
-        closerId,
-        sdrNome: sdrName,
-        sdrId: user.id,
-        dataHoraISO: dateTimeISO,
-        meetUrl: meetLink || "",
-        observacao: observation || "",
-        meetingReason: resolvedReason || null,
-      }).catch(console.error).finally(refreshCount);
 
       setSuccess({
         lead,
