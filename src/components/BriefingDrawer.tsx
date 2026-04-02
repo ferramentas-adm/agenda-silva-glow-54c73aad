@@ -62,21 +62,26 @@ export default function BriefingDrawer({
     setEditing(false);
   };
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={cn(
-          "fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm transition-opacity duration-300",
-          visible ? "opacity-100" : "opacity-0"
-        )}
-        onClick={onClose}
-      />
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    // Only close if clicking the backdrop itself, not any child
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
 
+  return (
+    /* Single wrapper: backdrop + panel nested so stopPropagation works reliably */
+    <div
+      className={cn(
+        "fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm transition-opacity duration-300",
+        visible ? "opacity-100" : "opacity-0"
+      )}
+      onClick={handleBackdropClick}
+    >
       {/* Right-side sliding panel */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-[61] w-full max-w-xl flex flex-col bg-background border-l border-border shadow-2xl transition-transform duration-300 ease-out",
+          "absolute inset-y-0 right-0 w-full max-w-xl flex flex-col bg-background border-l border-border shadow-2xl transition-transform duration-300 ease-out",
           visible ? "translate-x-0" : "translate-x-full"
         )}
         onClick={(e) => e.stopPropagation()}
@@ -99,7 +104,10 @@ export default function BriefingDrawer({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => setEditing(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditing(true);
+                  }}
                   title="Editar briefing"
                 >
                   <Pencil className="h-4 w-4" />
@@ -109,7 +117,10 @@ export default function BriefingDrawer({
                   size="icon"
                   className="h-8 w-8 text-destructive hover:text-destructive"
                   disabled={saving}
-                  onClick={onRemove}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove();
+                  }}
                   title="Remover briefing"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -120,7 +131,10 @@ export default function BriefingDrawer({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={onClose}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -207,6 +221,6 @@ export default function BriefingDrawer({
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
