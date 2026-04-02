@@ -225,7 +225,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Mobile header */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex md:hidden items-center justify-between h-14 px-4 glass border-b border-[hsl(0_0%_100%/0.06)]">
+      <header className="fixed top-0 left-0 right-0 z-50 flex md:hidden items-center justify-between h-14 px-4 glass border-b border-[hsl(0_0%_100%/0.06)] sidebar-always-dark">
         <Link to="/" className="flex items-center gap-2">
           <img src={logo} alt="Grupo Silva" className="h-7 w-7" />
           <span className="font-display text-lg font-bold tracking-tight">
