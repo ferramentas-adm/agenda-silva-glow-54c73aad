@@ -965,14 +965,14 @@ function DayView({
                     title={canClickToSchedule ? `Agendar às ${hour} com ${c.name}` : undefined}
                   >
                     {agList.length > 0 && (
-                      <div className="space-y-1">
+                      <div className="flex gap-1">
                         {agList.map((ag) => {
                           const isCancelled = CANCELLED_STATUSES.includes(ag.status);
                           return (
                             <div
                               key={ag.id}
                               className={cn(
-                                "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer",
+                                "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer flex-1 min-w-0",
                                 closerColor.bg,
                                 closerColor.border,
                                 isCancelled && "opacity-60"
@@ -983,15 +983,15 @@ function DayView({
                                 {ag.lead_name}
                               </div>
                               <div className="flex items-center gap-1 text-[10px] opacity-80">
-                                <Clock className="h-2.5 w-2.5" />
-                                <span className={cn(isCancelled && "line-through")}>{ag.scheduled_time}</span>
+                                <Clock className="h-2.5 w-2.5 shrink-0" />
+                                <span className={cn("truncate", isCancelled && "line-through")}>{ag.scheduled_time}</span>
                                 {ag.meet_link && (
-                                  <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                                  <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <Video className="h-2.5 w-2.5" />
                                   </a>
                                 )}
                                 <button
-                                  className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-1 -m-1 rounded"
+                                  className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-1 -m-1 rounded"
                                   onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name, closer_id: ag.closer_id, scheduled_date: ag.scheduled_date, scheduled_time: ag.scheduled_time }); }}
                                   title="Excluir agendamento"
                                 >
@@ -999,7 +999,7 @@ function DayView({
                                 </button>
                               </div>
                               {/* Status badge */}
-                              <div className="flex flex-wrap gap-1">
+                              <div className="flex flex-wrap gap-0.5">
                                 <span className={cn(
                                   "inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider",
                                   STATUS_BADGE_COLORS[ag.status]
