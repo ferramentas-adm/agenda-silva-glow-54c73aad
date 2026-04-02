@@ -123,7 +123,7 @@ interface DeleteTarget {
 // ─── Main Page ───────────────────────────────────────────────────
 export default function DashboardPage() {
   const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
-  const { pendingCount, syncing, syncNow } = useDataCrazySync();
+  
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
