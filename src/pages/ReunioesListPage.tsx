@@ -362,11 +362,11 @@ export default function ReunioesListPage() {
         </div>
 
         {/* Table */}
-        <div className="glass-card-intense rounded-xl border border-[hsl(0_0%_100%/0.06)] overflow-hidden">
+        <div className="glass-card-intense rounded-xl border border-[hsl(0_0%_100%/0.06)] .light:border-border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-[hsl(0_0%_100%/0.06)]">
+                <tr className="border-b-2 border-border">
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Lead</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Closer</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Criado por</th>

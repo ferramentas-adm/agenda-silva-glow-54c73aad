@@ -64,55 +64,55 @@
   }
 
   .light {
-    --background: 0 0% 97%;
-    --foreground: 240 10% 10%;
+    --background: 220 20% 96%;
+    --foreground: 220 15% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 10%;
+    --card-foreground: 220 15% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 10%;
+    --popover-foreground: 220 15% 10%;
 
-    --primary: 66 83% 40%;
+    --primary: 66 83% 35%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 92%;
-    --secondary-foreground: 240 6% 25%;
+    --secondary: 220 14% 90%;
+    --secondary-foreground: 220 12% 20%;
 
-    --muted: 240 5% 93%;
-    --muted-foreground: 240 4% 46%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 220 8% 40%;
 
-    --accent: 66 70% 38%;
+    --accent: 66 70% 32%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 50%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 145 65% 36%;
+    --success: 145 65% 32%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 38 92% 45%;
     --warning-foreground: 0 0% 10%;
 
-    --border: 240 6% 85%;
-    --input: 240 6% 85%;
-    --ring: 66 83% 40%;
+    --border: 220 12% 78%;
+    --input: 220 12% 78%;
+    --ring: 66 83% 35%;
 
-    /* Sidebar */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 6% 30%;
-    --sidebar-primary: 66 83% 40%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 93%;
-    --sidebar-accent-foreground: 240 6% 25%;
-    --sidebar-border: 240 6% 88%;
-    --sidebar-ring: 66 83% 40%;
+    /* Sidebar — stays dark even in light mode */
+    --sidebar-background: 240 5% 5%;
+    --sidebar-foreground: 0 0% 80%;
+    --sidebar-primary: 66 83% 55%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 240 3% 12%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 240 3% 14%;
+    --sidebar-ring: 66 83% 55%;
 
     /* Glass tokens — light mode */
-    --glass-bg: 0 0% 100% / 0.7;
-    --glass-border: 240 6% 0% / 0.08;
+    --glass-bg: 0 0% 100% / 0.85;
+    --glass-border: 220 12% 0% / 0.12;
     --glass-blur: 12px;
-    --glass-shine: linear-gradient(135deg, hsl(0 0% 100% / 0.5) 0%, transparent 50%);
+    --glass-shine: linear-gradient(135deg, hsl(0 0% 100% / 0.6) 0%, transparent 50%);
   }
 }
 
