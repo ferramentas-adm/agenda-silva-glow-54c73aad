@@ -321,7 +321,7 @@ export default function DashboardPage() {
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
       const updatedAg = { ...detailAg, status: newStatus };
       setDetailAg(updatedAg);
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      await queryClient.refetchQueries({ queryKey: ["agendamentos"] });
       if (newStatus === "cancelada" || newStatus === "no_show") {
         setDetailAg(null);
         setRescheduleOffer(updatedAg);
