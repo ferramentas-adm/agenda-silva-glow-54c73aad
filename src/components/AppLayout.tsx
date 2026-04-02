@@ -116,7 +116,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 hidden md:flex flex-col transition-all duration-300 border-r",
+          "fixed inset-y-0 left-0 z-50 hidden md:flex flex-col transition-all duration-300 border-r sidebar-always-dark",
           "border-r-[hsl(0_0%_100%/0.06)]",
           expanded ? "w-64" : "w-[4.5rem]"
         )}

@@ -136,6 +136,20 @@
   .card-meeting {
     @apply glass-card rounded-lg;
   }
+
+  /* Force dark colors on sidebar regardless of theme */
+  .sidebar-always-dark {
+    --background: 240 5% 4%;
+    --foreground: 0 0% 92%;
+    --muted-foreground: 0 0% 60%;
+    --primary: 66 83% 55%;
+    --primary-foreground: 0 0% 4%;
+    --border: 240 3% 16%;
+    --glass-bg: 240 4% 8% / 0.6;
+    --glass-border: 0 0% 100% / 0.06;
+    --glass-shine: linear-gradient(135deg, hsl(0 0% 100% / 0.04) 0%, transparent 50%);
+    color: hsl(0 0% 92%);
+  }
 }
 
 @layer components {
