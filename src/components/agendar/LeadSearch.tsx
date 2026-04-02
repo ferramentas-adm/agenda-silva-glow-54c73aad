@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Search, X, Tag, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { buscarLeadsComTag, type DataCrazyLead } from "@/services/datacrazy";
+import { buscarLeadsComTagId, type DataCrazyLead } from "@/services/datacrazy";
 
 export interface Lead {
   id: string;
