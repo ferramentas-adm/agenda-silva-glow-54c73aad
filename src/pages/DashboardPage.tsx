@@ -965,55 +965,65 @@ function DayView({
                     title={canClickToSchedule ? `Agendar às ${hour} com ${c.name}` : undefined}
                   >
                     {agList.length > 0 && (
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5 overflow-hidden">
                         {agList.map((ag) => {
                           const isCancelled = CANCELLED_STATUSES.includes(ag.status);
+                          const isCompact = agList.length >= 3;
                           return (
                             <div
                               key={ag.id}
                               className={cn(
-                                "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer flex-1 min-w-0",
+                                "rounded-md border text-[11px] group relative cursor-pointer flex-1 min-w-0 overflow-hidden",
+                                isCompact ? "px-1 py-1 space-y-0" : "px-2 py-1.5 space-y-0.5",
                                 closerColor.bg,
                                 closerColor.border,
                                 isCancelled && "opacity-60"
                               )}
                               onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
+                              title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[ag.status] || ag.status}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
                             >
-                              <div className={cn("font-semibold truncate", isCancelled && "line-through")}>
+                              <div className={cn("font-semibold truncate", isCancelled && "line-through", isCompact && "text-[10px]")}>
                                 {ag.lead_name}
                               </div>
-                              <div className="flex items-center gap-1 text-[10px] opacity-80">
+                              <div className="flex items-center gap-0.5 text-[10px] opacity-80">
                                 <Clock className="h-2.5 w-2.5 shrink-0" />
                                 <span className={cn("truncate", isCancelled && "line-through")}>{ag.scheduled_time}</span>
-                                {ag.meet_link && (
+                                {!isCompact && ag.meet_link && (
                                   <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <Video className="h-2.5 w-2.5" />
                                   </a>
                                 )}
                                 <button
-                                  className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-1 -m-1 rounded"
+                                  className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-0.5 -m-0.5 rounded"
                                   onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name, closer_id: ag.closer_id, scheduled_date: ag.scheduled_date, scheduled_time: ag.scheduled_time }); }}
                                   title="Excluir agendamento"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className={cn(isCompact ? "h-3 w-3" : "h-4 w-4")} />
                                 </button>
                               </div>
-                              {/* Status badge */}
-                              <div className="flex flex-wrap gap-0.5">
+                              {/* Status badges - compact: single line truncated */}
+                              <div className={cn("flex gap-0.5 overflow-hidden", isCompact ? "flex-nowrap" : "flex-wrap")}>
                                 <span className={cn(
-                                  "inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider",
+                                  "rounded px-1 py-0.5 font-medium uppercase tracking-wider whitespace-nowrap shrink-0",
+                                  isCompact ? "text-[8px]" : "text-[9px]",
                                   STATUS_BADGE_COLORS[ag.status]
                                 )}>
                                   {STATUS_LABELS[ag.status] || ag.status}
                                 </span>
                                 {ag.meeting_reason && (
-                                  <span className="inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider bg-violet-500/20 text-violet-400">
+                                  <span className={cn(
+                                    "rounded px-1 py-0.5 font-medium uppercase tracking-wider whitespace-nowrap bg-violet-500/20 text-violet-400",
+                                    isCompact ? "text-[8px] hidden" : "text-[9px]"
+                                  )}>
                                     {ag.meeting_reason}
                                   </span>
                                 )}
                                 {(!ag.observation || !/https?:\/\/[^\s]+/.test(ag.observation)) && (
-                                  <span className="inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider bg-yellow-500/20 text-yellow-400">
-                                    Sem Briefing
+                                  <span className={cn(
+                                    "rounded px-1 py-0.5 font-medium uppercase tracking-wider whitespace-nowrap bg-yellow-500/20 text-yellow-400",
+                                    isCompact ? "text-[8px]" : "text-[9px]"
+                                  )}>
+                                    {isCompact ? "S/B" : "Sem Briefing"}
                                   </span>
                                 )}
                               </div>
