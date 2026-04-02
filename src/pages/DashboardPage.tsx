@@ -730,8 +730,8 @@ export default function DashboardPage() {
                 );
               })()}
 
-              {/* Add/Edit Briefing */}
-              {!editBriefingMode ? (
+              {/* Add/Edit Briefing - only show "Adicionar" when no briefing links exist */}
+              {!editBriefingMode && getBriefingLinks(detailAg.observation).length === 0 ? (
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingLink(""); setEditingBriefingIndex(null); }}>
                   <FileText className="h-3.5 w-3.5" />Adicionar Briefing
                 </Button>
