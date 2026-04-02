@@ -34,6 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isCloser = role === "closer";
+  const { theme, toggleTheme } = useTheme();
 
   const handleMouseEnter = useCallback(() => {
     if (collapseTimer.current) clearTimeout(collapseTimer.current);
