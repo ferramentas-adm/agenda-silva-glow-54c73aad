@@ -11,6 +11,7 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
+import BriefingDrawer from "@/components/BriefingDrawer";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -141,8 +142,6 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [editBriefingMode, setEditBriefingMode] = useState(false);
-  const [briefingText, setBriefingText] = useState("");
   const [savingBriefing, setSavingBriefing] = useState(false);
   const [viewBriefing, setViewBriefing] = useState(false);
 
@@ -396,55 +395,6 @@ export default function DashboardPage() {
     setSavingEdit(false);
   };
 
-  const handleSaveBriefing = async () => {
-    if (!detailAg || !briefingText.trim()) return;
-    setSavingBriefing(true);
-    try {
-      const { error } = await supabase
-        .from("agendamentos")
-        .update({ briefing: briefingText.trim() } as any)
-        .eq("id", detailAg.id);
-      if (error) throw error;
-      await logAudit("edit_briefing", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
-        scheduled_date: detailAg.scheduled_date,
-        scheduled_time: detailAg.scheduled_time,
-      });
-      toast.success("Briefing salvo com sucesso!");
-      setDetailAg({ ...detailAg, briefing: briefingText.trim() });
-      setEditBriefingMode(false);
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao salvar briefing");
-    }
-    setSavingBriefing(false);
-  };
-
-  const handleRemoveBriefing = async () => {
-    if (!detailAg) return;
-    setSavingBriefing(true);
-    try {
-      const { error } = await supabase
-        .from("agendamentos")
-        .update({ briefing: null } as any)
-        .eq("id", detailAg.id);
-      if (error) throw error;
-      await logAudit("remove_briefing", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
-        scheduled_date: detailAg.scheduled_date,
-        scheduled_time: detailAg.scheduled_time,
-      });
-      toast.success("Briefing removido com sucesso!");
-      setDetailAg({ ...detailAg, briefing: null });
-      setViewBriefing(false);
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao remover briefing");
-    }
-    setSavingBriefing(false);
-  };
 
   return (
     <AppLayout>
@@ -616,7 +566,7 @@ export default function DashboardPage() {
       </AlertDialog>
 
       {/* Detail / Status change dialog */}
-      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); setEditBriefingMode(false); setViewBriefing(false); } }}>
+      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); setViewBriefing(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -674,60 +624,15 @@ export default function DashboardPage() {
                 </Button>
               )}
 
-              {/* Briefing section */}
-              {detailAg.briefing && !viewBriefing && !editBriefingMode && (
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={() => setViewBriefing(true)}>
-                    <FileText className="h-3.5 w-3.5" />Ver briefing
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => { setEditBriefingMode(true); setBriefingText(detailAg.briefing || ""); }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" disabled={savingBriefing} onClick={handleRemoveBriefing}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
-
-              {viewBriefing && detailAg.briefing && (
-                <div className="space-y-2 rounded-md border border-primary/10 p-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-muted-foreground">Briefing</label>
-                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setViewBriefing(false)}>Fechar</Button>
-                  </div>
-                  <div className="max-h-48 overflow-y-auto rounded-md bg-secondary/50 p-3">
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{detailAg.briefing}</p>
-                  </div>
-                </div>
-              )}
-
-              {!detailAg.briefing && !editBriefingMode && (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingText(""); }}>
+              {/* Briefing section - opens drawer */}
+              {detailAg.briefing ? (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
+                  <FileText className="h-3.5 w-3.5" />Ver briefing
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
                   <FileText className="h-3.5 w-3.5" />Adicionar Briefing
                 </Button>
-              )}
-
-              {editBriefingMode && (
-                <div className="space-y-2 rounded-md border border-primary/10 p-3">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {detailAg.briefing ? "Editar Briefing" : "Adicionar Briefing"}
-                  </label>
-                  <Textarea
-                    placeholder="Escreva as anotações do briefing aqui..."
-                    value={briefingText}
-                    onChange={(e) => setBriefingText(e.target.value)}
-                    className="resize-none text-sm"
-                    rows={5}
-                  />
-                  <div className="flex gap-2">
-                    <Button size="sm" className="text-xs flex-1" disabled={savingBriefing || !briefingText.trim()} onClick={handleSaveBriefing}>
-                      {savingBriefing ? "Salvando..." : "Salvar"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditBriefingMode(false)}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
               )}
 
               {/* Edit button */}
@@ -830,6 +735,60 @@ export default function DashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Briefing Drawer */}
+      <BriefingDrawer
+        open={viewBriefing}
+        briefing={detailAg?.briefing ?? null}
+        leadName={detailAg?.lead_name ?? ""}
+        closerName={detailAg ? (closerMap.get(detailAg.closer_id) || "—") : ""}
+        date={detailAg ? format(new Date(detailAg.scheduled_date + "T12:00:00"), "dd/MM/yyyy") : ""}
+        time={detailAg?.scheduled_time ?? ""}
+        onClose={() => setViewBriefing(false)}
+        onSave={async (text) => {
+          if (!detailAg) return;
+          setSavingBriefing(true);
+          try {
+            const { error } = await supabase
+              .from("agendamentos")
+              .update({ briefing: text.trim() } as any)
+              .eq("id", detailAg.id);
+            if (error) throw error;
+            await logAudit("edit_briefing", "agendamento", detailAg.id, {
+              lead_name: detailAg.lead_name,
+              closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
+            });
+            toast.success("Briefing salvo com sucesso!");
+            setDetailAg({ ...detailAg, briefing: text.trim() });
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+          } catch (err: any) {
+            toast.error(err.message || "Erro ao salvar briefing");
+          }
+          setSavingBriefing(false);
+        }}
+        onRemove={async () => {
+          if (!detailAg) return;
+          setSavingBriefing(true);
+          try {
+            const { error } = await supabase
+              .from("agendamentos")
+              .update({ briefing: null } as any)
+              .eq("id", detailAg.id);
+            if (error) throw error;
+            await logAudit("remove_briefing", "agendamento", detailAg.id, {
+              lead_name: detailAg.lead_name,
+            });
+            toast.success("Briefing removido!");
+            setDetailAg({ ...detailAg, briefing: null });
+            setViewBriefing(false);
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+          } catch (err: any) {
+            toast.error(err.message || "Erro ao remover briefing");
+          }
+          setSavingBriefing(false);
+        }}
+        saving={savingBriefing}
+      />
     </AppLayout>
   );
 }
