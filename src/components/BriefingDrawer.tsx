@@ -193,6 +193,7 @@ export default function BriefingDrawer({
                   >
                     {briefing}
                   </div>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center animate-fade-in">
