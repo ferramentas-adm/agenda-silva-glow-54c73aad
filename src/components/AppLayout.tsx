@@ -241,7 +241,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <nav className="absolute top-14 left-0 right-0 glass-card-intense flex flex-col gap-1 p-4">
+          <nav className="absolute top-14 left-0 right-0 glass-card-intense flex flex-col gap-1 p-4 sidebar-always-dark">
             {navItems.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
