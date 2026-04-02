@@ -69,23 +69,26 @@ export default function BriefingDrawer({
       {/* Backdrop */}
       <div
         className={cn(
-          "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity duration-300",
+          "fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-300",
           visible ? "opacity-100" : "opacity-0"
         )}
         onClick={onClose}
       />
 
-      {/* Drawer panel */}
+      {/* Full-screen overlay panel */}
       <div
         className={cn(
-          "fixed top-0 right-0 z-50 h-full w-full max-w-lg transition-transform duration-300 ease-out",
-          visible ? "translate-x-0" : "translate-x-full"
+          "fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8 transition-all duration-300 ease-out pointer-events-none",
+          visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
         )}
-        style={{ boxShadow: "-8px 0 30px rgba(0,0,0,0.3)" }}
       >
-        <div className="flex h-full flex-col bg-background border-l border-border">
+        <div
+          className="pointer-events-auto flex flex-col bg-background border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+          style={{ boxShadow: "0 25px 60px rgba(0,0,0,0.4)" }}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <div className="flex items-center justify-between border-b border-border px-6 py-4 shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
                 <FileText className="h-5 w-5 text-primary" />
@@ -131,13 +134,13 @@ export default function BriefingDrawer({
           </div>
 
           {/* Meeting info bar */}
-          <div className="flex items-center gap-4 border-b border-border bg-secondary/30 px-6 py-2.5 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-secondary/30 px-6 py-2.5 text-xs text-muted-foreground shrink-0">
             <span><strong className="text-foreground">Closer:</strong> {closerName}</span>
             <span><strong className="text-foreground">Data:</strong> {date}</span>
             <span><strong className="text-foreground">Horário:</strong> {time}</span>
           </div>
 
-          {/* Content */}
+          {/* Content — scrollable */}
           <div className="flex-1 overflow-y-auto p-6">
             {editing ? (
               <div className="space-y-4 animate-fade-in">
@@ -148,7 +151,7 @@ export default function BriefingDrawer({
                   placeholder="Escreva as anotações do briefing aqui..."
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  className="resize-none text-sm min-h-[300px]"
+                  className="resize-y text-sm min-h-[250px]"
                   rows={12}
                   autoFocus
                 />
@@ -175,15 +178,8 @@ export default function BriefingDrawer({
               </div>
             ) : briefing ? (
               <div className="animate-fade-in">
-                {/* Document-style container */}
-                <div
-                  className="mx-auto rounded-lg border border-border bg-card p-8 shadow-sm"
-                  style={{
-                    maxWidth: "100%",
-                    minHeight: "400px",
-                  }}
-                >
-                  <div className="mb-6 border-b border-border pb-4">
+                <div className="rounded-lg border border-border bg-card p-6 sm:p-8 shadow-sm">
+                  <div className="mb-5 border-b border-border pb-4">
                     <h3 className="text-lg font-semibold text-foreground">
                       Briefing — {leadName}
                     </h3>
@@ -191,15 +187,16 @@ export default function BriefingDrawer({
                       Reunião com {closerName} · {date} às {time}
                     </p>
                   </div>
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-                      {briefing}
-                    </p>
+                  <div
+                    className="text-sm leading-7 text-foreground/90 whitespace-pre-wrap break-words"
+                    style={{ overflowWrap: "anywhere" }}
+                  >
+                    {briefing}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full gap-4 text-center animate-fade-in">
+              <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center animate-fade-in">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
                   <FileText className="h-8 w-8 text-muted-foreground" />
                 </div>
