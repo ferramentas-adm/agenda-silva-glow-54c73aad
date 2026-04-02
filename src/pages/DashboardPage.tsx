@@ -675,48 +675,15 @@ export default function DashboardPage() {
                 </Button>
               )}
 
-              {/* Briefing section */}
-              {detailAg.briefing && !editBriefingMode && (
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={() => setViewBriefing(true)}>
-                    <FileText className="h-3.5 w-3.5" />Ver briefing
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => { setEditBriefingMode(true); setBriefingText(detailAg.briefing || ""); }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" disabled={savingBriefing} onClick={handleRemoveBriefing}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
-
-              {!detailAg.briefing && !editBriefingMode && (
+              {/* Briefing section - opens drawer */}
+              {detailAg.briefing ? (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
+                  <FileText className="h-3.5 w-3.5" />Ver briefing
+                </Button>
+              ) : (
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
                   <FileText className="h-3.5 w-3.5" />Adicionar Briefing
                 </Button>
-              )}
-
-              {editBriefingMode && (
-                <div className="space-y-2 rounded-md border border-primary/10 p-3">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {detailAg.briefing ? "Editar Briefing" : "Adicionar Briefing"}
-                  </label>
-                  <Textarea
-                    placeholder="Escreva as anotações do briefing aqui..."
-                    value={briefingText}
-                    onChange={(e) => setBriefingText(e.target.value)}
-                    className="resize-none text-sm"
-                    rows={5}
-                  />
-                  <div className="flex gap-2">
-                    <Button size="sm" className="text-xs flex-1" disabled={savingBriefing || !briefingText.trim()} onClick={handleSaveBriefing}>
-                      {savingBriefing ? "Salvando..." : "Salvar"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditBriefingMode(false)}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
               )}
 
               {/* Edit button */}
