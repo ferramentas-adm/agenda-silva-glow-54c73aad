@@ -21,9 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
-import { useDataCrazySync } from "@/hooks/useDataCrazySync";
-import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
-import { reuniaoAgendada } from "@/services/datacrazy";
 import { logAudit } from "@/services/auditLog";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
