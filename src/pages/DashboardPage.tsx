@@ -12,8 +12,6 @@ import {
 import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
-import DataCrazySyncIndicator from "@/components/DataCrazySyncIndicator";
-import { useDataCrazySync } from "@/hooks/useDataCrazySync";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
