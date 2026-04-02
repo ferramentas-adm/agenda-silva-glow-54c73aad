@@ -224,7 +224,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           const isBooked = bookedTimes.includes(slot);
           const isGoogleBlocked = isSlotBlockedByGoogle(slot, googleEvents, dateStr);
           const isPersonalBlock = isSlotBlockedByPersonal(slot);
-          const isPast = isToday && slot <= `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+          const isPast = isToday && slot <= spNow.timeStr;
           const isSelected = selectedTime === slot;
 
           // Priority: personal block > google > internal booking
