@@ -444,17 +444,17 @@ export default function AgendarPage() {
               )}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium flex items-center gap-1.5">
-                  <LinkIcon className="h-3.5 w-3.5" />
-                  Link externo (opcional)
+                  <FileText className="h-3.5 w-3.5" />
+                  Briefing (opcional)
                 </label>
-                <Input
-                  type="url"
-                  placeholder="https://exemplo.com ou link do Slack..."
-                  value={observationLink}
-                  onChange={(e) => setObservationLink(e.target.value)}
-                  className="font-mono text-xs"
+                <Textarea
+                  placeholder="Escreva as anotações do briefing aqui..."
+                  value={briefingText}
+                  onChange={(e) => setBriefingText(e.target.value)}
+                  className="resize-none text-sm"
+                  rows={4}
                 />
-                <p className="text-xs text-muted-foreground">Cole um link que ficará disponível como botão nos detalhes do agendamento.</p>
+                <p className="text-xs text-muted-foreground">Anotações internas sobre o lead e a reunião.</p>
               </div>
             </>
           )}
