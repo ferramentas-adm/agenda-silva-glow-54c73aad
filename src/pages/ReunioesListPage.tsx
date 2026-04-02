@@ -118,11 +118,31 @@ export default function ReunioesListPage() {
     return m;
   }, [userRoles]);
 
+  // Find current user's closer_id (for closer role)
+  const myCloserId = useMemo(() => {
+    if (!isCloser || !user) return null;
+    const myProfile = profiles.find((p) => p.user_id === user.id);
+    if (!myProfile) return null;
+    const myCloser = closers.find((c) => c.email === myProfile.email);
+    return myCloser?.id || null;
+  }, [isCloser, user, profiles, closers]);
+
   // Only profiles with SDR role for SDR filter
   const sdrProfiles = useMemo(() => profiles.filter((p) => roleMap[p.user_id] === "sdr"), [profiles, roleMap]);
 
+  // Determine if a row belongs to the current user
+  const isOwnRow = (ag: any) => {
+    if (isCloser && myCloserId) return ag.closer_id === myCloserId;
+    if (isSDR && user) return ag.created_by === user.id;
+    return true;
+  };
+
   const filtered = useMemo(() => {
     return agendamentos.filter((ag) => {
+      // Role-based mandatory filter: Closer sees only own meetings, SDR sees only own created
+      if (isCloser && myCloserId && ag.closer_id !== myCloserId) return false;
+      if (isSDR && user && ag.created_by !== user.id) return false;
+
       if (filterCloser !== "all" && ag.closer_id !== filterCloser) return false;
       if (filterSDR !== "all" && ag.created_by !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
@@ -143,7 +163,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterChannelType, filterMeetingDate, filterCreatedDate, searchText]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterChannelType, filterMeetingDate, filterCreatedDate, searchText, isCloser, myCloserId, isSDR, user]);
 
   // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
