@@ -458,7 +458,7 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-4">
-        <DataCrazySyncIndicator pendingCount={pendingCount} syncing={syncing} onSyncNow={syncNow} />
+        
 
         {/* Status counters */}
         {!loadingAgendamentos && (
