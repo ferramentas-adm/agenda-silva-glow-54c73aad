@@ -379,7 +379,7 @@ export default function ReunioesListPage() {
                   {canDelete && <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">Ações</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[hsl(0_0%_100%/0.04)]">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
@@ -398,7 +398,7 @@ export default function ReunioesListPage() {
                   paginatedData.map((ag) => {
                     const st = STATUS_MAP[ag.status] || { label: ag.status, color: "bg-muted text-muted-foreground" };
                     return (
-                      <tr key={ag.id} className="hover:bg-[hsl(0_0%_100%/0.02)] transition-colors">
+                      <tr key={ag.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-4 py-3">
                           <div className="font-medium">{ag.lead_name}</div>
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
