@@ -298,7 +298,7 @@ export default function DashboardPage() {
       if (error) throw error;
       await logAudit("delete_agendamento", "agendamento", deleteTarget.id, { lead_name: deleteTarget.lead_name, closer_name: closerMap.get(deleteTarget.closer_id ?? "") || "", scheduled_date: deleteTarget.scheduled_date, scheduled_time: deleteTarget.scheduled_time, reason: deleteReason.trim() });
       toast.success("Agendamento excluído com sucesso.");
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      await queryClient.refetchQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao excluir agendamento");
     }
