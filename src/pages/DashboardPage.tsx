@@ -566,8 +566,26 @@ export default function DashboardPage() {
       </AlertDialog>
 
       {/* Detail / Status change dialog */}
-      <Dialog open={!!detailAg} onOpenChange={(open) => { if (!open) { setDetailAg(null); setEditMode(false); setViewBriefing(false); } }}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={!!detailAg} onOpenChange={(open) => {
+        if (!open) {
+          if (viewBriefing) return;
+          setDetailAg(null);
+          setEditMode(false);
+          setViewBriefing(false);
+        }
+      }}>
+        <DialogContent
+          className="sm:max-w-md"
+          onInteractOutside={(event) => {
+            if (viewBriefing) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (viewBriefing) event.preventDefault();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (viewBriefing) event.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />

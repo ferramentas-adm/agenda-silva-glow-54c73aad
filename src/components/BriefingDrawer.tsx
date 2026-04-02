@@ -46,15 +46,6 @@ export default function BriefingDrawer({
     setEditing(false);
   }, [briefing, open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
-
   if (!open) return null;
 
   const handleSave = async () => {
@@ -84,6 +75,7 @@ export default function BriefingDrawer({
           "absolute inset-y-0 right-0 w-full max-w-xl flex flex-col bg-background border-l border-border shadow-2xl transition-transform duration-300 ease-out",
           visible ? "translate-x-0" : "translate-x-full"
         )}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
