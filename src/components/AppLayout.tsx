@@ -16,6 +16,7 @@ import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 import CloserBlockDialog from "@/components/CloserBlockDialog";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
