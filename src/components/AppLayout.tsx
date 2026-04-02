@@ -116,7 +116,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 hidden md:flex flex-col transition-all duration-300 border-r",
+          "fixed inset-y-0 left-0 z-50 hidden md:flex flex-col transition-all duration-300 border-r sidebar-always-dark",
           "border-r-[hsl(0_0%_100%/0.06)]",
           expanded ? "w-64" : "w-[4.5rem]"
         )}
@@ -225,7 +225,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Mobile header */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex md:hidden items-center justify-between h-14 px-4 glass border-b border-[hsl(0_0%_100%/0.06)]">
+      <header className="fixed top-0 left-0 right-0 z-50 flex md:hidden items-center justify-between h-14 px-4 glass border-b border-[hsl(0_0%_100%/0.06)] sidebar-always-dark">
         <Link to="/" className="flex items-center gap-2">
           <img src={logo} alt="Grupo Silva" className="h-7 w-7" />
           <span className="font-display text-lg font-bold tracking-tight">
@@ -241,7 +241,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <nav className="absolute top-14 left-0 right-0 glass-card-intense flex flex-col gap-1 p-4">
+          <nav className="absolute top-14 left-0 right-0 glass-card-intense flex flex-col gap-1 p-4 sidebar-always-dark">
             {navItems.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}

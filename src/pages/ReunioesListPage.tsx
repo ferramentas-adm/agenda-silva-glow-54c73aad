@@ -362,11 +362,11 @@ export default function ReunioesListPage() {
         </div>
 
         {/* Table */}
-        <div className="glass-card-intense rounded-xl border border-[hsl(0_0%_100%/0.06)] overflow-hidden">
+        <div className="glass-card-intense rounded-xl border border-[hsl(0_0%_100%/0.06)] .light:border-border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-[hsl(0_0%_100%/0.06)]">
+                <tr className="border-b-2 border-border">
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Lead</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Closer</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Criado por</th>
@@ -379,7 +379,7 @@ export default function ReunioesListPage() {
                   {canDelete && <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">Ações</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[hsl(0_0%_100%/0.04)]">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
@@ -398,7 +398,7 @@ export default function ReunioesListPage() {
                   paginatedData.map((ag) => {
                     const st = STATUS_MAP[ag.status] || { label: ag.status, color: "bg-muted text-muted-foreground" };
                     return (
-                      <tr key={ag.id} className="hover:bg-[hsl(0_0%_100%/0.02)] transition-colors">
+                      <tr key={ag.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-4 py-3">
                           <div className="font-medium">{ag.lead_name}</div>
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
