@@ -82,8 +82,7 @@ export default function AgendarPage() {
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
   const [channelType, setChannelType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [observationLink, setObservationLink] = useState("");
-  const [success, setSuccess] = useState<AgendamentoData | null>(null);
+  const [briefingText, setBriefingText] = useState("");
 
   // Fetch closers for name resolution
   const { data: closers = [] } = useQuery({
