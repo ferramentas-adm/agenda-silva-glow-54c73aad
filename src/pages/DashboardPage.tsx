@@ -256,6 +256,19 @@ export default function DashboardPage() {
     [agendamentos, selectedIds]
   );
 
+  const patchAgendamentosCache = useCallback(
+    (agendamentoId: string, updater: (agendamento: Agendamento) => Agendamento | null) => {
+      queryClient.setQueriesData<Agendamento[]>({ queryKey: ["agendamentos"] }, (current) => {
+        if (!Array.isArray(current)) return current;
+
+        return current
+          .map((agendamento) => (agendamento.id === agendamentoId ? updater(agendamento) : agendamento))
+          .filter((agendamento): agendamento is Agendamento => agendamento !== null);
+      });
+    },
+    [queryClient]
+  );
+
   const goPrev = () => setCurrentDate((d) => addDays(d, -1));
   const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
@@ -278,6 +291,15 @@ export default function DashboardPage() {
       return creatorRole === "closer";
     }).length,
     [filtered, userRolesMap]
+  );
+
+  const statusCounts = useMemo(
+    () =>
+      filtered.reduce<Record<string, number>>((acc, agendamento) => {
+        acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
+        return acc;
+      }, {}),
+    [filtered]
   );
 
   const closerMap = useMemo(() => {
@@ -320,8 +342,9 @@ export default function DashboardPage() {
       await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, closer_name: closerMap.get(detailAg.closer_id ?? "") || "", scheduled_date: detailAg.scheduled_date, scheduled_time: detailAg.scheduled_time, old_status: detailAg.status, new_status: newStatus });
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
       const updatedAg = { ...detailAg, status: newStatus };
+      patchAgendamentosCache(detailAg.id, (agendamento) => ({ ...agendamento, status: newStatus }));
       setDetailAg(updatedAg);
-      await queryClient.refetchQueries({ queryKey: ["agendamentos"] });
+      await queryClient.refetchQueries({ queryKey: ["agendamentos", detailAg.scheduled_date], exact: true });
       if (newStatus === "cancelada" || newStatus === "no_show") {
         setDetailAg(null);
         setRescheduleOffer(updatedAg);
@@ -471,7 +494,7 @@ export default function DashboardPage() {
               { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
               { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
             ].map(({ key, label, icon: Icon, color, bg }) => {
-              const count = key === "total" ? sdrFiltered.length : sdrFiltered.filter(a => a.status === key).length;
+              const count = key === "total" ? sdrFiltered.length : (statusCounts[key] ?? 0);
               return (
                 <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
                   <Icon className={cn("h-5 w-5 shrink-0", color)} />
