@@ -181,6 +181,23 @@
     box-shadow: 0 0 80px hsl(0 0% 0% / 0.5), 0 0 40px hsl(66 83% 55% / 0.05), inset 0 1px 0 hsl(0 0% 100% / 0.08);
   }
 
+  .light .glass-card-intense {
+    background: hsl(0 0% 100% / 0.9);
+    border: 1px solid hsl(220 12% 78%);
+    box-shadow: 0 1px 3px hsl(0 0% 0% / 0.08), 0 0 0 1px hsl(220 12% 88%);
+    background-image: none;
+  }
+
+  .light .glass-input {
+    background: hsl(220 20% 96%) !important;
+    border-color: hsl(220 12% 75%) !important;
+    color: hsl(220 15% 10%);
+  }
+  .light .glass-input:focus {
+    border-color: hsl(66 83% 35% / 0.6) !important;
+    box-shadow: 0 0 8px hsl(66 83% 35% / 0.15);
+  }
+
   /* Glow verde-limão em box */
   .glow-primary {
     box-shadow: 0 0 20px hsl(66 83% 55% / 0.15), 0 0 60px hsl(66 83% 55% / 0.05);
