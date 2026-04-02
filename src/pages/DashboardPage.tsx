@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useState, useMemo, useEffect, Fragment, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, isToday } from "date-fns";
@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
   Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban,
-  CalendarDays, Pencil, Users,
+  CalendarDays, Pencil, Users, PenLine,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -965,14 +965,14 @@ function DayView({
                     title={canClickToSchedule ? `Agendar às ${hour} com ${c.name}` : undefined}
                   >
                     {agList.length > 0 && (
-                      <div className="space-y-1">
+                      <div className="flex gap-1">
                         {agList.map((ag) => {
                           const isCancelled = CANCELLED_STATUSES.includes(ag.status);
                           return (
                             <div
                               key={ag.id}
                               className={cn(
-                                "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer",
+                                "rounded-md border px-2 py-1.5 text-[11px] space-y-0.5 group relative cursor-pointer flex-1 min-w-0",
                                 closerColor.bg,
                                 closerColor.border,
                                 isCancelled && "opacity-60"
@@ -983,15 +983,15 @@ function DayView({
                                 {ag.lead_name}
                               </div>
                               <div className="flex items-center gap-1 text-[10px] opacity-80">
-                                <Clock className="h-2.5 w-2.5" />
-                                <span className={cn(isCancelled && "line-through")}>{ag.scheduled_time}</span>
+                                <Clock className="h-2.5 w-2.5 shrink-0" />
+                                <span className={cn("truncate", isCancelled && "line-through")}>{ag.scheduled_time}</span>
                                 {ag.meet_link && (
-                                  <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                                  <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <Video className="h-2.5 w-2.5" />
                                   </a>
                                 )}
                                 <button
-                                  className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-1 -m-1 rounded"
+                                  className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-1 -m-1 rounded"
                                   onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name, closer_id: ag.closer_id, scheduled_date: ag.scheduled_date, scheduled_time: ag.scheduled_time }); }}
                                   title="Excluir agendamento"
                                 >
@@ -999,7 +999,7 @@ function DayView({
                                 </button>
                               </div>
                               {/* Status badge */}
-                              <div className="flex flex-wrap gap-1">
+                              <div className="flex flex-wrap gap-0.5">
                                 <span className={cn(
                                   "inline-block rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider",
                                   STATUS_BADGE_COLORS[ag.status]
@@ -1070,6 +1070,10 @@ function EditTimeSlots({
   onSelect: (time: string) => void;
   currentAgId: string;
 }) {
+  const [customMode, setCustomMode] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
   // Fetch closer hours
@@ -1100,6 +1104,24 @@ function EditTimeSlots({
     },
   });
 
+  // Get São Paulo time info
+  const spNow = useMemo(() => {
+    const now = new Date();
+    const spFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    });
+    const parts = spFormatter.formatToParts(now);
+    return {
+      date: `${parts.find(p => p.type === "year")!.value}-${parts.find(p => p.type === "month")!.value}-${parts.find(p => p.type === "day")!.value}`,
+      hour: parseInt(parts.find(p => p.type === "hour")!.value, 10),
+      minute: parseInt(parts.find(p => p.type === "minute")!.value, 10),
+    };
+  }, []);
+
+  const isTodaySP = dateStr === spNow.date;
+
   const slots = useMemo(() => {
     if (!closer) return [];
     const ranges = closer.business_hours_ranges as { start: string; end: string }[] | null;
@@ -1122,54 +1144,102 @@ function EditTimeSlots({
       }
     }
 
-    // Filter: only show slots from current time onward (São Paulo timezone)
-    const now = new Date();
-    const spFormatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hour12: false,
-    });
-    const parts = spFormatter.formatToParts(now);
-    const spYear = parts.find(p => p.type === "year")!.value;
-    const spMonth = parts.find(p => p.type === "month")!.value;
-    const spDay = parts.find(p => p.type === "day")!.value;
-    const spHour = parseInt(parts.find(p => p.type === "hour")!.value, 10);
-    const spToday = `${spYear}-${spMonth}-${spDay}`;
-
-    // If editing a date that is today, filter past slots
-    if (dateStr === spToday) {
-      return allSlots.filter(s => parseInt(s.split(":")[0], 10) > spHour);
+    if (isTodaySP) {
+      return allSlots.filter(s => parseInt(s.split(":")[0], 10) > spNow.hour);
     }
 
     return allSlots;
-  }, [closer, dateStr]);
+  }, [closer, dateStr, isTodaySP, spNow.hour]);
 
   // Booked times (excluding the current agendamento being edited)
   const bookedTimes = useMemo(() => {
     return new Set(booked.filter(b => b.id !== currentAgId).map(b => b.scheduled_time));
   }, [booked, currentAgId]);
 
+  const isCustomSelected = selectedTime !== null && !slots.includes(selectedTime);
+
+  const handleCustomConfirm = () => {
+    setCustomError(null);
+    const match = customInput.match(/^(\d{2}):(\d{2})$/);
+    if (!match) {
+      setCustomError("Formato inválido. Use HH:MM.");
+      return;
+    }
+    const h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    if (h < 0 || h > 23 || m < 0 || m > 59) {
+      setCustomError("Horário inválido.");
+      return;
+    }
+    if (isTodaySP && (h < spNow.hour || (h === spNow.hour && m <= spNow.minute))) {
+      setCustomError("Horário já passou. Selecione um horário futuro.");
+      return;
+    }
+    onSelect(customInput);
+    setCustomMode(false);
+  };
+
   if (!closer) return <Skeleton className="h-10 w-full" />;
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {slots.map((slot) => {
-        const isBooked = bookedTimes.has(slot);
-        return (
-          <Button
-            key={slot}
-            variant={selectedTime === slot ? "default" : isBooked ? "secondary" : "outline"}
-            size="sm"
-            className={cn("text-xs", isBooked && selectedTime !== slot && "border-amber-500/50")}
-            onClick={() => onSelect(slot)}
-          >
-            {slot}
-            {isBooked && <span className="ml-1 text-[9px] text-amber-500">●</span>}
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {slots.map((slot) => {
+          const isBooked = bookedTimes.has(slot);
+          return (
+            <Button
+              key={slot}
+              variant={selectedTime === slot ? "default" : isBooked ? "secondary" : "outline"}
+              size="sm"
+              className={cn("text-xs", isBooked && selectedTime !== slot && "border-amber-500/50")}
+              onClick={() => { onSelect(slot); setCustomMode(false); setCustomError(null); }}
+            >
+              {slot}
+              {isBooked && <span className="ml-1 text-[9px] text-amber-500">●</span>}
+            </Button>
+          );
+        })}
+
+        {/* Custom time toggle */}
+        <Button
+          variant={customMode || isCustomSelected ? "default" : "outline"}
+          size="sm"
+          className="text-xs border-dashed"
+          onClick={() => {
+            setCustomMode(!customMode);
+            setCustomError(null);
+            if (!customMode) setCustomInput("");
+          }}
+        >
+          <PenLine className="h-3.5 w-3.5 mr-1" />
+          {isCustomSelected && !customMode ? selectedTime : "Outro"}
+        </Button>
+
+        {slots.length === 0 && !customMode && (
+          <p className="text-sm text-muted-foreground">Nenhum horário padrão disponível. Use "Outro" para horário personalizado.</p>
+        )}
+      </div>
+
+      {customMode && (
+        <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <div className="flex-1 space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              Horário personalizado (ex: 16:20)
+            </label>
+            <input
+              type="time"
+              value={customInput}
+              onChange={(e) => { setCustomInput(e.target.value); setCustomError(null); }}
+              onKeyDown={(e) => { if (e.key === "Enter") handleCustomConfirm(); }}
+              className="w-32 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono"
+              autoFocus
+            />
+            {customError && <p className="text-xs text-destructive">{customError}</p>}
+          </div>
+          <Button size="sm" onClick={handleCustomConfirm} disabled={!customInput} className="mt-5">
+            Confirmar
           </Button>
-        );
-      })}
-      {slots.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nenhum horário disponível.</p>
+        </div>
       )}
     </div>
   );
