@@ -111,7 +111,7 @@ serve(async (req) => {
     const events = (calData.items || [])
       .filter((e: any) => e.status !== 'cancelled')
       // Exclude events created by the system (pattern: "Grupo Silva & <lead>")
-      .filter((e: any) => !(e.summary && e.summary.startsWith('Grupo Silva &')))
+      .filter((e: any) => !(e.summary && (e.summary.startsWith('Grupo Silva &') || e.summary.startsWith('Grupo Silva &') || e.summary.toLowerCase().startsWith('grupo silva'))))
       .map((e: any) => ({
         summary: e.summary || 'Sem título',
         start: e.start?.dateTime || e.start?.date,

@@ -1056,7 +1056,7 @@ function DayView({
                         })}
                       </div>
                     )}
-                    {busy && !block && (
+                    {busy && !block && agList.length === 0 && (
                       <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-2 py-1.5 text-[11px] flex items-center gap-1.5">
                         <Ban className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="text-muted-foreground font-medium">Ocupado</span>
