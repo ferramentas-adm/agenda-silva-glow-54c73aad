@@ -166,11 +166,25 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const calendarExpired = calendarData?.expired ?? false;
   const calendarConnected = calendarData?.connected ?? false;
 
+  // Use São Paulo timezone for "today" checks
+  const spNow = useMemo(() => {
+    const now = new Date();
+    const spFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    });
+    const parts = spFormatter.formatToParts(now);
+    return {
+      date: `${parts.find(p => p.type === "year")!.value}-${parts.find(p => p.type === "month")!.value}-${parts.find(p => p.type === "day")!.value}`,
+      hour: parseInt(parts.find(p => p.type === "hour")!.value, 10),
+      minute: parseInt(parts.find(p => p.type === "minute")!.value, 10),
+      timeStr: `${parts.find(p => p.type === "hour")!.value}:${parts.find(p => p.type === "minute")!.value}`,
+    };
+  }, []);
+
+  const isToday = dateStr === spNow.date;
   const now = new Date();
-  const isToday =
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate();
 
   const isCustomSelected = selectedTime !== null && !ALL_SLOTS.includes(selectedTime);
 
