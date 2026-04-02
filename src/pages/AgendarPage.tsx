@@ -60,7 +60,7 @@ export default function AgendarPage() {
   const preCloserId = searchParams.get("closer");
   const preDateStr = searchParams.get("date");
   const preTime = searchParams.get("time");
-  const { pendingCount, syncing, syncNow, refreshCount } = useDataCrazySync();
+  
 
   const isReschedule = !!editId;
   // Determine initial step based on URL params
