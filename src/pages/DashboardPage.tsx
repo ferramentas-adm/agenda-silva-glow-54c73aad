@@ -142,8 +142,7 @@ export default function DashboardPage() {
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [editBriefingMode, setEditBriefingMode] = useState(false);
-  const [briefingText, setBriefingText] = useState("");
+  const [savingBriefing, setSavingBriefing] = useState(false);
   const [savingBriefing, setSavingBriefing] = useState(false);
   const [viewBriefing, setViewBriefing] = useState(false);
 
