@@ -43,6 +43,9 @@ export default function ReunioesListPage() {
   const { user, role, isGestor, isModerador } = useAuth();
   const queryClient = useQueryClient();
   const canDelete = isGestor || isModerador;
+  const isCloser = role === "closer";
+  const isSDR = role === "sdr";
+  const canSeeAllPeers = isGestor || isModerador;
 
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
