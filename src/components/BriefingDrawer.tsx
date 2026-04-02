@@ -187,9 +187,10 @@ export default function BriefingDrawer({
                       Reunião com {closerName} · {date} às {time}
                     </p>
                   </div>
-                  <div className="text-sm leading-7 text-foreground/90 whitespace-pre-wrap break-words overflow-wrap-anywhere">
-                    {briefing}
-                  </div>
+                  <div
+                    className="text-sm leading-7 text-foreground/90 whitespace-pre-wrap break-words"
+                    style={{ overflowWrap: "anywhere" }}
+                  >
                 </div>
               </div>
             ) : (
