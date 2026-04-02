@@ -191,7 +191,8 @@ export default function BriefingDrawer({
                     className="text-sm leading-7 text-foreground/90 whitespace-pre-wrap break-words"
                     style={{ overflowWrap: "anywhere" }}
                   >
-                </div>
+                    {briefing}
+                  </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center animate-fade-in">
