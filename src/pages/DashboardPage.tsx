@@ -676,7 +676,7 @@ export default function DashboardPage() {
               )}
 
               {/* Briefing section */}
-              {detailAg.briefing && !viewBriefing && !editBriefingMode && (
+              {detailAg.briefing && !editBriefingMode && (
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={() => setViewBriefing(true)}>
                     <FileText className="h-3.5 w-3.5" />Ver briefing
@@ -690,20 +690,8 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {viewBriefing && detailAg.briefing && (
-                <div className="space-y-2 rounded-md border border-primary/10 p-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-muted-foreground">Briefing</label>
-                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setViewBriefing(false)}>Fechar</Button>
-                  </div>
-                  <div className="max-h-48 overflow-y-auto rounded-md bg-secondary/50 p-3">
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{detailAg.briefing}</p>
-                  </div>
-                </div>
-              )}
-
               {!detailAg.briefing && !editBriefingMode && (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => { setEditBriefingMode(true); setBriefingText(""); }}>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
                   <FileText className="h-3.5 w-3.5" />Adicionar Briefing
                 </Button>
               )}
