@@ -8,7 +8,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2, CalendarOff, List } from "lucide-react";
+import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2, CalendarOff, List, Sun, Moon } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
@@ -16,6 +16,7 @@ import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 import CloserBlockDialog from "@/components/CloserBlockDialog";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
@@ -33,6 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isCloser = role === "closer";
+  const { theme, toggleTheme } = useTheme();
 
   const handleMouseEnter = useCallback(() => {
     if (collapseTimer.current) clearTimeout(collapseTimer.current);
@@ -119,10 +121,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           expanded ? "w-64" : "w-[4.5rem]"
         )}
         style={{
-          background: "hsl(240 5% 5% / 0.85)",
+          background: "hsl(var(--sidebar-background) / 0.85)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          backgroundImage: "linear-gradient(135deg, hsl(0 0% 100% / 0.03) 0%, transparent 50%)",
+          backgroundImage: "var(--glass-shine)",
         }}
       >
         {/* Logo */}
@@ -202,6 +204,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {roleLabel}
             </Badge>
           </div>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+            >
+              {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            </button>
+          </div>
           <button
             onClick={signOut}
             className="flex items-center gap-2 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -264,6 +276,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </button>
               </>
             )}
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            </button>
             <button
               onClick={signOut}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
