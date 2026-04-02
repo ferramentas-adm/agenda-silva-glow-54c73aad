@@ -171,7 +171,7 @@ export default function DashboardPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, deleted_at, created_by, created_at, meeting_reason, channel_type")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, created_at, meeting_reason, channel_type")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
