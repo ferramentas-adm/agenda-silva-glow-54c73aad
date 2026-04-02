@@ -65,7 +65,7 @@ export default function ReunioesListPage() {
   const { data: closers = [] } = useQuery({
     queryKey: ["closers-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id, name").eq("active", true).order("name");
+      const { data } = await supabase.from("closers").select("id, name, email").eq("active", true).order("name");
       return data || [];
     },
   });
