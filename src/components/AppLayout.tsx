@@ -8,7 +8,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2, CalendarOff, List } from "lucide-react";
+import { CalendarDays, PlusCircle, Settings, LogOut, Menu, X, ScrollText, Clock, Loader2, CalendarOff, List, Sun, Moon } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
