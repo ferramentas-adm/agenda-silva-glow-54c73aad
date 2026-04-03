@@ -574,18 +574,7 @@ export default function DashboardPage() {
           setViewBriefing(false);
         }
       }}>
-        <DialogContent
-          className="sm:max-w-md"
-          onInteractOutside={(event) => {
-            if (viewBriefing) event.preventDefault();
-          }}
-          onPointerDownOutside={(event) => {
-            if (viewBriefing) event.preventDefault();
-          }}
-          onEscapeKeyDown={(event) => {
-            if (viewBriefing) event.preventDefault();
-          }}
-        >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
