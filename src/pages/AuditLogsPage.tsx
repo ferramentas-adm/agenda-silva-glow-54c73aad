@@ -370,6 +370,16 @@ const STATUS_LABELS_AG: Record<string, string> = {
   reagendada: "Reagendada",
 };
 
+const STATUS_LABELS_DETAIL: Record<string, string> = {
+  pendente: "Pendente",
+  confirmada: "Confirmada",
+  realizada: "Realizada",
+  cancelada: "Cancelada",
+  no_show: "No-show",
+  reagendada: "Reagendada",
+  nao_confirmada: "Não confirmada",
+};
+
 function formatDetails(log: AuditLog): string {
   const d = log.details;
   if (!d || Object.keys(d).length === 0) return "—";
@@ -380,7 +390,6 @@ function formatDetails(log: AuditLog): string {
   if (d.scheduled_date) {
     const dateStr = String(d.scheduled_date);
     const timeStr = d.scheduled_time ? ` às ${d.scheduled_time}` : "";
-    // Try to format date nicely
     try {
       const [y, m, day] = dateStr.split("-");
       parts.push(`Data: ${day}/${m}/${y}${timeStr}`);
@@ -388,7 +397,14 @@ function formatDetails(log: AuditLog): string {
       parts.push(`Data: ${dateStr}${timeStr}`);
     }
   }
-  if (d.status) parts.push(`Status: ${d.status}`);
+  // Show old → new status for update_status action
+  if (log.action === "update_status" && d.old_status && d.new_status) {
+    const oldLabel = STATUS_LABELS_DETAIL[String(d.old_status)] || String(d.old_status);
+    const newLabel = STATUS_LABELS_DETAIL[String(d.new_status)] || String(d.new_status);
+    parts.push(`Status: ${oldLabel} → ${newLabel}`);
+  } else if (d.status) {
+    parts.push(`Status: ${STATUS_LABELS_DETAIL[String(d.status)] || d.status}`);
+  }
   if (d.reason) parts.push(`Motivo: ${d.reason}`);
   if (d.name) parts.push(`Nome: ${d.name}`);
   if (d.role) parts.push(`Função: ${d.role}`);
