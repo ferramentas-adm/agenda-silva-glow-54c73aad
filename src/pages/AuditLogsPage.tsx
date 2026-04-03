@@ -284,6 +284,11 @@ export default function AuditLogsPage() {
               Limpar datas
             </Button>
           )}
+          {entityIdFilter && (
+            <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => { setEntityIdFilter(""); setPage(0); }}>
+              ✕ Filtro por agendamento
+            </Button>
+          )}
         </div>
 
         {/* Logs table */}
