@@ -159,11 +159,13 @@ export default function ReunioesListPage() {
       }
       if (filterMeetingDateFrom && ag.scheduled_date < format(filterMeetingDateFrom, "yyyy-MM-dd")) return false;
       if (filterMeetingDateTo && ag.scheduled_date > format(filterMeetingDateTo, "yyyy-MM-dd")) return false;
-      if (filterCreatedDateFrom && ag.created_at < format(filterCreatedDateFrom, "yyyy-MM-dd")) return false;
-      if (filterCreatedDateTo && !ag.created_at.startsWith(format(filterCreatedDateTo, "yyyy-MM-dd")) && ag.created_at < format(filterCreatedDateTo, "yyyy-MM-dd") + "T23:59:59") {
-        // keep it — it's within range
-      } else if (filterCreatedDateTo && ag.created_at > format(filterCreatedDateTo, "yyyy-MM-dd") + "T23:59:59") {
-        return false;
+      if (filterCreatedDateFrom) {
+        const createdDate = ag.created_at.slice(0, 10);
+        if (createdDate < format(filterCreatedDateFrom, "yyyy-MM-dd")) return false;
+      }
+      if (filterCreatedDateTo) {
+        const createdDate = ag.created_at.slice(0, 10);
+        if (createdDate > format(filterCreatedDateTo, "yyyy-MM-dd")) return false;
       }
       if (searchText) {
         const s = searchText.toLowerCase();
