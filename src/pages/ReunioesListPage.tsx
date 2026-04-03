@@ -51,8 +51,10 @@ export default function ReunioesListPage() {
   const [filterSDR, setFilterSDR] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterReason, setFilterReason] = useState<string>("all");
-  const [filterMeetingDate, setFilterMeetingDate] = useState<Date | undefined>();
-  const [filterCreatedDate, setFilterCreatedDate] = useState<Date | undefined>();
+  const [filterMeetingDateFrom, setFilterMeetingDateFrom] = useState<Date | undefined>();
+  const [filterMeetingDateTo, setFilterMeetingDateTo] = useState<Date | undefined>();
+  const [filterCreatedDateFrom, setFilterCreatedDateFrom] = useState<Date | undefined>();
+  const [filterCreatedDateTo, setFilterCreatedDateTo] = useState<Date | undefined>();
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -155,15 +157,23 @@ export default function ReunioesListPage() {
           return false;
         }
       }
-      if (filterMeetingDate && ag.scheduled_date !== format(filterMeetingDate, "yyyy-MM-dd")) return false;
-      if (filterCreatedDate && !ag.created_at.startsWith(format(filterCreatedDate, "yyyy-MM-dd"))) return false;
+      if (filterMeetingDateFrom && ag.scheduled_date < format(filterMeetingDateFrom, "yyyy-MM-dd")) return false;
+      if (filterMeetingDateTo && ag.scheduled_date > format(filterMeetingDateTo, "yyyy-MM-dd")) return false;
+      if (filterCreatedDateFrom) {
+        const createdDate = ag.created_at.slice(0, 10);
+        if (createdDate < format(filterCreatedDateFrom, "yyyy-MM-dd")) return false;
+      }
+      if (filterCreatedDateTo) {
+        const createdDate = ag.created_at.slice(0, 10);
+        if (createdDate > format(filterCreatedDateTo, "yyyy-MM-dd")) return false;
+      }
       if (searchText) {
         const s = searchText.toLowerCase();
         if (!ag.lead_name.toLowerCase().includes(s) && !ag.lead_phone.includes(s)) return false;
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterChannelType, filterMeetingDate, filterCreatedDate, searchText, isCloser, myCloserId, isSDR, user]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user]);
 
   // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -175,7 +185,7 @@ export default function ReunioesListPage() {
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterReason !== "all" || filterChannelType !== "all" || !!filterMeetingDate || !!filterCreatedDate || !!searchText;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterReason !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText;
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -183,8 +193,10 @@ export default function ReunioesListPage() {
     setFilterStatus("all");
     setFilterReason("all");
     setFilterChannelType("all");
-    setFilterMeetingDate(undefined);
-    setFilterCreatedDate(undefined);
+    setFilterMeetingDateFrom(undefined);
+    setFilterMeetingDateTo(undefined);
+    setFilterCreatedDateFrom(undefined);
+    setFilterCreatedDateTo(undefined);
     setSearchText("");
     setCurrentPage(1);
   };
@@ -337,25 +349,49 @@ export default function ReunioesListPage() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("glass-input justify-start text-left font-normal", !filterMeetingDate && "text-muted-foreground")}>
+                <Button variant="outline" className={cn("glass-input justify-start text-left font-normal", !filterMeetingDateFrom && "text-muted-foreground")}>
                   <CalendarDays className="mr-2 h-4 w-4" />
-                  {filterMeetingDate ? format(filterMeetingDate, "dd/MM/yyyy") : "Data da reunião"}
+                  {filterMeetingDateFrom ? format(filterMeetingDateFrom, "dd/MM/yyyy") : "Reunião: de"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={filterMeetingDate} onSelect={(d) => { setFilterMeetingDate(d); setCurrentPage(1); }} locale={ptBR} />
+                <Calendar mode="single" selected={filterMeetingDateFrom} onSelect={(d) => { setFilterMeetingDateFrom(d); setCurrentPage(1); }} locale={ptBR} />
               </PopoverContent>
             </Popover>
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("glass-input justify-start text-left font-normal", !filterCreatedDate && "text-muted-foreground")}>
+                <Button variant="outline" className={cn("glass-input justify-start text-left font-normal", !filterMeetingDateTo && "text-muted-foreground")}>
                   <CalendarDays className="mr-2 h-4 w-4" />
-                  {filterCreatedDate ? format(filterCreatedDate, "dd/MM/yyyy") : "Data de criação"}
+                  {filterMeetingDateTo ? format(filterMeetingDateTo, "dd/MM/yyyy") : "Reunião: até"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={filterCreatedDate} onSelect={(d) => { setFilterCreatedDate(d); setCurrentPage(1); }} locale={ptBR} />
+                <Calendar mode="single" selected={filterMeetingDateTo} onSelect={(d) => { setFilterMeetingDateTo(d); setCurrentPage(1); }} locale={ptBR} />
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("glass-input justify-start text-left font-normal", !filterCreatedDateFrom && "text-muted-foreground")}>
+                  <CalendarDays className="mr-2 h-4 w-4" />
+                  {filterCreatedDateFrom ? format(filterCreatedDateFrom, "dd/MM/yyyy") : "Criação: de"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={filterCreatedDateFrom} onSelect={(d) => { setFilterCreatedDateFrom(d); setCurrentPage(1); }} locale={ptBR} />
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("glass-input justify-start text-left font-normal", !filterCreatedDateTo && "text-muted-foreground")}>
+                  <CalendarDays className="mr-2 h-4 w-4" />
+                  {filterCreatedDateTo ? format(filterCreatedDateTo, "dd/MM/yyyy") : "Criação: até"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={filterCreatedDateTo} onSelect={(d) => { setFilterCreatedDateTo(d); setCurrentPage(1); }} locale={ptBR} />
               </PopoverContent>
             </Popover>
           </div>
