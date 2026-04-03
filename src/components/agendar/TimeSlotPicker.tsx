@@ -197,7 +197,17 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return;
     }
 
-    // Permite agendar mesmo com conflitos (interno ou Google Calendar)
+    // Check personal blocks
+    const customH = parseInt(customInput.slice(0, 2), 10);
+    const isBlockedByPersonal = closerBlocks.some((b: any) => {
+      const startH = parseInt(b.start_time.slice(0, 2), 10);
+      const endH = parseInt(b.end_time.slice(0, 2), 10);
+      return customH >= startH && customH < endH;
+    });
+    if (isBlockedByPersonal) {
+      setCustomError("Horário bloqueado por compromisso pessoal.");
+      return;
+    }
 
     onSelect(customInput);
     setCustomMode(false);
