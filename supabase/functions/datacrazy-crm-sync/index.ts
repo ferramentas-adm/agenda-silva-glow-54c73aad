@@ -155,7 +155,9 @@ serve(async (req) => {
     // Step 4-5: Create activities
     const dateTimeISO = `${record.scheduled_date}T${record.scheduled_time}:00Z`;
     const meetUrl = record.meet_link || "";
+    const briefingText = record.briefing || "";
     const descParts = [`Closer: ${closerName}`, `SDR: ${sdrName}`, `Link Meet: ${meetUrl}`];
+    if (briefingText) descParts.push(`\nBriefing: ${briefingText}`);
     if (record.observation) descParts.push(`\nObservações: ${record.observation}`);
     const desc = descParts.join("\n");
 
