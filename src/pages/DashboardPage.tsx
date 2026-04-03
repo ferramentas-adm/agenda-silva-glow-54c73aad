@@ -943,7 +943,17 @@ function DayView({
                               onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
                               title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[ag.status] || ag.status}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
                             >
-                              <div className={cn("font-semibold truncate", isCancelled && "line-through", isCompact && "text-[10px]")}>
+                              {/* Briefing tag - top-right label */}
+                              <span className={cn(
+                                "absolute top-0 right-0 rounded-bl-md rounded-tr-md px-1 py-px font-bold leading-none",
+                                isCompact ? "text-[7px]" : "text-[8px]",
+                                ag.briefing
+                                  ? "bg-emerald-500/80 text-white"
+                                  : "bg-red-500/80 text-white"
+                              )}>
+                                B
+                              </span>
+                              <div className={cn("font-semibold truncate pr-4", isCancelled && "line-through", isCompact && "text-[10px]")}>
                                 {ag.lead_name}
                               </div>
                               <div className="flex items-center gap-0.5 text-[10px] opacity-80">
@@ -979,15 +989,6 @@ function DayView({
                                     {ag.meeting_reason}
                                   </span>
                                 )}
-                                <span className={cn(
-                                  "rounded px-1 py-0.5 font-bold uppercase tracking-wider whitespace-nowrap shrink-0",
-                                  isCompact ? "text-[8px]" : "text-[9px]",
-                                  ag.briefing
-                                    ? "bg-emerald-500/20 text-emerald-400"
-                                    : "bg-red-500/20 text-red-400"
-                                )}>
-                                  B
-                                </span>
                               </div>
                             </div>
                           );
