@@ -327,6 +327,11 @@ export default function AuditLogsPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {ACTION_LABELS[log.action] || log.action}
+                        {log.action === "update_status" && log.details && (log.details as any).old_status && (log.details as any).new_status && (
+                          <span className="ml-1.5 text-xs text-muted-foreground">
+                            ({STATUS_LABELS_DETAIL[String((log.details as any).old_status)] || String((log.details as any).old_status)} → {STATUS_LABELS_DETAIL[String((log.details as any).new_status)] || String((log.details as any).new_status)})
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
