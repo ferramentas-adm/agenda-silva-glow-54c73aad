@@ -327,6 +327,15 @@ export default function AuditLogsPage() {
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                           {ENTITY_LABELS[log.entity_type] || log.entity_type}
                         </span>
+                        {log.entity_id && log.entity_type === "agendamento" && (
+                          <button
+                            onClick={() => { setEntityIdFilter(log.entity_id!); setPage(0); }}
+                            className="ml-1.5 text-[10px] text-primary/70 hover:text-primary underline cursor-pointer"
+                            title="Ver todas as ações deste agendamento"
+                          >
+                            🔍
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 max-w-[300px]">
                         <p className="text-xs text-muted-foreground truncate">
