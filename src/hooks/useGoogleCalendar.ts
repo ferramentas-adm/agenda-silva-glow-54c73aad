@@ -64,12 +64,32 @@ export interface CreateEventResult {
 }
 
 export async function createGoogleCalendarEvent(params: CreateEventParams): Promise<CreateEventResult> {
-  const { data, error } = await supabase.functions.invoke("google-create-event", {
-    body: params,
-  });
-  if (error) {
-    console.error("Error creating Google event:", error);
-    return { success: false, error: "invoke_error" };
+  try {
+    const { data, error } = await supabase.functions.invoke("google-create-event", {
+      body: params,
+    });
+    console.log("Google create event response:", { data, error });
+    if (error) {
+      console.error("Error creating Google event:", error);
+      // The SDK may wrap a successful JSON response as an error in some cases
+      // Try to parse the error context for a valid response
+      if (typeof error === 'object' && (error as any)?.context) {
+        try {
+          const resp = (error as any).context as Response;
+          if (resp && typeof resp.json === 'function') {
+            const body = await resp.json();
+            console.log("Recovered response from error context:", body);
+            if (body?.success) return body as CreateEventResult;
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+      return { success: false, error: "invoke_error" };
+    }
+    return data as CreateEventResult;
+  } catch (err) {
+    console.error("Unexpected error creating Google event:", err);
+    return { success: false, error: "unexpected_error" };
   }
-  return data as CreateEventResult;
 }
