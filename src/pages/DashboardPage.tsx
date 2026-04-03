@@ -945,8 +945,8 @@ function DayView({
                             >
                               {/* Briefing tag - top-right label */}
                               <span className={cn(
-                                "absolute top-0 right-0 rounded-bl-md rounded-tr-md px-1 py-px font-bold leading-none",
-                                isCompact ? "text-[7px]" : "text-[8px]",
+                                "absolute top-0 right-0 rounded-bl-md rounded-tr-md px-1.5 py-0.5 font-bold leading-none",
+                                isCompact ? "text-[8px]" : "text-[10px]",
                                 ag.briefing
                                   ? "bg-emerald-500/80 text-white"
                                   : "bg-red-500/80 text-white"
