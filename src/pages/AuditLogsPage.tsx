@@ -53,12 +53,13 @@ export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
+  const [entityIdFilter, setEntityIdFilter] = useState("");
   const [page, setPage] = useState(0);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["audit-logs", page, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: ["audit-logs", page, dateFrom?.toISOString(), dateTo?.toISOString(), entityIdFilter],
     queryFn: async () => {
       let query = supabase
         .from("audit_logs")
@@ -72,6 +73,9 @@ export default function AuditLogsPage() {
         const endDate = new Date(dateTo);
         endDate.setDate(endDate.getDate() + 1);
         query = query.lt("created_at", format(endDate, "yyyy-MM-dd"));
+      }
+      if (entityIdFilter.trim()) {
+        query = query.eq("entity_id", entityIdFilter.trim());
       }
 
       const from = page * PAGE_SIZE;
@@ -204,6 +208,15 @@ export default function AuditLogsPage() {
               className="pl-9"
             />
           </div>
+          <div className="relative min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ID do agendamento..."
+              value={entityIdFilter}
+              onChange={(e) => { setEntityIdFilter(e.target.value); setPage(0); }}
+              className="pl-9"
+            />
+          </div>
           <Select value={entityFilter} onValueChange={setEntityFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filtrar por tipo" />
@@ -271,6 +284,11 @@ export default function AuditLogsPage() {
               Limpar datas
             </Button>
           )}
+          {entityIdFilter && (
+            <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => { setEntityIdFilter(""); setPage(0); }}>
+              ✕ Filtro por agendamento
+            </Button>
+          )}
         </div>
 
         {/* Logs table */}
@@ -314,6 +332,15 @@ export default function AuditLogsPage() {
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                           {ENTITY_LABELS[log.entity_type] || log.entity_type}
                         </span>
+                        {log.entity_id && log.entity_type === "agendamento" && (
+                          <button
+                            onClick={() => { setEntityIdFilter(log.entity_id!); setPage(0); }}
+                            className="ml-1.5 text-[10px] text-primary/70 hover:text-primary underline cursor-pointer"
+                            title="Ver todas as ações deste agendamento"
+                          >
+                            🔍
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 max-w-[300px]">
                         <p className="text-xs text-muted-foreground truncate">
@@ -357,6 +384,16 @@ const STATUS_LABELS_AG: Record<string, string> = {
   reagendada: "Reagendada",
 };
 
+const STATUS_LABELS_DETAIL: Record<string, string> = {
+  pendente: "Pendente",
+  confirmada: "Confirmada",
+  realizada: "Realizada",
+  cancelada: "Cancelada",
+  no_show: "No-show",
+  reagendada: "Reagendada",
+  nao_confirmada: "Não confirmada",
+};
+
 function formatDetails(log: AuditLog): string {
   const d = log.details;
   if (!d || Object.keys(d).length === 0) return "—";
@@ -367,7 +404,6 @@ function formatDetails(log: AuditLog): string {
   if (d.scheduled_date) {
     const dateStr = String(d.scheduled_date);
     const timeStr = d.scheduled_time ? ` às ${d.scheduled_time}` : "";
-    // Try to format date nicely
     try {
       const [y, m, day] = dateStr.split("-");
       parts.push(`Data: ${day}/${m}/${y}${timeStr}`);
@@ -375,7 +411,14 @@ function formatDetails(log: AuditLog): string {
       parts.push(`Data: ${dateStr}${timeStr}`);
     }
   }
-  if (d.status) parts.push(`Status: ${d.status}`);
+  // Show old → new status for update_status action
+  if (log.action === "update_status" && d.old_status && d.new_status) {
+    const oldLabel = STATUS_LABELS_DETAIL[String(d.old_status)] || String(d.old_status);
+    const newLabel = STATUS_LABELS_DETAIL[String(d.new_status)] || String(d.new_status);
+    parts.push(`Status: ${oldLabel} → ${newLabel}`);
+  } else if (d.status) {
+    parts.push(`Status: ${STATUS_LABELS_DETAIL[String(d.status)] || d.status}`);
+  }
   if (d.reason) parts.push(`Motivo: ${d.reason}`);
   if (d.name) parts.push(`Nome: ${d.name}`);
   if (d.role) parts.push(`Função: ${d.role}`);
