@@ -979,14 +979,15 @@ function DayView({
                                     {ag.meeting_reason}
                                   </span>
                                 )}
-                                {(!ag.observation || !/https?:\/\/[^\s]+/.test(ag.observation)) && (
-                                  <span className={cn(
-                                    "rounded px-1 py-0.5 font-medium uppercase tracking-wider whitespace-nowrap bg-yellow-500/20 text-yellow-400",
-                                    isCompact ? "text-[8px]" : "text-[9px]"
-                                  )}>
-                                    {isCompact ? "S/B" : "Sem Briefing"}
-                                  </span>
-                                )}
+                                <span className={cn(
+                                  "rounded px-1 py-0.5 font-bold uppercase tracking-wider whitespace-nowrap shrink-0",
+                                  isCompact ? "text-[8px]" : "text-[9px]",
+                                  ag.briefing
+                                    ? "bg-emerald-500/20 text-emerald-400"
+                                    : "bg-red-500/20 text-red-400"
+                                )}>
+                                  B
+                                </span>
                               </div>
                             </div>
                           );

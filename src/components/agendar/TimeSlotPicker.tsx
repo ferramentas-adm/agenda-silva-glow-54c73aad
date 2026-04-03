@@ -235,10 +235,10 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           let title: string | undefined;
 
           if (isPersonalBlock) {
-            slotStyle = "border-rose-400/50 bg-rose-500/10 hover:border-primary/50 active:scale-[0.97]";
+            slotStyle = "border-rose-400/50 bg-rose-500/10 cursor-not-allowed opacity-60";
             SlotIcon = Lock;
             iconClass = "h-3.5 w-3.5 text-rose-400";
-            title = "Bloqueio pessoal (permite agendar)";
+            title = "Bloqueio pessoal — não disponível";
           } else if (isGoogleBlocked) {
             slotStyle = "border-blue-400/50 bg-blue-500/10 hover:border-primary/50 active:scale-[0.97]";
             SlotIcon = CalendarDays;
@@ -254,7 +254,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           return (
             <button
               key={slot}
-              disabled={isPast}
+              disabled={isPast || isPersonalBlock}
               onClick={() => {
                 onSelect(slot);
                 setCustomMode(false);
