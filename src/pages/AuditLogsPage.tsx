@@ -59,7 +59,7 @@ export default function AuditLogsPage() {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["audit-logs", page, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: ["audit-logs", page, dateFrom?.toISOString(), dateTo?.toISOString(), entityIdFilter],
     queryFn: async () => {
       let query = supabase
         .from("audit_logs")
@@ -73,6 +73,9 @@ export default function AuditLogsPage() {
         const endDate = new Date(dateTo);
         endDate.setDate(endDate.getDate() + 1);
         query = query.lt("created_at", format(endDate, "yyyy-MM-dd"));
+      }
+      if (entityIdFilter.trim()) {
+        query = query.eq("entity_id", entityIdFilter.trim());
       }
 
       const from = page * PAGE_SIZE;
