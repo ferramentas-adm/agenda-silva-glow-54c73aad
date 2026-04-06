@@ -188,6 +188,10 @@ export default function DashboardComercialPage() {
         ).length;
 
       const hoje = countInRange(dateStr, dateStr);
+      const paraHoje = agendamentos.filter(a =>
+        a.created_by === profile.user_id &&
+        a.scheduled_date === dateStr
+      ).length;
       const ontem = countInRange(yesterdayStart, yesterdayStart);
       const semana = countInRange(weekStart, weekEnd);
       const quinzena = countInRange(quinzenaStart, dateStr);
@@ -197,9 +201,9 @@ export default function DashboardComercialPage() {
         a.created_at <= monthEnd + "T23:59:59"
       ).length;
 
-      return { ...profile, hoje, ontem, semana, quinzena, mes };
+      return { ...profile, hoje, paraHoje, ontem, semana, quinzena, mes };
     }).sort((a, b) => b.hoje - a.hoje || b.semana - a.semana || b.mes - a.mes);
-  }, [sdrProfiles, createdAgs, dateStr, weekStart, weekEnd, monthStart, monthEnd, currentDate]);
+  }, [sdrProfiles, createdAgs, agendamentos, dateStr, weekStart, weekEnd, monthStart, monthEnd, currentDate]);
 
   const updatedAgo = useMemo(() => {
     if (!dataUpdatedAt) return "";
