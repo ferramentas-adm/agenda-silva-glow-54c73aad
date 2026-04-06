@@ -50,6 +50,8 @@ interface Agendamento {
   created_at: string;
   meeting_reason: string | null;
   channel_type: string | null;
+  briefing_read_at: string | null;
+  briefing_read_by: string | null;
 }
 
 interface GoogleBusyBlock {
