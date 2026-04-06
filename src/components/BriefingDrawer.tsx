@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, FileText, Pencil, Trash2 } from "lucide-react";
+import { X, FileText, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -9,6 +9,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface BriefingDrawerProps {
   open: boolean;
@@ -21,6 +23,10 @@ interface BriefingDrawerProps {
   onSave: (text: string) => Promise<void>;
   onRemove: () => Promise<void>;
   saving: boolean;
+  briefingReadAt?: string | null;
+  briefingReadByName?: string | null;
+  onMarkRead?: () => Promise<void>;
+  showReadButton?: boolean;
 }
 
 export default function BriefingDrawer({
@@ -34,9 +40,14 @@ export default function BriefingDrawer({
   onSave,
   onRemove,
   saving,
+  briefingReadAt,
+  briefingReadByName,
+  onMarkRead,
+  showReadButton = false,
 }: BriefingDrawerProps) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(briefing || "");
+  const [markingRead, setMarkingRead] = useState(false);
 
   useEffect(() => {
     setText(briefing || "");
@@ -158,7 +169,7 @@ export default function BriefingDrawer({
                 </div>
               </div>
             ) : briefing ? (
-              <div className="animate-fade-in">
+              <div className="animate-fade-in space-y-4">
                 <div className="rounded-lg border border-border bg-card p-6 sm:p-8 shadow-sm">
                   <div className="mb-5 border-b border-border pb-4">
                     <h3 className="text-lg font-semibold text-foreground">
@@ -175,6 +186,31 @@ export default function BriefingDrawer({
                     {briefing}
                   </div>
                 </div>
+
+                {/* Read confirmation */}
+                {briefingReadAt ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>
+                      Lido por <strong>{briefingReadByName || "—"}</strong> em{" "}
+                      {format(new Date(briefingReadAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                  </div>
+                ) : showReadButton && onMarkRead ? (
+                  <Button
+                    className="w-full gap-2"
+                    variant="outline"
+                    disabled={markingRead}
+                    onClick={async () => {
+                      setMarkingRead(true);
+                      await onMarkRead();
+                      setMarkingRead(false);
+                    }}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {markingRead ? "Marcando..." : "Marcar como lido"}
+                  </Button>
+                ) : null}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center animate-fade-in">

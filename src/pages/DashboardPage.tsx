@@ -50,6 +50,8 @@ interface Agendamento {
   created_at: string;
   meeting_reason: string | null;
   channel_type: string | null;
+  briefing_read_at: string | null;
+  briefing_read_by: string | null;
 }
 
 interface GoogleBusyBlock {
@@ -170,7 +172,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, created_at, meeting_reason, channel_type")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -192,7 +194,20 @@ export function CalendarContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Realtime subscription
+  // Fetch profiles for name resolution (briefing reader)
+  const { data: profilesMap = new Map<string, string>() } = useQuery({
+    queryKey: ["profiles-name-map"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name");
+      const map = new Map<string, string>();
+      (data ?? []).forEach((p: { user_id: string; full_name: string }) => map.set(p.user_id, p.full_name));
+      return map;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
     const channel = supabase
       .channel("agendamentos-realtime")
@@ -752,13 +767,36 @@ export function CalendarContent() {
         date={detailAg ? format(new Date(detailAg.scheduled_date + "T12:00:00"), "dd/MM/yyyy") : ""}
         time={detailAg?.scheduled_time ?? ""}
         onClose={() => setViewBriefing(false)}
+        briefingReadAt={detailAg?.briefing_read_at ?? null}
+        briefingReadByName={detailAg?.briefing_read_by ? (profilesMap.get(detailAg.briefing_read_by) || user?.user_metadata?.full_name || "—") : null}
+        showReadButton={role !== "sdr" && !!detailAg?.briefing && !detailAg?.briefing_read_at}
+        onMarkRead={async () => {
+          if (!detailAg || !user) return;
+          try {
+            const { error } = await supabase
+              .from("agendamentos")
+              .update({ briefing_read_at: new Date().toISOString(), briefing_read_by: user.id } as any)
+              .eq("id", detailAg.id);
+            if (error) throw error;
+            const userName = user.user_metadata?.full_name || user.email || "";
+            await logAudit("read_briefing", "agendamento", detailAg.id, {
+              lead_name: detailAg.lead_name,
+              reader_name: userName,
+            });
+            setDetailAg({ ...detailAg, briefing_read_at: new Date().toISOString(), briefing_read_by: user.id });
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+            toast.success("Briefing marcado como lido!");
+          } catch (err: any) {
+            toast.error(err.message || "Erro ao marcar como lido");
+          }
+        }}
         onSave={async (text) => {
           if (!detailAg) return;
           setSavingBriefing(true);
           try {
             const { error } = await supabase
               .from("agendamentos")
-              .update({ briefing: text.trim() } as any)
+              .update({ briefing: text.trim(), briefing_read_at: null, briefing_read_by: null } as any)
               .eq("id", detailAg.id);
             if (error) throw error;
             await logAudit("edit_briefing", "agendamento", detailAg.id, {
@@ -766,7 +804,7 @@ export function CalendarContent() {
               closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
             });
             toast.success("Briefing salvo com sucesso!");
-            setDetailAg({ ...detailAg, briefing: text.trim() });
+            setDetailAg({ ...detailAg, briefing: text.trim(), briefing_read_at: null, briefing_read_by: null });
             queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
           } catch (err: any) {
             toast.error(err.message || "Erro ao salvar briefing");
@@ -779,14 +817,14 @@ export function CalendarContent() {
           try {
             const { error } = await supabase
               .from("agendamentos")
-              .update({ briefing: null } as any)
+              .update({ briefing: null, briefing_read_at: null, briefing_read_by: null } as any)
               .eq("id", detailAg.id);
             if (error) throw error;
             await logAudit("remove_briefing", "agendamento", detailAg.id, {
               lead_name: detailAg.lead_name,
             });
             toast.success("Briefing removido!");
-            setDetailAg({ ...detailAg, briefing: null });
+            setDetailAg({ ...detailAg, briefing: null, briefing_read_at: null, briefing_read_by: null });
             setViewBriefing(false);
             queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
           } catch (err: any) {
