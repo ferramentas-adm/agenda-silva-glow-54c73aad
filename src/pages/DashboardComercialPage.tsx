@@ -323,6 +323,7 @@ export default function DashboardComercialPage() {
           <RankingSDRsTab
             ranking={ranking}
             updatedAgo={updatedAgo}
+            createdAgs={createdAgs}
           />
         )}
       </div>
