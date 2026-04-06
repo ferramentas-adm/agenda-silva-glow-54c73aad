@@ -471,6 +471,21 @@ function UsersSection() {
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
                         </span>
+                        {isGestor && u.type === "profile" && u.role !== "closer" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title={u.availableForScheduling ? "Remover da agenda" : "Liberar para agenda"}
+                            onClick={() => handleToggleScheduling(u)}
+                            disabled={togglingSchedulingId === u.userId}
+                          >
+                            {togglingSchedulingId === u.userId
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <CalendarPlus className={`h-3.5 w-3.5 ${u.availableForScheduling ? 'text-primary' : 'text-muted-foreground'}`} />
+                            }
+                          </Button>
+                        )}
                         {isGestor && (
                           <Switch
                             checked={u.active}
