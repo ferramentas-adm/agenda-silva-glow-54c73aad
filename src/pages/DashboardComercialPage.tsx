@@ -99,16 +99,19 @@ export default function DashboardComercialPage() {
     staleTime: 10 * 60 * 1000,
   });
 
-  // Agendamentos by created_at for ranking (may differ from scheduled_date)
+  // Broad fetch for ranking: all agendamentos created in a wide range (for custom date ranges)
   const { data: createdAgs = [] } = useQuery<AgendamentoMetric[]>({
     queryKey: ["dashboard-comercial-created", monthStart, monthEnd],
     queryFn: async () => {
+      // Fetch a broader range to support custom date filters
+      const broadStart = format(subMonths(startOfMonth(currentDate), 2), "yyyy-MM-dd");
+      const broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
       const { data } = await supabase
         .from("agendamentos")
         .select("id, scheduled_date, created_at, status, channel_type, created_by")
         .is("deleted_at", null)
-        .gte("created_at", monthStart + "T00:00:00")
-        .lte("created_at", monthEnd + "T23:59:59");
+        .gte("created_at", broadStart + "T00:00:00")
+        .lte("created_at", broadEnd + "T23:59:59");
       return (data ?? []) as AgendamentoMetric[];
     },
     refetchInterval: 2 * 60 * 1000,
@@ -173,25 +176,30 @@ export default function DashboardComercialPage() {
 
   // ─── Ranking ───────────────────────────────────────────────────
   const ranking = useMemo(() => {
+    const yesterdayStart = format(subDays(currentDate, 1), "yyyy-MM-dd");
+    const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
+
     return sdrProfiles.map(profile => {
-      const hoje = createdAgs.filter(a =>
-        a.created_by === profile.user_id &&
-        a.created_at.startsWith(dateStr)
-      ).length;
+      const countInRange = (start: string, end: string) =>
+        createdAgs.filter(a =>
+          a.created_by === profile.user_id &&
+          a.created_at >= start + "T00:00:00" &&
+          a.created_at <= end + "T23:59:59"
+        ).length;
 
-      const semana = createdAgs.filter(a =>
-        a.created_by === profile.user_id &&
-        a.created_at >= weekStart + "T00:00:00" &&
-        a.created_at <= weekEnd + "T23:59:59"
-      ).length;
-
+      const hoje = countInRange(dateStr, dateStr);
+      const ontem = countInRange(yesterdayStart, yesterdayStart);
+      const semana = countInRange(weekStart, weekEnd);
+      const quinzena = countInRange(quinzenaStart, dateStr);
       const mes = createdAgs.filter(a =>
-        a.created_by === profile.user_id
+        a.created_by === profile.user_id &&
+        a.created_at >= monthStart + "T00:00:00" &&
+        a.created_at <= monthEnd + "T23:59:59"
       ).length;
 
-      return { ...profile, hoje, semana, mes };
+      return { ...profile, hoje, ontem, semana, quinzena, mes };
     }).sort((a, b) => b.hoje - a.hoje || b.semana - a.semana || b.mes - a.mes);
-  }, [sdrProfiles, createdAgs, dateStr, weekStart, weekEnd]);
+  }, [sdrProfiles, createdAgs, dateStr, weekStart, weekEnd, monthStart, monthEnd, currentDate]);
 
   const updatedAgo = useMemo(() => {
     if (!dataUpdatedAt) return "";
