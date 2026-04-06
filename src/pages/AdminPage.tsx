@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus,
 } from "lucide-react";
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
@@ -67,6 +67,9 @@ function UsersSection() {
   const [editDatacrazyId, setEditDatacrazyId] = useState("");
   const [savingDatacrazyId, setSavingDatacrazyId] = useState(false);
 
+  // Scheduling toggle
+  const [togglingSchedulingId, setTogglingSchedulingId] = useState<string | null>(null);
+
   // Fetch all users (profiles + roles) and closers
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
@@ -111,6 +114,7 @@ function UsersSection() {
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
+          availableForScheduling: p.available_for_scheduling ?? false,
         };
       });
 
@@ -300,6 +304,21 @@ function UsersSection() {
     setChangingRole(false);
   };
 
+  const handleToggleScheduling = async (user: any) => {
+    setTogglingSchedulingId(user.userId);
+    try {
+      await invokeEdgeFunction("manage-user", { user_id: user.userId, action: "toggle_scheduling" });
+      toast.success(user.availableForScheduling ? "Removido do agendamento" : "Disponível para agendamento");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["closers"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar disponibilidade");
+    }
+    setTogglingSchedulingId(null);
+  };
+
   const roleLabel = (r: string) => {
     switch (r) {
       case "gestor": return "Admin";
@@ -452,6 +471,21 @@ function UsersSection() {
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
                         </span>
+                        {isGestor && u.type === "profile" && u.role !== "closer" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title={u.availableForScheduling ? "Remover da agenda" : "Liberar para agenda"}
+                            onClick={() => handleToggleScheduling(u)}
+                            disabled={togglingSchedulingId === u.userId}
+                          >
+                            {togglingSchedulingId === u.userId
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <CalendarPlus className={`h-3.5 w-3.5 ${u.availableForScheduling ? 'text-primary' : 'text-muted-foreground'}`} />
+                            }
+                          </Button>
+                        )}
                         {isGestor && (
                           <Switch
                             checked={u.active}

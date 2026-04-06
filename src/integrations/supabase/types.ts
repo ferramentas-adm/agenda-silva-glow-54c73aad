@@ -276,6 +276,7 @@ export type Database = {
       profiles: {
         Row: {
           active: boolean
+          available_for_scheduling: boolean
           created_at: string
           datacrazy_id: string | null
           email: string
@@ -287,6 +288,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          available_for_scheduling?: boolean
           created_at?: string
           datacrazy_id?: string | null
           email: string
@@ -298,6 +300,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          available_for_scheduling?: boolean
           created_at?: string
           datacrazy_id?: string | null
           email?: string
