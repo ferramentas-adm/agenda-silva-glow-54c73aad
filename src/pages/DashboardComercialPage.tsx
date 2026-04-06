@@ -188,6 +188,10 @@ export default function DashboardComercialPage() {
         ).length;
 
       const hoje = countInRange(dateStr, dateStr);
+      const paraHoje = agendamentos.filter(a =>
+        a.created_by === profile.user_id &&
+        a.scheduled_date === dateStr
+      ).length;
       const ontem = countInRange(yesterdayStart, yesterdayStart);
       const semana = countInRange(weekStart, weekEnd);
       const quinzena = countInRange(quinzenaStart, dateStr);
@@ -197,9 +201,9 @@ export default function DashboardComercialPage() {
         a.created_at <= monthEnd + "T23:59:59"
       ).length;
 
-      return { ...profile, hoje, ontem, semana, quinzena, mes };
+      return { ...profile, hoje, paraHoje, ontem, semana, quinzena, mes };
     }).sort((a, b) => b.hoje - a.hoje || b.semana - a.semana || b.mes - a.mes);
-  }, [sdrProfiles, createdAgs, dateStr, weekStart, weekEnd, monthStart, monthEnd, currentDate]);
+  }, [sdrProfiles, createdAgs, agendamentos, dateStr, weekStart, weekEnd, monthStart, monthEnd, currentDate]);
 
   const updatedAgo = useMemo(() => {
     if (!dataUpdatedAt) return "";
@@ -490,7 +494,7 @@ function RankingSDRsTab({
   updatedAgo,
   createdAgs,
 }: {
-  ranking: { user_id: string; full_name: string; hoje: number; ontem: number; semana: number; quinzena: number; mes: number }[];
+  ranking: { user_id: string; full_name: string; hoje: number; paraHoje: number; ontem: number; semana: number; quinzena: number; mes: number }[];
   updatedAgo: string;
   createdAgs: AgendamentoMetric[];
 }) {
@@ -610,7 +614,8 @@ function RankingSDRsTab({
             <tr className="border-b border-primary/10">
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">#</th>
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">Nome</th>
-              <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">Hoje</th>
+              <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">Criadas Hoje</th>
+              <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">Para Hoje</th>
               {activeNonFixedCols.map(col => (
                 <th key={col.key} className="text-center py-3 px-4 font-medium text-xs text-muted-foreground">
                   {col.key === "personalizado" && customRange.from && customRange.to
@@ -624,7 +629,7 @@ function RankingSDRsTab({
           <tbody>
             {ranking.length === 0 && (
               <tr>
-                <td colSpan={3 + activeNonFixedCols.length + 1} className="text-center text-muted-foreground py-8 text-xs">
+                <td colSpan={4 + activeNonFixedCols.length + 1} className="text-center text-muted-foreground py-8 text-xs">
                   Nenhum SDR encontrado
                 </td>
               </tr>
@@ -635,6 +640,9 @@ function RankingSDRsTab({
                 <td className="py-3 px-4 font-semibold">{row.full_name}</td>
                 <td className="py-3 px-4 text-center font-bold text-primary">
                   {row.hoje > 0 ? row.hoje : "—"}
+                </td>
+                <td className="py-3 px-4 text-center font-bold text-primary">
+                  {row.paraHoje > 0 ? row.paraHoje : "—"}
                 </td>
                 {activeNonFixedCols.map(col => {
                   let val = 0;
