@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Play, Pause, ChevronLeft, ChevronRight, CalendarDays,
-  TrendingUp, RefreshCw, Trophy, Users, Wifi,
+  TrendingUp, RefreshCw, Trophy, Users, Wifi, Eye, EyeOff,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 const TAB_NAMES = ["Métricas SDRs", "Agenda Closers", "Ranking SDRs"];
-const ROTATION_INTERVAL = 15000;
+const ROTATION_INTERVAL = 30000;
 
 interface AgendamentoMetric {
   id: string;
