@@ -17,6 +17,8 @@ export type Database = {
       agendamentos: {
         Row: {
           briefing: string | null
+          briefing_read_at: string | null
+          briefing_read_by: string | null
           channel_type: string | null
           closer_id: string | null
           created_at: string
@@ -38,6 +40,8 @@ export type Database = {
         }
         Insert: {
           briefing?: string | null
+          briefing_read_at?: string | null
+          briefing_read_by?: string | null
           channel_type?: string | null
           closer_id?: string | null
           created_at?: string
@@ -59,6 +63,8 @@ export type Database = {
         }
         Update: {
           briefing?: string | null
+          briefing_read_at?: string | null
+          briefing_read_by?: string | null
           channel_type?: string | null
           closer_id?: string | null
           created_at?: string
