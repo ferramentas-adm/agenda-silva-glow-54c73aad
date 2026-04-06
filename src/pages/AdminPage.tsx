@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus,
 } from "lucide-react";
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
@@ -67,6 +67,9 @@ function UsersSection() {
   const [editDatacrazyId, setEditDatacrazyId] = useState("");
   const [savingDatacrazyId, setSavingDatacrazyId] = useState(false);
 
+  // Scheduling toggle
+  const [togglingSchedulingId, setTogglingSchedulingId] = useState<string | null>(null);
+
   // Fetch all users (profiles + roles) and closers
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
@@ -111,6 +114,7 @@ function UsersSection() {
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
+          availableForScheduling: p.available_for_scheduling ?? false,
         };
       });
 
