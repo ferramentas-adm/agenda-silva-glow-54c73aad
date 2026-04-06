@@ -241,6 +241,70 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Toggle scheduling availability for non-closer users
+    if (action === "toggle_scheduling") {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("available_for_scheduling, email, full_name")
+        .eq("user_id", user_id)
+        .single();
+
+      if (!profile) {
+        return new Response(JSON.stringify({ error: "Perfil não encontrado" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const newValue = !profile.available_for_scheduling;
+
+      // Update the flag
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ available_for_scheduling: newValue })
+        .eq("user_id", user_id);
+      if (updateError) throw updateError;
+
+      if (newValue && profile.email) {
+        // Create closer record if not exists
+        const { data: existing } = await supabaseAdmin
+          .from("closers")
+          .select("id, active")
+          .eq("email", profile.email)
+          .maybeSingle();
+
+        if (existing) {
+          if (!existing.active) {
+            await supabaseAdmin.from("closers").update({ active: true }).eq("id", existing.id);
+          }
+        } else {
+          await supabaseAdmin.from("closers").insert({
+            name: profile.full_name || profile.email,
+            email: profile.email,
+          });
+        }
+      } else if (!newValue && profile.email) {
+        // Check if user is actually a closer by role — if not, deactivate the closer record
+        const { data: roleData } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id)
+          .single();
+
+        if (roleData?.role !== "closer") {
+          await supabaseAdmin
+            .from("closers")
+            .update({ active: false })
+            .eq("email", profile.email);
+        }
+      }
+
+      return new Response(JSON.stringify({ message: newValue ? "Usuário disponível para agendamento" : "Usuário removido do agendamento", available: newValue }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Ação inválida" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
