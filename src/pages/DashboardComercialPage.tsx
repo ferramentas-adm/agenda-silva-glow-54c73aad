@@ -616,6 +616,7 @@ function RankingSDRsTab({
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">Nome</th>
               <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">Criadas Hoje</th>
               <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">Para Hoje</th>
+              {activeNonFixedCols.map(col => (
                 <th key={col.key} className="text-center py-3 px-4 font-medium text-xs text-muted-foreground">
                   {col.key === "personalizado" && customRange.from && customRange.to
                     ? `${format(customRange.from, "dd/MM")} — ${format(customRange.to, "dd/MM")}`
