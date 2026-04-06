@@ -123,7 +123,7 @@ interface DeleteTarget {
 }
 
 // ─── Main Page ───────────────────────────────────────────────────
-export default function DashboardPage() {
+export function CalendarContent() {
   const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
   
   const { user, role } = useAuth();
@@ -397,7 +397,7 @@ export default function DashboardPage() {
 
 
   return (
-    <AppLayout>
+    <>
       <div className="animate-fade-in space-y-4">
         
 
@@ -796,8 +796,12 @@ export default function DashboardPage() {
         }}
         saving={savingBriefing}
       />
-    </AppLayout>
+    </>
   );
+}
+
+export default function DashboardPage() {
+  return <AppLayout><CalendarContent /></AppLayout>;
 }
 
 // ─── Day View ────────────────────────────────────────────────────
