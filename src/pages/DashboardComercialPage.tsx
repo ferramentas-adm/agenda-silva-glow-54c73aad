@@ -629,7 +629,7 @@ function RankingSDRsTab({
           <tbody>
             {ranking.length === 0 && (
               <tr>
-                <td colSpan={3 + activeNonFixedCols.length + 1} className="text-center text-muted-foreground py-8 text-xs">
+                <td colSpan={4 + activeNonFixedCols.length + 1} className="text-center text-muted-foreground py-8 text-xs">
                   Nenhum SDR encontrado
                 </td>
               </tr>
@@ -640,6 +640,9 @@ function RankingSDRsTab({
                 <td className="py-3 px-4 font-semibold">{row.full_name}</td>
                 <td className="py-3 px-4 text-center font-bold text-primary">
                   {row.hoje > 0 ? row.hoje : "—"}
+                </td>
+                <td className="py-3 px-4 text-center font-bold text-primary">
+                  {row.paraHoje > 0 ? row.paraHoje : "—"}
                 </td>
                 {activeNonFixedCols.map(col => {
                   let val = 0;
