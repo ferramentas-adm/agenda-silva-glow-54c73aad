@@ -40,9 +40,14 @@ export default function BriefingDrawer({
   onSave,
   onRemove,
   saving,
+  briefingReadAt,
+  briefingReadByName,
+  onMarkRead,
+  showReadButton = false,
 }: BriefingDrawerProps) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(briefing || "");
+  const [markingRead, setMarkingRead] = useState(false);
 
   useEffect(() => {
     setText(briefing || "");
