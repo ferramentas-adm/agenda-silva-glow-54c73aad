@@ -304,6 +304,21 @@ function UsersSection() {
     setChangingRole(false);
   };
 
+  const handleToggleScheduling = async (user: any) => {
+    setTogglingSchedulingId(user.userId);
+    try {
+      await invokeEdgeFunction("manage-user", { user_id: user.userId, action: "toggle_scheduling" });
+      toast.success(user.availableForScheduling ? "Removido do agendamento" : "Disponível para agendamento");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["closers"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar disponibilidade");
+    }
+    setTogglingSchedulingId(null);
+  };
+
   const roleLabel = (r: string) => {
     switch (r) {
       case "gestor": return "Admin";
