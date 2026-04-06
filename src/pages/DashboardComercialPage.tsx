@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Play, Pause, ChevronLeft, ChevronRight, CalendarDays,
-  TrendingUp, RefreshCw, Trophy, Users, Wifi,
+  TrendingUp, RefreshCw, Trophy, Users, Wifi, Eye, EyeOff,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 const TAB_NAMES = ["Métricas SDRs", "Agenda Closers", "Ranking SDRs"];
-const ROTATION_INTERVAL = 15000;
+const ROTATION_INTERVAL = 30000;
 
 interface AgendamentoMetric {
   id: string;
@@ -99,16 +99,19 @@ export default function DashboardComercialPage() {
     staleTime: 10 * 60 * 1000,
   });
 
-  // Agendamentos by created_at for ranking (may differ from scheduled_date)
+  // Broad fetch for ranking: all agendamentos created in a wide range (for custom date ranges)
   const { data: createdAgs = [] } = useQuery<AgendamentoMetric[]>({
     queryKey: ["dashboard-comercial-created", monthStart, monthEnd],
     queryFn: async () => {
+      // Fetch a broader range to support custom date filters
+      const broadStart = format(subMonths(startOfMonth(currentDate), 2), "yyyy-MM-dd");
+      const broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
       const { data } = await supabase
         .from("agendamentos")
         .select("id, scheduled_date, created_at, status, channel_type, created_by")
         .is("deleted_at", null)
-        .gte("created_at", monthStart + "T00:00:00")
-        .lte("created_at", monthEnd + "T23:59:59");
+        .gte("created_at", broadStart + "T00:00:00")
+        .lte("created_at", broadEnd + "T23:59:59");
       return (data ?? []) as AgendamentoMetric[];
     },
     refetchInterval: 2 * 60 * 1000,
@@ -173,25 +176,30 @@ export default function DashboardComercialPage() {
 
   // ─── Ranking ───────────────────────────────────────────────────
   const ranking = useMemo(() => {
+    const yesterdayStart = format(subDays(currentDate, 1), "yyyy-MM-dd");
+    const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
+
     return sdrProfiles.map(profile => {
-      const hoje = createdAgs.filter(a =>
-        a.created_by === profile.user_id &&
-        a.created_at.startsWith(dateStr)
-      ).length;
+      const countInRange = (start: string, end: string) =>
+        createdAgs.filter(a =>
+          a.created_by === profile.user_id &&
+          a.created_at >= start + "T00:00:00" &&
+          a.created_at <= end + "T23:59:59"
+        ).length;
 
-      const semana = createdAgs.filter(a =>
-        a.created_by === profile.user_id &&
-        a.created_at >= weekStart + "T00:00:00" &&
-        a.created_at <= weekEnd + "T23:59:59"
-      ).length;
-
+      const hoje = countInRange(dateStr, dateStr);
+      const ontem = countInRange(yesterdayStart, yesterdayStart);
+      const semana = countInRange(weekStart, weekEnd);
+      const quinzena = countInRange(quinzenaStart, dateStr);
       const mes = createdAgs.filter(a =>
-        a.created_by === profile.user_id
+        a.created_by === profile.user_id &&
+        a.created_at >= monthStart + "T00:00:00" &&
+        a.created_at <= monthEnd + "T23:59:59"
       ).length;
 
-      return { ...profile, hoje, semana, mes };
+      return { ...profile, hoje, ontem, semana, quinzena, mes };
     }).sort((a, b) => b.hoje - a.hoje || b.semana - a.semana || b.mes - a.mes);
-  }, [sdrProfiles, createdAgs, dateStr, weekStart, weekEnd]);
+  }, [sdrProfiles, createdAgs, dateStr, weekStart, weekEnd, monthStart, monthEnd, currentDate]);
 
   const updatedAgo = useMemo(() => {
     if (!dataUpdatedAt) return "";
@@ -315,6 +323,7 @@ export default function DashboardComercialPage() {
           <RankingSDRsTab
             ranking={ranking}
             updatedAgo={updatedAgo}
+            createdAgs={createdAgs}
           />
         )}
       </div>
@@ -466,13 +475,52 @@ function MetricasSDRsTab({
 }
 
 // ─── Ranking SDRs Tab ────────────────────────────────────────────
+type RankingColumnKey = "ontem" | "semana" | "quinzena" | "mes" | "personalizado";
+
+const RANKING_COLUMNS: { key: RankingColumnKey; label: string }[] = [
+  { key: "ontem", label: "Ontem" },
+  { key: "semana", label: "Semana" },
+  { key: "quinzena", label: "Quinzena" },
+  { key: "mes", label: "Mês" },
+  { key: "personalizado", label: "Personalizado" },
+];
+
 function RankingSDRsTab({
   ranking,
   updatedAgo,
+  createdAgs,
 }: {
-  ranking: { user_id: string; full_name: string; hoje: number; semana: number; mes: number }[];
+  ranking: { user_id: string; full_name: string; hoje: number; ontem: number; semana: number; quinzena: number; mes: number }[];
   updatedAgo: string;
+  createdAgs: AgendamentoMetric[];
 }) {
+  const [visibleCols, setVisibleCols] = useState<Set<RankingColumnKey>>(new Set(["semana", "mes"]));
+  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [rangeOpen, setRangeOpen] = useState(false);
+
+  const toggleCol = (key: RankingColumnKey) => {
+    setVisibleCols(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // Custom range counts
+  const customCounts = useMemo(() => {
+    if (!customRange.from || !customRange.to) return new Map<string, number>();
+    const start = format(customRange.from, "yyyy-MM-dd");
+    const end = format(customRange.to, "yyyy-MM-dd");
+    const map = new Map<string, number>();
+    createdAgs.forEach(a => {
+      if (a.created_by && a.created_at >= start + "T00:00:00" && a.created_at <= end + "T23:59:59") {
+        map.set(a.created_by, (map.get(a.created_by) || 0) + 1);
+      }
+    });
+    return map;
+  }, [createdAgs, customRange]);
+
   const getPosition = (index: number, row: typeof ranking[0]) => {
     if (row.hoje === 0 && row.semana === 0 && row.mes === 0) {
       return (
@@ -499,13 +547,62 @@ function RankingSDRsTab({
     );
   };
 
+  const activeNonFixedCols = RANKING_COLUMNS.filter(c => visibleCols.has(c.key));
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Trophy className="h-5 w-5 text-muted-foreground" />
         <h2 className="text-xl font-bold">Ranking de Performance — SDRs</h2>
         <span className="text-xs text-muted-foreground">{updatedAgo}</span>
       </div>
+
+      {/* Column toggles */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Colunas:</span>
+        {RANKING_COLUMNS.map(col => (
+          <Button
+            key={col.key}
+            variant={visibleCols.has(col.key) ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={() => toggleCol(col.key)}
+          >
+            {visibleCols.has(col.key) ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+            {col.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Custom date range picker */}
+      {visibleCols.has("personalizado") && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground">Período personalizado:</span>
+          <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                <CalendarDays className="h-3 w-3" />
+                {customRange.from && customRange.to
+                  ? `${format(customRange.from, "dd/MM/yyyy")} — ${format(customRange.to, "dd/MM/yyyy")}`
+                  : "Selecionar período"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={customRange.from && customRange.to ? { from: customRange.from, to: customRange.to } : undefined}
+                onSelect={(range) => {
+                  setCustomRange({ from: range?.from, to: range?.to });
+                  if (range?.from && range?.to) setRangeOpen(false);
+                }}
+                locale={ptBR}
+                numberOfMonths={2}
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
       <div className="rounded-xl border border-primary/10 bg-card overflow-x-auto">
         <table className="w-full text-sm">
@@ -514,15 +611,20 @@ function RankingSDRsTab({
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">#</th>
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">Nome</th>
               <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">Hoje</th>
-              <th className="text-center py-3 px-4 font-medium text-xs text-muted-foreground">Semana</th>
-              <th className="text-center py-3 px-4 font-medium text-xs text-muted-foreground">Mês</th>
+              {activeNonFixedCols.map(col => (
+                <th key={col.key} className="text-center py-3 px-4 font-medium text-xs text-muted-foreground">
+                  {col.key === "personalizado" && customRange.from && customRange.to
+                    ? `${format(customRange.from, "dd/MM")} — ${format(customRange.to, "dd/MM")}`
+                    : col.label}
+                </th>
+              ))}
               <th className="text-center py-3 px-4 font-medium text-xs text-muted-foreground italic">Posição</th>
             </tr>
           </thead>
           <tbody>
             {ranking.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-center text-muted-foreground py-8 text-xs">
+                <td colSpan={3 + activeNonFixedCols.length + 1} className="text-center text-muted-foreground py-8 text-xs">
                   Nenhum SDR encontrado
                 </td>
               </tr>
@@ -534,12 +636,19 @@ function RankingSDRsTab({
                 <td className="py-3 px-4 text-center font-bold text-primary">
                   {row.hoje > 0 ? row.hoje : "—"}
                 </td>
-                <td className="py-3 px-4 text-center">
-                  {row.semana > 0 ? row.semana : "—"}
-                </td>
-                <td className="py-3 px-4 text-center">
-                  {row.mes > 0 ? row.mes : "—"}
-                </td>
+                {activeNonFixedCols.map(col => {
+                  let val = 0;
+                  if (col.key === "personalizado") {
+                    val = customCounts.get(row.user_id) || 0;
+                  } else {
+                    val = row[col.key as keyof typeof row] as number;
+                  }
+                  return (
+                    <td key={col.key} className="py-3 px-4 text-center">
+                      {val > 0 ? val : "—"}
+                    </td>
+                  );
+                })}
                 <td className="py-3 px-4 text-center">
                   {getPosition(i, row)}
                 </td>
