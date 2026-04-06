@@ -15,7 +15,7 @@ export default function GoogleCalendarBanner() {
   const { user } = useAuth();
   const { getAuthUrl } = useGoogleAuthUrl();
   const queryClient = useQueryClient();
-  const [dismissed, setDismissed] = useState(false);
+  
   const [connecting, setConnecting] = useState(false);
 
   // Check if current user's email matches a closer
@@ -62,7 +62,7 @@ export default function GoogleCalendarBanner() {
   }, [queryClient, closerMatch?.id]);
 
   // Only show for closers without token
-  if (!closerMatch || hasToken || dismissed) return null;
+  if (!closerMatch || hasToken) return null;
 
   const handleConnect = async () => {
     setConnecting(true);
@@ -91,9 +91,6 @@ export default function GoogleCalendarBanner() {
       >
         {connecting ? "Conectando..." : "Conectar Google Calendar"}
       </Button>
-      <button onClick={() => setDismissed(true)} className="text-muted-foreground hover:text-foreground">
-        <X className="h-4 w-4" />
-      </button>
     </div>
   );
 }
