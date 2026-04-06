@@ -768,7 +768,7 @@ export function CalendarContent() {
         time={detailAg?.scheduled_time ?? ""}
         onClose={() => setViewBriefing(false)}
         briefingReadAt={detailAg?.briefing_read_at ?? null}
-        briefingReadByName={detailAg?.briefing_read_by ? (user?.user_metadata?.full_name || user?.email || "—") : null}
+        briefingReadByName={detailAg?.briefing_read_by ? (profilesMap.get(detailAg.briefing_read_by) || user?.user_metadata?.full_name || "—") : null}
         showReadButton={role !== "sdr" && !!detailAg?.briefing && !detailAg?.briefing_read_at}
         onMarkRead={async () => {
           if (!detailAg || !user) return;
