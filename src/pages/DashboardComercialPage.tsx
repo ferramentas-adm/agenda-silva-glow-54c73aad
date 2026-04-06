@@ -596,8 +596,18 @@ function RankingSDRsTab({
                 mode="range"
                 selected={customRange.from ? { from: customRange.from, to: customRange.to } : undefined}
                 onSelect={(range) => {
-                  setCustomRange({ from: range?.from, to: range?.to });
-                  if (range?.from && range?.to) setRangeOpen(false);
+                  // If user already has a complete range or no range, start fresh with new "from"
+                  if (customRange.from && customRange.to) {
+                    // Had a complete range, so this click starts a new one
+                    setCustomRange({ from: range?.to || range?.from, to: undefined });
+                  } else if (customRange.from && !customRange.to && range?.to) {
+                    // Had only "from", now got "to" — complete the range
+                    setCustomRange({ from: range.from, to: range.to });
+                    setRangeOpen(false);
+                  } else {
+                    // First click — set "from"
+                    setCustomRange({ from: range?.from, to: undefined });
+                  }
                 }}
                 locale={ptBR}
                 numberOfMonths={2}
