@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, FileText, Pencil, Trash2 } from "lucide-react";
+import { X, FileText, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -9,6 +9,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface BriefingDrawerProps {
   open: boolean;
@@ -21,6 +23,10 @@ interface BriefingDrawerProps {
   onSave: (text: string) => Promise<void>;
   onRemove: () => Promise<void>;
   saving: boolean;
+  briefingReadAt?: string | null;
+  briefingReadByName?: string | null;
+  onMarkRead?: () => Promise<void>;
+  showReadButton?: boolean;
 }
 
 export default function BriefingDrawer({
