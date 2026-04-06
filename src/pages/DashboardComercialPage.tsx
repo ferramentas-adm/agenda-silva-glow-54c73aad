@@ -490,7 +490,7 @@ function RankingSDRsTab({
   updatedAgo,
   createdAgs,
 }: {
-  ranking: { user_id: string; full_name: string; hoje: number; ontem: number; semana: number; quinzena: number; mes: number }[];
+  ranking: { user_id: string; full_name: string; hoje: number; paraHoje: number; ontem: number; semana: number; quinzena: number; mes: number }[];
   updatedAgo: string;
   createdAgs: AgendamentoMetric[];
 }) {
