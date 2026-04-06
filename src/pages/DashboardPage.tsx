@@ -194,7 +194,20 @@ export function CalendarContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Realtime subscription
+  // Fetch profiles for name resolution (briefing reader)
+  const { data: profilesMap = new Map<string, string>() } = useQuery({
+    queryKey: ["profiles-name-map"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name");
+      const map = new Map<string, string>();
+      (data ?? []).forEach((p: { user_id: string; full_name: string }) => map.set(p.user_id, p.full_name));
+      return map;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
     const channel = supabase
       .channel("agendamentos-realtime")
