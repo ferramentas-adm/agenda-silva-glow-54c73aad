@@ -274,7 +274,11 @@ export default function DashboardComercialPage() {
         {/* ─── Date nav (Métricas & Ranking tabs only) ──── */}
         {activeTab !== 1 && (
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">Calendário</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+                ? "Calendário"
+                : `Calendário — ${format(currentDate, "dd/MM/yyyy")}`}
+            </h1>
             <p className="text-sm text-muted-foreground">
               {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
