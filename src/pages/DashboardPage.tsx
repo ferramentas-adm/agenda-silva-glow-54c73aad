@@ -617,6 +617,10 @@ export function CalendarContent() {
                   <p className="text-muted-foreground text-xs">Telefone</p>
                   <p className="font-medium flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{detailAg.lead_phone}</p>
                 </div>
+                <div className="space-y-1 col-span-2">
+                  <p className="text-muted-foreground text-xs">SDR responsável</p>
+                  <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{detailAg.created_by ? (profilesMap.get(detailAg.created_by) || "—") : "—"}</p>
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -923,7 +927,7 @@ function DayView({
     <div className="overflow-x-auto rounded-xl border border-primary/10 bg-card">
       <div
         className="grid"
-        style={{ gridTemplateColumns: `60px repeat(${closers.length}, minmax(160px, 1fr))` }}
+        style={{ gridTemplateColumns: `70px repeat(${closers.length}, minmax(180px, 1fr))` }}
       >
         {/* Header */}
         <div className="border-b border-primary/10 p-2" />
@@ -932,7 +936,7 @@ function DayView({
           const color = getCloserColor(c.id, idx);
           return (
             <div key={c.id} className={cn("border-b border-l border-primary/10 p-2 text-center", color.text)}>
-              <span className="text-xs font-semibold">{c.name}</span>
+              <span className="text-sm font-semibold">{c.name}</span>
             </div>
           );
         })}
@@ -942,8 +946,8 @@ function DayView({
           const hourPrefix = hour.slice(0, 2);
           return (
             <Fragment key={`row-${hour}`}>
-              <div className="border-b border-primary/5 px-2 py-1 text-right flex items-start pt-2">
-                <span className="text-[10px] text-muted-foreground font-mono">{hour}</span>
+              <div className="border-b border-primary/5 px-2 py-1 text-right flex items-start pt-3">
+                <span className="text-sm text-muted-foreground font-mono font-medium">{hour}</span>
               </div>
               {closers.map((c) => {
                 const agList = slotMap.get(`${c.id}-${hourPrefix}`) || [];
@@ -957,7 +961,7 @@ function DayView({
                   <div
                     key={`${c.id}-${hour}`}
                     className={cn(
-                      "border-b border-l border-primary/5 px-1 py-1 min-h-[52px]",
+                      "border-b border-l border-primary/5 px-1.5 py-1.5 min-h-[72px]",
                       canClickToSchedule && "cursor-pointer hover:bg-primary/5 transition-colors"
                     )}
                     onClick={() => {
@@ -976,8 +980,8 @@ function DayView({
                             <div
                               key={ag.id}
                               className={cn(
-                                "rounded-md border text-[11px] group relative cursor-pointer flex-1 min-w-0 overflow-hidden",
-                                isCompact ? "px-1 py-1 space-y-0" : "px-2 py-1.5 space-y-0.5",
+                                "rounded-md border text-xs group relative cursor-pointer flex-1 min-w-0 overflow-hidden",
+                                isCompact ? "px-1.5 py-1 space-y-0" : "px-2 py-2 space-y-0.5",
                                 closerColor.bg,
                                 closerColor.border,
                                 isCancelled && "opacity-60"
@@ -995,11 +999,11 @@ function DayView({
                               )}>
                                 B
                               </span>
-                              <div className={cn("font-semibold truncate pr-4", isCancelled && "line-through", isCompact && "text-[10px]")}>
+                              <div className={cn("font-semibold truncate pr-5", isCancelled && "line-through", isCompact && "text-[11px]")}>
                                 {ag.lead_name}
                               </div>
-                              <div className="flex items-center gap-0.5 text-[10px] opacity-80">
-                                <Clock className="h-2.5 w-2.5 shrink-0" />
+                              <div className="flex items-center gap-1 text-[11px] opacity-80">
+                                <Clock className="h-3 w-3 shrink-0" />
                                 <span className={cn("truncate", isCancelled && "line-through")}>{ag.scheduled_time}</span>
                                 {!isCompact && ag.meet_link && (
                                   <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
