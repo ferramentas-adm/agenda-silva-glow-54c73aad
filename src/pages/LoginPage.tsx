@@ -87,7 +87,7 @@ export default function LoginPage() {
           {/* Card title */}
           <div className="mb-6 text-center md:text-left">
             <h2 className="font-display text-lg font-semibold glow-text">Bem-vindo <span className="text-primary">Silva</span></h2>
-            <div className="mt-2 h-px w-12 bg-primary/40 mx-auto md:mx-0" />
+            
           </div>
 
           {forgotMode ? (
@@ -164,8 +164,7 @@ export default function LoginPage() {
               </button>
 
               <div className="relative my-2">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-primary/20" /></div>
-                <div className="relative flex justify-center text-xs"><span className="bg-transparent px-2 text-muted-foreground">ou</span></div>
+                <div className="relative flex justify-center text-xs"><span className="px-2 text-muted-foreground">ou</span></div>
               </div>
 
               <Button
