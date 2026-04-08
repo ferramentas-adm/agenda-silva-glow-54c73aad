@@ -310,11 +310,11 @@ export function CalendarContent() {
 
   const statusCounts = useMemo(
     () =>
-      filtered.reduce<Record<string, number>>((acc, agendamento) => {
+      sdrFiltered.reduce<Record<string, number>>((acc, agendamento) => {
         acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
         return acc;
       }, {}),
-    [filtered]
+    [sdrFiltered]
   );
 
   const closerMap = useMemo(() => {
