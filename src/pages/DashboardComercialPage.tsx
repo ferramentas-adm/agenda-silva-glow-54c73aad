@@ -414,6 +414,65 @@ function ChannelTable({
   );
 }
 
+// ─── Date label helpers ──────────────────────────────────────────
+function getDateLabel(selectedDate: Date, targetDate: Date, prefix: string) {
+  const today = new Date();
+  const todayStr = format(today, "yyyy-MM-dd");
+  const yesterdayStr = format(subDays(today, 1), "yyyy-MM-dd");
+  const tomorrowStr = format(addDays(today, 1), "yyyy-MM-dd");
+  const targetStr = format(targetDate, "yyyy-MM-dd");
+
+  if (targetStr === todayStr) {
+    if (prefix === "Para") return "Agendas Para Hoje";
+    if (prefix === "Geradas") return "Agendas Geradas Hoje";
+    if (prefix === "De") return "Agendas De Hoje";
+  }
+  if (targetStr === yesterdayStr) {
+    if (prefix === "Para") return "Agendas Para Ontem";
+    if (prefix === "Geradas") return "Agendas Geradas Ontem";
+    if (prefix === "De") return "Agendas De Ontem";
+  }
+  if (targetStr === tomorrowStr) {
+    if (prefix === "Para") return "Agendas Para Amanhã";
+    if (prefix === "Geradas") return "Agendas Geradas Amanhã";
+    if (prefix === "De") return "Agendas De Amanhã";
+  }
+  const dayBefore = format(subDays(today, 2), "yyyy-MM-dd");
+  if (targetStr === dayBefore && prefix === "De") return "Agendas De Anteontem";
+
+  const formatted = format(targetDate, "dd/MM/yyyy");
+  return `Agendas ${prefix} ${formatted}`;
+}
+
+function getChannelTableLabel(selectedDate: Date, type: "para" | "criadas") {
+  const today = new Date();
+  const todayStr = format(today, "yyyy-MM-dd");
+  const yesterdayStr = format(subDays(today, 1), "yyyy-MM-dd");
+  const tomorrowStr = format(addDays(today, 1), "yyyy-MM-dd");
+  const selectedStr = format(selectedDate, "yyyy-MM-dd");
+
+  let period = format(selectedDate, "dd/MM/yyyy");
+  if (selectedStr === todayStr) period = "Hoje";
+  else if (selectedStr === yesterdayStr) period = "Ontem";
+  else if (selectedStr === tomorrowStr) period = "Amanhã";
+
+  if (type === "para") return `Agendas Para ${period} — por Canal`;
+  return `Agendas Criadas ${period} — por Canal`;
+}
+
+function getSubtitleLabel(targetDate: Date) {
+  const today = new Date();
+  const todayStr = format(today, "yyyy-MM-dd");
+  const yesterdayStr = format(subDays(today, 1), "yyyy-MM-dd");
+  const tomorrowStr = format(addDays(today, 1), "yyyy-MM-dd");
+  const targetStr = format(targetDate, "yyyy-MM-dd");
+
+  if (targetStr === todayStr) return "Hoje";
+  if (targetStr === yesterdayStr) return "Ontem";
+  if (targetStr === tomorrowStr) return "Amanhã";
+  return format(targetDate, "dd/MM/yyyy");
+}
+
 // ─── Métricas SDRs Tab ──────────────────────────────────────────
 function MetricasSDRsTab({
   metrics,
@@ -424,9 +483,17 @@ function MetricasSDRsTab({
   currentDate: Date;
   updatedAgo: string;
 }) {
-  const dateLabel = format(currentDate, "dd/MM/yyyy");
-  const yesterdayLabel = format(subDays(currentDate, 1), "dd/MM/yyyy");
-  const tomorrowLabel = format(addDays(currentDate, 1), "dd/MM/yyyy");
+  const prevDay = subDays(currentDate, 1);
+  const nextDay = addDays(currentDate, 1);
+
+  const titlePara = getDateLabel(currentDate, currentDate, "Para");
+  const titleGeradas = getDateLabel(currentDate, currentDate, "Geradas");
+  const titleDe = getDateLabel(currentDate, prevDay, "De");
+  const titleAmanha = getDateLabel(currentDate, nextDay, "Para");
+
+  const subtitleSelected = getSubtitleLabel(currentDate);
+  const subtitlePrev = getSubtitleLabel(prevDay);
+  const subtitleNext = getSubtitleLabel(nextDay);
 
   return (
     <div className="space-y-4">
@@ -438,14 +505,14 @@ function MetricasSDRsTab({
 
       {/* Row 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard title="Agendas Para Hoje" value={metrics.todayScheduled} subtitle={dateLabel} highlight />
-        <MetricCard title="Agendas Geradas Hoje" value={metrics.todayCreated} subtitle={dateLabel} />
-        <MetricCard title="Agendas De Ontem" value={metrics.yesterdayScheduled} subtitle={yesterdayLabel} />
+        <MetricCard title={titlePara} value={metrics.todayScheduled} subtitle={subtitleSelected} highlight />
+        <MetricCard title={titleGeradas} value={metrics.todayCreated} subtitle={subtitleSelected} />
+        <MetricCard title={titleDe} value={metrics.yesterdayScheduled} subtitle={subtitlePrev} />
       </div>
 
       {/* Row 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard title="Agendas Para Amanhã" value={metrics.tomorrowScheduled} subtitle={tomorrowLabel} />
+        <MetricCard title={titleAmanha} value={metrics.tomorrowScheduled} subtitle={subtitleNext} />
         <MetricCard
           title="Total Mês"
           value={metrics.monthTotal}
@@ -459,20 +526,20 @@ function MetricasSDRsTab({
           }
           icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
         />
-        <MetricCard title="Confirmado" value={metrics.confirmado} subtitle="Hoje" />
+        <MetricCard title="Confirmado" value={metrics.confirmado} subtitle={subtitleSelected} />
       </div>
 
       {/* Row 3 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard title="Compareceu" value={metrics.compareceu} subtitle="Hoje" />
-        <MetricCard title="No-show" value={metrics.noShow} subtitle="Hoje" />
-        <MetricCard title="Cancelado" value={metrics.cancelado} subtitle="Hoje" />
+        <MetricCard title="Compareceu" value={metrics.compareceu} subtitle={subtitleSelected} />
+        <MetricCard title="No-show" value={metrics.noShow} subtitle={subtitleSelected} />
+        <MetricCard title="Cancelado" value={metrics.cancelado} subtitle={subtitleSelected} />
       </div>
 
       {/* Channel tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChannelTable title="Agendas Para Hoje — por Canal" data={metrics.channelsToday} />
-        <ChannelTable title="Agendas Criadas Hoje — por Canal" data={metrics.channelsCreatedToday} />
+        <ChannelTable title={getChannelTableLabel(currentDate, "para")} data={metrics.channelsToday} />
+        <ChannelTable title={getChannelTableLabel(currentDate, "criadas")} data={metrics.channelsCreatedToday} />
       </div>
     </div>
   );
