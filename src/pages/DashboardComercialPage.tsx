@@ -499,11 +499,14 @@ function MetricasSDRsTab({
   const subtitlePrev = getSubtitleLabel(prevDay);
   const subtitleNext = getSubtitleLabel(nextDay);
 
+  const selectedLabel = getSubtitleLabel(currentDate);
+  const monthLabel = format(currentDate, "MMMM/yyyy", { locale: ptBR });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Users className="h-5 w-5 text-muted-foreground" />
-        <h2 className="text-xl font-bold">Métricas de Agendamentos</h2>
+        <h2 className="text-xl font-bold">Métricas de Agendamentos — {selectedLabel}</h2>
         <span className="text-xs text-muted-foreground">{updatedAgo}</span>
       </div>
 
@@ -518,7 +521,7 @@ function MetricasSDRsTab({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MetricCard title={titleAmanha} value={metrics.tomorrowScheduled} subtitle={subtitleNext} />
         <MetricCard
-          title="Total Mês"
+          title={`Total ${monthLabel}`}
           value={metrics.monthTotal}
           subtitle={
             <span>
@@ -530,14 +533,14 @@ function MetricasSDRsTab({
           }
           icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
         />
-        <MetricCard title="Confirmado" value={metrics.confirmado} subtitle={subtitleSelected} />
+        <MetricCard title={`Confirmado — ${selectedLabel}`} value={metrics.confirmado} subtitle={subtitleSelected} />
       </div>
 
       {/* Row 3 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard title="Compareceu" value={metrics.compareceu} subtitle={subtitleSelected} />
-        <MetricCard title="No-show" value={metrics.noShow} subtitle={subtitleSelected} />
-        <MetricCard title="Cancelado" value={metrics.cancelado} subtitle={subtitleSelected} />
+        <MetricCard title={`Compareceu — ${selectedLabel}`} value={metrics.compareceu} subtitle={subtitleSelected} />
+        <MetricCard title={`No-show — ${selectedLabel}`} value={metrics.noShow} subtitle={subtitleSelected} />
+        <MetricCard title={`Cancelado — ${selectedLabel}`} value={metrics.cancelado} subtitle={subtitleSelected} />
       </div>
 
       {/* Channel tables */}
