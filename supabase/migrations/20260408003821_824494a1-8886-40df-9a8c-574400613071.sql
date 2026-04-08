@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_status_change_webhook ON public.agendamentos;
