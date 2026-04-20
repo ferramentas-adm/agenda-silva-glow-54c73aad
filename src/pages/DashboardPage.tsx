@@ -202,13 +202,13 @@ export function CalendarContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch profiles for name resolution (briefing reader)
+  // Fetch profiles for name resolution (responsável, briefing reader, etc.)
+  // Usa RPC pública (sem expor email/flags) para que SDRs também consigam
+  // resolver nomes de outros usuários.
   const { data: profilesMap = new Map<string, string>() } = useQuery({
     queryKey: ["profiles-name-map"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, full_name");
+      const { data } = await supabase.rpc("get_public_profiles");
       const map = new Map<string, string>();
       (data ?? []).forEach((p: { user_id: string; full_name: string }) => map.set(p.user_id, p.full_name));
       return map;
