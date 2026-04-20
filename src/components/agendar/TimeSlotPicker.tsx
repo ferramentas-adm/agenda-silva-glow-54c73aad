@@ -19,24 +19,22 @@ interface TimeRange {
   end: string;
 }
 
-function generateSlotsFromRanges(ranges: TimeRange[]): string[] {
-  const slots: string[] = [];
-  for (const range of ranges) {
-    const startH = parseInt(range.start.split(":")[0], 10);
-    const endH = parseInt(range.end.split(":")[0], 10);
-    for (let h = startH; h <= endH; h++) {
-      const slot = `${String(h).padStart(2, "0")}:00`;
-      if (!slots.includes(slot)) slots.push(slot);
-    }
-  }
-  return slots.sort();
+// Slots fixos: 09h às 23h (1 em 1 hora). O botão "Outro" permite personalizar.
+const FIXED_SLOTS: string[] = (() => {
+  const arr: string[] = [];
+  for (let h = 9; h <= 23; h++) arr.push(`${String(h).padStart(2, "0")}:00`);
+  return arr;
+})();
+
+function generateSlotsFromRanges(_ranges: TimeRange[]): string[] {
+  // Mantido por compatibilidade externa, mas internamente usamos FIXED_SLOTS.
+  return FIXED_SLOTS;
 }
 
 function parseBusinessHours(closerData: any): TimeRange[] {
   if (closerData?.business_hours_ranges && Array.isArray(closerData.business_hours_ranges) && closerData.business_hours_ranges.length > 0) {
     return closerData.business_hours_ranges as TimeRange[];
   }
-  // Fallback to legacy start/end
   return [{
     start: closerData?.business_hours_start || "09:00",
     end: closerData?.business_hours_end || "23:00",
@@ -119,8 +117,9 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     },
   });
 
+  // Slots fixos: 09h às 23h (independente do horário do closer).
   const ranges = useMemo(() => parseBusinessHours(closerData), [closerData]);
-  const ALL_SLOTS = useMemo(() => generateSlotsFromRanges(ranges), [ranges]);
+  const ALL_SLOTS = FIXED_SLOTS;
 
   const { data: bookedTimes = [] } = useQuery<string[]>({
     queryKey: ["booked-slots", closerId, dateStr],
@@ -136,15 +135,16 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     },
   });
 
-  // Closer personal blocks
+  // Closer personal blocks (data específica + recorrentes do mesmo dia da semana)
+  const weekday = date.getDay();
   const { data: closerBlocks = [] } = useQuery({
-    queryKey: ["closer-blocks-slots", closerId, dateStr],
+    queryKey: ["closer-blocks-slots", closerId, dateStr, weekday],
     queryFn: async () => {
       const { data } = await supabase
         .from("closer_blocks")
-        .select("start_time, end_time, block_type")
+        .select("start_time, end_time, block_type, is_recurring, recurrence_weekday, block_date")
         .eq("closer_id", closerId)
-        .eq("block_date", dateStr);
+        .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`);
       return data ?? [];
     },
   });

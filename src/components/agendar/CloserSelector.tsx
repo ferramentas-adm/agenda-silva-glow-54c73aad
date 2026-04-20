@@ -15,16 +15,15 @@ interface CloserWithAvailability {
   totalSlots: number;
 }
 
-function countSlotsFromRanges(ranges: { start: string; end: string }[]): number {
-  const slots = new Set<string>();
-  for (const r of ranges) {
-    const sH = parseInt(r.start.split(":")[0], 10);
-    const eH = parseInt(r.end.split(":")[0], 10);
-    for (let h = sH; h <= eH; h++) {
-      slots.add(`${String(h).padStart(2, "0")}:00`);
-    }
-  }
-  return slots.size;
+// Slots fixos: 09h às 23h.
+const FIXED_SLOTS: string[] = (() => {
+  const arr: string[] = [];
+  for (let h = 9; h <= 23; h++) arr.push(`${String(h).padStart(2, "0")}:00`);
+  return arr;
+})();
+
+function countSlotsFromRanges(_ranges: { start: string; end: string }[]): number {
+  return FIXED_SLOTS.length;
 }
 
 export default function CloserSelector({ selectedDate, selectedCloserId, onSelect }: CloserSelectorProps) {
@@ -61,11 +60,13 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
         .is("deleted_at", null)
         .not("status", "in", '("cancelada","reagendada")');
 
-      // Fetch closer blocks for the date
+      // Fetch closer blocks for the date (incluindo recorrentes do mesmo dia da semana)
+      const dateObj = new Date(dateStr + "T12:00:00");
+      const weekday = dateObj.getDay();
       const { data: blocks } = await supabase
         .from("closer_blocks")
-        .select("closer_id, start_time, end_time")
-        .eq("block_date", dateStr);
+        .select("closer_id, start_time, end_time, is_recurring, recurrence_weekday, block_date")
+        .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`);
 
       // Count booked times per closer (unique hours)
       const bookedMap = new Map<string, Set<string>>();
@@ -92,24 +93,12 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
       const currentHourStr = isToday ? `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}` : null;
 
       return activeClosers.map((c: any) => {
-        const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
-          ? c.business_hours_ranges
-          : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
-        
-        // Generate all slots
-        const allSlots: string[] = [];
-        for (const r of ranges) {
-          const sH = parseInt(r.start.split(":")[0], 10);
-          const eH = parseInt(r.end.split(":")[0], 10);
-          for (let h = sH; h <= eH; h++) {
-            const s = `${String(h).padStart(2, "0")}:00`;
-            if (!allSlots.includes(s)) allSlots.push(s);
-          }
-        }
+        // Slots fixos 09–23 (independente do horário do closer)
+        const allSlots = FIXED_SLOTS;
 
         const booked = bookedMap.get(c.id) ?? new Set();
         const blocked = blockedMap.get(c.id) ?? new Set();
-        
+
         let freeCount = 0;
         for (const slot of allSlots) {
           if (booked.has(slot)) continue;
