@@ -167,6 +167,8 @@ export type Database = {
           description: string | null
           end_time: string
           id: string
+          is_recurring: boolean
+          recurrence_weekday: number | null
           start_time: string
         }
         Insert: {
@@ -177,6 +179,8 @@ export type Database = {
           description?: string | null
           end_time: string
           id?: string
+          is_recurring?: boolean
+          recurrence_weekday?: number | null
           start_time: string
         }
         Update: {
@@ -187,6 +191,8 @@ export type Database = {
           description?: string | null
           end_time?: string
           id?: string
+          is_recurring?: boolean
+          recurrence_weekday?: number | null
           start_time?: string
         }
         Relationships: [
