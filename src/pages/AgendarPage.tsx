@@ -426,7 +426,32 @@ export default function AgendarPage() {
                 <SummaryRow label="Horário" value={time} />
               </div>
 
-              {needsReason && (
+              {isAdmin && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">SDR responsável pelo agendamento</label>
+                  <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o SDR responsável (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sdrUsers.length === 0 ? (
+                        <SelectItem value="__none" disabled>
+                          Nenhum SDR cadastrado
+                        </SelectItem>
+                      ) : (
+                        sdrUsers.map((s) => (
+                          <SelectItem key={s.user_id} value={s.user_id}>
+                            {s.full_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Caso não selecione, você (administrador) será registrado como responsável.
+                  </p>
+                </div>
+              )}
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
                     Motivo da reunião{isReasonRequired ? " (obrigatório)" : ""}
