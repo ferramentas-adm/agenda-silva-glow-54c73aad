@@ -11,6 +11,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { linkifyText } from "@/lib/linkify";
 
 interface BriefingDrawerProps {
   open: boolean;
@@ -183,7 +184,7 @@ export default function BriefingDrawer({
                     className="text-sm leading-7 text-foreground/90 whitespace-pre-wrap break-words"
                     style={{ overflowWrap: "anywhere" }}
                   >
-                    {briefing}
+                    {linkifyText(briefing)}
                   </div>
                 </div>
 
