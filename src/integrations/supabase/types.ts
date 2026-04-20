@@ -35,6 +35,7 @@ export type Database = {
           original_agendamento_id: string | null
           scheduled_date: string
           scheduled_time: string
+          sdr_responsavel_id: string | null
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
         }
@@ -58,6 +59,7 @@ export type Database = {
           original_agendamento_id?: string | null
           scheduled_date: string
           scheduled_time: string
+          sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
         }
@@ -81,6 +83,7 @@ export type Database = {
           original_agendamento_id?: string | null
           scheduled_date?: string
           scheduled_time?: string
+          sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
         }

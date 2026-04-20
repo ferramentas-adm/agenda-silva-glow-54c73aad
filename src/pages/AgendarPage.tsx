@@ -213,6 +213,7 @@ export default function AgendarPage() {
         status: editId ? "reagendada" : "confirmada",
         meet_link: meetLink,
         created_by: user.id,
+        sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason || null,
         channel_type: channelType || null,
@@ -266,6 +267,7 @@ export default function AgendarPage() {
     setMeetingReason(null);
     setMeetingReasonCustom("");
     setChannelType(null);
+    setSelectedSdrId(null);
     setSuccess(null);
     setStep("lead");
   };
@@ -423,6 +425,33 @@ export default function AgendarPage() {
                 <SummaryRow label="Data" value={format(date, "dd/MM/yyyy")} />
                 <SummaryRow label="Horário" value={time} />
               </div>
+
+              {isAdmin && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">SDR responsável pelo agendamento</label>
+                  <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o SDR responsável (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sdrUsers.length === 0 ? (
+                        <SelectItem value="__none" disabled>
+                          Nenhum SDR cadastrado
+                        </SelectItem>
+                      ) : (
+                        sdrUsers.map((s) => (
+                          <SelectItem key={s.user_id} value={s.user_id}>
+                            {s.full_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Caso não selecione, você (administrador) será registrado como responsável.
+                  </p>
+                </div>
+              )}
 
               {needsReason && (
                 <div className="space-y-1.5">

@@ -132,21 +132,24 @@ export default function ReunioesListPage() {
   // Only profiles with SDR role for SDR filter
   const sdrProfiles = useMemo(() => profiles.filter((p) => roleMap[p.user_id] === "sdr"), [profiles, roleMap]);
 
+  // Helper: resolve effective SDR for an agendamento
+  const sdrIdOf = (ag: any): string | null => ag.sdr_responsavel_id || ag.created_by || null;
+
   // Determine if a row belongs to the current user
   const isOwnRow = (ag: any) => {
     if (isCloser && myCloserId) return ag.closer_id === myCloserId;
-    if (isSDR && user) return ag.created_by === user.id;
+    if (isSDR && user) return sdrIdOf(ag) === user.id;
     return true;
   };
 
   const filtered = useMemo(() => {
     return agendamentos.filter((ag) => {
-      // Role-based mandatory filter: Closer sees only own meetings, SDR sees only own created
+      // Role-based mandatory filter: Closer sees only own meetings, SDR sees only own assigned
       if (isCloser && myCloserId && ag.closer_id !== myCloserId) return false;
-      if (isSDR && user && ag.created_by !== user.id) return false;
+      if (isSDR && user && sdrIdOf(ag) !== user.id) return false;
 
       if (filterCloser !== "all" && ag.closer_id !== filterCloser) return false;
-      if (filterSDR !== "all" && ag.created_by !== filterSDR) return false;
+      if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
       if (filterChannelType !== "all" && (ag as any).channel_type !== filterChannelType) return false;
       if (filterReason !== "all") {
@@ -207,7 +210,7 @@ export default function ReunioesListPage() {
       ag.lead_name,
       ag.lead_phone,
       closerMap[ag.closer_id] || "—",
-      ag.created_by ? (profileMap[ag.created_by] || "—") : "—",
+      sdrIdOf(ag) ? (profileMap[sdrIdOf(ag)!] || "—") : "—",
       format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy"),
       ag.scheduled_time,
       format(new Date(ag.created_at), "dd/MM/yyyy HH:mm"),
@@ -442,7 +445,7 @@ export default function ReunioesListPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">{closerMap[ag.closer_id] || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{ag.created_by ? (profileMap[ag.created_by] || "—") : "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{sdrIdOf(ag) ? (profileMap[sdrIdOf(ag)!] || "—") : "—"}</td>
                         <td className="px-4 py-3">
                           <div>{format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}</div>
                           <div className="text-xs text-muted-foreground">{ag.scheduled_time}</div>

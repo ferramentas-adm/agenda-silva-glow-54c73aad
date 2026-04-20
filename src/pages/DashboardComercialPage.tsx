@@ -25,6 +25,7 @@ interface AgendamentoMetric {
   status: string;
   channel_type: string | null;
   created_by: string | null;
+  sdr_responsavel_id: string | null;
 }
 
 interface SDRProfile {
@@ -74,7 +75,7 @@ export default function DashboardComercialPage() {
       const maxDate = tomorrowStr > monthEnd ? tomorrowStr : monthEnd;
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by")
+        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("scheduled_date", minDate)
         .lte("scheduled_date", maxDate)
@@ -90,7 +91,7 @@ export default function DashboardComercialPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by")
+        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("scheduled_date", prevMonthStart)
         .lte("scheduled_date", prevMonthEnd);
@@ -108,7 +109,7 @@ export default function DashboardComercialPage() {
       const broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by")
+        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("created_at", broadStart + "T00:00:00")
         .lte("created_at", broadEnd + "T23:59:59");
@@ -179,24 +180,26 @@ export default function DashboardComercialPage() {
     const yesterdayStart = format(subDays(currentDate, 1), "yyyy-MM-dd");
     const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
 
+    const sdrOf = (a: AgendamentoMetric) => a.sdr_responsavel_id ?? a.created_by;
+
     return sdrProfiles.map(profile => {
       const countInRange = (start: string, end: string) =>
         createdAgs.filter(a =>
-          a.created_by === profile.user_id &&
+          sdrOf(a) === profile.user_id &&
           a.created_at >= start + "T00:00:00" &&
           a.created_at <= end + "T23:59:59"
         ).length;
 
       const hoje = countInRange(dateStr, dateStr);
       const paraHoje = agendamentos.filter(a =>
-        a.created_by === profile.user_id &&
+        sdrOf(a) === profile.user_id &&
         a.scheduled_date === dateStr
       ).length;
       const ontem = countInRange(yesterdayStart, yesterdayStart);
       const semana = countInRange(weekStart, weekEnd);
       const quinzena = countInRange(quinzenaStart, dateStr);
       const mes = createdAgs.filter(a =>
-        a.created_by === profile.user_id &&
+        sdrOf(a) === profile.user_id &&
         a.created_at >= monthStart + "T00:00:00" &&
         a.created_at <= monthEnd + "T23:59:59"
       ).length;
@@ -592,8 +595,9 @@ function RankingSDRsTab({
     const end = format(customRange.to, "yyyy-MM-dd");
     const map = new Map<string, number>();
     createdAgs.forEach(a => {
-      if (a.created_by && a.created_at >= start + "T00:00:00" && a.created_at <= end + "T23:59:59") {
-        map.set(a.created_by, (map.get(a.created_by) || 0) + 1);
+      const sdrId = a.sdr_responsavel_id ?? a.created_by;
+      if (sdrId && a.created_at >= start + "T00:00:00" && a.created_at <= end + "T23:59:59") {
+        map.set(sdrId, (map.get(sdrId) || 0) + 1);
       }
     });
     return map;

@@ -47,6 +47,7 @@ interface Agendamento {
   briefing: string | null;
   deleted_at: string | null;
   created_by: string;
+  sdr_responsavel_id: string | null;
   created_at: string;
   meeting_reason: string | null;
   channel_type: string | null;
@@ -172,7 +173,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -288,12 +289,13 @@ export function CalendarContent() {
   const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
 
-  // SDR-only filtered agendamentos for metrics
+  // SDR-only filtered agendamentos for metrics (uses sdr_responsavel_id when set, else created_by)
   const sdrFiltered = useMemo(
     () => filtered.filter((a) => {
-      if (!a.created_by) return false;
-      const creatorRole = userRolesMap.get(a.created_by);
-      return creatorRole === "sdr";
+      const sdrUserId = a.sdr_responsavel_id || a.created_by;
+      if (!sdrUserId) return false;
+      const role = userRolesMap.get(sdrUserId);
+      return role === "sdr";
     }),
     [filtered, userRolesMap]
   );
@@ -301,6 +303,7 @@ export function CalendarContent() {
   // Closer-created agendamentos count for metrics
   const closerCreatedCount = useMemo(
     () => filtered.filter((a) => {
+      if (a.sdr_responsavel_id) return false;
       if (!a.created_by) return false;
       const creatorRole = userRolesMap.get(a.created_by);
       return creatorRole === "closer";
@@ -619,7 +622,10 @@ export function CalendarContent() {
                 </div>
                 <div className="space-y-1 col-span-2">
                   <p className="text-muted-foreground text-xs">SDR responsável</p>
-                  <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{detailAg.created_by ? (profilesMap.get(detailAg.created_by) || "—") : "—"}</p>
+                  <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{(() => {
+                    const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
+                    return sdrId ? (profilesMap.get(sdrId) || "—") : "—";
+                  })()}</p>
                 </div>
               </div>
 
