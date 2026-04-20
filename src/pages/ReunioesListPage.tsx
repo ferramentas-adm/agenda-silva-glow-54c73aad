@@ -132,21 +132,24 @@ export default function ReunioesListPage() {
   // Only profiles with SDR role for SDR filter
   const sdrProfiles = useMemo(() => profiles.filter((p) => roleMap[p.user_id] === "sdr"), [profiles, roleMap]);
 
+  // Helper: resolve effective SDR for an agendamento
+  const sdrIdOf = (ag: any): string | null => ag.sdr_responsavel_id || ag.created_by || null;
+
   // Determine if a row belongs to the current user
   const isOwnRow = (ag: any) => {
     if (isCloser && myCloserId) return ag.closer_id === myCloserId;
-    if (isSDR && user) return ag.created_by === user.id;
+    if (isSDR && user) return sdrIdOf(ag) === user.id;
     return true;
   };
 
   const filtered = useMemo(() => {
     return agendamentos.filter((ag) => {
-      // Role-based mandatory filter: Closer sees only own meetings, SDR sees only own created
+      // Role-based mandatory filter: Closer sees only own meetings, SDR sees only own assigned
       if (isCloser && myCloserId && ag.closer_id !== myCloserId) return false;
-      if (isSDR && user && ag.created_by !== user.id) return false;
+      if (isSDR && user && sdrIdOf(ag) !== user.id) return false;
 
       if (filterCloser !== "all" && ag.closer_id !== filterCloser) return false;
-      if (filterSDR !== "all" && ag.created_by !== filterSDR) return false;
+      if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
       if (filterChannelType !== "all" && (ag as any).channel_type !== filterChannelType) return false;
       if (filterReason !== "all") {
