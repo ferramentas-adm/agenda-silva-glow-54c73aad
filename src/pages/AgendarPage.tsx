@@ -421,15 +421,15 @@ export default function AgendarPage() {
 
               {isAdmin && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">SDR responsável pelo agendamento</label>
+                  <label className="text-sm font-medium">Responsável pelo agendamento</label>
                   <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o SDR responsável (opcional)" />
+                      <SelectValue placeholder="Selecione o responsável (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
                       {sdrUsers.length === 0 ? (
                         <SelectItem value="__none" disabled>
-                          Nenhum SDR cadastrado
+                          Nenhum usuário cadastrado
                         </SelectItem>
                       ) : (
                         sdrUsers.map((s) => (
