@@ -260,15 +260,19 @@ export function CalendarContent() {
     refetchInterval: 5 * 60 * 1000,
   });
 
-  // Fetch closer personal blocks for the day
+  // Fetch closer personal blocks for the day (incluindo recorrentes do mesmo dia da semana)
+  const dayWeekday = useMemo(() => {
+    const d = new Date(dateStr + "T12:00:00");
+    return d.getDay();
+  }, [dateStr]);
   const { data: closerBlocks = [] } = useQuery<CloserBlock[]>({
-    queryKey: ["closer-blocks-day", closerIdsKey, dateStr],
+    queryKey: ["closer-blocks-day", closerIdsKey, dateStr, dayWeekday],
     enabled: closerIds.length > 0,
     queryFn: async () => {
       const { data } = await supabase
         .from("closer_blocks")
-        .select("closer_id, block_date, start_time, end_time, block_type, description")
-        .eq("block_date", dateStr)
+        .select("closer_id, block_date, start_time, end_time, block_type, description, is_recurring, recurrence_weekday")
+        .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${dayWeekday})`)
         .in("closer_id", closerIds);
       return (data ?? []) as CloserBlock[];
     },
