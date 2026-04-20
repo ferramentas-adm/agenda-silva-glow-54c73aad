@@ -289,12 +289,13 @@ export function CalendarContent() {
   const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
 
-  // SDR-only filtered agendamentos for metrics
+  // SDR-only filtered agendamentos for metrics (uses sdr_responsavel_id when set, else created_by)
   const sdrFiltered = useMemo(
     () => filtered.filter((a) => {
-      if (!a.created_by) return false;
-      const creatorRole = userRolesMap.get(a.created_by);
-      return creatorRole === "sdr";
+      const sdrUserId = a.sdr_responsavel_id || a.created_by;
+      if (!sdrUserId) return false;
+      const role = userRolesMap.get(sdrUserId);
+      return role === "sdr";
     }),
     [filtered, userRolesMap]
   );
@@ -302,6 +303,7 @@ export function CalendarContent() {
   // Closer-created agendamentos count for metrics
   const closerCreatedCount = useMemo(
     () => filtered.filter((a) => {
+      if (a.sdr_responsavel_id) return false;
       if (!a.created_by) return false;
       const creatorRole = userRolesMap.get(a.created_by);
       return creatorRole === "closer";
