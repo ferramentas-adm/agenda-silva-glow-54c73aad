@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
 import { toast } from "sonner";
+import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 
 interface Agendamento {
   id: string;

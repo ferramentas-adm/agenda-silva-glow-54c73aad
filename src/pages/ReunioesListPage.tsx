@@ -26,6 +26,7 @@ import {
   PaginationNext, PaginationPrevious, PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
+import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   confirmada: { label: "Confirmada", color: "bg-green-500/20 text-green-400 border-green-500/30" },
