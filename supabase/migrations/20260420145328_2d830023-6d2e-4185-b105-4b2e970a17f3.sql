@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_agendamento_crm_sync ON public.agendamentos;
