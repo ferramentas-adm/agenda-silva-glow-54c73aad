@@ -26,6 +26,7 @@ import {
   PaginationNext, PaginationPrevious, PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
+import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   confirmada: { label: "Confirmada", color: "bg-green-500/20 text-green-400 border-green-500/30" },
@@ -46,6 +47,12 @@ export default function ReunioesListPage() {
   const isCloser = role === "closer";
   const isSDR = role === "sdr";
   const canSeeAllPeers = isGestor || isModerador;
+  const { data: deletionReasons = [] } = useDeletionReasons();
+  const isAdminLike = isGestor || isModerador;
+  const visibleReasons = useMemo(
+    () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
+    [deletionReasons, isAdminLike]
+  );
 
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
@@ -546,9 +553,13 @@ export default function ReunioesListPage() {
                   <SelectValue placeholder="Selecione a justificativa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
-                  <SelectItem value="Data errada">Data errada</SelectItem>
-                  <SelectItem value="Teste">Teste</SelectItem>
+                  {visibleReasons.length === 0 ? (
+                    <SelectItem value="__none" disabled>Nenhuma justificativa cadastrada</SelectItem>
+                  ) : (
+                    visibleReasons.map((r) => (
+                      <SelectItem key={r.label} value={r.label}>{r.label}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

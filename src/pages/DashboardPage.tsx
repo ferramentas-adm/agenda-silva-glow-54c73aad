@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
 import { toast } from "sonner";
+import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 
 interface Agendamento {
   id: string;
@@ -132,6 +133,12 @@ export function CalendarContent() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: deletionReasons = [] } = useDeletionReasons();
+  const isAdminLike = role === "gestor" || role === "moderador";
+  const visibleReasons = useMemo(
+    () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
+    [deletionReasons, isAdminLike]
+  );
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -340,6 +347,87 @@ export function CalendarContent() {
     if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
     return false;
   }, [detailAg, role, user?.id, myCloserId]);
+
+  // Quem pode editar o Closer da reunião: SDR (próprio agendamento), moderador e gestor.
+  const canEditCloser = useMemo(() => {
+    if (!detailAg) return false;
+    if (role === "gestor" || role === "moderador") return true;
+    if (role === "sdr") return detailAg.created_by === user?.id || (detailAg as any).sdr_responsavel_id === user?.id;
+    return false;
+  }, [detailAg, role, user?.id]);
+
+  // Quem pode editar o SDR responsável: apenas moderador e gestor.
+  const canEditSdr = role === "gestor" || role === "moderador";
+
+  // Lista de usuários (qualquer função) para selecionar como responsável
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["all-users-for-detail"],
+    enabled: canEditSdr,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .eq("active", true)
+        .order("full_name");
+      return data ?? [];
+    },
+  });
+
+  const handleChangeCloser = async (newCloserId: string) => {
+    if (!detailAg || newCloserId === detailAg.closer_id) return;
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ closer_id: newCloserId } as any)
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      const oldName = closerMap.get(detailAg.closer_id) || "—";
+      const newName = closerMap.get(newCloserId) || "—";
+      await logAudit("edit_agendamento", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        scheduled_date: detailAg.scheduled_date,
+        scheduled_time: detailAg.scheduled_time,
+        old_closer: oldName,
+        new_closer: newName,
+        field: "closer_id",
+      });
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: newCloserId }));
+      setDetailAg({ ...detailAg, closer_id: newCloserId });
+      toast.success(`Closer alterado para ${newName}`);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar closer");
+    }
+  };
+
+  const handleChangeSdr = async (newSdrId: string) => {
+    if (!detailAg) return;
+    const currentSdr = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
+    if (newSdrId === currentSdr) return;
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ sdr_responsavel_id: newSdrId } as any)
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      const oldName = currentSdr ? (profilesMap.get(currentSdr) || "—") : "—";
+      const newName = profilesMap.get(newSdrId) || "—";
+      await logAudit("edit_agendamento", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        scheduled_date: detailAg.scheduled_date,
+        scheduled_time: detailAg.scheduled_time,
+        old_sdr: oldName,
+        new_sdr: newName,
+        field: "sdr_responsavel_id",
+      });
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, sdr_responsavel_id: newSdrId }));
+      setDetailAg({ ...detailAg, sdr_responsavel_id: newSdrId } as any);
+      toast.success(`Responsável alterado para ${newName}`);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar responsável");
+    }
+  };
 
   // Delete handler
   const handleDelete = async () => {
@@ -580,10 +668,12 @@ export function CalendarContent() {
                   <SelectValue placeholder="Selecione a justificativa" />
                 </SelectTrigger>
                 <SelectContent>
-               <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
-                  <SelectItem value="Data errada">Data errada</SelectItem>
-                  {(role === "gestor" || role === "moderador") && (
-                    <SelectItem value="Teste">Teste</SelectItem>
+                  {visibleReasons.length === 0 ? (
+                    <SelectItem value="__none" disabled>Nenhuma justificativa cadastrada</SelectItem>
+                  ) : (
+                    visibleReasons.map((r) => (
+                      <SelectItem key={r.label} value={r.label}>{r.label}</SelectItem>
+                    ))
                   )}
                 </SelectContent>
               </Select>
@@ -629,18 +719,47 @@ export function CalendarContent() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs">Closer</p>
-                  <p className="font-medium">{closerMap.get(detailAg.closer_id) || "—"}</p>
+                  {canEditCloser ? (
+                    <Select value={detailAg.closer_id || ""} onValueChange={handleChangeCloser}>
+                      <SelectTrigger className="h-8 text-sm font-medium">
+                        <SelectValue placeholder="Selecionar closer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {closers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{closerMap.get(detailAg.closer_id) || "—"}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs">Telefone</p>
                   <p className="font-medium flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{detailAg.lead_phone}</p>
                 </div>
                 <div className="space-y-1 col-span-2">
-                  <p className="text-muted-foreground text-xs">SDR responsável</p>
-                  <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{(() => {
-                    const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
-                    return sdrId ? (profilesMap.get(sdrId) || "—") : "—";
-                  })()}</p>
+                  <p className="text-muted-foreground text-xs">Responsável pelo agendamento</p>
+                  {canEditSdr ? (
+                    <Select
+                      value={((detailAg as any).sdr_responsavel_id || detailAg.created_by || "")}
+                      onValueChange={handleChangeSdr}
+                    >
+                      <SelectTrigger className="h-8 text-sm font-medium">
+                        <SelectValue placeholder="Selecionar responsável" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allUsers.map((u: any) => (
+                          <SelectItem key={u.user_id} value={u.user_id}>{u.full_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{(() => {
+                      const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
+                      return sdrId ? (profilesMap.get(sdrId) || "—") : "—";
+                    })()}</p>
+                  )}
                 </div>
               </div>
 

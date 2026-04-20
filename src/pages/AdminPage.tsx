@@ -11,14 +11,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
@@ -933,10 +937,222 @@ function SettingsSection() {
   );
 }
 
-/* ─── Main Admin Page ─────────────────────────────────────────── */
+/* ─── Deletion Reasons Section ──────────────────────────────── */
+
+function DeletionReasonsSection() {
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [reasons, setReasons] = useState<DeletionReason[]>([]);
+  const [newLabel, setNewLabel] = useState("");
+  const [newRestricted, setNewRestricted] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["app-settings", "deletion_reasons"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "deletion_reasons")
+        .maybeSingle();
+      return parseDeletionReasons(data?.value);
+    },
+  });
+
+  useEffect(() => {
+    if (data) setReasons(data);
+  }, [data]);
+
+  const persist = async (next: DeletionReason[]) => {
+    setSaving(true);
+    try {
+      const value = JSON.stringify(next);
+      const { data: existing } = await supabase
+        .from("app_settings")
+        .select("id")
+        .eq("key", "deletion_reasons")
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase.from("app_settings")
+          .update({ value, updated_at: new Date().toISOString() })
+          .eq("key", "deletion_reasons");
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("app_settings")
+          .insert({ key: "deletion_reasons", value });
+        if (error) throw error;
+      }
+      queryClient.invalidateQueries({ queryKey: ["app-settings", "deletion_reasons"] });
+      toast.success("Justificativas atualizadas!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar justificativas");
+    }
+    setSaving(false);
+  };
+
+  const handleAdd = async () => {
+    const label = newLabel.trim();
+    if (!label) return;
+    if (reasons.some((r) => r.label.toLowerCase() === label.toLowerCase())) {
+      toast.error("Essa justificativa já existe");
+      return;
+    }
+    const next = [...reasons, { label, restricted: newRestricted }];
+    setReasons(next);
+    setNewLabel("");
+    setNewRestricted(false);
+    await persist(next);
+  };
+
+  const handleRemove = async (idx: number) => {
+    const next = reasons.filter((_, i) => i !== idx);
+    setReasons(next);
+    await persist(next);
+  };
+
+  const handleToggleRestricted = async (idx: number) => {
+    const next = reasons.map((r, i) => i === idx ? { ...r, restricted: !r.restricted } : r);
+    setReasons(next);
+    await persist(next);
+  };
+
+  const handleEditLabel = async (idx: number, newLabelValue: string) => {
+    const trimmed = newLabelValue.trim();
+    if (!trimmed) return;
+    const next = reasons.map((r, i) => i === idx ? { ...r, label: trimmed } : r);
+    setReasons(next);
+    await persist(next);
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
+      <div>
+        <h3 className="flex items-center gap-2 text-base font-semibold">
+          <ShieldAlert className="h-4 w-4 text-primary" />
+          Justificativas de exclusão
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Opções disponíveis ao excluir uma reunião. Justificativas marcadas como "restrito" só aparecem para administradores e moderadores.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <Skeleton className="h-24 w-full rounded-lg" />
+      ) : (
+        <div className="space-y-2">
+          {reasons.length === 0 && (
+            <p className="text-sm text-muted-foreground italic">Nenhuma justificativa cadastrada.</p>
+          )}
+          {reasons.map((r, idx) => (
+            <ReasonRow
+              key={`${r.label}-${idx}`}
+              reason={r}
+              disabled={saving}
+              onSaveLabel={(label) => handleEditLabel(idx, label)}
+              onToggleRestricted={() => handleToggleRestricted(idx)}
+              onRemove={() => handleRemove(idx)}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="border-t border-primary/10 pt-4 space-y-2">
+        <label className="text-sm font-medium">Adicionar nova justificativa</label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Ex.: Lead desistiu"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+          />
+          <Button onClick={handleAdd} disabled={saving || !newLabel.trim()} className="gap-1.5 shrink-0">
+            <Plus className="h-4 w-4" /> Adicionar
+          </Button>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox checked={newRestricted} onCheckedChange={(v) => setNewRestricted(!!v)} />
+          <span className="text-xs text-muted-foreground">Restrito a admin/moderador</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function ReasonRow({
+  reason,
+  disabled,
+  onSaveLabel,
+  onToggleRestricted,
+  onRemove,
+}: {
+  reason: DeletionReason;
+  disabled: boolean;
+  onSaveLabel: (label: string) => void;
+  onToggleRestricted: () => void;
+  onRemove: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(reason.label);
+
+  useEffect(() => { setValue(reason.label); }, [reason.label]);
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-primary/10 bg-secondary/30 px-3 py-2">
+      {editing ? (
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { onSaveLabel(value); setEditing(false); }
+            if (e.key === "Escape") { setValue(reason.label); setEditing(false); }
+          }}
+          autoFocus
+          className="h-8 text-sm"
+        />
+      ) : (
+        <span className="flex-1 text-sm font-medium">{reason.label}</span>
+      )}
+      {!editing && reason.restricted && (
+        <Badge variant="outline" className="text-[10px] bg-orange-500/10 text-orange-400 border-orange-500/30">
+          Restrito
+        </Badge>
+      )}
+      {editing ? (
+        <>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { onSaveLabel(value); setEditing(false); }}>
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setValue(reason.label); setEditing(false); }}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </>
+      ) : (
+        <>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            disabled={disabled}
+            title={reason.restricted ? "Liberar para todos" : "Restringir a admin/moderador"}
+            onClick={onToggleRestricted}
+          >
+            <ShieldAlert className={cn("h-3.5 w-3.5", reason.restricted && "text-orange-400")} />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7" disabled={disabled} onClick={() => setEditing(true)}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" disabled={disabled} onClick={onRemove}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function AdminPage() {
-  const { isGestor } = useAuth();
+  const { isGestor, isModerador } = useAuth();
+  const canManageReasons = isGestor || isModerador;
 
   return (
     <AppLayout>
@@ -948,7 +1164,7 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+            <TabsList className="grid w-full grid-cols-3 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
@@ -956,6 +1172,10 @@ export default function AdminPage() {
               <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
                 <Settings className="h-3.5 w-3.5" />
                 Configurações
+              </TabsTrigger>
+              <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Justificativas
               </TabsTrigger>
             </TabsList>
 
@@ -965,9 +1185,30 @@ export default function AdminPage() {
             <TabsContent value="settings">
               <SettingsSection />
             </TabsContent>
+            <TabsContent value="reasons">
+              <DeletionReasonsSection />
+            </TabsContent>
+          </Tabs>
+        ) : isModerador ? (
+          <Tabs defaultValue="users" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+              <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-3.5 w-3.5" />
+                Usuários
+              </TabsTrigger>
+              <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Justificativas
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="users">
+              <UsersSection />
+            </TabsContent>
+            <TabsContent value="reasons">
+              <DeletionReasonsSection />
+            </TabsContent>
           </Tabs>
         ) : (
-          /* Moderador view — only users section (limited actions) */
           <UsersSection />
         )}
       </div>
