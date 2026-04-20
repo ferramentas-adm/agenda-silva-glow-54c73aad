@@ -133,6 +133,12 @@ export function CalendarContent() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: deletionReasons = [] } = useDeletionReasons();
+  const isAdminLike = role === "gestor" || role === "moderador";
+  const visibleReasons = useMemo(
+    () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
+    [deletionReasons, isAdminLike]
+  );
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
