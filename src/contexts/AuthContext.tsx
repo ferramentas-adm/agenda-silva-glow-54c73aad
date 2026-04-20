@@ -26,26 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [mustChangePassword, setMustChangePassword] = useState(false);
 
-  const fetchRole = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .limit(1)
-      .single();
-    
-    setRole((data?.role as AppRole) ?? null);
-  };
-
-  const fetchMustChangePassword = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("must_change_password")
-      .eq("user_id", userId)
-      .limit(1)
-      .single();
-    
-    setMustChangePassword(data?.must_change_password ?? false);
+  const fetchUserData = async (userId: string) => {
+    // Paraleliza role + profile em uma única rodada de requests
+    const [roleRes, profileRes] = await Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+      supabase.from("profiles").select("must_change_password").eq("user_id", userId).maybeSingle(),
+    ]);
+    setRole((roleRes.data?.role as AppRole) ?? null);
+    setMustChangePassword(profileRes.data?.must_change_password ?? false);
   };
 
   useEffect(() => {
@@ -54,16 +42,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Check if OAuth user is pre-registered
           const isOAuth = session.user.app_metadata?.provider && session.user.app_metadata.provider !== "email";
           if (isOAuth) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("user_id")
-              .eq("email", session.user.email ?? "")
-              .maybeSingle();
+            // Para OAuth: já busca profile completo (validação + must_change_password) e role em paralelo
+            const [profileRes, roleRes] = await Promise.all([
+              supabase
+                .from("profiles")
+                .select("user_id, must_change_password")
+                .eq("email", session.user.email ?? "")
+                .maybeSingle(),
+              supabase
+                .from("user_roles")
+                .select("role")
+                .eq("user_id", session.user.id)
+                .maybeSingle(),
+            ]);
 
-            if (!profile) {
+            if (!profileRes.data) {
               await supabase.auth.signOut();
               setUser(null);
               setSession(null);
@@ -72,12 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               window.dispatchEvent(new CustomEvent("auth-blocked", { detail: "Acesso negado. Seu e-mail não está cadastrado no sistema." }));
               return;
             }
-          }
 
-          setTimeout(() => {
-            fetchRole(session.user.id);
-            fetchMustChangePassword(session.user.id);
-          }, 0);
+            setRole((roleRes.data?.role as AppRole) ?? null);
+            setMustChangePassword(profileRes.data.must_change_password ?? false);
+          } else {
+            // Login com email/senha — paraleliza role + profile
+            fetchUserData(session.user.id);
+          }
         } else {
           setRole(null);
           setMustChangePassword(false);
@@ -90,8 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
-        fetchMustChangePassword(session.user.id);
+        fetchUserData(session.user.id);
       }
       setLoading(false);
     });
