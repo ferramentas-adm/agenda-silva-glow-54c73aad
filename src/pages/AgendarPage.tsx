@@ -84,6 +84,9 @@ export default function AgendarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
+  const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
+
+  const isAdmin = role === "gestor" || role === "moderador";
 
   // Fetch closers for name resolution
   const { data: closers = [] } = useQuery({
@@ -95,6 +98,27 @@ export default function AgendarPage() {
         .eq("active", true)
         .order("name");
       return data ?? [];
+    },
+  });
+
+  // Fetch SDRs for admin selector
+  const { data: sdrUsers = [] } = useQuery({
+    queryKey: ["sdr-users-for-admin-scheduling"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "sdr");
+      const ids = (roles ?? []).map((r) => r.user_id);
+      if (ids.length === 0) return [] as { user_id: string; full_name: string; email: string }[];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", ids)
+        .eq("active", true)
+        .order("full_name");
+      return profiles ?? [];
     },
   });
 
