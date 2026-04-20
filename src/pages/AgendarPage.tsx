@@ -213,6 +213,7 @@ export default function AgendarPage() {
         status: editId ? "reagendada" : "confirmada",
         meet_link: meetLink,
         created_by: user.id,
+        sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason || null,
         channel_type: channelType || null,
