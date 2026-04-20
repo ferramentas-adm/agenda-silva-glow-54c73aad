@@ -19,24 +19,22 @@ interface TimeRange {
   end: string;
 }
 
-function generateSlotsFromRanges(ranges: TimeRange[]): string[] {
-  const slots: string[] = [];
-  for (const range of ranges) {
-    const startH = parseInt(range.start.split(":")[0], 10);
-    const endH = parseInt(range.end.split(":")[0], 10);
-    for (let h = startH; h <= endH; h++) {
-      const slot = `${String(h).padStart(2, "0")}:00`;
-      if (!slots.includes(slot)) slots.push(slot);
-    }
-  }
-  return slots.sort();
+// Slots fixos: 09h às 23h (1 em 1 hora). O botão "Outro" permite personalizar.
+const FIXED_SLOTS: string[] = (() => {
+  const arr: string[] = [];
+  for (let h = 9; h <= 23; h++) arr.push(`${String(h).padStart(2, "0")}:00`);
+  return arr;
+})();
+
+function generateSlotsFromRanges(_ranges: TimeRange[]): string[] {
+  // Mantido por compatibilidade externa, mas internamente usamos FIXED_SLOTS.
+  return FIXED_SLOTS;
 }
 
 function parseBusinessHours(closerData: any): TimeRange[] {
   if (closerData?.business_hours_ranges && Array.isArray(closerData.business_hours_ranges) && closerData.business_hours_ranges.length > 0) {
     return closerData.business_hours_ranges as TimeRange[];
   }
-  // Fallback to legacy start/end
   return [{
     start: closerData?.business_hours_start || "09:00",
     end: closerData?.business_hours_end || "23:00",

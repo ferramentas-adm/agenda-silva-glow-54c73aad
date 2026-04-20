@@ -5,13 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon, Plus, Trash2, Repeat } from "lucide-react";
+import { format, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -23,6 +25,8 @@ const BLOCK_TYPES = [
   { value: "folga", label: "Folga / Day off" },
   { value: "outro", label: "Outro" },
 ];
+
+const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 interface CloserBlockDialogProps {
   open: boolean;
@@ -38,6 +42,7 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
   const [endTime, setEndTime] = useState("13:00");
   const [blockType, setBlockType] = useState("almoco");
   const [description, setDescription] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Find closer record for current user
@@ -50,16 +55,18 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
     },
   });
 
-  // List existing blocks
+  // List existing blocks (próximos não-recorrentes + todos os recorrentes)
   const { data: myBlocks = [] } = useQuery({
     queryKey: ["closer-blocks", closerRecord?.id],
     enabled: !!closerRecord?.id,
     queryFn: async () => {
+      const today = new Date().toISOString().split("T")[0];
       const { data } = await supabase
         .from("closer_blocks")
         .select("*")
         .eq("closer_id", closerRecord!.id)
-        .gte("block_date", new Date().toISOString().split("T")[0])
+        .or(`is_recurring.eq.true,block_date.gte.${today}`)
+        .order("is_recurring", { ascending: false })
         .order("block_date")
         .order("start_time");
       return data ?? [];
@@ -71,19 +78,26 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
     setSubmitting(true);
     try {
       const dateStr = format(date, "yyyy-MM-dd");
-      const { error } = await supabase.from("closer_blocks").insert({
+      const payload: any = {
         closer_id: closerRecord.id,
         block_date: dateStr,
         start_time: startTime,
         end_time: endTime,
         block_type: blockType,
         description: description || null,
-      } as any);
+        is_recurring: isRecurring,
+        recurrence_weekday: isRecurring ? getDay(date) : null,
+      };
+      const { error } = await supabase.from("closer_blocks").insert(payload);
       if (error) throw error;
-      toast.success("Compromisso adicionado!");
+      toast.success(isRecurring ? "Compromisso recorrente adicionado!" : "Compromisso adicionado!");
       queryClient.invalidateQueries({ queryKey: ["closer-blocks"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-blocks-day"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-blocks-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
       setDate(undefined);
       setDescription("");
+      setIsRecurring(false);
     } catch (err: any) {
       toast.error(err.message || "Erro ao adicionar compromisso");
     }
@@ -96,6 +110,9 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
       if (error) throw error;
       toast.success("Compromisso removido!");
       queryClient.invalidateQueries({ queryKey: ["closer-blocks"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-blocks-day"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-blocks-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao remover");
     }
@@ -168,6 +185,27 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
               className="text-sm"
             />
 
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <Checkbox
+                checked={isRecurring}
+                onCheckedChange={(v) => setIsRecurring(v === true)}
+                className="mt-0.5"
+              />
+              <span className="text-sm leading-tight">
+                Repetir semanalmente
+                {date && isRecurring && (
+                  <span className="block text-xs text-muted-foreground">
+                    Bloqueará todas as <strong>{WEEKDAYS[getDay(date)]}</strong> nesse horário.
+                  </span>
+                )}
+                {!date && isRecurring && (
+                  <span className="block text-xs text-muted-foreground">
+                    Selecione uma data para definir o dia da semana.
+                  </span>
+                )}
+              </span>
+            </label>
+
             <Button onClick={handleSubmit} disabled={submitting || !date} className="w-full gap-2" size="sm">
               <Plus className="h-4 w-4" />
               Adicionar
@@ -175,20 +213,28 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
           </div>
 
           {myBlocks.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Próximos compromissos</p>
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              <p className="text-xs font-medium text-muted-foreground">Meus compromissos</p>
               {myBlocks.map((block: any) => (
-                <div key={block.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-sm">
-                  <div>
-                    <span className="font-medium">{typeLabel(block.block_type)}</span>
-                    <span className="text-muted-foreground ml-2">
-                      {format(new Date(block.block_date + "T12:00:00"), "dd/MM")} · {block.start_time}–{block.end_time}
+                <div key={block.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-sm gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{typeLabel(block.block_type)}</span>
+                      {block.is_recurring && (
+                        <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 h-5 border-primary/30 text-primary">
+                          <Repeat className="h-2.5 w-2.5" />
+                          Toda {WEEKDAYS[block.recurrence_weekday ?? 0]}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-muted-foreground text-xs">
+                      {block.is_recurring
+                        ? `${block.start_time}–${block.end_time}`
+                        : `${format(new Date(block.block_date + "T12:00:00"), "dd/MM")} · ${block.start_time}–${block.end_time}`}
+                      {block.description && ` — ${block.description}`}
                     </span>
-                    {block.description && (
-                      <span className="text-muted-foreground ml-2">— {block.description}</span>
-                    )}
                   </div>
-                  <button onClick={() => handleDelete(block.id)} className="text-destructive hover:text-destructive/80">
+                  <button onClick={() => handleDelete(block.id)} className="text-destructive hover:text-destructive/80 shrink-0">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
