@@ -1151,7 +1151,8 @@ function ReasonRow({
 }
 
 export default function AdminPage() {
-  const { isGestor } = useAuth();
+  const { isGestor, isModerador } = useAuth();
+  const canManageReasons = isGestor || isModerador;
 
   return (
     <AppLayout>
@@ -1163,7 +1164,7 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+            <TabsList className="grid w-full grid-cols-3 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
@@ -1171,6 +1172,10 @@ export default function AdminPage() {
               <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
                 <Settings className="h-3.5 w-3.5" />
                 Configurações
+              </TabsTrigger>
+              <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Justificativas
               </TabsTrigger>
             </TabsList>
 
@@ -1180,9 +1185,30 @@ export default function AdminPage() {
             <TabsContent value="settings">
               <SettingsSection />
             </TabsContent>
+            <TabsContent value="reasons">
+              <DeletionReasonsSection />
+            </TabsContent>
+          </Tabs>
+        ) : isModerador ? (
+          <Tabs defaultValue="users" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+              <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-3.5 w-3.5" />
+                Usuários
+              </TabsTrigger>
+              <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Justificativas
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="users">
+              <UsersSection />
+            </TabsContent>
+            <TabsContent value="reasons">
+              <DeletionReasonsSection />
+            </TabsContent>
           </Tabs>
         ) : (
-          /* Moderador view — only users section (limited actions) */
           <UsersSection />
         )}
       </div>
