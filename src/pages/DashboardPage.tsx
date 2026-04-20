@@ -719,18 +719,47 @@ export function CalendarContent() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs">Closer</p>
-                  <p className="font-medium">{closerMap.get(detailAg.closer_id) || "—"}</p>
+                  {canEditCloser ? (
+                    <Select value={detailAg.closer_id || ""} onValueChange={handleChangeCloser}>
+                      <SelectTrigger className="h-8 text-sm font-medium">
+                        <SelectValue placeholder="Selecionar closer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {closers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{closerMap.get(detailAg.closer_id) || "—"}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs">Telefone</p>
                   <p className="font-medium flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{detailAg.lead_phone}</p>
                 </div>
                 <div className="space-y-1 col-span-2">
-                  <p className="text-muted-foreground text-xs">SDR responsável</p>
-                  <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{(() => {
-                    const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
-                    return sdrId ? (profilesMap.get(sdrId) || "—") : "—";
-                  })()}</p>
+                  <p className="text-muted-foreground text-xs">Responsável pelo agendamento</p>
+                  {canEditSdr ? (
+                    <Select
+                      value={((detailAg as any).sdr_responsavel_id || detailAg.created_by || "")}
+                      onValueChange={handleChangeSdr}
+                    >
+                      <SelectTrigger className="h-8 text-sm font-medium">
+                        <SelectValue placeholder="Selecionar responsável" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allUsers.map((u: any) => (
+                          <SelectItem key={u.user_id} value={u.user_id}>{u.full_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{(() => {
+                      const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
+                      return sdrId ? (profilesMap.get(sdrId) || "—") : "—";
+                    })()}</p>
+                  )}
                 </div>
               </div>
 
