@@ -210,7 +210,7 @@ export default function ReunioesListPage() {
       ag.lead_name,
       ag.lead_phone,
       closerMap[ag.closer_id] || "—",
-      ag.created_by ? (profileMap[ag.created_by] || "—") : "—",
+      sdrIdOf(ag) ? (profileMap[sdrIdOf(ag)!] || "—") : "—",
       format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy"),
       ag.scheduled_time,
       format(new Date(ag.created_at), "dd/MM/yyyy HH:mm"),
@@ -445,7 +445,7 @@ export default function ReunioesListPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">{closerMap[ag.closer_id] || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{ag.created_by ? (profileMap[ag.created_by] || "—") : "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{sdrIdOf(ag) ? (profileMap[sdrIdOf(ag)!] || "—") : "—"}</td>
                         <td className="px-4 py-3">
                           <div>{format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}</div>
                           <div className="text-xs text-muted-foreground">{ag.scheduled_time}</div>
