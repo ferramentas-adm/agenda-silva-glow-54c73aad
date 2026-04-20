@@ -180,7 +180,7 @@ export default function DashboardComercialPage() {
     const yesterdayStart = format(subDays(currentDate, 1), "yyyy-MM-dd");
     const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
 
-    const sdrOf = (a: Agendamento) => a.sdr_responsavel_id ?? a.created_by;
+    const sdrOf = (a: AgendamentoMetric) => a.sdr_responsavel_id ?? a.created_by;
 
     return sdrProfiles.map(profile => {
       const countInRange = (start: string, end: string) =>
@@ -595,8 +595,9 @@ function RankingSDRsTab({
     const end = format(customRange.to, "yyyy-MM-dd");
     const map = new Map<string, number>();
     createdAgs.forEach(a => {
-      if (a.created_by && a.created_at >= start + "T00:00:00" && a.created_at <= end + "T23:59:59") {
-        map.set(a.created_by, (map.get(a.created_by) || 0) + 1);
+      const sdrId = a.sdr_responsavel_id ?? a.created_by;
+      if (sdrId && a.created_at >= start + "T00:00:00" && a.created_at <= end + "T23:59:59") {
+        map.set(sdrId, (map.get(sdrId) || 0) + 1);
       }
     });
     return map;
