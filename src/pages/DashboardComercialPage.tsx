@@ -25,6 +25,7 @@ interface AgendamentoMetric {
   status: string;
   channel_type: string | null;
   created_by: string | null;
+  sdr_responsavel_id: string | null;
 }
 
 interface SDRProfile {
@@ -74,7 +75,7 @@ export default function DashboardComercialPage() {
       const maxDate = tomorrowStr > monthEnd ? tomorrowStr : monthEnd;
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by")
+        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("scheduled_date", minDate)
         .lte("scheduled_date", maxDate)
@@ -90,7 +91,7 @@ export default function DashboardComercialPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by")
+        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("scheduled_date", prevMonthStart)
         .lte("scheduled_date", prevMonthEnd);
@@ -108,7 +109,7 @@ export default function DashboardComercialPage() {
       const broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by")
+        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("created_at", broadStart + "T00:00:00")
         .lte("created_at", broadEnd + "T23:59:59");
