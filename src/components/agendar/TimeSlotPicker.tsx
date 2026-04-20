@@ -117,8 +117,9 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     },
   });
 
+  // Slots fixos: 09h às 23h (independente do horário do closer).
   const ranges = useMemo(() => parseBusinessHours(closerData), [closerData]);
-  const ALL_SLOTS = useMemo(() => generateSlotsFromRanges(ranges), [ranges]);
+  const ALL_SLOTS = FIXED_SLOTS;
 
   const { data: bookedTimes = [] } = useQuery<string[]>({
     queryKey: ["booked-slots", closerId, dateStr],
@@ -134,15 +135,16 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     },
   });
 
-  // Closer personal blocks
+  // Closer personal blocks (data específica + recorrentes do mesmo dia da semana)
+  const weekday = date.getDay();
   const { data: closerBlocks = [] } = useQuery({
-    queryKey: ["closer-blocks-slots", closerId, dateStr],
+    queryKey: ["closer-blocks-slots", closerId, dateStr, weekday],
     queryFn: async () => {
       const { data } = await supabase
         .from("closer_blocks")
-        .select("start_time, end_time, block_type")
+        .select("start_time, end_time, block_type, is_recurring, recurrence_weekday, block_date")
         .eq("closer_id", closerId)
-        .eq("block_date", dateStr);
+        .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`);
       return data ?? [];
     },
   });
