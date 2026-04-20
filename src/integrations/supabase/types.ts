@@ -335,23 +335,16 @@ export type Database = {
       }
     }
     Views: {
-      profiles_public: {
-        Row: {
-          full_name: string | null
-          user_id: string | null
-        }
-        Insert: {
-          full_name?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          full_name?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
+      get_public_profiles: {
+        Args: never
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
