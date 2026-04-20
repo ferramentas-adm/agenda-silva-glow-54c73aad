@@ -1293,26 +1293,9 @@ function EditTimeSlots({
   const isTodaySP = dateStr === spNow.date;
 
   const slots = useMemo(() => {
-    if (!closer) return [];
-    const ranges = closer.business_hours_ranges as { start: string; end: string }[] | null;
+    // Slots fixos: 09h às 23h (independente do horário do closer).
     const allSlots: string[] = [];
-
-    if (ranges && Array.isArray(ranges) && ranges.length > 0) {
-      for (const r of ranges) {
-        const sH = parseInt(r.start.split(":")[0], 10);
-        const eH = parseInt(r.end.split(":")[0], 10);
-        for (let h = sH; h <= eH; h++) {
-          const s = `${String(h).padStart(2, "0")}:00`;
-          if (!allSlots.includes(s)) allSlots.push(s);
-        }
-      }
-    } else {
-      const sH = parseInt(closer.business_hours_start.split(":")[0], 10);
-      const eH = parseInt(closer.business_hours_end.split(":")[0], 10);
-      for (let h = sH; h <= eH; h++) {
-        allSlots.push(`${String(h).padStart(2, "0")}:00`);
-      }
-    }
+    for (let h = 9; h <= 23; h++) allSlots.push(`${String(h).padStart(2, "0")}:00`);
 
     if (isTodaySP) {
       return allSlots.filter(s => parseInt(s.split(":")[0], 10) > spNow.hour);
