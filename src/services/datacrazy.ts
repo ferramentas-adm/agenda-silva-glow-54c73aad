@@ -105,9 +105,44 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
     return [];
   }
 
-  const data = await api("GET", `/leads?filter[tags]=${tagId}`);
-  const leads: DataCrazyLead[] = data?.data || data || [];
-  return leads;
+  const PAGE_SIZE = 100;
+  const MAX_PAGES = 50; // safety cap (5000 leads)
+  const all: DataCrazyLead[] = [];
+  const seen = new Set<string>();
+
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const data = await api(
+      "GET",
+      `/leads?filter[tags]=${tagId}&page=${page}&perPage=${PAGE_SIZE}&limit=${PAGE_SIZE}`
+    );
+
+    const pageLeads: DataCrazyLead[] = Array.isArray(data)
+      ? data
+      : data?.data || [];
+
+    if (pageLeads.length === 0) break;
+
+    let added = 0;
+    for (const lead of pageLeads) {
+      if (lead?.id && !seen.has(lead.id)) {
+        seen.add(lead.id);
+        all.push(lead);
+        added++;
+      }
+    }
+
+    // Stop if API ignored pagination (no new unique items) or reached last page.
+    if (added === 0) break;
+    if (pageLeads.length < PAGE_SIZE) break;
+
+    // Stop if meta indicates last page
+    const meta = (data && typeof data === "object" && "meta" in data) ? (data as any).meta : null;
+    if (meta?.lastPage && page >= meta.lastPage) break;
+    if (meta?.last_page && page >= meta.last_page) break;
+    if (meta?.totalPages && page >= meta.totalPages) break;
+  }
+
+  return all;
 }
 
 /** @deprecated Use buscarLeadsComTagId instead */
