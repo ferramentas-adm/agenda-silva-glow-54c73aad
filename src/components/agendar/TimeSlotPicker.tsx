@@ -193,7 +193,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     setCustomError(null);
 
     if (!isCustomTimeValid(customInput, dateStr, isToday, now, ranges)) {
-      setCustomError("Horário inválido ou fora do expediente do closer.");
+      setCustomError("Horário inválido ou já passou.");
       return;
     }
 
