@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
