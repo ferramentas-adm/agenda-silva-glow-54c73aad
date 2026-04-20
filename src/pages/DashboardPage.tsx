@@ -326,6 +326,21 @@ export function CalendarContent() {
     return m;
   }, [closers]);
 
+  // Closer só pode alterar status do PRÓPRIO agendamento (defesa em profundidade — RLS já bloqueia no banco)
+  const myCloserId = useMemo(() => {
+    if (role !== "closer" || !user?.email) return null;
+    const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
+    return myCloser?.id ?? null;
+  }, [role, user?.email, closers]);
+
+  const canChangeStatus = useMemo(() => {
+    if (!detailAg) return false;
+    if (role === "gestor" || role === "moderador") return true;
+    if (role === "sdr") return detailAg.created_by === user?.id || (detailAg as any).sdr_responsavel_id === user?.id;
+    if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
+    return false;
+  }, [detailAg, role, user?.id, myCloserId]);
+
   // Delete handler
   const handleDelete = async () => {
     if (!deleteTarget || !deleteReason.trim()) return;
