@@ -111,8 +111,10 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
   const seen = new Set<string>();
 
   for (let page = 1; page <= MAX_PAGES; page++) {
-    // DataCrazy uses JSON:API style: page[number] / page[size]
-    const url = `/leads?filter[tags]=${tagId}&page[number]=${page}&page[size]=${PAGE_SIZE}`;
+    const url =
+      page === 1
+        ? `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}`
+        : `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&page=${page}&offset=${(page - 1) * PAGE_SIZE}`;
     const data = await api("GET", url);
 
     const pageLeads: DataCrazyLead[] = Array.isArray(data)
