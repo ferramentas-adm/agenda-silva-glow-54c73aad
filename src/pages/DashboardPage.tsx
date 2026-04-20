@@ -348,16 +348,21 @@ export function CalendarContent() {
     return false;
   }, [detailAg, role, user?.id, myCloserId]);
 
-  // Quem pode editar o Closer da reunião: SDR (próprio agendamento), moderador e gestor.
+  // Quem pode editar o Closer da reunião: gestor/moderador (qualquer) ou SDR APENAS no agendamento que ele próprio criou.
   const canEditCloser = useMemo(() => {
     if (!detailAg) return false;
     if (role === "gestor" || role === "moderador") return true;
-    if (role === "sdr") return detailAg.created_by === user?.id || (detailAg as any).sdr_responsavel_id === user?.id;
+    if (role === "sdr") return detailAg.created_by === user?.id;
     return false;
   }, [detailAg, role, user?.id]);
 
-  // Quem pode editar o SDR responsável: apenas moderador e gestor.
-  const canEditSdr = role === "gestor" || role === "moderador";
+  // Quem pode editar o SDR responsável: gestor/moderador (qualquer) ou SDR APENAS no agendamento que ele próprio criou.
+  const canEditSdr = useMemo(() => {
+    if (!detailAg) return false;
+    if (role === "gestor" || role === "moderador") return true;
+    if (role === "sdr") return detailAg.created_by === user?.id;
+    return false;
+  }, [detailAg, role, user?.id]);
 
   // Lista de usuários (qualquer função) para selecionar como responsável
   const { data: allUsers = [] } = useQuery({
