@@ -622,7 +622,10 @@ export function CalendarContent() {
                 </div>
                 <div className="space-y-1 col-span-2">
                   <p className="text-muted-foreground text-xs">SDR responsável</p>
-                  <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{detailAg.created_by ? (profilesMap.get(detailAg.created_by) || "—") : "—"}</p>
+                  <p className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" />{(() => {
+                    const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
+                    return sdrId ? (profilesMap.get(sdrId) || "—") : "—";
+                  })()}</p>
                 </div>
               </div>
 
