@@ -105,41 +105,42 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
     return [];
   }
 
+  // DataCrazy `/leads` endpoint pagination:
+  //  - `limit` controls page size (default 100, max 100)
+  //  - `skip` controls the offset (NOT `page` or `offset` — those are silently ignored)
+  //  - response shape is `{ count: <total>, data: [...] }`
   const PAGE_SIZE = 100;
-  const MAX_PAGES = 50; // safety cap (5000 leads)
+  const MAX_LEADS = 5000; // safety cap
   const all: DataCrazyLead[] = [];
   const seen = new Set<string>();
 
-  for (let page = 1; page <= MAX_PAGES; page++) {
+  let skip = 0;
+  let totalCount: number | null = null;
+
+  while (skip < MAX_LEADS) {
     const data = await api(
       "GET",
-      `/leads?filter[tags]=${tagId}&page=${page}&perPage=${PAGE_SIZE}&limit=${PAGE_SIZE}`
+      `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`
     );
+    const pageLeads: DataCrazyLead[] = Array.isArray(data) ? data : data?.data || [];
 
-    const pageLeads: DataCrazyLead[] = Array.isArray(data)
-      ? data
-      : data?.data || [];
+    if (totalCount === null && data && typeof data === "object" && typeof (data as any).count === "number") {
+      totalCount = (data as any).count;
+    }
 
     if (pageLeads.length === 0) break;
 
     let added = 0;
     for (const lead of pageLeads) {
-      if (lead?.id && !seen.has(lead.id)) {
-        seen.add(lead.id);
-        all.push(lead);
-        added++;
-      }
+      if (lead?.id && !seen.has(lead.id)) { seen.add(lead.id); all.push(lead); added++; }
     }
 
-    // Stop if API ignored pagination (no new unique items) or reached last page.
+    // Safety: if API ignored `skip` (returned identical data), bail out.
     if (added === 0) break;
     if (pageLeads.length < PAGE_SIZE) break;
+    if (totalCount !== null && all.length >= totalCount) break;
 
-    // Stop if meta indicates last page
-    const meta = (data && typeof data === "object" && "meta" in data) ? (data as any).meta : null;
-    if (meta?.lastPage && page >= meta.lastPage) break;
-    if (meta?.last_page && page >= meta.last_page) break;
-    if (meta?.totalPages && page >= meta.totalPages) break;
+    skip += PAGE_SIZE;
   }
 
   return all;
