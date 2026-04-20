@@ -180,24 +180,26 @@ export default function DashboardComercialPage() {
     const yesterdayStart = format(subDays(currentDate, 1), "yyyy-MM-dd");
     const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
 
+    const sdrOf = (a: Agendamento) => a.sdr_responsavel_id ?? a.created_by;
+
     return sdrProfiles.map(profile => {
       const countInRange = (start: string, end: string) =>
         createdAgs.filter(a =>
-          a.created_by === profile.user_id &&
+          sdrOf(a) === profile.user_id &&
           a.created_at >= start + "T00:00:00" &&
           a.created_at <= end + "T23:59:59"
         ).length;
 
       const hoje = countInRange(dateStr, dateStr);
       const paraHoje = agendamentos.filter(a =>
-        a.created_by === profile.user_id &&
+        sdrOf(a) === profile.user_id &&
         a.scheduled_date === dateStr
       ).length;
       const ontem = countInRange(yesterdayStart, yesterdayStart);
       const semana = countInRange(weekStart, weekEnd);
       const quinzena = countInRange(quinzenaStart, dateStr);
       const mes = createdAgs.filter(a =>
-        a.created_by === profile.user_id &&
+        sdrOf(a) === profile.user_id &&
         a.created_at >= monthStart + "T00:00:00" &&
         a.created_at <= monthEnd + "T23:59:59"
       ).length;
