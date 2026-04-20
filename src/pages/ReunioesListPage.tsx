@@ -47,6 +47,12 @@ export default function ReunioesListPage() {
   const isCloser = role === "closer";
   const isSDR = role === "sdr";
   const canSeeAllPeers = isGestor || isModerador;
+  const { data: deletionReasons = [] } = useDeletionReasons();
+  const isAdminLike = isGestor || isModerador;
+  const visibleReasons = useMemo(
+    () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
+    [deletionReasons, isAdminLike]
+  );
 
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
@@ -547,9 +553,13 @@ export default function ReunioesListPage() {
                   <SelectValue placeholder="Selecione a justificativa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
-                  <SelectItem value="Data errada">Data errada</SelectItem>
-                  <SelectItem value="Teste">Teste</SelectItem>
+                  {visibleReasons.length === 0 ? (
+                    <SelectItem value="__none" disabled>Nenhuma justificativa cadastrada</SelectItem>
+                  ) : (
+                    visibleReasons.map((r) => (
+                      <SelectItem key={r.label} value={r.label}>{r.label}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

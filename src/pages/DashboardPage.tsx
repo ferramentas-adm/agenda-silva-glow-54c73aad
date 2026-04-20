@@ -587,10 +587,12 @@ export function CalendarContent() {
                   <SelectValue placeholder="Selecione a justificativa" />
                 </SelectTrigger>
                 <SelectContent>
-               <SelectItem value="Agendamento duplicado">Agendamento duplicado</SelectItem>
-                  <SelectItem value="Data errada">Data errada</SelectItem>
-                  {(role === "gestor" || role === "moderador") && (
-                    <SelectItem value="Teste">Teste</SelectItem>
+                  {visibleReasons.length === 0 ? (
+                    <SelectItem value="__none" disabled>Nenhuma justificativa cadastrada</SelectItem>
+                  ) : (
+                    visibleReasons.map((r) => (
+                      <SelectItem key={r.label} value={r.label}>{r.label}</SelectItem>
+                    ))
                   )}
                 </SelectContent>
               </Select>
