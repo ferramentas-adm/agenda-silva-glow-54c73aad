@@ -687,31 +687,33 @@ export function CalendarContent() {
                 <Pencil className="h-3.5 w-3.5" />Editar horário
               </Button>
 
-              <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
-                <div className="flex flex-wrap gap-2">
-                  {detailAg.status !== "confirmada" && (
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
-                      <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
-                    </Button>
-                  )}
-                  {detailAg.status !== "realizada" && (
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
-                      <CheckCircle2 className="h-3.5 w-3.5" />Realizada
-                    </Button>
-                  )}
-                  {detailAg.status !== "cancelada" && (
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
-                      <XCircle className="h-3.5 w-3.5" />Cancelar
-                    </Button>
-                  )}
-                  {detailAg.status !== "no_show" && (
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
-                      <AlertCircle className="h-3.5 w-3.5" />No-show
-                    </Button>
-                  )}
+              {canChangeStatus && (
+                <div className="space-y-2">
+                  <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
+                  <div className="flex flex-wrap gap-2">
+                    {detailAg.status !== "confirmada" && (
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
+                        <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
+                      </Button>
+                    )}
+                    {detailAg.status !== "realizada" && (
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
+                        <CheckCircle2 className="h-3.5 w-3.5" />Realizada
+                      </Button>
+                    )}
+                    {detailAg.status !== "cancelada" && (
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
+                        <XCircle className="h-3.5 w-3.5" />Cancelar
+                      </Button>
+                    )}
+                    {detailAg.status !== "no_show" && (
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
+                        <AlertCircle className="h-3.5 w-3.5" />No-show
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
