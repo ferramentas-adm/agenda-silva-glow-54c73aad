@@ -47,6 +47,7 @@ interface Agendamento {
   briefing: string | null;
   deleted_at: string | null;
   created_by: string;
+  sdr_responsavel_id: string | null;
   created_at: string;
   meeting_reason: string | null;
   channel_type: string | null;
