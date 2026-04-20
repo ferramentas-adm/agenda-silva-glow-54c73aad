@@ -105,91 +105,44 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
     return [];
   }
 
+  // DataCrazy `/leads` endpoint pagination:
+  //  - `limit` controls page size (default 100, max 100)
+  //  - `skip` controls the offset (NOT `page` or `offset` — those are silently ignored)
+  //  - response shape is `{ count: <total>, data: [...] }`
   const PAGE_SIZE = 100;
-  const MAX_PAGES = 50; // safety cap (5000 leads)
+  const MAX_LEADS = 5000; // safety cap
   const all: DataCrazyLead[] = [];
   const seen = new Set<string>();
 
-  // First, fetch page 1 to learn the total count.
-  const firstData = await api("GET", `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}`);
-  const firstLeads: DataCrazyLead[] = Array.isArray(firstData) ? firstData : firstData?.data || [];
-  const totalCount: number =
-    (firstData && typeof firstData === "object" && typeof (firstData as any).count === "number")
-      ? (firstData as any).count
-      : firstLeads.length;
-  console.info(`[DataCrazy] total count from API: ${totalCount}, first page: ${firstLeads.length} leads`);
+  let skip = 0;
+  let totalCount: number | null = null;
 
-  for (const lead of firstLeads) {
-    if (lead?.id && !seen.has(lead.id)) { seen.add(lead.id); all.push(lead); }
-  }
+  while (skip < MAX_LEADS) {
+    const data = await api(
+      "GET",
+      `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`
+    );
+    const pageLeads: DataCrazyLead[] = Array.isArray(data) ? data : data?.data || [];
 
-  if (totalCount <= firstLeads.length) {
-    console.info(`[DataCrazy] total leads loaded: ${all.length}`);
-    return all;
-  }
-
-  // Probe pagination parameter names with parallel fetches of "page 2".
-  const variants = [
-    `&page=2`,
-    `&offset=${PAGE_SIZE}`,
-    `&skip=${PAGE_SIZE}`,
-    `&start=${PAGE_SIZE}`,
-    `&page[number]=2&page[size]=${PAGE_SIZE}`,
-  ];
-  const baseUrl = `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}`;
-  const probes = await Promise.all(
-    variants.map((v) => api("GET", baseUrl + v).catch((e) => ({ error: String(e) })))
-  );
-  let workingParam: ((page: number) => string) | null = null;
-  const firstId = firstLeads[0]?.id;
-  for (let i = 0; i < probes.length; i++) {
-    const p = probes[i] as any;
-    const arr: DataCrazyLead[] = Array.isArray(p) ? p : p?.data || [];
-    const sameAsPage1 = arr[0]?.id === firstId;
-    console.info(`[DataCrazy] probe "${variants[i]}" → ${arr.length} leads, samePage1=${sameAsPage1}, firstId=${arr[0]?.id}`);
-    if (!sameAsPage1 && arr.length > 0) {
-      // Found a working pagination parameter
-      const variant = variants[i];
-      if (variant.includes("page[number]")) {
-        workingParam = (page) => `&page[number]=${page}&page[size]=${PAGE_SIZE}`;
-      } else if (variant.includes("page=")) {
-        workingParam = (page) => `&page=${page}`;
-      } else if (variant.includes("offset=")) {
-        workingParam = (page) => `&offset=${(page - 1) * PAGE_SIZE}`;
-      } else if (variant.includes("skip=")) {
-        workingParam = (page) => `&skip=${(page - 1) * PAGE_SIZE}`;
-      } else if (variant.includes("start=")) {
-        workingParam = (page) => `&start=${(page - 1) * PAGE_SIZE}`;
-      }
-      // Add the leads from this probe
-      for (const lead of arr) {
-        if (lead?.id && !seen.has(lead.id)) { seen.add(lead.id); all.push(lead); }
-      }
-      break;
+    if (totalCount === null && data && typeof data === "object" && typeof (data as any).count === "number") {
+      totalCount = (data as any).count;
     }
-  }
 
-  if (!workingParam) {
-    console.warn(`[DataCrazy] no working pagination parameter found; returning ${all.length} leads (API may be capped)`);
-    return all;
-  }
+    if (pageLeads.length === 0) break;
 
-  // Continue from page 3
-  for (let page = 3; page <= MAX_PAGES; page++) {
-    const data = await api("GET", baseUrl + workingParam(page));
-    const arr: DataCrazyLead[] = Array.isArray(data) ? data : (data as any)?.data || [];
-    console.info(`[DataCrazy] page ${page}: ${arr.length} leads`);
-    if (arr.length === 0) break;
     let added = 0;
-    for (const lead of arr) {
+    for (const lead of pageLeads) {
       if (lead?.id && !seen.has(lead.id)) { seen.add(lead.id); all.push(lead); added++; }
     }
+
+    // Safety: if API ignored `skip` (returned identical data), bail out.
     if (added === 0) break;
-    if (arr.length < PAGE_SIZE) break;
-    if (all.length >= totalCount) break;
+    if (pageLeads.length < PAGE_SIZE) break;
+    if (totalCount !== null && all.length >= totalCount) break;
+
+    skip += PAGE_SIZE;
   }
 
-  console.info(`[DataCrazy] total leads loaded: ${all.length} / ${totalCount}`);
   return all;
 }
 
