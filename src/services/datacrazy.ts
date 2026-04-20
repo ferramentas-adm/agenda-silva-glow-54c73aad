@@ -122,9 +122,10 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
       : data?.data || [];
 
     const meta = (data && typeof data === "object" && "meta" in data) ? (data as any).meta : null;
+    const links = (data && typeof data === "object" && "links" in data) ? (data as any).links : null;
+    const topLevelKeys = data && typeof data === "object" && !Array.isArray(data) ? Object.keys(data) : null;
     console.info(
-      `[DataCrazy] page ${page}: ${pageLeads.length} leads`,
-      meta ? `meta=${JSON.stringify(meta)}` : ""
+      `[DataCrazy] page ${page}: ${pageLeads.length} leads | keys=${JSON.stringify(topLevelKeys)} | meta=${JSON.stringify(meta)} | links=${JSON.stringify(links)} | firstId=${pageLeads[0]?.id} lastId=${pageLeads[pageLeads.length-1]?.id}`
     );
 
     if (pageLeads.length === 0) break;
