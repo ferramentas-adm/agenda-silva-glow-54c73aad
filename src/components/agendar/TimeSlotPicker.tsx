@@ -74,10 +74,10 @@ function isTimeInRanges(time: string, ranges: TimeRange[]): boolean {
   });
 }
 
-function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date, ranges: TimeRange[]): boolean {
+function isCustomTimeValid(time: string, dateStr: string, isToday: boolean, now: Date, _ranges: TimeRange[]): boolean {
   const match = time.match(/^(\d{2}):(\d{2})$/);
   if (!match) return false;
-  if (!isTimeInRanges(time, ranges)) return false;
+  // Permite qualquer horário válido — não restringe ao expediente do closer.
 
   if (isToday) {
     const slotStart = new Date(`${dateStr}T${time}:00`);
@@ -193,7 +193,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     setCustomError(null);
 
     if (!isCustomTimeValid(customInput, dateStr, isToday, now, ranges)) {
-      setCustomError("Horário inválido ou fora do expediente do closer.");
+      setCustomError("Horário inválido ou já passou.");
       return;
     }
 
