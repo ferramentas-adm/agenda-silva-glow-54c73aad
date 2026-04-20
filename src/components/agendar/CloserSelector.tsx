@@ -15,16 +15,15 @@ interface CloserWithAvailability {
   totalSlots: number;
 }
 
-function countSlotsFromRanges(ranges: { start: string; end: string }[]): number {
-  const slots = new Set<string>();
-  for (const r of ranges) {
-    const sH = parseInt(r.start.split(":")[0], 10);
-    const eH = parseInt(r.end.split(":")[0], 10);
-    for (let h = sH; h <= eH; h++) {
-      slots.add(`${String(h).padStart(2, "0")}:00`);
-    }
-  }
-  return slots.size;
+// Slots fixos: 09h às 23h.
+const FIXED_SLOTS: string[] = (() => {
+  const arr: string[] = [];
+  for (let h = 9; h <= 23; h++) arr.push(`${String(h).padStart(2, "0")}:00`);
+  return arr;
+})();
+
+function countSlotsFromRanges(_ranges: { start: string; end: string }[]): number {
+  return FIXED_SLOTS.length;
 }
 
 export default function CloserSelector({ selectedDate, selectedCloserId, onSelect }: CloserSelectorProps) {
