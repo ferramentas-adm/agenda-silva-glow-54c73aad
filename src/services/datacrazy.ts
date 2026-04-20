@@ -110,44 +110,86 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
   const all: DataCrazyLead[] = [];
   const seen = new Set<string>();
 
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const url =
-      page === 1
-        ? `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}`
-        : `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&page=${page}&offset=${(page - 1) * PAGE_SIZE}`;
-    const data = await api("GET", url);
+  // First, fetch page 1 to learn the total count.
+  const firstData = await api("GET", `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}`);
+  const firstLeads: DataCrazyLead[] = Array.isArray(firstData) ? firstData : firstData?.data || [];
+  const totalCount: number =
+    (firstData && typeof firstData === "object" && typeof (firstData as any).count === "number")
+      ? (firstData as any).count
+      : firstLeads.length;
+  console.info(`[DataCrazy] total count from API: ${totalCount}, first page: ${firstLeads.length} leads`);
 
-    const pageLeads: DataCrazyLead[] = Array.isArray(data)
-      ? data
-      : data?.data || [];
-
-    const meta = (data && typeof data === "object" && "meta" in data) ? (data as any).meta : null;
-    const links = (data && typeof data === "object" && "links" in data) ? (data as any).links : null;
-    const topLevelKeys = data && typeof data === "object" && !Array.isArray(data) ? Object.keys(data) : null;
-    console.info(
-      `[DataCrazy] page ${page}: ${pageLeads.length} leads | keys=${JSON.stringify(topLevelKeys)} | meta=${JSON.stringify(meta)} | links=${JSON.stringify(links)} | firstId=${pageLeads[0]?.id} lastId=${pageLeads[pageLeads.length-1]?.id}`
-    );
-
-    if (pageLeads.length === 0) break;
-
-    let added = 0;
-    for (const lead of pageLeads) {
-      if (lead?.id && !seen.has(lead.id)) {
-        seen.add(lead.id);
-        all.push(lead);
-        added++;
-      }
-    }
-
-    if (added === 0) break;
-    if (pageLeads.length < PAGE_SIZE) break;
-
-    const lastPage =
-      meta?.lastPage ?? meta?.last_page ?? meta?.totalPages ?? meta?.pageCount ?? null;
-    if (lastPage && page >= lastPage) break;
+  for (const lead of firstLeads) {
+    if (lead?.id && !seen.has(lead.id)) { seen.add(lead.id); all.push(lead); }
   }
 
-  console.info(`[DataCrazy] total leads loaded: ${all.length}`);
+  if (totalCount <= firstLeads.length) {
+    console.info(`[DataCrazy] total leads loaded: ${all.length}`);
+    return all;
+  }
+
+  // Probe pagination parameter names with parallel fetches of "page 2".
+  const variants = [
+    `&page=2`,
+    `&offset=${PAGE_SIZE}`,
+    `&skip=${PAGE_SIZE}`,
+    `&start=${PAGE_SIZE}`,
+    `&page[number]=2&page[size]=${PAGE_SIZE}`,
+  ];
+  const baseUrl = `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}`;
+  const probes = await Promise.all(
+    variants.map((v) => api("GET", baseUrl + v).catch((e) => ({ error: String(e) })))
+  );
+  let workingParam: ((page: number) => string) | null = null;
+  const firstId = firstLeads[0]?.id;
+  for (let i = 0; i < probes.length; i++) {
+    const p = probes[i] as any;
+    const arr: DataCrazyLead[] = Array.isArray(p) ? p : p?.data || [];
+    const sameAsPage1 = arr[0]?.id === firstId;
+    console.info(`[DataCrazy] probe "${variants[i]}" → ${arr.length} leads, samePage1=${sameAsPage1}, firstId=${arr[0]?.id}`);
+    if (!sameAsPage1 && arr.length > 0) {
+      // Found a working pagination parameter
+      const variant = variants[i];
+      if (variant.includes("page[number]")) {
+        workingParam = (page) => `&page[number]=${page}&page[size]=${PAGE_SIZE}`;
+      } else if (variant.includes("page=")) {
+        workingParam = (page) => `&page=${page}`;
+      } else if (variant.includes("offset=")) {
+        workingParam = (page) => `&offset=${(page - 1) * PAGE_SIZE}`;
+      } else if (variant.includes("skip=")) {
+        workingParam = (page) => `&skip=${(page - 1) * PAGE_SIZE}`;
+      } else if (variant.includes("start=")) {
+        workingParam = (page) => `&start=${(page - 1) * PAGE_SIZE}`;
+      }
+      // Add the leads from this probe
+      for (const lead of arr) {
+        if (lead?.id && !seen.has(lead.id)) { seen.add(lead.id); all.push(lead); }
+      }
+      break;
+    }
+  }
+
+  if (!workingParam) {
+    console.warn(`[DataCrazy] no working pagination parameter found; returning ${all.length} leads (API may be capped)`);
+    return all;
+  }
+
+  // Continue from page 3
+  for (let page = 3; page <= MAX_PAGES; page++) {
+    const data = await api("GET", baseUrl + workingParam(page));
+    const arr: DataCrazyLead[] = Array.isArray(data) ? data : (data as any)?.data || [];
+    console.info(`[DataCrazy] page ${page}: ${arr.length} leads`);
+    if (arr.length === 0) break;
+    let added = 0;
+    for (const lead of arr) {
+      if (lead?.id && !seen.has(lead.id)) { seen.add(lead.id); all.push(lead); added++; }
+    }
+    if (added === 0) break;
+    if (arr.length < PAGE_SIZE) break;
+    if (all.length >= totalCount) break;
+  }
+
+  console.info(`[DataCrazy] total leads loaded: ${all.length} / ${totalCount}`);
   return all;
 }
 
