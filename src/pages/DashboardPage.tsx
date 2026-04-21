@@ -880,6 +880,21 @@ export function CalendarContent() {
                 <Pencil className="h-3.5 w-3.5" />Editar horário
               </Button>
 
+              {/* Transfer lead — apenas dono atual (closer) ou gestor/moderador */}
+              {canTransfer && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-primary/30 text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    setTransferTarget("");
+                    setTransferOpen(true);
+                  }}
+                >
+                  <Users className="h-3.5 w-3.5" />Transferir lead para outro closer
+                </Button>
+              )}
+
               {canChangeStatus && (
                 <div className="space-y-2">
                   <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
