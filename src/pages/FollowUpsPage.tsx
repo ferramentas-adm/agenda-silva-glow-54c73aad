@@ -303,6 +303,18 @@ export default function FollowUpsPage() {
                 </div>
               )}
 
+              <div className="min-w-[180px]">
+                <Label className="text-xs">Ordenar por</Label>
+                <Select value={sortMode} onValueChange={(v) => setSortMode(v as typeof sortMode)}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date_asc">Mais próximos primeiro</SelectItem>
+                    <SelectItem value="date_desc">Mais distantes primeiro</SelectItem>
+                    <SelectItem value="time_asc">Por horário (mais cedo)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
                   <X className="h-3.5 w-3.5 mr-1" />
