@@ -541,6 +541,29 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="min-w-[140px]">
+              <Label className="text-[10px] uppercase tracking-wide">Status</Label>
+              <Select value={fuFilterStatus} onValueChange={(v) => setFuFilterStatus(v as typeof fuFilterStatus)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="overdue">Vencidos</SelectItem>
+                  <SelectItem value="today">Hoje</SelectItem>
+                  <SelectItem value="upcoming">Próximos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[180px]">
+              <Label className="text-[10px] uppercase tracking-wide">Ordenar por</Label>
+              <Select value={fuSort} onValueChange={(v) => setFuSort(v as typeof fuSort)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="overdue_first">Vencidos primeiro</SelectItem>
+                  <SelectItem value="date_asc">Mais próximos primeiro</SelectItem>
+                  <SelectItem value="date_desc">Mais distantes primeiro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
