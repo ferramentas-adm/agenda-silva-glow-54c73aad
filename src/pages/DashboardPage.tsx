@@ -839,52 +839,64 @@ export function CalendarContent() {
               {canChangeStatus && (
                 <div className="space-y-2">
                   <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Reagendar, Cancelar e No-show são mutuamente exclusivos —
-                    juntos compõem o "Não comparecimento" do dia.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
-                        <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
-                      </Button>
-                    )}
-                    {detailAg.status !== "realizada" && (
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
-                        <CheckCircle2 className="h-3.5 w-3.5" />Realizada
-                      </Button>
-                    )}
-                    {/* Reagendar leva ao fluxo de novo agendamento (cria nova reunião com status reagendada).
-                        Mutuamente exclusivo com Cancelar/No-show. */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
-                      disabled={updatingStatus}
-                      onClick={() => {
-                        if (!detailAg) return;
-                        const params = new URLSearchParams({
-                          edit: detailAg.id,
-                          lead_name: detailAg.lead_name,
-                          lead_phone: detailAg.lead_phone,
-                        });
-                        setDetailAg(null);
-                        navigate(`/agendar?${params.toString()}`);
-                      }}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />Reagendar
-                    </Button>
-                    {detailAg.status !== "cancelada" && (
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
-                        <XCircle className="h-3.5 w-3.5" />Cancelar
-                      </Button>
-                    )}
-                    {detailAg.status !== "no_show" && (
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
-                        <AlertCircle className="h-3.5 w-3.5" />No-show
-                      </Button>
-                    )}
-                  </div>
+                  {/* Quando o agendamento já foi reagendado, closers/SDRs não podem mais alterar
+                      o status para evitar mudanças acidentais. Apenas gestor/moderador mantém o controle
+                      total para correções. */}
+                  {detailAg.status === "reagendada" && !isAdminLike ? (
+                    <p className="text-[11px] text-muted-foreground italic rounded-md border border-primary/10 bg-muted/30 px-2 py-2">
+                      Este agendamento foi marcado como <strong>Reagendada</strong>. Para alterar o status,
+                      contate um gestor ou moderador.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-[10px] text-muted-foreground">
+                        Reagendar, Cancelar e No-show são mutuamente exclusivos —
+                        juntos compõem o "Não comparecimento" do dia.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
+                            <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
+                          </Button>
+                        )}
+                        {detailAg.status !== "realizada" && (
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
+                            <CheckCircle2 className="h-3.5 w-3.5" />Realizada
+                          </Button>
+                        )}
+                        {/* Reagendar leva ao fluxo de novo agendamento (cria nova reunião com status reagendada).
+                            Mutuamente exclusivo com Cancelar/No-show. */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
+                          disabled={updatingStatus}
+                          onClick={() => {
+                            if (!detailAg) return;
+                            const params = new URLSearchParams({
+                              edit: detailAg.id,
+                              lead_name: detailAg.lead_name,
+                              lead_phone: detailAg.lead_phone,
+                            });
+                            setDetailAg(null);
+                            navigate(`/agendar?${params.toString()}`);
+                          }}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />Reagendar
+                        </Button>
+                        {detailAg.status !== "cancelada" && (
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
+                            <XCircle className="h-3.5 w-3.5" />Cancelar
+                          </Button>
+                        )}
+                        {detailAg.status !== "no_show" && (
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
+                            <AlertCircle className="h-3.5 w-3.5" />No-show
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
