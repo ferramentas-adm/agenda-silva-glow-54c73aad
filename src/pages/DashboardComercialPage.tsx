@@ -9,13 +9,15 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
+import VendasTab from "@/components/dashboard/VendasTab";
+import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
-const TAB_NAMES = ["Métricas SDRs", "Agenda Closers", "Ranking SDRs"];
+const TAB_NAMES = ["Métricas SDRs", "Agenda Closers", "Ranking SDRs", "Vendas"];
 const ROTATION_INTERVAL = 30000;
 
 interface AgendamentoMetric {
@@ -172,6 +174,16 @@ export default function DashboardComercialPage() {
       cancelado: sc(todayAgs, "cancelada"),
       channelsToday: byChannel(todayAgs),
       channelsCreatedToday: byChannel(todayCreated),
+      // IDs para drill-down
+      todayScheduledIds: todayAgs.map(a => a.id),
+      todayCreatedIds: todayCreated.map(a => a.id),
+      yesterdayScheduledIds: yesterdayAgs.map(a => a.id),
+      tomorrowScheduledIds: tomorrowAgs.map(a => a.id),
+      monthTotalIds: monthAgs.map(a => a.id),
+      confirmadoIds: todayAgs.filter(a => a.status === "confirmada").map(a => a.id),
+      compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
+      noShowIds: todayAgs.filter(a => a.status === "no_show").map(a => a.id),
+      canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
     };
   }, [agendamentos, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd]);
 
@@ -337,6 +349,7 @@ export default function DashboardComercialPage() {
             createdAgs={createdAgs}
           />
         )}
+        {activeTab === 3 && <VendasTab currentDate={currentDate} />}
       </div>
     </AppLayout>
   );
@@ -349,17 +362,23 @@ function MetricCard({
   subtitle,
   highlight,
   icon,
+  onClick,
 }: {
   title: string;
   value: number;
   subtitle: React.ReactNode;
   highlight?: boolean;
   icon?: React.ReactNode;
+  onClick?: () => void;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
       className={cn(
-        "rounded-xl border p-4 space-y-2 transition-all",
+        "rounded-xl border p-4 space-y-2 transition-all text-left w-full",
+        onClick && "hover:border-primary/60 hover:shadow-md cursor-pointer",
         highlight
           ? "border-primary/40 bg-primary/10"
           : "border-primary/10 bg-card"
@@ -371,7 +390,7 @@ function MetricCard({
       </div>
       <p className="text-3xl font-bold">{value}</p>
       <p className="text-xs text-muted-foreground">{subtitle}</p>
-    </div>
+    </button>
   );
 }
 
@@ -505,6 +524,14 @@ function MetricasSDRsTab({
   const selectedLabel = getSubtitleLabel(currentDate);
   const monthLabel = format(currentDate, "MMMM/yyyy", { locale: ptBR });
 
+  const [drillIds, setDrillIds] = useState<string[] | null>(null);
+  const [drillTitle, setDrillTitle] = useState("");
+
+  const openDrill = (title: string, ids: string[]) => {
+    setDrillTitle(title);
+    setDrillIds(ids);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -515,14 +542,14 @@ function MetricasSDRsTab({
 
       {/* Row 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard title={titlePara} value={metrics.todayScheduled} subtitle={subtitleSelected} highlight />
-        <MetricCard title={titleGeradas} value={metrics.todayCreated} subtitle={subtitleSelected} />
-        <MetricCard title={titleDe} value={metrics.yesterdayScheduled} subtitle={subtitlePrev} />
+        <MetricCard title={titlePara} value={metrics.todayScheduled} subtitle={subtitleSelected} highlight onClick={() => openDrill(titlePara, metrics.todayScheduledIds)} />
+        <MetricCard title={titleGeradas} value={metrics.todayCreated} subtitle={subtitleSelected} onClick={() => openDrill(titleGeradas, metrics.todayCreatedIds)} />
+        <MetricCard title={titleDe} value={metrics.yesterdayScheduled} subtitle={subtitlePrev} onClick={() => openDrill(titleDe, metrics.yesterdayScheduledIds)} />
       </div>
 
       {/* Row 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard title={titleAmanha} value={metrics.tomorrowScheduled} subtitle={subtitleNext} />
+        <MetricCard title={titleAmanha} value={metrics.tomorrowScheduled} subtitle={subtitleNext} onClick={() => openDrill(titleAmanha, metrics.tomorrowScheduledIds)} />
         <MetricCard
           title={`Total ${monthLabel}`}
           value={metrics.monthTotal}
@@ -535,15 +562,16 @@ function MetricasSDRsTab({
             </span>
           }
           icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+          onClick={() => openDrill(`Total ${monthLabel}`, metrics.monthTotalIds)}
         />
-        <MetricCard title={`Confirmado — ${selectedLabel}`} value={metrics.confirmado} subtitle={subtitleSelected} />
+        <MetricCard title={`Confirmado — ${selectedLabel}`} value={metrics.confirmado} subtitle={subtitleSelected} onClick={() => openDrill(`Confirmado — ${selectedLabel}`, metrics.confirmadoIds)} />
       </div>
 
       {/* Row 3 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard title={`Compareceu — ${selectedLabel}`} value={metrics.compareceu} subtitle={subtitleSelected} />
-        <MetricCard title={`No-show — ${selectedLabel}`} value={metrics.noShow} subtitle={subtitleSelected} />
-        <MetricCard title={`Cancelado — ${selectedLabel}`} value={metrics.cancelado} subtitle={subtitleSelected} />
+        <MetricCard title={`Compareceu — ${selectedLabel}`} value={metrics.compareceu} subtitle={subtitleSelected} onClick={() => openDrill(`Compareceu — ${selectedLabel}`, metrics.compareceuIds)} />
+        <MetricCard title={`No-show — ${selectedLabel}`} value={metrics.noShow} subtitle={subtitleSelected} onClick={() => openDrill(`No-show — ${selectedLabel}`, metrics.noShowIds)} />
+        <MetricCard title={`Cancelado — ${selectedLabel}`} value={metrics.cancelado} subtitle={subtitleSelected} onClick={() => openDrill(`Cancelado — ${selectedLabel}`, metrics.canceladoIds)} />
       </div>
 
       {/* Channel tables */}
@@ -551,6 +579,13 @@ function MetricasSDRsTab({
         <ChannelTable title={getChannelTableLabel(currentDate, "para")} data={metrics.channelsToday} />
         <ChannelTable title={getChannelTableLabel(currentDate, "criadas")} data={metrics.channelsCreatedToday} />
       </div>
+
+      <MetricDrilldownDialog
+        open={drillIds !== null}
+        onOpenChange={(o) => !o && setDrillIds(null)}
+        title={drillTitle}
+        agendamentoIds={drillIds || []}
+      />
     </div>
   );
 }

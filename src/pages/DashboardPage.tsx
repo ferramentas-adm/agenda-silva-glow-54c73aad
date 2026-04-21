@@ -34,6 +34,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
+import VendaDialog from "@/components/VendaDialog";
 
 interface Agendamento {
   id: string;
@@ -105,15 +106,6 @@ const STATUS_LABELS: Record<string, string> = {
   reagendada: "Reagendada",
 };
 
-const CHANNEL_TYPES = [
-  "CTA",
-  "Tráfego Pago",
-  "Reativação",
-  "Social Selling",
-  "Renovação",
-  "Indicação",
-  "Formulário Bio",
-];
 
 const CANCELLED_STATUSES = ["cancelada", "no_show"];
 
@@ -154,6 +146,7 @@ export function CalendarContent() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingBriefing, setSavingBriefing] = useState(false);
   const [viewBriefing, setViewBriefing] = useState(false);
+  const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
@@ -462,6 +455,11 @@ export function CalendarContent() {
   // Status update handler
   const handleStatusChange = async (newStatus: string) => {
     if (!detailAg) return;
+    // Realizada → abre pop-up de Vendeu? (bloqueia submit até preencher)
+    if (newStatus === "realizada") {
+      setVendaDialogAg(detailAg);
+      return;
+    }
     setUpdatingStatus(true);
     try {
       const { error } = await supabase
@@ -989,6 +987,21 @@ export function CalendarContent() {
         }}
         saving={savingBriefing}
       />
+
+      {vendaDialogAg && (
+        <VendaDialog
+          open={!!vendaDialogAg}
+          onOpenChange={(o) => !o && setVendaDialogAg(null)}
+          agendamentoId={vendaDialogAg.id}
+          leadName={vendaDialogAg.lead_name}
+          onSuccess={() => {
+            patchAgendamentosCache(vendaDialogAg.id, (a) => ({ ...a, status: "realizada" }));
+            setDetailAg((d) => (d && d.id === vendaDialogAg.id ? { ...d, status: "realizada" } : d));
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+            queryClient.invalidateQueries({ queryKey: ["vendas"] });
+          }}
+        />
+      )}
     </>
   );
 }

@@ -40,15 +40,11 @@ interface AgendamentoData {
   channelType: string | null;
 }
 
-const CHANNEL_TYPES = [
-  "CTA",
-  "Tráfego Pago",
-  "Reativação",
-  "Social Selling",
-  "Renovação",
-  "Indicação",
-  "Formulário Bio",
+const DEFAULT_CHANNEL_TYPES = [
+  "CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago",
 ];
+
+import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 
 export default function AgendarPage() {
   const { user, role } = useAuth();
@@ -83,6 +79,7 @@ export default function AgendarPage() {
   const [channelType, setChannelType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
+  const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
 
@@ -482,7 +479,7 @@ export default function AgendarPage() {
                       <SelectValue placeholder="Selecione o canal" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CHANNEL_TYPES.map((ct) => (
+                      {channelTypes.map((ct) => (
                         <SelectItem key={ct} value={ct}>{ct}</SelectItem>
                       ))}
                     </SelectContent>
