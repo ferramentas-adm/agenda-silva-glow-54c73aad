@@ -987,6 +987,21 @@ export function CalendarContent() {
         }}
         saving={savingBriefing}
       />
+
+      {vendaDialogAg && (
+        <VendaDialog
+          open={!!vendaDialogAg}
+          onOpenChange={(o) => !o && setVendaDialogAg(null)}
+          agendamentoId={vendaDialogAg.id}
+          leadName={vendaDialogAg.lead_name}
+          onSuccess={() => {
+            patchAgendamentosCache(vendaDialogAg.id, (a) => ({ ...a, status: "realizada" }));
+            setDetailAg((d) => (d && d.id === vendaDialogAg.id ? { ...d, status: "realizada" } : d));
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+            queryClient.invalidateQueries({ queryKey: ["vendas"] });
+          }}
+        />
+      )}
     </>
   );
 }
