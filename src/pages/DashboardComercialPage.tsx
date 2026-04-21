@@ -9,13 +9,14 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
+import VendasTab from "@/components/dashboard/VendasTab";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
-const TAB_NAMES = ["Métricas SDRs", "Agenda Closers", "Ranking SDRs"];
+const TAB_NAMES = ["Métricas SDRs", "Agenda Closers", "Ranking SDRs", "Vendas"];
 const ROTATION_INTERVAL = 30000;
 
 interface AgendamentoMetric {
@@ -337,6 +338,7 @@ export default function DashboardComercialPage() {
             createdAgs={createdAgs}
           />
         )}
+        {activeTab === 3 && <VendasTab currentDate={currentDate} />}
       </div>
     </AppLayout>
   );
