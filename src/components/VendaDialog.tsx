@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Loader2, DollarSign } from "lucide-react";
+import { Loader2, DollarSign, CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -16,11 +16,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { logAudit } from "@/services/auditLog";
+import { DEFAULT_REASONS, isPendingStageReason } from "@/lib/vendaConstants";
+import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 
 interface VendaDialogProps {
   open: boolean;
@@ -29,8 +30,6 @@ interface VendaDialogProps {
   leadName: string;
   onSuccess: () => void;
 }
-
-const DEFAULT_REASONS = ["Expectativas desalinhadas", "Não é o momento", "Sem capacidade financeira"];
 
 // Formata centavos (string de dígitos) como BRL: "123456" -> "1.234,56"
 const formatBRL = (digits: string) => {
@@ -43,7 +42,6 @@ const formatBRL = (digits: string) => {
   return `${reaisFmt},${cents}`;
 };
 
-// Converte string de dígitos (centavos) para número decimal
 const digitsToNumber = (digits: string) => {
   const cleaned = digits.replace(/\D/g, "");
   if (!cleaned) return NaN;
@@ -62,26 +60,37 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [valor, setValor] = useState("");
   const [followUp, setFollowUp] = useState<"sim" | "nao" | null>(null);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>(undefined);
+  const [followUpTime, setFollowUpTime] = useState<string>("");
   const [motivo, setMotivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
 
+  const motivoIsPending = isPendingStageReason(motivo);
+
+  // Se o motivo for um motivo de etapa em andamento, esconder seção de follow-up
+  useEffect(() => {
+    if (motivoIsPending) {
+      setFollowUp(null);
+      setFollowUpDate(undefined);
+      setFollowUpTime("");
+    }
+  }, [motivoIsPending]);
+
   useEffect(() => {
     if (!open) return;
 
-    // Reset padrão
     setVendeu(null);
     setResumoVenda("");
     setValor("");
     setFollowUp(null);
     setFollowUpDate(undefined);
+    setFollowUpTime("");
     setMotivo("");
     setObservacoes("");
     setIsEditing(false);
 
-    // Busca venda existente p/ este agendamento
     (async () => {
       setLoadingExisting(true);
       const { data, error } = await supabase
@@ -94,15 +103,18 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setVendeu(data.vendeu ? "sim" : "nao");
         setResumoVenda(data.resumo_venda ?? "");
         if (data.valor != null) {
-          // numero -> string de centavos
           const cents = Math.round(Number(data.valor) * 100).toString();
           setValor(cents);
         }
-        setFollowUp(data.follow_up ? "sim" : data.vendeu ? null : "nao");
+        const reasonIsPending = isPendingStageReason(data.motivo_nao_fechamento);
+        if (!data.vendeu && !reasonIsPending) {
+          setFollowUp(data.follow_up ? "sim" : "nao");
+        }
         if (data.follow_up_date) {
           const [y, m, d] = data.follow_up_date.split("-").map(Number);
           setFollowUpDate(new Date(y, m - 1, d));
         }
+        setFollowUpTime((data as { follow_up_time?: string | null }).follow_up_time ?? "");
         setMotivo(data.motivo_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
       }
@@ -118,31 +130,38 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
-      if (followUp === "sim" && !followUpDate) return false;
+      // Motivos de etapa em andamento dispensam follow-up
+      if (motivoIsPending) return true;
       if (followUp === null) return false;
+      if (followUp === "sim" && (!followUpDate || !followUpTime)) return false;
       return true;
     }
     return false;
   })();
+
+  const computeOutcome = (): "fechou" | "perdeu" | "follow_up" | "em_andamento" => {
+    if (vendeu === "sim") return "fechou";
+    if (motivoIsPending) return "em_andamento";
+    if (followUp === "sim") return "follow_up";
+    return "perdeu";
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit || !user) return;
     setSubmitting(true);
     try {
       const valorNum = valorValido ? valorNumParsed : null;
+      const fuActive = vendeu === "nao" && !motivoIsPending && followUp === "sim";
 
-      // Upsert venda (evita erro de chave duplicada em reaberturas)
       const { error: vendaError } = await supabase.from("vendas").upsert(
         {
           agendamento_id: agendamentoId,
           vendeu: vendeu === "sim",
           resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
           valor: valorNum,
-          follow_up: vendeu === "nao" && followUp === "sim",
-          follow_up_date:
-            vendeu === "nao" && followUp === "sim" && followUpDate
-              ? format(followUpDate, "yyyy-MM-dd")
-              : null,
+          follow_up: fuActive,
+          follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
+          follow_up_time: fuActive && followUpTime ? followUpTime : null,
           motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
           observacoes: observacoes.trim() || null,
           created_by: user.id,
@@ -158,22 +177,70 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         throw vendaError;
       }
 
-      // Atualiza status do agendamento para realizada
       const { error: agError } = await supabase
         .from("agendamentos")
         .update({ status: "realizada" })
         .eq("id", agendamentoId);
       if (agError) throw agError;
 
+      const outcome = computeOutcome();
+
+      // Busca dados complementares para o webhook
+      const { data: agData } = await supabase
+        .from("agendamentos")
+        .select("lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by")
+        .eq("id", agendamentoId)
+        .maybeSingle();
+
+      let closerName: string | null = null;
+      let sdrName: string | null = null;
+      if (agData?.closer_id) {
+        const { data: c } = await supabase.from("closers").select("name").eq("id", agData.closer_id).maybeSingle();
+        closerName = c?.name ?? null;
+      }
+      const sdrLookup = agData?.sdr_responsavel_id ?? agData?.created_by;
+      if (sdrLookup) {
+        const { data: p } = await supabase.from("profiles").select("full_name").eq("user_id", sdrLookup).maybeSingle();
+        sdrName = p?.full_name ?? null;
+      }
+
+      // Dispara webhook (não bloqueante)
+      sendVendaToDataCrazy({
+        agendamento_id: agendamentoId,
+        lead_name: agData?.lead_name ?? leadName,
+        lead_phone: agData?.lead_phone ?? null,
+        closer_name: closerName,
+        sdr_name: sdrName,
+        vendeu: vendeu === "sim",
+        resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
+        valor: valorNum,
+        motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
+        follow_up: fuActive,
+        follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
+        follow_up_time: fuActive && followUpTime ? followUpTime : null,
+        observacoes: observacoes.trim() || null,
+        outcome,
+        registered_at: new Date().toISOString(),
+      });
+
       await logAudit("venda_registrada", "venda", agendamentoId, {
         lead_name: leadName,
         vendeu: vendeu === "sim",
         valor: valorNum,
         motivo: vendeu === "nao" ? motivo : null,
-        follow_up: vendeu === "nao" && followUp === "sim",
+        follow_up: fuActive,
+        outcome,
       });
 
-      toast.success(vendeu === "sim" ? "Venda registrada!" : "Não fechamento registrado");
+      toast.success(
+        vendeu === "sim"
+          ? "Venda registrada!"
+          : motivoIsPending
+            ? "Resultado registrado (em andamento no CRM)"
+            : followUp === "sim"
+              ? "Follow-up agendado"
+              : "Venda perdida registrada",
+      );
       onSuccess();
       onOpenChange(false);
     } catch (err: any) {
@@ -256,52 +323,72 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                     ))}
                   </SelectContent>
                 </Select>
+                {motivoIsPending && (
+                  <p className="text-xs text-muted-foreground">
+                    Este motivo representa uma etapa em andamento no CRM — não é necessário marcar follow-up.
+                  </p>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Follow-up? *</Label>
-                <RadioGroup value={followUp ?? ""} onValueChange={(v) => setFollowUp(v as "sim" | "nao")}>
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="sim" id="fu-sim" />
-                      <Label htmlFor="fu-sim" className="cursor-pointer font-normal">Sim</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="nao" id="fu-nao" />
-                      <Label htmlFor="fu-nao" className="cursor-pointer font-normal">Não</Label>
-                    </div>
+              {!motivoIsPending && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Follow-up? *</Label>
+                    <RadioGroup value={followUp ?? ""} onValueChange={(v) => setFollowUp(v as "sim" | "nao")}>
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="sim" id="fu-sim" />
+                          <Label htmlFor="fu-sim" className="cursor-pointer font-normal">Sim</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="nao" id="fu-nao" />
+                          <Label htmlFor="fu-nao" className="cursor-pointer font-normal">Não (venda perdida)</Label>
+                        </div>
+                      </div>
+                    </RadioGroup>
                   </div>
-                </RadioGroup>
-              </div>
 
-              {followUp === "sim" && (
-                <div className="space-y-1.5">
-                  <Label>Data do follow-up *</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !followUpDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {followUpDate ? format(followUpDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={followUpDate}
-                        onSelect={setFollowUpDate}
-                        disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-                        locale={ptBR}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                  {followUp === "sim" && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <Label>Data *</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !followUpDate && "text-muted-foreground",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {followUpDate ? format(followUpDate, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={followUpDate}
+                              onSelect={setFollowUpDate}
+                              disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                              locale={ptBR}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="fu-time">Horário *</Label>
+                        <Input
+                          id="fu-time"
+                          type="time"
+                          value={followUpTime}
+                          onChange={(e) => setFollowUpTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="space-y-1.5">
