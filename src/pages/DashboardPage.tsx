@@ -545,8 +545,25 @@ export function CalendarContent() {
               { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
               { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
               { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
+              {
+                key: "nao_comparecimento",
+                label: "Não comparecimento",
+                icon: Ban,
+                color: "text-rose-400",
+                bg: "bg-rose-500/10",
+              },
             ].map(({ key, label, icon: Icon, color, bg }) => {
-              const count = key === "total" ? sdrFiltered.length : (statusCounts[key] ?? 0);
+              let count: number;
+              if (key === "total") count = sdrFiltered.length;
+              else if (key === "nao_comparecimento") {
+                // Soma dos 3 status que representam ausência do lead
+                count =
+                  (statusCounts["cancelada"] ?? 0) +
+                  (statusCounts["no_show"] ?? 0) +
+                  (statusCounts["reagendada"] ?? 0);
+              } else {
+                count = statusCounts[key] ?? 0;
+              }
               return (
                 <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
                   <Icon className={cn("h-5 w-5 shrink-0", color)} />
