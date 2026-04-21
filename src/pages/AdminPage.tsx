@@ -23,6 +23,40 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
+import DynamicListManager from "@/components/DynamicListManager";
+import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+
+/* ─── Listas dinâmicas (Motivos / Canais) ─────────────────────── */
+function DynamicListsSection() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <DynamicListManager
+        settingKey={APP_SETTING_KEYS.meeting_reasons}
+        title="Motivos da reunião"
+        description="Opções disponíveis ao agendar uma reunião."
+        defaults={["Apresentação", "Diagnóstico", "Fechamento", "Follow-up", "Segunda Reunião"]}
+      />
+      <DynamicListManager
+        settingKey={APP_SETTING_KEYS.channel_types}
+        title="Tipos de canal"
+        description="Origem do lead para classificação."
+        defaults={["CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago"]}
+      />
+      <DynamicListManager
+        settingKey={APP_SETTING_KEYS.block_reasons}
+        title="Motivos de compromissos pessoais"
+        description="Opções para o Closer ao bloquear horários."
+        defaults={["Almoço", "Compromisso pessoal", "Folga", "Reunião interna", "Treinamento"]}
+      />
+      <DynamicListManager
+        settingKey={APP_SETTING_KEYS.motivos_nao_fechamento}
+        title="Motivos de não fechamento"
+        description="Opções no pop-up de venda quando 'Vendeu? Não'."
+        defaults={["Expectativas desalinhadas", "Não é o momento", "Sem capacidade financeira"]}
+      />
+    </div>
+  );
+}
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
@@ -1164,14 +1198,18 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3 bg-secondary">
+            <TabsList className="grid w-full grid-cols-4 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
               </TabsTrigger>
               <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
                 <Settings className="h-3.5 w-3.5" />
-                Configurações
+                Sistema
+              </TabsTrigger>
+              <TabsTrigger value="lists" className="gap-1.5 text-xs sm:text-sm">
+                <Plus className="h-3.5 w-3.5" />
+                Listas
               </TabsTrigger>
               <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
                 <ShieldAlert className="h-3.5 w-3.5" />
@@ -1185,16 +1223,23 @@ export default function AdminPage() {
             <TabsContent value="settings">
               <SettingsSection />
             </TabsContent>
+            <TabsContent value="lists">
+              <DynamicListsSection />
+            </TabsContent>
             <TabsContent value="reasons">
               <DeletionReasonsSection />
             </TabsContent>
           </Tabs>
         ) : isModerador ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+            <TabsList className="grid w-full grid-cols-3 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
+              </TabsTrigger>
+              <TabsTrigger value="lists" className="gap-1.5 text-xs sm:text-sm">
+                <Plus className="h-3.5 w-3.5" />
+                Listas
               </TabsTrigger>
               <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
                 <ShieldAlert className="h-3.5 w-3.5" />
@@ -1203,6 +1248,9 @@ export default function AdminPage() {
             </TabsList>
             <TabsContent value="users">
               <UsersSection />
+            </TabsContent>
+            <TabsContent value="lists">
+              <DynamicListsSection />
             </TabsContent>
             <TabsContent value="reasons">
               <DeletionReasonsSection />
