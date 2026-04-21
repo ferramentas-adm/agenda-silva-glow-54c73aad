@@ -161,6 +161,14 @@ export default function DashboardComercialPage() {
         .map(([canal, qtd], i) => ({ num: i + 1, canal, qtd }));
     };
 
+    const noShowCount = sc(todayAgs, "no_show");
+    const canceladoCount = sc(todayAgs, "cancelada");
+    const reagendadoCount = sc(todayAgs, "reagendada");
+    const totalDia = todayAgs.length;
+    const taxaNaoComp = totalDia > 0
+      ? ((noShowCount + canceladoCount + reagendadoCount) / totalDia) * 100
+      : 0;
+
     return {
       todayScheduled: todayAgs.length,
       todayCreated: todayCreated.length,
@@ -170,8 +178,10 @@ export default function DashboardComercialPage() {
       monthDiff: monthAgs.length - prevMonthAgs.length,
       confirmado: sc(todayAgs, "confirmada"),
       compareceu: sc(todayAgs, "realizada"),
-      noShow: sc(todayAgs, "no_show"),
-      cancelado: sc(todayAgs, "cancelada"),
+      noShow: noShowCount,
+      cancelado: canceladoCount,
+      reagendado: reagendadoCount,
+      taxaNaoComp,
       channelsToday: byChannel(todayAgs),
       channelsCreatedToday: byChannel(todayCreated),
       // IDs para drill-down
@@ -184,6 +194,8 @@ export default function DashboardComercialPage() {
       compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
       noShowIds: todayAgs.filter(a => a.status === "no_show").map(a => a.id),
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
+      reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
+      naoCompIds: todayAgs.filter(a => a.status === "no_show" || a.status === "cancelada" || a.status === "reagendada").map(a => a.id),
     };
   }, [agendamentos, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd]);
 
@@ -568,10 +580,22 @@ function MetricasSDRsTab({
       </div>
 
       {/* Row 3 */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <MetricCard title={`Compareceu — ${selectedLabel}`} value={metrics.compareceu} subtitle={subtitleSelected} onClick={() => openDrill(`Compareceu — ${selectedLabel}`, metrics.compareceuIds)} />
         <MetricCard title={`No-show — ${selectedLabel}`} value={metrics.noShow} subtitle={subtitleSelected} onClick={() => openDrill(`No-show — ${selectedLabel}`, metrics.noShowIds)} />
         <MetricCard title={`Cancelado — ${selectedLabel}`} value={metrics.cancelado} subtitle={subtitleSelected} onClick={() => openDrill(`Cancelado — ${selectedLabel}`, metrics.canceladoIds)} />
+        <MetricCard title={`Reagendado — ${selectedLabel}`} value={metrics.reagendado} subtitle={subtitleSelected} onClick={() => openDrill(`Reagendado — ${selectedLabel}`, metrics.reagendadoIds)} />
+        <MetricCard
+          title={`Taxa Não Comparecimento — ${selectedLabel}`}
+          value={Math.round(metrics.taxaNaoComp)}
+          subtitle={
+            <span>
+              <span className="font-mono">{metrics.taxaNaoComp.toFixed(1)}%</span>
+              {" — "}{(metrics.noShow + metrics.cancelado + metrics.reagendado)} de {metrics.todayScheduled}
+            </span>
+          }
+          onClick={() => openDrill(`Não Comparecimento — ${selectedLabel}`, metrics.naoCompIds)}
+        />
       </div>
 
       {/* Channel tables */}
