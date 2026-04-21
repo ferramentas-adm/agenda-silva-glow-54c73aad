@@ -242,6 +242,16 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
               : "Venda perdida registrada",
       );
       onSuccess();
+      // Limpa todos os campos para o próximo preenchimento
+      setVendeu(null);
+      setResumoVenda("");
+      setValor("");
+      setFollowUp(null);
+      setFollowUpDate(undefined);
+      setFollowUpTime("");
+      setMotivo("");
+      setObservacoes("");
+      setIsEditing(false);
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "Erro ao registrar venda");
