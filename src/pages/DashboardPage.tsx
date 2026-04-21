@@ -150,6 +150,10 @@ export function CalendarContent() {
   const [savingBriefing, setSavingBriefing] = useState(false);
   const [viewBriefing, setViewBriefing] = useState(false);
   const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
+  // Transfer lead between closers
+  const [transferTarget, setTransferTarget] = useState<string>("");
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
@@ -363,6 +367,46 @@ export function CalendarContent() {
     if (role === "sdr") return detailAg.created_by === user?.id;
     return false;
   }, [detailAg, role, user?.id]);
+
+  // Quem pode TRANSFERIR o lead para outro closer:
+  // - gestor / moderador: sempre
+  // - closer: APENAS se for o dono atual do lead (nunca pode "puxar" lead de outro)
+  const canTransfer = useMemo(() => {
+    if (!detailAg) return false;
+    if (role === "gestor" || role === "moderador") return true;
+    if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
+    return false;
+  }, [detailAg, role, myCloserId]);
+
+  const handleTransferLead = async () => {
+    if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
+    setTransferring(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ closer_id: transferTarget } as any)
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      const oldName = closerMap.get(detailAg.closer_id) || "—";
+      const newName = closerMap.get(transferTarget) || "—";
+      await logAudit("transfer_lead", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        scheduled_date: detailAg.scheduled_date,
+        scheduled_time: detailAg.scheduled_time,
+        from_closer: oldName,
+        to_closer: newName,
+      });
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: transferTarget }));
+      setDetailAg({ ...detailAg, closer_id: transferTarget });
+      toast.success(`Lead transferido para ${newName}`);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      setTransferOpen(false);
+      setTransferTarget("");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao transferir lead");
+    }
+    setTransferring(false);
+  };
 
   // Lista de usuários (qualquer função) para selecionar como responsável
   const { data: allUsers = [] } = useQuery({
@@ -836,55 +880,82 @@ export function CalendarContent() {
                 <Pencil className="h-3.5 w-3.5" />Editar horário
               </Button>
 
+              {/* Transfer lead — apenas dono atual (closer) ou gestor/moderador */}
+              {canTransfer && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-primary/30 text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    setTransferTarget("");
+                    setTransferOpen(true);
+                  }}
+                >
+                  <Users className="h-3.5 w-3.5" />Transferir lead para outro closer
+                </Button>
+              )}
+
               {canChangeStatus && (
                 <div className="space-y-2">
                   <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Reagendar, Cancelar e No-show são mutuamente exclusivos —
-                    juntos compõem o "Não comparecimento" do dia.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
-                        <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
-                      </Button>
-                    )}
-                    {detailAg.status !== "realizada" && (
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
-                        <CheckCircle2 className="h-3.5 w-3.5" />Realizada
-                      </Button>
-                    )}
-                    {/* Reagendar leva ao fluxo de novo agendamento (cria nova reunião com status reagendada).
-                        Mutuamente exclusivo com Cancelar/No-show. */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
-                      disabled={updatingStatus}
-                      onClick={() => {
-                        if (!detailAg) return;
-                        const params = new URLSearchParams({
-                          edit: detailAg.id,
-                          lead_name: detailAg.lead_name,
-                          lead_phone: detailAg.lead_phone,
-                        });
-                        setDetailAg(null);
-                        navigate(`/agendar?${params.toString()}`);
-                      }}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />Reagendar
-                    </Button>
-                    {detailAg.status !== "cancelada" && (
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
-                        <XCircle className="h-3.5 w-3.5" />Cancelar
-                      </Button>
-                    )}
-                    {detailAg.status !== "no_show" && (
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
-                        <AlertCircle className="h-3.5 w-3.5" />No-show
-                      </Button>
-                    )}
-                  </div>
+                  {/* Quando o agendamento já foi reagendado, closers/SDRs não podem mais alterar
+                      o status para evitar mudanças acidentais. Apenas gestor/moderador mantém o controle
+                      total para correções. */}
+                  {detailAg.status === "reagendada" && !isAdminLike ? (
+                    <p className="text-[11px] text-muted-foreground italic rounded-md border border-primary/10 bg-muted/30 px-2 py-2">
+                      Este agendamento foi marcado como <strong>Reagendada</strong>. Para alterar o status,
+                      contate um gestor ou moderador.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-[10px] text-muted-foreground">
+                        Reagendar, Cancelar e No-show são mutuamente exclusivos —
+                        juntos compõem o "Não comparecimento" do dia.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
+                            <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
+                          </Button>
+                        )}
+                        {detailAg.status !== "realizada" && (
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
+                            <CheckCircle2 className="h-3.5 w-3.5" />Realizada
+                          </Button>
+                        )}
+                        {/* Reagendar leva ao fluxo de novo agendamento (cria nova reunião com status reagendada).
+                            Mutuamente exclusivo com Cancelar/No-show. */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
+                          disabled={updatingStatus}
+                          onClick={() => {
+                            if (!detailAg) return;
+                            const params = new URLSearchParams({
+                              edit: detailAg.id,
+                              lead_name: detailAg.lead_name,
+                              lead_phone: detailAg.lead_phone,
+                            });
+                            setDetailAg(null);
+                            navigate(`/agendar?${params.toString()}`);
+                          }}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />Reagendar
+                        </Button>
+                        {detailAg.status !== "cancelada" && (
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
+                            <XCircle className="h-3.5 w-3.5" />Cancelar
+                          </Button>
+                        )}
+                        {detailAg.status !== "no_show" && (
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
+                            <AlertCircle className="h-3.5 w-3.5" />No-show
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -918,6 +989,57 @@ export function CalendarContent() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer lead dialog */}
+      <Dialog open={transferOpen} onOpenChange={(o) => { if (!o) { setTransferOpen(false); setTransferTarget(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Transferir lead
+            </DialogTitle>
+            <DialogDescription>
+              Selecione o closer que receberá o lead{" "}
+              <strong>{detailAg?.lead_name}</strong>. O agendamento permanecerá no mesmo
+              horário ({detailAg?.scheduled_time}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Closer atual</p>
+              <p className="text-sm font-medium">
+                {detailAg ? (closerMap.get(detailAg.closer_id) || "—") : "—"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Novo closer</label>
+              <Select value={transferTarget} onValueChange={setTransferTarget}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar closer destinatário" />
+                </SelectTrigger>
+                <SelectContent>
+                  {closers
+                    .filter((c) => c.id !== detailAg?.closer_id)
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => { setTransferOpen(false); setTransferTarget(""); }}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleTransferLead}
+              disabled={!transferTarget || transferring}
+            >
+              {transferring ? "Transferindo..." : "Transferir"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
