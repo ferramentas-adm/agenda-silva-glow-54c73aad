@@ -32,6 +32,24 @@ interface VendaDialogProps {
 
 const DEFAULT_REASONS = ["Expectativas desalinhadas", "Não é o momento", "Sem capacidade financeira"];
 
+// Formata centavos (string de dígitos) como BRL: "123456" -> "1.234,56"
+const formatBRL = (digits: string) => {
+  const cleaned = digits.replace(/\D/g, "");
+  if (!cleaned) return "";
+  const padded = cleaned.padStart(3, "0");
+  const reais = padded.slice(0, -2).replace(/^0+(?=\d)/, "");
+  const cents = padded.slice(-2);
+  const reaisFmt = reais.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${reaisFmt},${cents}`;
+};
+
+// Converte string de dígitos (centavos) para número decimal
+const digitsToNumber = (digits: string) => {
+  const cleaned = digits.replace(/\D/g, "");
+  if (!cleaned) return NaN;
+  return parseInt(cleaned, 10) / 100;
+};
+
 export default function VendaDialog({ open, onOpenChange, agendamentoId, leadName, onSuccess }: VendaDialogProps) {
   const { user } = useAuth();
   const { items: motivosNaoFechamento } = useAppSettingList(
@@ -60,7 +78,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     }
   }, [open]);
 
-  const valorNumParsed = valor ? parseFloat(valor.replace(",", ".")) : NaN;
+  const valorNumParsed = digitsToNumber(valor);
   const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
 
   const canSubmit = (() => {
@@ -167,9 +185,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 <Label htmlFor="valor">Valor da venda *</Label>
                 <Input
                   id="valor"
-                  inputMode="decimal"
-                  value={valor}
-                  onChange={(e) => setValor(e.target.value.replace(/[^\d.,]/g, ""))}
+                  inputMode="numeric"
+                  value={formatBRL(valor)}
+                  onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
                   placeholder="0,00"
                 />
               </div>
@@ -242,9 +260,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 <Label htmlFor="valor-apresentado">Valor apresentado ao cliente (opcional)</Label>
                 <Input
                   id="valor-apresentado"
-                  inputMode="decimal"
-                  value={valor}
-                  onChange={(e) => setValor(e.target.value.replace(/[^\d.,]/g, ""))}
+                  inputMode="numeric"
+                  value={formatBRL(valor)}
+                  onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
                   placeholder="0,00"
                 />
                 <p className="text-xs text-muted-foreground">
