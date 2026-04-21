@@ -346,6 +346,7 @@ export type Database = {
           created_by: string
           follow_up: boolean
           follow_up_date: string | null
+          follow_up_time: string | null
           id: string
           motivo_nao_fechamento: string | null
           observacoes: string | null
@@ -360,6 +361,7 @@ export type Database = {
           created_by: string
           follow_up?: boolean
           follow_up_date?: string | null
+          follow_up_time?: string | null
           id?: string
           motivo_nao_fechamento?: string | null
           observacoes?: string | null
@@ -374,6 +376,7 @@ export type Database = {
           created_by?: string
           follow_up?: boolean
           follow_up_date?: string | null
+          follow_up_time?: string | null
           id?: string
           motivo_nao_fechamento?: string | null
           observacoes?: string | null
