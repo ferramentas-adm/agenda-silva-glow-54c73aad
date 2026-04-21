@@ -204,8 +204,30 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
       .sort((a, b) => b.vendas - a.vendas);
   }, [vendasDia, agMap, closerMap]);
 
-  // Próximos follow-ups (todos)
+  // Filtros para "Próximos Follow-ups"
+  const { items: motivosList } = useAppSettingList(
+    APP_SETTING_KEYS.motivos_nao_fechamento,
+    DEFAULT_REASONS,
+  );
+  const { role } = useAuth();
+  const isManager = role === "gestor" || role === "moderador";
+  const queryClient = useQueryClient();
+
+  const [fuFilterCloser, setFuFilterCloser] = useState<string>("all");
+  const [fuFilterMotivo, setFuFilterMotivo] = useState<string>("all");
+  const [fuFilterDate, setFuFilterDate] = useState<Date | undefined>(undefined);
+
+  const fuHasFilters =
+    fuFilterCloser !== "all" || fuFilterMotivo !== "all" || !!fuFilterDate;
+  const clearFuFilters = () => {
+    setFuFilterCloser("all");
+    setFuFilterMotivo("all");
+    setFuFilterDate(undefined);
+  };
+
+  // Próximos follow-ups (todos) — com filtros
   const proximosFollowUps = useMemo(() => {
+    const dateFilterStr = fuFilterDate ? format(fuFilterDate, "yyyy-MM-dd") : null;
     return vendas
       .filter((v) => v.follow_up && v.follow_up_date)
       .map((v) => {
@@ -214,14 +236,44 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
           id: v.id,
           agendamentoId: v.agendamento_id,
           date: v.follow_up_date!,
+          time: v.follow_up_time,
           leadName: ag?.lead_name || "—",
+          closerId: ag?.closer_id || null,
           closerName: ag?.closer_id ? closerMap.get(ag.closer_id) || "—" : "—",
           motivo: v.motivo_nao_fechamento || "",
+          observacoes: v.observacoes,
         };
       })
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 8);
-  }, [vendas, agMap, closerMap]);
+      .filter((f) => {
+        if (fuFilterCloser !== "all" && f.closerId !== fuFilterCloser) return false;
+        if (fuFilterMotivo !== "all" && f.motivo !== fuFilterMotivo) return false;
+        if (dateFilterStr && f.date !== dateFilterStr) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const cmp = a.date.localeCompare(b.date);
+        if (cmp !== 0) return cmp;
+        return (a.time || "").localeCompare(b.time || "");
+      })
+      .slice(0, 20);
+  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate]);
+
+  // Estado para edição/remoção (apenas managers)
+  const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; agendamentoId: string; leadName: string } | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const handleConfirmRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    const ok = await removeFollowUp(removeTarget.id, removeTarget.agendamentoId, removeTarget.leadName);
+    setRemoving(false);
+    if (ok) {
+      setRemoveTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+      queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+    }
+  };
 
   const fmtBRL = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
