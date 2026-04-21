@@ -339,6 +339,59 @@ export type Database = {
         }
         Relationships: []
       }
+      vendas: {
+        Row: {
+          agendamento_id: string
+          created_at: string
+          created_by: string
+          follow_up: boolean
+          follow_up_date: string | null
+          id: string
+          motivo_nao_fechamento: string | null
+          observacoes: string | null
+          resumo_venda: string | null
+          updated_at: string
+          valor: number | null
+          vendeu: boolean
+        }
+        Insert: {
+          agendamento_id: string
+          created_at?: string
+          created_by: string
+          follow_up?: boolean
+          follow_up_date?: string | null
+          id?: string
+          motivo_nao_fechamento?: string | null
+          observacoes?: string | null
+          resumo_venda?: string | null
+          updated_at?: string
+          valor?: number | null
+          vendeu: boolean
+        }
+        Update: {
+          agendamento_id?: string
+          created_at?: string
+          created_by?: string
+          follow_up?: boolean
+          follow_up_date?: string | null
+          id?: string
+          motivo_nao_fechamento?: string | null
+          observacoes?: string | null
+          resumo_venda?: string | null
+          updated_at?: string
+          valor?: number | null
+          vendeu?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendas_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: true
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
