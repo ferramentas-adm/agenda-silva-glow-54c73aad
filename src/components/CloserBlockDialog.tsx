@@ -104,6 +104,10 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
       toast.error("Selecione ao menos um dia da semana");
       return;
     }
+    if (!blockType) {
+      toast.error("Selecione um motivo");
+      return;
+    }
     if (startTime >= endTime) {
       toast.error("Horário de fim deve ser depois do início");
       return;
