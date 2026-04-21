@@ -44,6 +44,8 @@ const DEFAULT_CHANNEL_TYPES = [
   "CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago",
 ];
 
+import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+
 export default function AgendarPage() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
@@ -77,6 +79,7 @@ export default function AgendarPage() {
   const [channelType, setChannelType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
+  const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
 
