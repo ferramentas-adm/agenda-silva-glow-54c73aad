@@ -114,8 +114,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           const [y, m, d] = data.follow_up_date.split("-").map(Number);
           setFollowUpDate(new Date(y, m - 1, d));
         }
-        // @ts-expect-error - new column not in regenerated types yet
-        setFollowUpTime(data.follow_up_time ?? "");
+        setFollowUpTime((data as { follow_up_time?: string | null }).follow_up_time ?? "");
         setMotivo(data.motivo_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
       }
@@ -162,7 +161,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           valor: valorNum,
           follow_up: fuActive,
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
-          // @ts-expect-error - column not in regenerated types yet
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
           motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
           observacoes: observacoes.trim() || null,
