@@ -40,14 +40,8 @@ interface AgendamentoData {
   channelType: string | null;
 }
 
-const CHANNEL_TYPES = [
-  "CTA",
-  "Tráfego Pago",
-  "Reativação",
-  "Social Selling",
-  "Renovação",
-  "Indicação",
-  "Formulário Bio",
+const DEFAULT_CHANNEL_TYPES = [
+  "CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago",
 ];
 
 export default function AgendarPage() {
