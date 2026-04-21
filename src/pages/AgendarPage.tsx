@@ -242,6 +242,8 @@ export default function AgendarPage() {
       } else {
         toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
       }
+      // Limpa o briefing logo após o envio para não vazar ao próximo agendamento
+      setBriefingText("");
     } catch (err: any) {
       toast.error(err.message || "Erro ao agendar");
     }
