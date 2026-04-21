@@ -587,11 +587,10 @@ function MetricasSDRsTab({
         <MetricCard title={`Reagendado — ${selectedLabel}`} value={metrics.reagendado} subtitle={subtitleSelected} onClick={() => openDrill(`Reagendado — ${selectedLabel}`, metrics.reagendadoIds)} />
         <MetricCard
           title={`Taxa Não Comparecimento — ${selectedLabel}`}
-          value={Math.round(metrics.taxaNaoComp)}
+          value={`${metrics.taxaNaoComp.toFixed(1)}%`}
           subtitle={
             <span>
-              <span className="font-mono">{metrics.taxaNaoComp.toFixed(1)}%</span>
-              {" — "}{(metrics.noShow + metrics.cancelado + metrics.reagendado)} de {metrics.todayScheduled}
+              {(metrics.noShow + metrics.cancelado + metrics.reagendado)} de {metrics.todayScheduled} agendamento{metrics.todayScheduled !== 1 ? "s" : ""}
             </span>
           }
           onClick={() => openDrill(`Não Comparecimento — ${selectedLabel}`, metrics.naoCompIds)}
