@@ -34,7 +34,9 @@ interface VendaRow {
   valor: number | null;
   follow_up: boolean;
   follow_up_date: string | null;
+  follow_up_time: string | null;
   motivo_nao_fechamento: string | null;
+  observacoes: string | null;
   created_at: string;
 }
 
