@@ -216,13 +216,16 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
   const [fuFilterCloser, setFuFilterCloser] = useState<string>("all");
   const [fuFilterMotivo, setFuFilterMotivo] = useState<string>("all");
   const [fuFilterDate, setFuFilterDate] = useState<Date | undefined>(undefined);
+  const [fuFilterStatus, setFuFilterStatus] = useState<"all" | "overdue" | "today" | "upcoming">("all");
+  const [fuSort, setFuSort] = useState<"date_asc" | "overdue_first" | "date_desc">("overdue_first");
 
   const fuHasFilters =
-    fuFilterCloser !== "all" || fuFilterMotivo !== "all" || !!fuFilterDate;
+    fuFilterCloser !== "all" || fuFilterMotivo !== "all" || !!fuFilterDate || fuFilterStatus !== "all";
   const clearFuFilters = () => {
     setFuFilterCloser("all");
     setFuFilterMotivo("all");
     setFuFilterDate(undefined);
+    setFuFilterStatus("all");
   };
 
   // Próximos follow-ups (todos) — com filtros
