@@ -16,14 +16,19 @@ import { format, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 
-const BLOCK_TYPES = [
-  { value: "almoco", label: "Almoço" },
-  { value: "pessoal", label: "Compromisso pessoal" },
-  { value: "externo", label: "Compromisso externo" },
-  { value: "folga", label: "Folga / Day off" },
-  { value: "outro", label: "Outro" },
-];
+// Defaults usados se a lista dinâmica ainda não foi populada
+const DEFAULT_BLOCK_REASONS = ["Almoço", "Compromisso pessoal", "Folga", "Reunião interna", "Treinamento"];
+
+// Mapa para retrocompatibilidade com valores antigos (slug -> label)
+const LEGACY_BLOCK_LABELS: Record<string, string> = {
+  almoco: "Almoço",
+  pessoal: "Compromisso pessoal",
+  externo: "Compromisso externo",
+  folga: "Folga / Day off",
+  outro: "Outro",
+};
 
 const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const WEEKDAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -44,7 +49,8 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");
-  const [blockType, setBlockType] = useState("almoco");
+  const { items: blockReasons } = useAppSettingList(APP_SETTING_KEYS.block_reasons, DEFAULT_BLOCK_REASONS);
+  const [blockType, setBlockType] = useState<string>("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -166,7 +172,7 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
     }
   };
 
-  const typeLabel = (t: string) => BLOCK_TYPES.find((bt) => bt.value === t)?.label || t;
+  const typeLabel = (t: string) => LEGACY_BLOCK_LABELS[t] || t;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -268,11 +274,11 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
               <label className="text-xs text-muted-foreground">Motivo</label>
               <Select value={blockType} onValueChange={setBlockType}>
                 <SelectTrigger className="text-sm">
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione o motivo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BLOCK_TYPES.map((bt) => (
-                    <SelectItem key={bt.value} value={bt.value}>{bt.label}</SelectItem>
+                  {blockReasons.map((reason) => (
+                    <SelectItem key={reason} value={reason}>{reason}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
