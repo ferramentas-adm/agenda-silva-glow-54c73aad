@@ -60,9 +60,12 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     }
   }, [open]);
 
+  const valorNumParsed = valor ? parseFloat(valor.replace(",", ".")) : NaN;
+  const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
+
   const canSubmit = (() => {
     if (!vendeu) return false;
-    if (vendeu === "sim") return resumoVenda.trim().length > 0;
+    if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (followUp === "sim" && !followUpDate) return false;
@@ -76,14 +79,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (!canSubmit || !user) return;
     setSubmitting(true);
     try {
-      const valorNum = valor ? parseFloat(valor.replace(",", ".")) : null;
+      const valorNum = valorValido ? valorNumParsed : null;
 
       // Insere venda
       const { error: vendaError } = await supabase.from("vendas").insert({
         agendamento_id: agendamentoId,
         vendeu: vendeu === "sim",
         resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
-        valor: vendeu === "sim" ? valorNum : null,
+        valor: valorNum,
         follow_up: vendeu === "nao" && followUp === "sim",
         follow_up_date: vendeu === "nao" && followUp === "sim" && followUpDate
           ? format(followUpDate, "yyyy-MM-dd")
@@ -161,7 +164,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="valor">Valor (opcional)</Label>
+                <Label htmlFor="valor">Valor da venda *</Label>
                 <Input
                   id="valor"
                   inputMode="decimal"
@@ -234,6 +237,20 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                   </Popover>
                 </div>
               )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="valor-apresentado">Valor apresentado ao cliente (opcional)</Label>
+                <Input
+                  id="valor-apresentado"
+                  inputMode="decimal"
+                  value={valor}
+                  onChange={(e) => setValor(e.target.value.replace(/[^\d.,]/g, ""))}
+                  placeholder="0,00"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Preencha caso o valor tenha sido apresentado durante a reunião.
+                </p>
+              </div>
             </>
           )}
 
