@@ -992,6 +992,57 @@ export function CalendarContent() {
         </DialogContent>
       </Dialog>
 
+      {/* Transfer lead dialog */}
+      <Dialog open={transferOpen} onOpenChange={(o) => { if (!o) { setTransferOpen(false); setTransferTarget(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Transferir lead
+            </DialogTitle>
+            <DialogDescription>
+              Selecione o closer que receberá o lead{" "}
+              <strong>{detailAg?.lead_name}</strong>. O agendamento permanecerá no mesmo
+              horário ({detailAg?.scheduled_time}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Closer atual</p>
+              <p className="text-sm font-medium">
+                {detailAg ? (closerMap.get(detailAg.closer_id) || "—") : "—"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Novo closer</label>
+              <Select value={transferTarget} onValueChange={setTransferTarget}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar closer destinatário" />
+                </SelectTrigger>
+                <SelectContent>
+                  {closers
+                    .filter((c) => c.id !== detailAg?.closer_id)
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => { setTransferOpen(false); setTransferTarget(""); }}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleTransferLead}
+              disabled={!transferTarget || transferring}
+            >
+              {transferring ? "Transferindo..." : "Transferir"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Reschedule offer dialog */}
       <AlertDialog open={!!rescheduleOffer} onOpenChange={(open) => { if (!open) setRescheduleOffer(null); }}>
         <AlertDialogContent>
