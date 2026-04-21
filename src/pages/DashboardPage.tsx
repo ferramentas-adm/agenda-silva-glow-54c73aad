@@ -368,6 +368,46 @@ export function CalendarContent() {
     return false;
   }, [detailAg, role, user?.id]);
 
+  // Quem pode TRANSFERIR o lead para outro closer:
+  // - gestor / moderador: sempre
+  // - closer: APENAS se for o dono atual do lead (nunca pode "puxar" lead de outro)
+  const canTransfer = useMemo(() => {
+    if (!detailAg) return false;
+    if (role === "gestor" || role === "moderador") return true;
+    if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
+    return false;
+  }, [detailAg, role, myCloserId]);
+
+  const handleTransferLead = async () => {
+    if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
+    setTransferring(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ closer_id: transferTarget } as any)
+        .eq("id", detailAg.id);
+      if (error) throw error;
+      const oldName = closerMap.get(detailAg.closer_id) || "—";
+      const newName = closerMap.get(transferTarget) || "—";
+      await logAudit("transfer_lead", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        scheduled_date: detailAg.scheduled_date,
+        scheduled_time: detailAg.scheduled_time,
+        from_closer: oldName,
+        to_closer: newName,
+      });
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: transferTarget }));
+      setDetailAg({ ...detailAg, closer_id: transferTarget });
+      toast.success(`Lead transferido para ${newName}`);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      setTransferOpen(false);
+      setTransferTarget("");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao transferir lead");
+    }
+    setTransferring(false);
+  };
+
   // Lista de usuários (qualquer função) para selecionar como responsável
   const { data: allUsers = [] } = useQuery({
     queryKey: ["all-users-for-detail"],
