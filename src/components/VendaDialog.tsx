@@ -65,18 +65,50 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [motivo, setMotivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setVendeu(null);
-      setResumoVenda("");
-      setValor("");
-      setFollowUp(null);
-      setFollowUpDate(undefined);
-      setMotivo("");
-      setObservacoes("");
-    }
-  }, [open]);
+    if (!open) return;
+
+    // Reset padrão
+    setVendeu(null);
+    setResumoVenda("");
+    setValor("");
+    setFollowUp(null);
+    setFollowUpDate(undefined);
+    setMotivo("");
+    setObservacoes("");
+    setIsEditing(false);
+
+    // Busca venda existente p/ este agendamento
+    (async () => {
+      setLoadingExisting(true);
+      const { data, error } = await supabase
+        .from("vendas")
+        .select("*")
+        .eq("agendamento_id", agendamentoId)
+        .maybeSingle();
+      if (!error && data) {
+        setIsEditing(true);
+        setVendeu(data.vendeu ? "sim" : "nao");
+        setResumoVenda(data.resumo_venda ?? "");
+        if (data.valor != null) {
+          // numero -> string de centavos
+          const cents = Math.round(Number(data.valor) * 100).toString();
+          setValor(cents);
+        }
+        setFollowUp(data.follow_up ? "sim" : data.vendeu ? null : "nao");
+        if (data.follow_up_date) {
+          const [y, m, d] = data.follow_up_date.split("-").map(Number);
+          setFollowUpDate(new Date(y, m - 1, d));
+        }
+        setMotivo(data.motivo_nao_fechamento ?? "");
+        setObservacoes(data.observacoes ?? "");
+      }
+      setLoadingExisting(false);
+    })();
+  }, [open, agendamentoId]);
 
   const valorNumParsed = digitsToNumber(valor);
   const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
