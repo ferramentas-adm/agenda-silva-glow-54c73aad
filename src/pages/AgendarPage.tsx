@@ -479,7 +479,7 @@ export default function AgendarPage() {
                       <SelectValue placeholder="Selecione o canal" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CHANNEL_TYPES.map((ct) => (
+                      {channelTypes.map((ct) => (
                         <SelectItem key={ct} value={ct}>{ct}</SelectItem>
                       ))}
                     </SelectContent>
