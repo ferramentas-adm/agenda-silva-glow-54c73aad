@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3 } from "lucide-react";
+import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import logo from "@/assets/logo.png";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
@@ -53,6 +53,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { to: "/", label: "Calendário", icon: CalendarDays },
     { to: "/reunioes", label: "Reuniões", icon: List },
+    ...((isCloser || isGestor || isModerador) ? [
+      { to: "/follow-ups", label: "Follow-ups", icon: CalendarClock },
+    ] : []),
     ...((isGestor || isModerador) ? [
       { to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3 },
       { to: "/admin", label: "Admin", icon: Settings },
