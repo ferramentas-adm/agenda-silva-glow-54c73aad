@@ -60,9 +60,12 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     }
   }, [open]);
 
+  const valorNumParsed = valor ? parseFloat(valor.replace(",", ".")) : NaN;
+  const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
+
   const canSubmit = (() => {
     if (!vendeu) return false;
-    if (vendeu === "sim") return resumoVenda.trim().length > 0;
+    if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (followUp === "sim" && !followUpDate) return false;
