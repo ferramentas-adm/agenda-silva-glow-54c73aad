@@ -457,16 +457,75 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
 
       {/* Próximos Follow-ups */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-primary" />
-            Próximos Follow-ups
-          </CardTitle>
+        <CardHeader className="pb-3 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              Próximos Follow-ups
+            </CardTitle>
+            {fuHasFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFuFilters} className="h-7 text-xs">
+                <X className="h-3 w-3 mr-1" />
+                Limpar filtros
+              </Button>
+            )}
+          </div>
+
+          {/* Filtros */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mr-1">
+              <Filter className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-[130px]">
+              <Label className="text-[10px] uppercase tracking-wide">Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "h-8 w-full justify-start text-left font-normal text-xs",
+                      !fuFilterDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-1 h-3 w-3" />
+                    {fuFilterDate ? format(fuFilterDate, "dd/MM/yyyy") : "Qualquer"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={fuFilterDate} onSelect={setFuFilterDate} locale={ptBR} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="min-w-[150px]">
+              <Label className="text-[10px] uppercase tracking-wide">Closer</Label>
+              <Select value={fuFilterCloser} onValueChange={setFuFilterCloser}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {closers.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[150px]">
+              <Label className="text-[10px] uppercase tracking-wide">Motivo</Label>
+              <Select value={fuFilterMotivo} onValueChange={setFuFilterMotivo}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {motivosList.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {proximosFollowUps.length === 0 ? (
             <p className="text-sm text-muted-foreground italic py-4 text-center">
-              Nenhum follow-up agendado.
+              {fuHasFilters ? "Nenhum follow-up corresponde aos filtros." : "Nenhum follow-up agendado."}
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -475,32 +534,75 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
                 const isLate = isBefore(date, new Date()) && !isSameDay(date, new Date());
                 const isToday = isSameDay(date, new Date());
                 return (
-                  <button
+                  <div
                     key={f.id}
-                    type="button"
-                    onClick={() =>
-                      openDrill(
-                        `Follow-up: ${f.leadName}`,
-                        [f.agendamentoId],
-                        `${format(date, "dd/MM/yyyy")} · ${f.motivo || "Sem motivo"}`,
-                      )
-                    }
                     className={cn(
-                      "w-full flex items-center gap-3 p-2 rounded-md border text-left hover:bg-muted/40 transition-colors",
+                      "w-full flex items-center gap-3 p-2 rounded-md border",
                       isLate && "border-destructive/50 bg-destructive/5",
                       isToday && "border-primary/50 bg-primary/5",
                     )}
                   >
-                    <Badge variant={isLate ? "destructive" : isToday ? "default" : "secondary"} className="text-xs">
-                      {format(date, "dd/MM")}
-                    </Badge>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{f.leadName}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {f.closerName} · {f.motivo}
-                      </p>
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openDrill(
+                          `Follow-up: ${f.leadName}`,
+                          [f.agendamentoId],
+                          `${format(date, "dd/MM/yyyy")}${f.time ? ` · ${f.time}` : ""} · ${f.motivo || "Sem motivo"}`,
+                        )
+                      }
+                      className="flex flex-1 items-center gap-3 text-left min-w-0 hover:opacity-80 transition-opacity"
+                    >
+                      <Badge variant={isLate ? "destructive" : isToday ? "default" : "secondary"} className="text-xs shrink-0">
+                        {format(date, "dd/MM")}
+                        {f.time && ` ${f.time}`}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{f.leadName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {f.closerName}{f.motivo && ` · ${f.motivo}`}
+                        </p>
+                      </div>
+                    </button>
+                    {isManager && (
+                      <div className="flex gap-0.5 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title="Editar"
+                          onClick={() =>
+                            setEditTarget({
+                              id: f.id,
+                              agendamento_id: f.agendamentoId,
+                              follow_up_date: f.date,
+                              follow_up_time: f.time,
+                              motivo_nao_fechamento: f.motivo || null,
+                              observacoes: f.observacoes,
+                              lead_name: f.leadName,
+                            })
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          title="Remover"
+                          onClick={() =>
+                            setRemoveTarget({
+                              id: f.id,
+                              agendamentoId: f.agendamentoId,
+                              leadName: f.leadName,
+                            })
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -515,6 +617,37 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
         subtitle={drill.subtitle}
         agendamentoIds={drill.ids}
       />
+
+      <FollowUpEditDialog
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onDone={() => {
+          queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+          queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+        }}
+      />
+
+      <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && !removing && setRemoveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover follow-up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O follow-up de <strong>{removeTarget?.leadName}</strong> será removido da lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmRemove(); }}
+              disabled={removing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
