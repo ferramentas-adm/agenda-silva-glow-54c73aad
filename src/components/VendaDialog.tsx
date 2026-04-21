@@ -78,9 +78,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     }
   }, [motivoIsPending]);
 
-  useEffect(() => {
-    if (!open) return;
-
+  // Helper para limpar TODOS os campos — usado em todas as transições para
+  // garantir que dados de leads anteriores nunca apareçam por engano.
+  const resetAllFields = () => {
     setVendeu(null);
     setResumoVenda("");
     setValor("");
@@ -90,6 +90,18 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setMotivo("");
     setObservacoes("");
     setIsEditing(false);
+  };
+
+  // Sempre que o dialog FECHA, limpa tudo (defesa em profundidade contra vazamento de estado)
+  useEffect(() => {
+    if (!open) resetAllFields();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    // Limpa antes de qualquer fetch para evitar flash com dados antigos
+    resetAllFields();
 
     (async () => {
       setLoadingExisting(true);
@@ -243,15 +255,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       );
       onSuccess();
       // Limpa todos os campos para o próximo preenchimento
-      setVendeu(null);
-      setResumoVenda("");
-      setValor("");
-      setFollowUp(null);
-      setFollowUpDate(undefined);
-      setFollowUpTime("");
-      setMotivo("");
-      setObservacoes("");
-      setIsEditing(false);
+      resetAllFields();
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "Erro ao registrar venda");
