@@ -228,13 +228,20 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     setFuFilterStatus("all");
   };
 
-  // Próximos follow-ups (todos) — com filtros
+  // Próximos follow-ups (todos) — com filtros + ordenação
   const proximosFollowUps = useMemo(() => {
     const dateFilterStr = fuFilterDate ? format(fuFilterDate, "yyyy-MM-dd") : null;
+    const todayDate = new Date();
+    const todayDateStr = format(todayDate, "yyyy-MM-dd");
+
     return vendas
       .filter((v) => v.follow_up && v.follow_up_date)
       .map((v) => {
         const ag = agMap.get(v.agendamento_id);
+        const dateObj = parseISO(v.follow_up_date!);
+        const isLate = isBefore(dateObj, todayDate) && !isSameDay(dateObj, todayDate);
+        const isToday = isSameDay(dateObj, todayDate);
+        const status: "overdue" | "today" | "upcoming" = isLate ? "overdue" : isToday ? "today" : "upcoming";
         return {
           id: v.id,
           agendamentoId: v.agendamento_id,
@@ -245,21 +252,32 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
           closerName: ag?.closer_id ? closerMap.get(ag.closer_id) || "—" : "—",
           motivo: v.motivo_nao_fechamento || "",
           observacoes: v.observacoes,
+          status,
         };
       })
       .filter((f) => {
         if (fuFilterCloser !== "all" && f.closerId !== fuFilterCloser) return false;
         if (fuFilterMotivo !== "all" && f.motivo !== fuFilterMotivo) return false;
         if (dateFilterStr && f.date !== dateFilterStr) return false;
+        if (fuFilterStatus !== "all" && f.status !== fuFilterStatus) return false;
         return true;
       })
       .sort((a, b) => {
-        const cmp = a.date.localeCompare(b.date);
+        if (fuSort === "overdue_first") {
+          // Vencidos primeiro, depois hoje, depois próximos — dentro de cada grupo: data/hora asc
+          const rank = { overdue: 0, today: 1, upcoming: 2 };
+          if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
+        }
+        const cmp = fuSort === "date_desc"
+          ? b.date.localeCompare(a.date)
+          : a.date.localeCompare(b.date);
         if (cmp !== 0) return cmp;
-        return (a.time || "").localeCompare(b.time || "");
+        return fuSort === "date_desc"
+          ? (b.time || "").localeCompare(a.time || "")
+          : (a.time || "").localeCompare(b.time || "");
       })
       .slice(0, 20);
-  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate]);
+  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate, fuFilterStatus, fuSort]);
 
   // Estado para edição/remoção (apenas managers)
   const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
