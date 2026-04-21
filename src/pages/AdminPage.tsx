@@ -1231,12 +1231,8 @@ export default function AdminPage() {
             </TabsContent>
           </Tabs>
         ) : isModerador ? (
-          <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3 bg-secondary">
-              <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
-                <Users className="h-3.5 w-3.5" />
-                Usuários
-              </TabsTrigger>
+          <Tabs defaultValue="lists" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 bg-secondary">
               <TabsTrigger value="lists" className="gap-1.5 text-xs sm:text-sm">
                 <Plus className="h-3.5 w-3.5" />
                 Listas
@@ -1246,9 +1242,6 @@ export default function AdminPage() {
                 Justificativas
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="users">
-              <UsersSection />
-            </TabsContent>
             <TabsContent value="lists">
               <DynamicListsSection />
             </TabsContent>
