@@ -32,6 +32,24 @@ interface VendaDialogProps {
 
 const DEFAULT_REASONS = ["Expectativas desalinhadas", "Não é o momento", "Sem capacidade financeira"];
 
+// Formata centavos (string de dígitos) como BRL: "123456" -> "1.234,56"
+const formatBRL = (digits: string) => {
+  const cleaned = digits.replace(/\D/g, "");
+  if (!cleaned) return "";
+  const padded = cleaned.padStart(3, "0");
+  const reais = padded.slice(0, -2).replace(/^0+(?=\d)/, "");
+  const cents = padded.slice(-2);
+  const reaisFmt = reais.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${reaisFmt},${cents}`;
+};
+
+// Converte string de dígitos (centavos) para número decimal
+const digitsToNumber = (digits: string) => {
+  const cleaned = digits.replace(/\D/g, "");
+  if (!cleaned) return NaN;
+  return parseInt(cleaned, 10) / 100;
+};
+
 export default function VendaDialog({ open, onOpenChange, agendamentoId, leadName, onSuccess }: VendaDialogProps) {
   const { user } = useAuth();
   const { items: motivosNaoFechamento } = useAppSettingList(
