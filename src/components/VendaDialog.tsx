@@ -79,14 +79,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (!canSubmit || !user) return;
     setSubmitting(true);
     try {
-      const valorNum = valor ? parseFloat(valor.replace(",", ".")) : null;
+      const valorNum = valorValido ? valorNumParsed : null;
 
       // Insere venda
       const { error: vendaError } = await supabase.from("vendas").insert({
         agendamento_id: agendamentoId,
         vendeu: vendeu === "sim",
         resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
-        valor: vendeu === "sim" ? valorNum : null,
+        valor: valorNum,
         follow_up: vendeu === "nao" && followUp === "sim",
         follow_up_date: vendeu === "nao" && followUp === "sim" && followUpDate
           ? format(followUpDate, "yyyy-MM-dd")
