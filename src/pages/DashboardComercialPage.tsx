@@ -377,7 +377,7 @@ function MetricCard({
   onClick,
 }: {
   title: string;
-  value: number;
+  value: number | string;
   subtitle: React.ReactNode;
   highlight?: boolean;
   icon?: React.ReactNode;
