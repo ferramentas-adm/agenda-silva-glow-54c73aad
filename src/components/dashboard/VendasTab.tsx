@@ -1,13 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, isAfter, isBefore, parseISO, isSameDay } from "date-fns";
+import { format, parseISO, isBefore, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 
 interface VendaRow {
   id: string;
@@ -45,13 +48,31 @@ const COLORS = [
   "hsl(280 65% 60%)",
 ];
 
-export default function VendasTab({ currentDate }: VendasTabProps) {
-  const monthStart = format(startOfMonth(currentDate), "yyyy-MM-dd");
-  const monthEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
+type DrilldownState = {
+  open: boolean;
+  title: string;
+  subtitle?: string;
+  ids: string[];
+};
 
-  // Fetch all vendas (with their agendamentos via join é simples: 2 queries)
+export default function VendasTab({ currentDate }: VendasTabProps) {
+  const dateStr = format(currentDate, "yyyy-MM-dd");
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  // Rótulo amigável do dia (Hoje / Ontem / Amanhã / data)
+  const dayLabel = useMemo(() => {
+    const today = new Date();
+    const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+    const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
+    if (isSameDay(currentDate, today)) return "Hoje";
+    if (isSameDay(currentDate, yesterday)) return "Ontem";
+    if (isSameDay(currentDate, tomorrow)) return "Amanhã";
+    return format(currentDate, "dd 'de' MMMM", { locale: ptBR });
+  }, [currentDate]);
+
+  // Vendas: buscamos todas (volume baixo); filtramos por data via agendamentos.
   const { data: vendas = [] } = useQuery<VendaRow[]>({
-    queryKey: ["vendas-tab", monthStart, monthEnd],
+    queryKey: ["vendas-tab"],
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
@@ -81,7 +102,6 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     },
   });
 
-  // Indexa agendamentos
   const agMap = useMemo(() => {
     const m = new Map<string, AgendamentoRow>();
     agendamentos.forEach((a) => m.set(a.id, a));
@@ -94,38 +114,44 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     return m;
   }, [closers]);
 
-  // Vendas do mês
-  const vendasMes = useMemo(() => {
+  // Vendas do DIA selecionado (mesma janela de Métricas SDRs)
+  const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (!ag) return false;
-      return ag.scheduled_date >= monthStart && ag.scheduled_date <= monthEnd;
+      return ag.scheduled_date === dateStr;
     });
-  }, [vendas, agMap, monthStart, monthEnd]);
+  }, [vendas, agMap, dateStr]);
 
   // KPIs
-  const totalReunioesComResultado = vendasMes.length;
-  const totalVendas = vendasMes.filter((v) => v.vendeu).length;
-  const totalNaoFechou = vendasMes.filter((v) => !v.vendeu).length;
+  const totalReunioesComResultado = vendasDia.length;
+  const totalVendas = vendasDia.filter((v) => v.vendeu).length;
+  const totalNaoFechou = vendasDia.filter((v) => !v.vendeu).length;
   const taxaConversao = totalReunioesComResultado > 0 ? (totalVendas / totalReunioesComResultado) * 100 : 0;
-  const receitaTotal = vendasMes.filter((v) => v.vendeu && v.valor).reduce((acc, v) => acc + (v.valor || 0), 0);
+  const receitaTotal = vendasDia.filter((v) => v.vendeu && v.valor).reduce((acc, v) => acc + (v.valor || 0), 0);
   const ticketMedio = totalVendas > 0 ? receitaTotal / totalVendas : 0;
-  const followUpsAgendados = vendasMes.filter((v) => v.follow_up && v.follow_up_date).length;
-  const followUpsHoje = vendasMes.filter(
-    (v) => v.follow_up && v.follow_up_date && isSameDay(parseISO(v.follow_up_date), new Date()),
+
+  // Follow-ups (escopo geral — não dependem do dia selecionado)
+  const followUpsAgendados = vendas.filter((v) => v.follow_up && v.follow_up_date).length;
+  const followUpsHoje = vendas.filter(
+    (v) => v.follow_up && v.follow_up_date && v.follow_up_date === todayStr,
   ).length;
-  const followUpsAtrasados = vendasMes.filter(
-    (v) =>
-      v.follow_up &&
-      v.follow_up_date &&
-      isBefore(parseISO(v.follow_up_date), new Date()) &&
-      !isSameDay(parseISO(v.follow_up_date), new Date()),
+  const followUpsAtrasados = vendas.filter(
+    (v) => v.follow_up && v.follow_up_date && v.follow_up_date < todayStr,
   ).length;
+
+  // IDs para drill-down
+  const vendasDiaIds = vendasDia.map((v) => v.agendamento_id);
+  const fechadasIds = vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id);
+  const naoFechouIds = vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id);
+  const followUpsAtivosIds = vendas
+    .filter((v) => v.follow_up && v.follow_up_date)
+    .map((v) => v.agendamento_id);
 
   // Motivos de não fechamento
   const motivosCount = useMemo(() => {
     const map = new Map<string, number>();
-    vendasMes.forEach((v) => {
+    vendasDia.forEach((v) => {
       if (!v.vendeu && v.motivo_nao_fechamento) {
         map.set(v.motivo_nao_fechamento, (map.get(v.motivo_nao_fechamento) || 0) + 1);
       }
@@ -133,12 +159,12 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     return Array.from(map.entries())
       .map(([motivo, count]) => ({ motivo, count }))
       .sort((a, b) => b.count - a.count);
-  }, [vendasMes]);
+  }, [vendasDia]);
 
   // Performance por Closer
   const closerPerf = useMemo(() => {
     const map = new Map<string, { vendas: number; naoFechou: number; receita: number }>();
-    vendasMes.forEach((v) => {
+    vendasDia.forEach((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (!ag?.closer_id) return;
       const cur = map.get(ag.closer_id) || { vendas: 0, naoFechou: 0, receita: 0 };
@@ -159,16 +185,17 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
         conversao: stats.vendas + stats.naoFechou > 0 ? (stats.vendas / (stats.vendas + stats.naoFechou)) * 100 : 0,
       }))
       .sort((a, b) => b.vendas - a.vendas);
-  }, [vendasMes, agMap, closerMap]);
+  }, [vendasDia, agMap, closerMap]);
 
-  // Próximos follow-ups
+  // Próximos follow-ups (todos)
   const proximosFollowUps = useMemo(() => {
-    return vendasMes
+    return vendas
       .filter((v) => v.follow_up && v.follow_up_date)
       .map((v) => {
         const ag = agMap.get(v.agendamento_id);
         return {
           id: v.id,
+          agendamentoId: v.agendamento_id,
           date: v.follow_up_date!,
           leadName: ag?.lead_name || "—",
           closerName: ag?.closer_id ? closerMap.get(ag.closer_id) || "—" : "—",
@@ -177,35 +204,69 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
       })
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 8);
-  }, [vendasMes, agMap, closerMap]);
+  }, [vendas, agMap, closerMap]);
 
   const fmtBRL = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
 
+  // Drill-down state
+  const [drill, setDrill] = useState<DrilldownState>({ open: false, title: "", ids: [] });
+  const openDrill = (title: string, ids: string[], subtitle?: string) =>
+    setDrill({ open: true, title, ids, subtitle });
+
   return (
     <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-bold">Vendas — {format(currentDate, "MMMM 'de' yyyy", { locale: ptBR })}</h2>
+      <div className="flex items-baseline justify-between flex-wrap gap-2">
+        <h2 className="text-xl font-bold">
+          Vendas — {dayLabel}
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            ({format(currentDate, "dd/MM/yyyy")})
+          </span>
+        </h2>
         <p className="text-xs text-muted-foreground">
           Atualizado em {format(new Date(), "HH:mm")}
         </p>
       </div>
 
-      {/* KPIs principais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* KPIs principais (5 cards, todos clicáveis) */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard
           icon={Target}
           label="Taxa de Conversão"
           value={`${taxaConversao.toFixed(1)}%`}
           sub={`${totalVendas} de ${totalReunioesComResultado} reuniões`}
           color="primary"
+          onClick={() =>
+            openDrill(
+              `Reuniões com resultado — ${dayLabel}`,
+              vendasDiaIds,
+              `Taxa de conversão: ${taxaConversao.toFixed(1)}%`,
+            )
+          }
         />
         <KpiCard
           icon={DollarSign}
           label="Receita Total"
           value={fmtBRL(receitaTotal)}
-          sub={`Ticket médio: ${fmtBRL(ticketMedio)}`}
+          sub={`${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`}
           color="emerald"
+          onClick={() =>
+            openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(receitaTotal))
+          }
+        />
+        <KpiCard
+          icon={Receipt}
+          label="Ticket Médio"
+          value={fmtBRL(ticketMedio)}
+          sub={
+            totalVendas > 0
+              ? `Base: ${totalVendas} venda${totalVendas !== 1 ? "s" : ""}`
+              : "Sem vendas no período"
+          }
+          color="emerald"
+          onClick={() =>
+            openDrill(`Ticket médio — ${dayLabel}`, fechadasIds, fmtBRL(ticketMedio))
+          }
         />
         <KpiCard
           icon={CheckCircle2}
@@ -213,6 +274,9 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
           value={String(totalVendas)}
           sub={`${totalNaoFechou} não fechou`}
           color="emerald"
+          onClick={() =>
+            openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds)
+          }
         />
         <KpiCard
           icon={CalendarClock}
@@ -220,6 +284,13 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
           value={String(followUpsAgendados)}
           sub={`${followUpsHoje} hoje · ${followUpsAtrasados} atrasados`}
           color={followUpsAtrasados > 0 ? "destructive" : "primary"}
+          onClick={() =>
+            openDrill(
+              "Follow-ups ativos",
+              followUpsAtivosIds,
+              `${followUpsHoje} hoje · ${followUpsAtrasados} atrasados`,
+            )
+          }
         />
       </div>
 
@@ -235,14 +306,22 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
           <CardContent>
             {motivosCount.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
-                Sem dados de não fechamento neste mês.
+                Sem dados de não fechamento neste dia.
               </p>
             ) : (
               <div className="space-y-2">
                 {motivosCount.map(({ motivo, count }, idx) => {
-                  const pct = (count / totalNaoFechou) * 100;
+                  const pct = totalNaoFechou > 0 ? (count / totalNaoFechou) * 100 : 0;
+                  const motivoIds = vendasDia
+                    .filter((v) => !v.vendeu && v.motivo_nao_fechamento === motivo)
+                    .map((v) => v.agendamento_id);
                   return (
-                    <div key={motivo} className="space-y-1">
+                    <button
+                      key={motivo}
+                      type="button"
+                      onClick={() => openDrill(`Motivo: ${motivo} — ${dayLabel}`, motivoIds)}
+                      className="w-full text-left space-y-1 hover:opacity-80 transition-opacity"
+                    >
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{motivo}</span>
                         <span className="text-muted-foreground">
@@ -255,7 +334,7 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
                           style={{ width: `${pct}%`, backgroundColor: COLORS[idx % COLORS.length] }}
                         />
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -274,23 +353,33 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
           <CardContent>
             {closerPerf.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
-                Nenhuma venda registrada neste mês.
+                Nenhuma venda registrada neste dia.
               </p>
             ) : (
               <div className="space-y-2">
-                {closerPerf.map((c) => (
-                  <div key={c.closerId} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {c.vendas} vendas · {c.total} reuniões · {c.conversao.toFixed(0)}% conv.
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm text-emerald-500">{fmtBRL(c.receita)}</p>
-                    </div>
-                  </div>
-                ))}
+                {closerPerf.map((c) => {
+                  const closerIds = vendasDia
+                    .filter((v) => agMap.get(v.agendamento_id)?.closer_id === c.closerId)
+                    .map((v) => v.agendamento_id);
+                  return (
+                    <button
+                      key={c.closerId}
+                      type="button"
+                      onClick={() => openDrill(`${c.name} — ${dayLabel}`, closerIds, fmtBRL(c.receita))}
+                      className="w-full flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{c.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {c.vendas} vendas · {c.total} reuniões · {c.conversao.toFixed(0)}% conv.
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-sm text-emerald-500">{fmtBRL(c.receita)}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -317,10 +406,18 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
                 const isLate = isBefore(date, new Date()) && !isSameDay(date, new Date());
                 const isToday = isSameDay(date, new Date());
                 return (
-                  <div
+                  <button
                     key={f.id}
+                    type="button"
+                    onClick={() =>
+                      openDrill(
+                        `Follow-up: ${f.leadName}`,
+                        [f.agendamentoId],
+                        `${format(date, "dd/MM/yyyy")} · ${f.motivo || "Sem motivo"}`,
+                      )
+                    }
                     className={cn(
-                      "flex items-center gap-3 p-2 rounded-md border",
+                      "w-full flex items-center gap-3 p-2 rounded-md border text-left hover:bg-muted/40 transition-colors",
                       isLate && "border-destructive/50 bg-destructive/5",
                       isToday && "border-primary/50 bg-primary/5",
                     )}
@@ -334,13 +431,21 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
                         {f.closerName} · {f.motivo}
                       </p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <MetricDrilldownDialog
+        open={drill.open}
+        onOpenChange={(o) => setDrill((d) => ({ ...d, open: o }))}
+        title={drill.title}
+        subtitle={drill.subtitle}
+        agendamentoIds={drill.ids}
+      />
     </div>
   );
 }
@@ -351,12 +456,14 @@ function KpiCard({
   value,
   sub,
   color,
+  onClick,
 }: {
   icon: typeof TrendingUp;
   label: string;
   value: string;
   sub: string;
   color: "primary" | "emerald" | "destructive";
+  onClick?: () => void;
 }) {
   const colorClasses = {
     primary: "text-primary border-primary/30 bg-primary/5",
@@ -364,13 +471,21 @@ function KpiCard({
     destructive: "text-destructive border-destructive/30 bg-destructive/5",
   };
   return (
-    <div className={cn("rounded-lg border p-3 flex flex-col gap-1", colorClasses[color])}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-lg border p-3 flex flex-col gap-1 text-left transition-all",
+        "hover:scale-[1.02] hover:shadow-md cursor-pointer",
+        colorClasses[color],
+      )}
+    >
       <div className="flex items-center gap-1.5 text-xs font-medium opacity-80">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-xs text-muted-foreground">{sub}</div>
-    </div>
+    </button>
   );
 }
