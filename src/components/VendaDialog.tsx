@@ -131,21 +131,32 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     try {
       const valorNum = valorValido ? valorNumParsed : null;
 
-      // Insere venda
-      const { error: vendaError } = await supabase.from("vendas").insert({
-        agendamento_id: agendamentoId,
-        vendeu: vendeu === "sim",
-        resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
-        valor: valorNum,
-        follow_up: vendeu === "nao" && followUp === "sim",
-        follow_up_date: vendeu === "nao" && followUp === "sim" && followUpDate
-          ? format(followUpDate, "yyyy-MM-dd")
-          : null,
-        motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
-        observacoes: observacoes.trim() || null,
-        created_by: user.id,
-      });
-      if (vendaError) throw vendaError;
+      // Upsert venda (evita erro de chave duplicada em reaberturas)
+      const { error: vendaError } = await supabase.from("vendas").upsert(
+        {
+          agendamento_id: agendamentoId,
+          vendeu: vendeu === "sim",
+          resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
+          valor: valorNum,
+          follow_up: vendeu === "nao" && followUp === "sim",
+          follow_up_date:
+            vendeu === "nao" && followUp === "sim" && followUpDate
+              ? format(followUpDate, "yyyy-MM-dd")
+              : null,
+          motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
+          observacoes: observacoes.trim() || null,
+          created_by: user.id,
+        },
+        { onConflict: "agendamento_id" },
+      );
+      if (vendaError) {
+        if (vendaError.code === "23505") {
+          toast.error("Já existe um resultado registrado para esta reunião. Atualize a página para visualizar.");
+          setSubmitting(false);
+          return;
+        }
+        throw vendaError;
+      }
 
       // Atualiza status do agendamento para realizada
       const { error: agError } = await supabase
