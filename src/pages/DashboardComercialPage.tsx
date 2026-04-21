@@ -10,6 +10,7 @@ import {
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
 import VendasTab from "@/components/dashboard/VendasTab";
+import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -361,17 +362,23 @@ function MetricCard({
   subtitle,
   highlight,
   icon,
+  onClick,
 }: {
   title: string;
   value: number;
   subtitle: React.ReactNode;
   highlight?: boolean;
   icon?: React.ReactNode;
+  onClick?: () => void;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
       className={cn(
-        "rounded-xl border p-4 space-y-2 transition-all",
+        "rounded-xl border p-4 space-y-2 transition-all text-left w-full",
+        onClick && "hover:border-primary/60 hover:shadow-md cursor-pointer",
         highlight
           ? "border-primary/40 bg-primary/10"
           : "border-primary/10 bg-card"
@@ -383,7 +390,7 @@ function MetricCard({
       </div>
       <p className="text-3xl font-bold">{value}</p>
       <p className="text-xs text-muted-foreground">{subtitle}</p>
-    </div>
+    </button>
   );
 }
 
