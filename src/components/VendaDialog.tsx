@@ -65,18 +65,50 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [motivo, setMotivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setVendeu(null);
-      setResumoVenda("");
-      setValor("");
-      setFollowUp(null);
-      setFollowUpDate(undefined);
-      setMotivo("");
-      setObservacoes("");
-    }
-  }, [open]);
+    if (!open) return;
+
+    // Reset padrão
+    setVendeu(null);
+    setResumoVenda("");
+    setValor("");
+    setFollowUp(null);
+    setFollowUpDate(undefined);
+    setMotivo("");
+    setObservacoes("");
+    setIsEditing(false);
+
+    // Busca venda existente p/ este agendamento
+    (async () => {
+      setLoadingExisting(true);
+      const { data, error } = await supabase
+        .from("vendas")
+        .select("*")
+        .eq("agendamento_id", agendamentoId)
+        .maybeSingle();
+      if (!error && data) {
+        setIsEditing(true);
+        setVendeu(data.vendeu ? "sim" : "nao");
+        setResumoVenda(data.resumo_venda ?? "");
+        if (data.valor != null) {
+          // numero -> string de centavos
+          const cents = Math.round(Number(data.valor) * 100).toString();
+          setValor(cents);
+        }
+        setFollowUp(data.follow_up ? "sim" : data.vendeu ? null : "nao");
+        if (data.follow_up_date) {
+          const [y, m, d] = data.follow_up_date.split("-").map(Number);
+          setFollowUpDate(new Date(y, m - 1, d));
+        }
+        setMotivo(data.motivo_nao_fechamento ?? "");
+        setObservacoes(data.observacoes ?? "");
+      }
+      setLoadingExisting(false);
+    })();
+  }, [open, agendamentoId]);
 
   const valorNumParsed = digitsToNumber(valor);
   const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
@@ -99,21 +131,32 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     try {
       const valorNum = valorValido ? valorNumParsed : null;
 
-      // Insere venda
-      const { error: vendaError } = await supabase.from("vendas").insert({
-        agendamento_id: agendamentoId,
-        vendeu: vendeu === "sim",
-        resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
-        valor: valorNum,
-        follow_up: vendeu === "nao" && followUp === "sim",
-        follow_up_date: vendeu === "nao" && followUp === "sim" && followUpDate
-          ? format(followUpDate, "yyyy-MM-dd")
-          : null,
-        motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
-        observacoes: observacoes.trim() || null,
-        created_by: user.id,
-      });
-      if (vendaError) throw vendaError;
+      // Upsert venda (evita erro de chave duplicada em reaberturas)
+      const { error: vendaError } = await supabase.from("vendas").upsert(
+        {
+          agendamento_id: agendamentoId,
+          vendeu: vendeu === "sim",
+          resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
+          valor: valorNum,
+          follow_up: vendeu === "nao" && followUp === "sim",
+          follow_up_date:
+            vendeu === "nao" && followUp === "sim" && followUpDate
+              ? format(followUpDate, "yyyy-MM-dd")
+              : null,
+          motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
+          observacoes: observacoes.trim() || null,
+          created_by: user.id,
+        },
+        { onConflict: "agendamento_id" },
+      );
+      if (vendaError) {
+        if (vendaError.code === "23505") {
+          toast.error("Já existe um resultado registrado para esta reunião. Atualize a página para visualizar.");
+          setSubmitting(false);
+          return;
+        }
+        throw vendaError;
+      }
 
       // Atualiza status do agendamento para realizada
       const { error: agError } = await supabase
@@ -145,10 +188,15 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-emerald-500" />
-            Resultado da Reunião
+            {isEditing ? "Editar Resultado da Reunião" : "Resultado da Reunião"}
           </DialogTitle>
           <DialogDescription>
             <span className="font-medium">{leadName}</span> — registre o desfecho desta reunião.
+            {isEditing && (
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Atualizando registro existente.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -290,7 +338,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+          <Button onClick={handleSubmit} disabled={!canSubmit || submitting || loadingExisting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirmar
           </Button>
