@@ -2,7 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, isBefore, isToday, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarClock, CheckCircle2, XCircle, RotateCw, Phone, Loader2, CalendarIcon } from "lucide-react";
+import {
+  CalendarClock, CheckCircle2, XCircle, RotateCw, Phone, Loader2, CalendarIcon,
+  Pencil, Trash2, Filter, X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -16,6 +19,10 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -26,6 +33,7 @@ import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS, isPendingStageReason } from "@/lib/vendaConstants";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { logAudit } from "@/services/auditLog";
+import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 
 interface FollowUpRow {
   id: string;
@@ -100,21 +108,88 @@ export default function FollowUpsPage() {
     },
   });
 
+  // Lista de motivos para filtro
+  const { items: motivosList } = useAppSettingList(
+    APP_SETTING_KEYS.motivos_nao_fechamento,
+    DEFAULT_REASONS,
+  );
+
+  // Lista de closers (apenas gestor/moderador filtra)
+  const { data: closersList = [] } = useQuery({
+    queryKey: ["follow-ups-closers"],
+    enabled: isManager,
+    queryFn: async () => {
+      const { data } = await supabase.from("closers").select("id, name").eq("active", true).order("name");
+      return data ?? [];
+    },
+  });
+
+  // Filtros
+  const [filterCloser, setFilterCloser] = useState<string>("all");
+  const [filterMotivo, setFilterMotivo] = useState<string>("all");
+  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
+  const [filterSearch, setFilterSearch] = useState("");
+
+  const hasActiveFilters =
+    filterCloser !== "all" || filterMotivo !== "all" || !!filterDate || !!filterSearch.trim();
+
+  const clearFilters = () => {
+    setFilterCloser("all");
+    setFilterMotivo("all");
+    setFilterDate(undefined);
+    setFilterSearch("");
+  };
+
+  const filteredFollowUps = useMemo(() => {
+    return followUps.filter((f) => {
+      if (filterCloser !== "all" && f.agendamentos?.closer_id !== filterCloser) return false;
+      if (filterMotivo !== "all" && (f.motivo_nao_fechamento || "") !== filterMotivo) return false;
+      if (filterDate && f.follow_up_date !== format(filterDate, "yyyy-MM-dd")) return false;
+      if (filterSearch.trim()) {
+        const q = filterSearch.trim().toLowerCase();
+        const lead = (f.agendamentos?.lead_name || "").toLowerCase();
+        const phone = (f.agendamentos?.lead_phone || "").toLowerCase();
+        if (!lead.includes(q) && !phone.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [followUps, filterCloser, filterMotivo, filterDate, filterSearch]);
+
   const today = startOfToday();
   const grouped = useMemo(() => {
     const overdue: FollowUpRow[] = [];
     const todayList: FollowUpRow[] = [];
     const upcoming: FollowUpRow[] = [];
-    for (const f of followUps) {
+    for (const f of filteredFollowUps) {
       const d = parseISO(f.follow_up_date);
       if (isToday(d)) todayList.push(f);
       else if (isBefore(d, today)) overdue.push(f);
       else upcoming.push(f);
     }
     return { overdue, todayList, upcoming };
-  }, [followUps, today]);
+  }, [filteredFollowUps, today]);
 
   const [actionTarget, setActionTarget] = useState<FollowUpRow | null>(null);
+  const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<FollowUpRow | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const handleConfirmRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    const ok = await removeFollowUp(
+      removeTarget.id,
+      removeTarget.agendamento_id,
+      removeTarget.agendamentos?.lead_name,
+    );
+    setRemoving(false);
+    if (ok) {
+      setRemoveTarget(null);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+    }
+  };
 
   return (
     <AppLayout>
@@ -123,22 +198,108 @@ export default function FollowUpsPage() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <CalendarClock className="h-6 w-6 text-primary" />
-              Meus Follow-ups
+              {isManager ? "Follow-ups" : "Meus Follow-ups"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Organize seus retornos com leads que ainda não fecharam.
+              {isManager
+                ? "Gestão de retornos com leads que ainda não fecharam."
+                : "Organize seus retornos com leads que ainda não fecharam."}
             </p>
           </div>
         </header>
+
+        {/* Filtros */}
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mr-1">
+                <Filter className="h-4 w-4" />
+                Filtros
+              </div>
+
+              <div className="flex-1 min-w-[180px]">
+                <Label className="text-xs">Buscar lead</Label>
+                <Input
+                  placeholder="Nome ou telefone"
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+
+              <div className="min-w-[140px]">
+                <Label className="text-xs">Data</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "h-9 w-full justify-start text-left font-normal",
+                        !filterDate && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {filterDate ? format(filterDate, "dd/MM/yyyy", { locale: ptBR }) : "Qualquer"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={filterDate} onSelect={setFilterDate} locale={ptBR} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="min-w-[160px]">
+                <Label className="text-xs">Motivo</Label>
+                <Select value={filterMotivo} onValueChange={setFilterMotivo}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {motivosList.map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {isManager && (
+                <div className="min-w-[160px]">
+                  <Label className="text-xs">Closer</Label>
+                  <Select value={filterCloser} onValueChange={setFilterCloser}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {closersList.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Limpar
+                </Button>
+              )}
+            </div>
+
+            <div className="mt-3 text-xs text-muted-foreground">
+              {filteredFollowUps.length} de {followUps.length} follow-up{followUps.length !== 1 ? "s" : ""}
+            </div>
+          </CardContent>
+        </Card>
 
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : followUps.length === 0 ? (
+        ) : filteredFollowUps.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              Nenhum follow-up agendado no momento.
+              {followUps.length === 0
+                ? "Nenhum follow-up agendado no momento."
+                : "Nenhum follow-up corresponde aos filtros aplicados."}
             </CardContent>
           </Card>
         ) : (
@@ -148,18 +309,27 @@ export default function FollowUpsPage() {
               variant="overdue"
               items={grouped.overdue}
               onAction={setActionTarget}
+              onEdit={setEditTarget}
+              onRemove={setRemoveTarget}
+              showCloser={isManager}
             />
             <FollowUpSection
               title="Hoje"
               variant="today"
               items={grouped.todayList}
               onAction={setActionTarget}
+              onEdit={setEditTarget}
+              onRemove={setRemoveTarget}
+              showCloser={isManager}
             />
             <FollowUpSection
               title="Próximos"
               variant="upcoming"
               items={grouped.upcoming}
               onAction={setActionTarget}
+              onEdit={setEditTarget}
+              onRemove={setRemoveTarget}
+              showCloser={isManager}
             />
           </>
         )}
@@ -171,9 +341,43 @@ export default function FollowUpsPage() {
             onDone={() => {
               refetch();
               queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+              queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
             }}
           />
         )}
+
+        <FollowUpEditDialog
+          target={editTarget}
+          onClose={() => setEditTarget(null)}
+          onDone={() => {
+            refetch();
+            queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+            queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+          }}
+        />
+
+        <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && !removing && setRemoveTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remover follow-up?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O follow-up de <strong>{removeTarget?.agendamentos?.lead_name}</strong> será removido da lista.
+                Você pode registrar um novo follow-up depois pelo botão "Próximo passo".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={removing}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleConfirmRemove(); }}
+                disabled={removing}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {removing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Remover
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );
@@ -185,11 +389,17 @@ function FollowUpSection({
   variant,
   items,
   onAction,
+  onEdit,
+  onRemove,
+  showCloser,
 }: {
   title: string;
   variant: "overdue" | "today" | "upcoming";
   items: FollowUpRow[];
   onAction: (r: FollowUpRow) => void;
+  onEdit: (t: FollowUpEditTarget) => void;
+  onRemove: (r: FollowUpRow) => void;
+  showCloser?: boolean;
 }) {
   if (items.length === 0) return null;
   const badgeClass =
@@ -209,14 +419,33 @@ function FollowUpSection({
       </CardHeader>
       <CardContent className="space-y-2">
         {items.map((f) => (
-          <FollowUpItem key={f.id} row={f} onAction={onAction} />
+          <FollowUpItem
+            key={f.id}
+            row={f}
+            onAction={onAction}
+            onEdit={onEdit}
+            onRemove={onRemove}
+            showCloser={showCloser}
+          />
         ))}
       </CardContent>
     </Card>
   );
 }
 
-function FollowUpItem({ row, onAction }: { row: FollowUpRow; onAction: (r: FollowUpRow) => void }) {
+function FollowUpItem({
+  row,
+  onAction,
+  onEdit,
+  onRemove,
+  showCloser,
+}: {
+  row: FollowUpRow;
+  onAction: (r: FollowUpRow) => void;
+  onEdit: (t: FollowUpEditTarget) => void;
+  onRemove: (r: FollowUpRow) => void;
+  showCloser?: boolean;
+}) {
   const date = parseISO(row.follow_up_date);
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
@@ -232,6 +461,11 @@ function FollowUpItem({ row, onAction }: { row: FollowUpRow; onAction: (r: Follo
               {row.agendamentos.lead_phone}
             </a>
           )}
+          {showCloser && row.agendamentos?.closers?.name && (
+            <Badge variant="secondary" className="text-[10px]">
+              {row.agendamentos.closers.name}
+            </Badge>
+          )}
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
           {format(date, "EEEE, dd/MM/yyyy", { locale: ptBR })}
@@ -242,7 +476,35 @@ function FollowUpItem({ row, onAction }: { row: FollowUpRow; onAction: (r: Follo
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{row.observacoes}</p>
         )}
       </div>
-      <div className="flex gap-2 shrink-0">
+      <div className="flex gap-1.5 shrink-0">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() =>
+            onEdit({
+              id: row.id,
+              agendamento_id: row.agendamento_id,
+              follow_up_date: row.follow_up_date,
+              follow_up_time: row.follow_up_time,
+              motivo_nao_fechamento: row.motivo_nao_fechamento,
+              observacoes: row.observacoes,
+              lead_name: row.agendamentos?.lead_name,
+            })
+          }
+          title="Editar"
+          className="h-8 w-8"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => onRemove(row)}
+          title="Remover"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
         <Button size="sm" variant="outline" onClick={() => onAction(row)}>
           Próximo passo
         </Button>

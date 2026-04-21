@@ -1,16 +1,31 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, isBefore, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
+  Filter, X, CalendarIcon, Pencil, Trash2, Loader2,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
+import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
+import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { DEFAULT_REASONS } from "@/lib/vendaConstants";
 
 interface VendaRow {
   id: string;
@@ -19,7 +34,9 @@ interface VendaRow {
   valor: number | null;
   follow_up: boolean;
   follow_up_date: string | null;
+  follow_up_time: string | null;
   motivo_nao_fechamento: string | null;
+  observacoes: string | null;
   created_at: string;
 }
 
@@ -76,7 +93,7 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("id, agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento, created_at");
+        .select("id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, observacoes, created_at");
       return (data ?? []) as VendaRow[];
     },
     refetchInterval: 60_000,
@@ -187,8 +204,30 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
       .sort((a, b) => b.vendas - a.vendas);
   }, [vendasDia, agMap, closerMap]);
 
-  // Próximos follow-ups (todos)
+  // Filtros para "Próximos Follow-ups"
+  const { items: motivosList } = useAppSettingList(
+    APP_SETTING_KEYS.motivos_nao_fechamento,
+    DEFAULT_REASONS,
+  );
+  const { role } = useAuth();
+  const isManager = role === "gestor" || role === "moderador";
+  const queryClient = useQueryClient();
+
+  const [fuFilterCloser, setFuFilterCloser] = useState<string>("all");
+  const [fuFilterMotivo, setFuFilterMotivo] = useState<string>("all");
+  const [fuFilterDate, setFuFilterDate] = useState<Date | undefined>(undefined);
+
+  const fuHasFilters =
+    fuFilterCloser !== "all" || fuFilterMotivo !== "all" || !!fuFilterDate;
+  const clearFuFilters = () => {
+    setFuFilterCloser("all");
+    setFuFilterMotivo("all");
+    setFuFilterDate(undefined);
+  };
+
+  // Próximos follow-ups (todos) — com filtros
   const proximosFollowUps = useMemo(() => {
+    const dateFilterStr = fuFilterDate ? format(fuFilterDate, "yyyy-MM-dd") : null;
     return vendas
       .filter((v) => v.follow_up && v.follow_up_date)
       .map((v) => {
@@ -197,14 +236,44 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
           id: v.id,
           agendamentoId: v.agendamento_id,
           date: v.follow_up_date!,
+          time: v.follow_up_time,
           leadName: ag?.lead_name || "—",
+          closerId: ag?.closer_id || null,
           closerName: ag?.closer_id ? closerMap.get(ag.closer_id) || "—" : "—",
           motivo: v.motivo_nao_fechamento || "",
+          observacoes: v.observacoes,
         };
       })
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 8);
-  }, [vendas, agMap, closerMap]);
+      .filter((f) => {
+        if (fuFilterCloser !== "all" && f.closerId !== fuFilterCloser) return false;
+        if (fuFilterMotivo !== "all" && f.motivo !== fuFilterMotivo) return false;
+        if (dateFilterStr && f.date !== dateFilterStr) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const cmp = a.date.localeCompare(b.date);
+        if (cmp !== 0) return cmp;
+        return (a.time || "").localeCompare(b.time || "");
+      })
+      .slice(0, 20);
+  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate]);
+
+  // Estado para edição/remoção (apenas managers)
+  const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; agendamentoId: string; leadName: string } | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const handleConfirmRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    const ok = await removeFollowUp(removeTarget.id, removeTarget.agendamentoId, removeTarget.leadName);
+    setRemoving(false);
+    if (ok) {
+      setRemoveTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+      queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+    }
+  };
 
   const fmtBRL = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
@@ -388,16 +457,75 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
 
       {/* Próximos Follow-ups */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-primary" />
-            Próximos Follow-ups
-          </CardTitle>
+        <CardHeader className="pb-3 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              Próximos Follow-ups
+            </CardTitle>
+            {fuHasFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFuFilters} className="h-7 text-xs">
+                <X className="h-3 w-3 mr-1" />
+                Limpar filtros
+              </Button>
+            )}
+          </div>
+
+          {/* Filtros */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mr-1">
+              <Filter className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-[130px]">
+              <Label className="text-[10px] uppercase tracking-wide">Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "h-8 w-full justify-start text-left font-normal text-xs",
+                      !fuFilterDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-1 h-3 w-3" />
+                    {fuFilterDate ? format(fuFilterDate, "dd/MM/yyyy") : "Qualquer"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={fuFilterDate} onSelect={setFuFilterDate} locale={ptBR} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="min-w-[150px]">
+              <Label className="text-[10px] uppercase tracking-wide">Closer</Label>
+              <Select value={fuFilterCloser} onValueChange={setFuFilterCloser}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {closers.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[150px]">
+              <Label className="text-[10px] uppercase tracking-wide">Motivo</Label>
+              <Select value={fuFilterMotivo} onValueChange={setFuFilterMotivo}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {motivosList.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {proximosFollowUps.length === 0 ? (
             <p className="text-sm text-muted-foreground italic py-4 text-center">
-              Nenhum follow-up agendado.
+              {fuHasFilters ? "Nenhum follow-up corresponde aos filtros." : "Nenhum follow-up agendado."}
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -406,32 +534,75 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
                 const isLate = isBefore(date, new Date()) && !isSameDay(date, new Date());
                 const isToday = isSameDay(date, new Date());
                 return (
-                  <button
+                  <div
                     key={f.id}
-                    type="button"
-                    onClick={() =>
-                      openDrill(
-                        `Follow-up: ${f.leadName}`,
-                        [f.agendamentoId],
-                        `${format(date, "dd/MM/yyyy")} · ${f.motivo || "Sem motivo"}`,
-                      )
-                    }
                     className={cn(
-                      "w-full flex items-center gap-3 p-2 rounded-md border text-left hover:bg-muted/40 transition-colors",
+                      "w-full flex items-center gap-3 p-2 rounded-md border",
                       isLate && "border-destructive/50 bg-destructive/5",
                       isToday && "border-primary/50 bg-primary/5",
                     )}
                   >
-                    <Badge variant={isLate ? "destructive" : isToday ? "default" : "secondary"} className="text-xs">
-                      {format(date, "dd/MM")}
-                    </Badge>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{f.leadName}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {f.closerName} · {f.motivo}
-                      </p>
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openDrill(
+                          `Follow-up: ${f.leadName}`,
+                          [f.agendamentoId],
+                          `${format(date, "dd/MM/yyyy")}${f.time ? ` · ${f.time}` : ""} · ${f.motivo || "Sem motivo"}`,
+                        )
+                      }
+                      className="flex flex-1 items-center gap-3 text-left min-w-0 hover:opacity-80 transition-opacity"
+                    >
+                      <Badge variant={isLate ? "destructive" : isToday ? "default" : "secondary"} className="text-xs shrink-0">
+                        {format(date, "dd/MM")}
+                        {f.time && ` ${f.time}`}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{f.leadName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {f.closerName}{f.motivo && ` · ${f.motivo}`}
+                        </p>
+                      </div>
+                    </button>
+                    {isManager && (
+                      <div className="flex gap-0.5 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title="Editar"
+                          onClick={() =>
+                            setEditTarget({
+                              id: f.id,
+                              agendamento_id: f.agendamentoId,
+                              follow_up_date: f.date,
+                              follow_up_time: f.time,
+                              motivo_nao_fechamento: f.motivo || null,
+                              observacoes: f.observacoes,
+                              lead_name: f.leadName,
+                            })
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          title="Remover"
+                          onClick={() =>
+                            setRemoveTarget({
+                              id: f.id,
+                              agendamentoId: f.agendamentoId,
+                              leadName: f.leadName,
+                            })
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -446,6 +617,37 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
         subtitle={drill.subtitle}
         agendamentoIds={drill.ids}
       />
+
+      <FollowUpEditDialog
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onDone={() => {
+          queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+          queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+        }}
+      />
+
+      <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && !removing && setRemoveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover follow-up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O follow-up de <strong>{removeTarget?.leadName}</strong> será removido da lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmRemove(); }}
+              disabled={removing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
