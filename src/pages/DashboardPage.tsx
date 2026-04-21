@@ -34,6 +34,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
+import VendaDialog from "@/components/VendaDialog";
 
 interface Agendamento {
   id: string;
@@ -145,6 +146,7 @@ export function CalendarContent() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingBriefing, setSavingBriefing] = useState(false);
   const [viewBriefing, setViewBriefing] = useState(false);
+  const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
@@ -453,6 +455,11 @@ export function CalendarContent() {
   // Status update handler
   const handleStatusChange = async (newStatus: string) => {
     if (!detailAg) return;
+    // Realizada → abre pop-up de Vendeu? (bloqueia submit até preencher)
+    if (newStatus === "realizada") {
+      setVendaDialogAg(detailAg);
+      return;
+    }
     setUpdatingStatus(true);
     try {
       const { error } = await supabase
