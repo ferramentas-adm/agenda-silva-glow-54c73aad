@@ -267,26 +267,29 @@ function FollowUpActionDialog({
     DEFAULT_REASONS,
   );
 
+  // IMPORTANTE: todos os campos começam SEMPRE em branco para evitar
+  // que dados de leads anteriores apareçam por engano no próximo follow-up.
   const [outcome, setOutcome] = useState<"fechou" | "perdeu" | "reagendar" | null>(null);
   const [valor, setValor] = useState("");
   const [resumoVenda, setResumoVenda] = useState("");
-  const [motivo, setMotivo] = useState(row.motivo_nao_fechamento ?? "");
+  const [motivo, setMotivo] = useState("");
   const [novaData, setNovaData] = useState<Date | undefined>(undefined);
   const [novoHorario, setNovoHorario] = useState("");
-  const [observacoes, setObservacoes] = useState(row.observacoes ?? "");
+  const [observacoes, setObservacoes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const motivoIsPending = isPendingStageReason(motivo);
 
+  // Sempre que abrir/trocar de lead, limpa tudo — não pré-popula com dados antigos.
   useEffect(() => {
     setOutcome(null);
     setValor("");
     setResumoVenda("");
-    setMotivo(row.motivo_nao_fechamento ?? "");
+    setMotivo("");
     setNovaData(undefined);
     setNovoHorario("");
-    setObservacoes(row.observacoes ?? "");
-  }, [row]);
+    setObservacoes("");
+  }, [row.id]);
 
   const valorNum = digitsToNumber(valor);
   const valorValido = !isNaN(valorNum) && valorNum > 0;
@@ -391,7 +394,7 @@ function FollowUpActionDialog({
       toast.success(
         outcome === "fechou" ? "Venda fechada!" :
           outcome === "perdeu" ? "Lead marcado como perdido" :
-            "Follow-up reagendado",
+            "Novo follow-up agendado",
       );
       onDone();
       onClose();
@@ -438,7 +441,7 @@ function FollowUpActionDialog({
               className="flex-col h-auto py-3 gap-1"
             >
               <RotateCw className="h-4 w-4" />
-              <span className="text-xs">Reagendar</span>
+              <span className="text-xs">Novo Follow-up</span>
             </Button>
           </div>
 
@@ -490,7 +493,7 @@ function FollowUpActionDialog({
           {outcome === "reagendar" && (
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
-                <Label>Nova data *</Label>
+                <Label>Data do novo follow-up *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
