@@ -338,7 +338,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+          <Button onClick={handleSubmit} disabled={!canSubmit || submitting || loadingExisting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirmar
           </Button>
