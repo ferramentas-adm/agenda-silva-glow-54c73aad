@@ -93,7 +93,7 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("id, agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento, created_at");
+        .select("id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, observacoes, created_at");
       return (data ?? []) as VendaRow[];
     },
     refetchInterval: 60_000,
