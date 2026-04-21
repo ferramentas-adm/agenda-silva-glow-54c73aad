@@ -165,10 +165,24 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     .filter((v) => v.follow_up && v.follow_up_date)
     .map((v) => v.agendamento_id);
 
+  // Filtro por closer no card "Motivos de Não Fechamento"
+  const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
+
+  // Vendas que entram no card de motivos (filtradas opcionalmente por closer)
+  const vendasDiaParaMotivos = useMemo(() => {
+    if (motivosCloserFilter === "all") return vendasDia;
+    return vendasDia.filter((v) => {
+      const ag = agMap.get(v.agendamento_id);
+      return ag?.closer_id === motivosCloserFilter;
+    });
+  }, [vendasDia, agMap, motivosCloserFilter]);
+
+  const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
+
   // Motivos de não fechamento
   const motivosCount = useMemo(() => {
     const map = new Map<string, number>();
-    vendasDia.forEach((v) => {
+    vendasDiaParaMotivos.forEach((v) => {
       if (!v.vendeu && v.motivo_nao_fechamento) {
         map.set(v.motivo_nao_fechamento, (map.get(v.motivo_nao_fechamento) || 0) + 1);
       }
@@ -176,7 +190,7 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     return Array.from(map.entries())
       .map(([motivo, count]) => ({ motivo, count }))
       .sort((a, b) => b.count - a.count);
-  }, [vendasDia]);
+  }, [vendasDiaParaMotivos]);
 
   // Performance por Closer
   const closerPerf = useMemo(() => {
