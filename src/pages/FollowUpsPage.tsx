@@ -129,6 +129,7 @@ export default function FollowUpsPage() {
   const [filterMotivo, setFilterMotivo] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
   const [filterSearch, setFilterSearch] = useState("");
+  const [sortMode, setSortMode] = useState<"date_asc" | "date_desc" | "time_asc">("date_asc");
 
   const hasActiveFilters =
     filterCloser !== "all" || filterMotivo !== "all" || !!filterDate || !!filterSearch.trim();
@@ -155,6 +156,27 @@ export default function FollowUpsPage() {
     });
   }, [followUps, filterCloser, filterMotivo, filterDate, filterSearch]);
 
+  // Ordenação aplicada dentro de cada grupo
+  const sortFollowUps = (list: FollowUpRow[]): FollowUpRow[] => {
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      if (sortMode === "time_asc") {
+        // Por horário (asc), data como desempate
+        const tCmp = (a.follow_up_time || "99:99").localeCompare(b.follow_up_time || "99:99");
+        if (tCmp !== 0) return tCmp;
+        return a.follow_up_date.localeCompare(b.follow_up_date);
+      }
+      const dCmp = sortMode === "date_desc"
+        ? b.follow_up_date.localeCompare(a.follow_up_date)
+        : a.follow_up_date.localeCompare(b.follow_up_date);
+      if (dCmp !== 0) return dCmp;
+      return sortMode === "date_desc"
+        ? (b.follow_up_time || "").localeCompare(a.follow_up_time || "")
+        : (a.follow_up_time || "99:99").localeCompare(b.follow_up_time || "99:99");
+    });
+    return sorted;
+  };
+
   const today = startOfToday();
   const grouped = useMemo(() => {
     const overdue: FollowUpRow[] = [];
@@ -166,8 +188,13 @@ export default function FollowUpsPage() {
       else if (isBefore(d, today)) overdue.push(f);
       else upcoming.push(f);
     }
-    return { overdue, todayList, upcoming };
-  }, [filteredFollowUps, today]);
+    return {
+      overdue: sortFollowUps(overdue),
+      todayList: sortFollowUps(todayList),
+      upcoming: sortFollowUps(upcoming),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredFollowUps, today, sortMode]);
 
   const [actionTarget, setActionTarget] = useState<FollowUpRow | null>(null);
   const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
@@ -275,6 +302,18 @@ export default function FollowUpsPage() {
                   </Select>
                 </div>
               )}
+
+              <div className="min-w-[180px]">
+                <Label className="text-xs">Ordenar por</Label>
+                <Select value={sortMode} onValueChange={(v) => setSortMode(v as typeof sortMode)}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date_asc">Mais próximos primeiro</SelectItem>
+                    <SelectItem value="date_desc">Mais distantes primeiro</SelectItem>
+                    <SelectItem value="time_asc">Por horário (mais cedo)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
