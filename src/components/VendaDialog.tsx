@@ -188,10 +188,15 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-emerald-500" />
-            Resultado da Reunião
+            {isEditing ? "Editar Resultado da Reunião" : "Resultado da Reunião"}
           </DialogTitle>
           <DialogDescription>
             <span className="font-medium">{leadName}</span> — registre o desfecho desta reunião.
+            {isEditing && (
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Atualizando registro existente.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
