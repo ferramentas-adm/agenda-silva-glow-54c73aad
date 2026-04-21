@@ -394,7 +394,7 @@ function FollowUpActionDialog({
       toast.success(
         outcome === "fechou" ? "Venda fechada!" :
           outcome === "perdeu" ? "Lead marcado como perdido" :
-            "Follow-up reagendado",
+            "Novo follow-up agendado",
       );
       onDone();
       onClose();
