@@ -78,7 +78,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     }
   }, [open]);
 
-  const valorNumParsed = valor ? parseFloat(valor.replace(",", ".")) : NaN;
+  const valorNumParsed = digitsToNumber(valor);
   const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
 
   const canSubmit = (() => {
