@@ -105,15 +105,6 @@ const STATUS_LABELS: Record<string, string> = {
   reagendada: "Reagendada",
 };
 
-const CHANNEL_TYPES = [
-  "CTA",
-  "Tráfego Pago",
-  "Reativação",
-  "Social Selling",
-  "Renovação",
-  "Indicação",
-  "Formulário Bio",
-];
 
 const CANCELLED_STATUSES = ["cancelada", "no_show"];
 
