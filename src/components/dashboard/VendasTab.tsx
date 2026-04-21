@@ -402,21 +402,35 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
         {/* Motivos de não fechamento */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
-              Motivos de Não Fechamento
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                Motivos de Não Fechamento
+              </CardTitle>
+              <Select value={motivosCloserFilter} onValueChange={setMotivosCloserFilter}>
+                <SelectTrigger className="h-8 w-[170px] text-xs">
+                  <SelectValue placeholder="Closer" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os closers</SelectItem>
+                  {closers.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {motivosCount.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
-                Sem dados de não fechamento neste dia.
+                Sem dados de não fechamento neste dia
+                {motivosCloserFilter !== "all" ? " para o closer selecionado" : ""}.
               </p>
             ) : (
               <div className="space-y-2">
                 {motivosCount.map(({ motivo, count }, idx) => {
-                  const pct = totalNaoFechou > 0 ? (count / totalNaoFechou) * 100 : 0;
-                  const motivoIds = vendasDia
+                  const pct = totalNaoFechouMotivos > 0 ? (count / totalNaoFechouMotivos) * 100 : 0;
+                  const motivoIds = vendasDiaParaMotivos
                     .filter((v) => !v.vendeu && v.motivo_nao_fechamento === motivo)
                     .map((v) => v.agendamento_id);
                   return (
