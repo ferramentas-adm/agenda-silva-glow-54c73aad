@@ -260,9 +260,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 <Label htmlFor="valor-apresentado">Valor apresentado ao cliente (opcional)</Label>
                 <Input
                   id="valor-apresentado"
-                  inputMode="decimal"
-                  value={valor}
-                  onChange={(e) => setValor(e.target.value.replace(/[^\d.,]/g, ""))}
+                  inputMode="numeric"
+                  value={formatBRL(valor)}
+                  onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
                   placeholder="0,00"
                 />
                 <p className="text-xs text-muted-foreground">
