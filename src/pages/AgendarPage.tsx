@@ -258,6 +258,7 @@ export default function AgendarPage() {
     setMeetingReasonCustom("");
     setChannelType(null);
     setSelectedSdrId(null);
+    setBriefingText("");
     setSuccess(null);
     setStep("lead");
   };
