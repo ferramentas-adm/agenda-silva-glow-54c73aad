@@ -389,11 +389,17 @@ function FollowUpSection({
   variant,
   items,
   onAction,
+  onEdit,
+  onRemove,
+  showCloser,
 }: {
   title: string;
   variant: "overdue" | "today" | "upcoming";
   items: FollowUpRow[];
   onAction: (r: FollowUpRow) => void;
+  onEdit: (t: FollowUpEditTarget) => void;
+  onRemove: (r: FollowUpRow) => void;
+  showCloser?: boolean;
 }) {
   if (items.length === 0) return null;
   const badgeClass =
@@ -413,14 +419,33 @@ function FollowUpSection({
       </CardHeader>
       <CardContent className="space-y-2">
         {items.map((f) => (
-          <FollowUpItem key={f.id} row={f} onAction={onAction} />
+          <FollowUpItem
+            key={f.id}
+            row={f}
+            onAction={onAction}
+            onEdit={onEdit}
+            onRemove={onRemove}
+            showCloser={showCloser}
+          />
         ))}
       </CardContent>
     </Card>
   );
 }
 
-function FollowUpItem({ row, onAction }: { row: FollowUpRow; onAction: (r: FollowUpRow) => void }) {
+function FollowUpItem({
+  row,
+  onAction,
+  onEdit,
+  onRemove,
+  showCloser,
+}: {
+  row: FollowUpRow;
+  onAction: (r: FollowUpRow) => void;
+  onEdit: (t: FollowUpEditTarget) => void;
+  onRemove: (r: FollowUpRow) => void;
+  showCloser?: boolean;
+}) {
   const date = parseISO(row.follow_up_date);
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
@@ -436,6 +461,11 @@ function FollowUpItem({ row, onAction }: { row: FollowUpRow; onAction: (r: Follo
               {row.agendamentos.lead_phone}
             </a>
           )}
+          {showCloser && row.agendamentos?.closers?.name && (
+            <Badge variant="secondary" className="text-[10px]">
+              {row.agendamentos.closers.name}
+            </Badge>
+          )}
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
           {format(date, "EEEE, dd/MM/yyyy", { locale: ptBR })}
@@ -446,7 +476,35 @@ function FollowUpItem({ row, onAction }: { row: FollowUpRow; onAction: (r: Follo
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{row.observacoes}</p>
         )}
       </div>
-      <div className="flex gap-2 shrink-0">
+      <div className="flex gap-1.5 shrink-0">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() =>
+            onEdit({
+              id: row.id,
+              agendamento_id: row.agendamento_id,
+              follow_up_date: row.follow_up_date,
+              follow_up_time: row.follow_up_time,
+              motivo_nao_fechamento: row.motivo_nao_fechamento,
+              observacoes: row.observacoes,
+              lead_name: row.agendamentos?.lead_name,
+            })
+          }
+          title="Editar"
+          className="h-8 w-8"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => onRemove(row)}
+          title="Remover"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
         <Button size="sm" variant="outline" onClick={() => onAction(row)}>
           Próximo passo
         </Button>
