@@ -182,7 +182,11 @@ export default function AgendarPage() {
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
-    if (isReasonRequired && !resolvedReason) return;
+    // Closer reagendando deve obrigatoriamente justificar
+    if (isCloser && isReschedule && !resolvedReason) {
+      toast.error("Informe a justificativa do reagendamento.");
+      return;
+    }
     setSubmitting(true);
 
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
