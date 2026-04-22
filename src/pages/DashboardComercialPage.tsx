@@ -358,9 +358,11 @@ export default function DashboardComercialPage() {
         {activeTab === 1 && <CalendarContent />}
         {activeTab === 2 && (
           <RankingSDRsTab
-            ranking={ranking}
+            sdrProfiles={sdrProfiles}
             updatedAgo={updatedAgo}
             createdAgs={createdAgs}
+            agendamentos={agendamentos}
+            currentDate={currentDate}
           />
         )}
         {activeTab === 3 && <VendasTab currentDate={currentDate} />}
