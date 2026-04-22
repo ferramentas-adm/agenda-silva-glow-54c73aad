@@ -315,7 +315,7 @@ export function CalendarContent() {
     [filtered]
   );
 
-  // Status counts gerais (admin/mod/sdr) — usado para Confirmadas / Realizadas / Cancelas / No-show / Reagendadas
+  // Status counts gerais (admin/mod/sdr)
   const statusCounts = useMemo(
     () =>
       filtered.reduce<Record<string, number>>((acc, agendamento) => {
@@ -336,8 +336,20 @@ export function CalendarContent() {
     [filtered, userRolesMap]
   );
 
+  const closerMap = useMemo(() => {
+    const m = new Map<string, string>();
+    closers.forEach((c) => m.set(c.id, c.name));
+    return m;
+  }, [closers]);
+
+  // Closer só pode alterar status do PRÓPRIO agendamento (defesa em profundidade — RLS já bloqueia no banco)
+  const myCloserId = useMemo(() => {
+    if (role !== "closer" || !user?.email) return null;
+    const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
+    return myCloser?.id ?? null;
+  }, [role, user?.email, closers]);
+
   // ─── Métricas para CLOSER (visão individual da própria agenda) ───
-  // Closer vê só os agendamentos cujo closer_id é o dele.
   const closerOwnAgendamentos = useMemo(
     () => filtered.filter((a) => a.closer_id === myCloserId),
     [filtered, myCloserId]
@@ -354,19 +366,6 @@ export function CalendarContent() {
       }, {}),
     [closerOwnAgendamentos]
   );
-
-  const closerMap = useMemo(() => {
-    const m = new Map<string, string>();
-    closers.forEach((c) => m.set(c.id, c.name));
-    return m;
-  }, [closers]);
-
-  // Closer só pode alterar status do PRÓPRIO agendamento (defesa em profundidade — RLS já bloqueia no banco)
-  const myCloserId = useMemo(() => {
-    if (role !== "closer" || !user?.email) return null;
-    const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
-    return myCloser?.id ?? null;
-  }, [role, user?.email, closers]);
 
   const canChangeStatus = useMemo(() => {
     if (!detailAg) return false;
