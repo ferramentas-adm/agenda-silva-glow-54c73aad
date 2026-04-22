@@ -201,38 +201,7 @@ export default function DashboardComercialPage() {
     };
   }, [agendamentos, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd]);
 
-  // ─── Ranking ───────────────────────────────────────────────────
-  const ranking = useMemo(() => {
-    const yesterdayStart = format(subDays(currentDate, 1), "yyyy-MM-dd");
-    const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
-
-    const sdrOf = (a: AgendamentoMetric) => a.sdr_responsavel_id ?? a.created_by;
-
-    return sdrProfiles.map(profile => {
-      const countInRange = (start: string, end: string) =>
-        createdAgs.filter(a =>
-          sdrOf(a) === profile.user_id &&
-          a.created_at >= start + "T00:00:00" &&
-          a.created_at <= end + "T23:59:59"
-        ).length;
-
-      const hoje = countInRange(dateStr, dateStr);
-      const paraHoje = agendamentos.filter(a =>
-        sdrOf(a) === profile.user_id &&
-        a.scheduled_date === dateStr
-      ).length;
-      const ontem = countInRange(yesterdayStart, yesterdayStart);
-      const semana = countInRange(weekStart, weekEnd);
-      const quinzena = countInRange(quinzenaStart, dateStr);
-      const mes = createdAgs.filter(a =>
-        sdrOf(a) === profile.user_id &&
-        a.created_at >= monthStart + "T00:00:00" &&
-        a.created_at <= monthEnd + "T23:59:59"
-      ).length;
-
-      return { ...profile, hoje, paraHoje, ontem, semana, quinzena, mes };
-    }).sort((a, b) => b.hoje - a.hoje || b.semana - a.semana || b.mes - a.mes);
-  }, [sdrProfiles, createdAgs, agendamentos, dateStr, weekStart, weekEnd, monthStart, monthEnd, currentDate]);
+  // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
 
   const updatedAgo = useMemo(() => {
     if (!dataUpdatedAt) return "";
