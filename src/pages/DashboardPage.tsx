@@ -971,7 +971,8 @@ export function CalendarContent() {
                         juntos compõem o "Não comparecimento" do dia.
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
+                        {/* Confirmar — escondido para closer (closer só vê Realizada e Reagendar) */}
+                        {role !== "closer" && detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
                             <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
                           </Button>
@@ -1001,12 +1002,13 @@ export function CalendarContent() {
                         >
                           <RotateCcw className="h-3.5 w-3.5" />Reagendar
                         </Button>
-                        {detailAg.status !== "cancelada" && (
+                        {/* Cancelar e No-show — escondidos para closer */}
+                        {role !== "closer" && detailAg.status !== "cancelada" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
                             <XCircle className="h-3.5 w-3.5" />Cancelar
                           </Button>
                         )}
-                        {detailAg.status !== "no_show" && (
+                        {role !== "closer" && detailAg.status !== "no_show" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
                             <AlertCircle className="h-3.5 w-3.5" />No-show
                           </Button>
