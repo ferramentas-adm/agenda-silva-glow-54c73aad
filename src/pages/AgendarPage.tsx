@@ -231,7 +231,8 @@ export default function AgendarPage() {
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason || null,
-        channel_type: channelType || null,
+        // Closer: canal sempre fixado como "Segunda Reunião"
+        channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
       } as any).select("id").single();
 
       if (error) throw error;
