@@ -183,7 +183,8 @@ export default function DashboardComercialPage() {
       noShow: noShowCount,
       cancelado: canceladoCount,
       reagendado: reagendadoCount,
-      taxaNaoComp,
+      taxaComp,
+      totalDia,
       channelsToday: byChannel(todayAgs),
       channelsCreatedToday: byChannel(todayCreated),
       // IDs para drill-down
@@ -197,7 +198,6 @@ export default function DashboardComercialPage() {
       noShowIds: todayAgs.filter(a => a.status === "no_show").map(a => a.id),
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
-      naoCompIds: todayAgs.filter(a => a.status === "no_show" || a.status === "cancelada" || a.status === "reagendada").map(a => a.id),
     };
   }, [agendamentos, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd]);
 
