@@ -429,11 +429,15 @@ export function CalendarContent() {
   const handleChangeCloser = async (newCloserId: string) => {
     if (!detailAg || newCloserId === detailAg.closer_id) return;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ closer_id: newCloserId } as any)
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para alterar o closer deste agendamento.");
+      }
       const oldName = closerMap.get(detailAg.closer_id) || "—";
       const newName = closerMap.get(newCloserId) || "—";
       await logAudit("edit_agendamento", "agendamento", detailAg.id, {
