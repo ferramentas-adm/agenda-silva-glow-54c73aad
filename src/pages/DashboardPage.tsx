@@ -216,11 +216,17 @@ export function CalendarContent() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Realtime: ouve mudanças em agendamentos para TODOS os usuários (independente da função).
+  // Channel name único por sessão evita colisões entre múltiplos clientes/abas.
   useEffect(() => {
+    const channelName = `agendamentos-realtime-${Math.random().toString(36).slice(2, 10)}`;
     const channel = supabase
-      .channel("agendamentos-realtime")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
         queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-metrics"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-created"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-prev"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
