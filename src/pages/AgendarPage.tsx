@@ -183,18 +183,19 @@ export default function AgendarPage() {
 
   const isCloser = role === "closer";
   // Closer não vê o dropdown de motivo — toda reunião dele é "Segunda Reunião" automaticamente.
-  // No reagendamento, ele preenche o campo "Justificar Reagendamento" (obrigatório, salvo em meeting_reason).
+  // Tanto em novo agendamento quanto em reagendamento, ele preenche o campo "Justificar Reagendamento"
+  // (obrigatório, salvo em meeting_reason).
   const needsReason = role === "gestor" || role === "moderador";
   const isReasonRequired = false;
   const resolvedReason = isCloser
-    ? (isReschedule ? (meetingReasonCustom.trim() || null) : "segunda_reuniao")
+    ? (meetingReasonCustom.trim() || null)
     : (meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason);
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
-    // Closer reagendando deve obrigatoriamente justificar
-    if (isCloser && isReschedule && !resolvedReason) {
-      toast.error("Informe a justificativa do reagendamento.");
+    // Closer (novo agendamento ou reagendamento) deve obrigatoriamente justificar
+    if (isCloser && !resolvedReason) {
+      toast.error("Informe a justificativa do agendamento.");
       return;
     }
     setSubmitting(true);
@@ -482,14 +483,14 @@ export default function AgendarPage() {
                 </div>
               )}
 
-              {/* Closer: campo "Justificar Reagendamento" só aparece quando está reagendando */}
-              {isCloser && isReschedule && (
+              {/* Closer: campo "Justificar Reagendamento" aparece em qualquer agendamento (novo ou reagendamento) */}
+              {isCloser && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
-                    Justificar Reagendamento <span className="text-destructive">*</span>
+                    Justificar {isReschedule ? "Reagendamento" : "Agendamento"} <span className="text-destructive">*</span>
                   </label>
                   <Input
-                    placeholder="Em poucas palavras, explique o motivo do reagendamento..."
+                    placeholder={`Em poucas palavras, explique o motivo do ${isReschedule ? "reagendamento" : "agendamento"}...`}
                     value={meetingReasonCustom}
                     onChange={(e) => setMeetingReasonCustom(e.target.value.slice(0, 200))}
                     maxLength={200}
@@ -581,7 +582,7 @@ export default function AgendarPage() {
           {step === "confirm" ? (
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !canGoNext.confirm || (isCloser && isReschedule && !meetingReasonCustom.trim())}
+              disabled={submitting || !canGoNext.confirm || (isCloser && !meetingReasonCustom.trim())}
               className="gap-2"
             >
               {submitting ? "Agendando..." : editId ? "Reagendar" : "Confirmar Agendamento"}
