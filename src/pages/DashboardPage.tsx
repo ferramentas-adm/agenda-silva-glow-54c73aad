@@ -382,11 +382,15 @@ export function CalendarContent() {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
     setTransferring(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ closer_id: transferTarget } as any)
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para transferir este lead.");
+      }
       const oldName = closerMap.get(detailAg.closer_id) || "—";
       const newName = closerMap.get(transferTarget) || "—";
       await logAudit("transfer_lead", "agendamento", detailAg.id, {
