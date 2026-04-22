@@ -112,10 +112,11 @@ export default function AgendarPage() {
     },
   });
 
-  // If editing, load existing agendamento
+  // If editing/reagendando, load existing agendamento (também quando lead_name vem na URL,
+  // para herdar channel_type / meeting_reason do original)
   const { data: editData } = useQuery({
     queryKey: ["agendamento-edit", editId],
-    enabled: !!editId && !rescheduleLeadName,
+    enabled: !!editId,
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
