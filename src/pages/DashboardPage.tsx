@@ -627,54 +627,65 @@ export function CalendarContent() {
         
 
         {/* Status counters */}
-        {!loadingAgendamentos && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            {[
-              { key: "total", label: "Total SDRs", icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
-              { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
-              { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-              { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
-              { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
-              { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
-              {
-                key: "nao_comparecimento",
-                label: "Não comparecimento",
-                icon: Ban,
-                color: "text-rose-400",
-                bg: "bg-rose-500/10",
-              },
-            ].map(({ key, label, icon: Icon, color, bg }) => {
-              let count: number;
-              if (key === "total") count = sdrFiltered.length;
-              else if (key === "nao_comparecimento") {
-                // Soma dos 3 status que representam ausência do lead
-                count =
-                  (statusCounts["cancelada"] ?? 0) +
-                  (statusCounts["no_show"] ?? 0) +
-                  (statusCounts["reagendada"] ?? 0);
-              } else {
-                count = statusCounts[key] ?? 0;
-              }
-              return (
-                <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
-                  <Icon className={cn("h-5 w-5 shrink-0", color)} />
+        {!loadingAgendamentos && (() => {
+          // Visão de Closer (individual): mostra apenas seus próprios números, sem "Total Closers"
+          const isCloserView = role === "closer";
+          const sourceTotal = isCloserView ? closerOwnTotal : totalSdrCount;
+          const sourceCounts = isCloserView ? closerOwnStatusCounts : statusCounts;
+          const totalLabel = isCloserView ? "Total Closer" : "Total SDRs";
+
+          const cards = [
+            { key: "total", label: totalLabel, icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
+            { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
+            { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+            { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
+            { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
+            { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
+            {
+              key: "nao_comparecimento",
+              label: "Não comparecimento",
+              icon: Ban,
+              color: "text-rose-400",
+              bg: "bg-rose-500/10",
+            },
+          ];
+
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              {cards.map(({ key, label, icon: Icon, color, bg }) => {
+                let count: number;
+                if (key === "total") count = sourceTotal;
+                else if (key === "nao_comparecimento") {
+                  count =
+                    (sourceCounts["cancelada"] ?? 0) +
+                    (sourceCounts["no_show"] ?? 0) +
+                    (sourceCounts["reagendada"] ?? 0);
+                } else {
+                  count = sourceCounts[key] ?? 0;
+                }
+                return (
+                  <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
+                    <Icon className={cn("h-5 w-5 shrink-0", color)} />
+                    <div>
+                      <p className="text-lg font-bold leading-none">{count}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Total Closers — apenas para Admin / Moderador / SDR */}
+              {!isCloserView && (
+                <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-purple-500/10")}>
+                  <Users className={cn("h-5 w-5 shrink-0 text-purple-400")} />
                   <div>
-                    <p className="text-lg font-bold leading-none">{count}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+                    <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Total Closers</p>
                   </div>
                 </div>
-              );
-            })}
-            {/* Closer-created total */}
-            <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-purple-500/10")}>
-              <Users className={cn("h-5 w-5 shrink-0 text-purple-400")} />
-              <div>
-                <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Closers</p>
-              </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="flex items-center justify-between gap-4">
           <div>
