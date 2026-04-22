@@ -91,6 +91,7 @@ function getCloserColor(closerId: string, closerIndex: number) {
 
 // ─── Status helpers ──────────────────────────────────────────────
 const STATUS_BADGE_COLORS: Record<string, string> = {
+  agendada: "bg-blue-500/20 text-blue-400",
   confirmada: "bg-primary/20 text-primary",
   realizada: "bg-emerald-500/20 text-emerald-400",
   cancelada: "bg-destructive/20 text-destructive",
