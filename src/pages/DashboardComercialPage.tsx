@@ -164,9 +164,11 @@ export default function DashboardComercialPage() {
     const noShowCount = sc(todayAgs, "no_show");
     const canceladoCount = sc(todayAgs, "cancelada");
     const reagendadoCount = sc(todayAgs, "reagendada");
+    const compareceuCount = sc(todayAgs, "realizada");
     const totalDia = todayAgs.length;
-    const taxaNaoComp = totalDia > 0
-      ? ((noShowCount + canceladoCount + reagendadoCount) / totalDia) * 100
+    // Taxa de Comparecimento = realizadas / total de agendamentos do período
+    const taxaComp = totalDia > 0
+      ? (compareceuCount / totalDia) * 100
       : 0;
 
     return {
