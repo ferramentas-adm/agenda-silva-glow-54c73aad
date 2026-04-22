@@ -164,9 +164,11 @@ export default function DashboardComercialPage() {
     const noShowCount = sc(todayAgs, "no_show");
     const canceladoCount = sc(todayAgs, "cancelada");
     const reagendadoCount = sc(todayAgs, "reagendada");
+    const compareceuCount = sc(todayAgs, "realizada");
     const totalDia = todayAgs.length;
-    const taxaNaoComp = totalDia > 0
-      ? ((noShowCount + canceladoCount + reagendadoCount) / totalDia) * 100
+    // Taxa de Comparecimento = realizadas / total de agendamentos do período
+    const taxaComp = totalDia > 0
+      ? (compareceuCount / totalDia) * 100
       : 0;
 
     return {
@@ -181,7 +183,8 @@ export default function DashboardComercialPage() {
       noShow: noShowCount,
       cancelado: canceladoCount,
       reagendado: reagendadoCount,
-      taxaNaoComp,
+      taxaComp,
+      totalDia,
       channelsToday: byChannel(todayAgs),
       channelsCreatedToday: byChannel(todayCreated),
       // IDs para drill-down
@@ -195,7 +198,6 @@ export default function DashboardComercialPage() {
       noShowIds: todayAgs.filter(a => a.status === "no_show").map(a => a.id),
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
-      naoCompIds: todayAgs.filter(a => a.status === "no_show" || a.status === "cancelada" || a.status === "reagendada").map(a => a.id),
     };
   }, [agendamentos, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd]);
 
@@ -586,14 +588,14 @@ function MetricasSDRsTab({
         <MetricCard title={`Cancelado — ${selectedLabel}`} value={metrics.cancelado} subtitle={subtitleSelected} onClick={() => openDrill(`Cancelado — ${selectedLabel}`, metrics.canceladoIds)} />
         <MetricCard title={`Reagendado — ${selectedLabel}`} value={metrics.reagendado} subtitle={subtitleSelected} onClick={() => openDrill(`Reagendado — ${selectedLabel}`, metrics.reagendadoIds)} />
         <MetricCard
-          title={`Taxa Não Comparecimento — ${selectedLabel}`}
-          value={`${metrics.taxaNaoComp.toFixed(1)}%`}
+          title={`Taxa de Comparecimento — ${selectedLabel}`}
+          value={`${metrics.taxaComp.toFixed(1)}%`}
           subtitle={
             <span>
-              {(metrics.noShow + metrics.cancelado + metrics.reagendado)} de {metrics.todayScheduled} agendamento{metrics.todayScheduled !== 1 ? "s" : ""}
+              {metrics.compareceu} de {metrics.totalDia} agendamento{metrics.totalDia !== 1 ? "s" : ""}
             </span>
           }
-          onClick={() => openDrill(`Não Comparecimento — ${selectedLabel}`, metrics.naoCompIds)}
+          onClick={() => openDrill(`Compareceu — ${selectedLabel}`, metrics.compareceuIds)}
         />
       </div>
 
