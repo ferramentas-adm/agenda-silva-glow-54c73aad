@@ -306,21 +306,29 @@ export function CalendarContent() {
   const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
 
-  // SDR-only filtered agendamentos for metrics (uses sdr_responsavel_id when set, else created_by)
-  const sdrFiltered = useMemo(
-    () => filtered.filter((a) => {
-      const sdrUserId = a.sdr_responsavel_id || a.created_by;
-      if (!sdrUserId) return false;
-      const role = userRolesMap.get(sdrUserId);
-      return role === "sdr";
-    }),
-    [filtered, userRolesMap]
+  // Status válidos para o "Total" da barra superior
+  const TOTAL_STATUSES = ["confirmada", "realizada", "cancelada", "no_show", "reagendada"];
+
+  // Métricas para Admin / Moderador / SDR — baseadas em todos os agendamentos do dia (filtrados por closer)
+  const totalSdrCount = useMemo(
+    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status)).length,
+    [filtered]
   );
 
-  // Closer-created agendamentos count for metrics
+  // Status counts gerais (admin/mod/sdr) — usado para Confirmadas / Realizadas / Cancelas / No-show / Reagendadas
+  const statusCounts = useMemo(
+    () =>
+      filtered.reduce<Record<string, number>>((acc, agendamento) => {
+        acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
+        return acc;
+      }, {}),
+    [filtered]
+  );
+
+  // Total Closers (Admin/Mod/SDR view): reuniões REALIZADAS cujo created_by tem role 'closer'
   const closerCreatedCount = useMemo(
     () => filtered.filter((a) => {
-      if (a.sdr_responsavel_id) return false;
+      if (a.status !== "realizada") return false;
       if (!a.created_by) return false;
       const creatorRole = userRolesMap.get(a.created_by);
       return creatorRole === "closer";
@@ -328,13 +336,23 @@ export function CalendarContent() {
     [filtered, userRolesMap]
   );
 
-  const statusCounts = useMemo(
+  // ─── Métricas para CLOSER (visão individual da própria agenda) ───
+  // Closer vê só os agendamentos cujo closer_id é o dele.
+  const closerOwnAgendamentos = useMemo(
+    () => filtered.filter((a) => a.closer_id === myCloserId),
+    [filtered, myCloserId]
+  );
+  const closerOwnTotal = useMemo(
+    () => closerOwnAgendamentos.filter((a) => TOTAL_STATUSES.includes(a.status)).length,
+    [closerOwnAgendamentos]
+  );
+  const closerOwnStatusCounts = useMemo(
     () =>
-      sdrFiltered.reduce<Record<string, number>>((acc, agendamento) => {
-        acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
+      closerOwnAgendamentos.reduce<Record<string, number>>((acc, a) => {
+        acc[a.status] = (acc[a.status] ?? 0) + 1;
         return acc;
       }, {}),
-    [sdrFiltered]
+    [closerOwnAgendamentos]
   );
 
   const closerMap = useMemo(() => {
