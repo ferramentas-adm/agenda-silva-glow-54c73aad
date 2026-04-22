@@ -462,11 +462,15 @@ export function CalendarContent() {
     const currentSdr = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
     if (newSdrId === currentSdr) return;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ sdr_responsavel_id: newSdrId } as any)
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para alterar o responsável deste agendamento.");
+      }
       const oldName = currentSdr ? (profilesMap.get(currentSdr) || "—") : "—";
       const newName = profilesMap.get(newSdrId) || "—";
       await logAudit("edit_agendamento", "agendamento", detailAg.id, {
@@ -566,11 +570,15 @@ export function CalendarContent() {
     try {
       // Atualiza o horário e marca status como "reagendada"
       // O trigger notify_status_change_webhook envia o payload completo ao DataCrazy
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ scheduled_time: editTime, status: "reagendada" } as any)
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para editar este agendamento.");
+      }
       await logAudit("edit_agendamento", "agendamento", detailAg.id, {
         lead_name: detailAg.lead_name,
         closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
