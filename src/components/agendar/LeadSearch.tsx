@@ -154,18 +154,30 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
         {filteredLeads.length === 0 ? (
           <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum lead encontrado.</p>
         ) : (
-          filteredLeads.map((lead) => (
-            <button
-              key={lead.id}
-              onClick={() => onSelect(lead)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-secondary/60 transition-colors border-b border-input/30 last:border-b-0"
-            >
-              <div>
-                <p className="text-sm font-medium">{lead.name}</p>
-                <p className="text-xs text-muted-foreground">{lead.phone}</p>
-              </div>
-            </button>
-          ))
+          filteredLeads.map((lead) => {
+            const hasPhone = !!lead.phone && lead.phone.trim().length > 0;
+            return (
+              <button
+                key={lead.id}
+                onClick={() => hasPhone && onSelect(lead)}
+                disabled={!hasPhone}
+                title={hasPhone ? undefined : "Lead sem telefone — não é possível agendar"}
+                className={cn(
+                  "flex w-full items-center gap-3 px-4 py-3 text-left border-b border-input/30 last:border-b-0 transition-colors",
+                  hasPhone
+                    ? "hover:bg-secondary/60 cursor-pointer"
+                    : "opacity-40 cursor-not-allowed"
+                )}
+              >
+                <div>
+                  <p className="text-sm font-medium">{lead.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {hasPhone ? lead.phone : "Sem telefone cadastrado"}
+                  </p>
+                </div>
+              </button>
+            );
+          })
         )}
       </div>
 
