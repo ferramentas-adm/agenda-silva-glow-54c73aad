@@ -133,11 +133,14 @@ export default function AgendarPage() {
     if (!lead) {
       setLead({ id: "edit", name: editData.lead_name, phone: editData.lead_phone });
     }
-    if (editData.channel_type && !channelType) {
+    // Closer: canal sempre fixado como "Segunda Reunião" — não herda do original.
+    if (role === "closer") {
+      if (!channelType) setChannelType("Segunda Reunião");
+    } else if (editData.channel_type && !channelType) {
       setChannelType(editData.channel_type);
     }
-    if (editData.meeting_reason && !meetingReason) {
-      // Se o motivo herdado for um valor canônico, marcar direto; senão, vai como "outros" + custom
+    // Closer reagendando: NÃO herda meeting_reason — ele precisa escrever uma nova justificativa.
+    if (role !== "closer" && editData.meeting_reason && !meetingReason) {
       const canonical = ["segunda_reuniao", "fechamento", "remarcado"];
       if (canonical.includes(editData.meeting_reason)) {
         setMeetingReason(editData.meeting_reason);
@@ -147,7 +150,7 @@ export default function AgendarPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editData]);
+  }, [editData, role]);
 
   const closerName = useMemo(
     () => closers.find((c) => c.id === closerId)?.name ?? "",
