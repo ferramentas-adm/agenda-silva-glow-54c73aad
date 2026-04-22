@@ -171,9 +171,14 @@ export default function AgendarPage() {
     if (stepIndex > 0) setStep(steps[stepIndex - 1]);
   };
 
-  const isReasonRequired = role === "closer";
-  const needsReason = role === "closer" || role === "gestor" || role === "moderador";
-  const resolvedReason = meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason;
+  const isCloser = role === "closer";
+  // Closer não vê o dropdown de motivo — toda reunião dele é "Segunda Reunião" automaticamente.
+  // No reagendamento, ele preenche o campo "Justificar Reagendamento" (obrigatório, salvo em meeting_reason).
+  const needsReason = role === "gestor" || role === "moderador";
+  const isReasonRequired = false;
+  const resolvedReason = isCloser
+    ? (isReschedule ? (meetingReasonCustom.trim() || null) : "segunda_reuniao")
+    : (meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason);
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
