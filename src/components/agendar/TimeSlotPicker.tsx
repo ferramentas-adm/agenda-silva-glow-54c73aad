@@ -275,13 +275,19 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           return (
             <button
               key={slot}
-              disabled={isPast || isPersonalBlock}
+              disabled={isPast || (isPersonalBlock && !canOverrideBlock)}
               onClick={() => {
+                if (isPersonalBlock && canOverrideBlock) {
+                  const ok = window.confirm(
+                    "Atenção: este horário está bloqueado por compromisso pessoal do closer.\n\nDeseja agendar mesmo assim?",
+                  );
+                  if (!ok) return;
+                }
                 onSelect(slot);
                 setCustomMode(false);
                 setCustomError(null);
               }}
-              title={title}
+              title={isPersonalBlock && canOverrideBlock ? "Bloqueio pessoal — Gestor pode forçar" : title}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
                 isSelected
