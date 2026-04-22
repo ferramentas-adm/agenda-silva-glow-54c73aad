@@ -309,7 +309,7 @@ export function CalendarContent() {
   const goToday = () => setCurrentDate(new Date());
 
   // Status válidos para o "Total" da barra superior
-  const TOTAL_STATUSES = ["confirmada", "realizada", "cancelada", "no_show", "reagendada"];
+  const TOTAL_STATUSES = ["agendada", "confirmada", "realizada", "cancelada", "no_show", "reagendada"];
 
   // Métricas para Admin / Moderador / SDR — baseadas em todos os agendamentos do dia (filtrados por closer)
   const totalSdrCount = useMemo(
