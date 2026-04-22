@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Search, X, CalendarDays, Filter, Download, Trash2 } from "lucide-react";
+import { Phone, Search, X, CalendarDays, Filter, Download, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,6 +66,13 @@ export default function ReunioesListPage() {
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
+  const [sortKey, setSortKey] = useState<SortKey>("datetime");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
+  };
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
