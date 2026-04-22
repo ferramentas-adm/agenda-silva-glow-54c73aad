@@ -102,6 +102,7 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
+  agendada: "Agendado",
   confirmada: "Confirmada",
   realizada: "Realizada",
   cancelada: "Cancelada",

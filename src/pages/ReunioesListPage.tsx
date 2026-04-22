@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  agendada: { label: "Agendado", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   confirmada: { label: "Confirmada", color: "bg-green-500/20 text-green-400 border-green-500/30" },
   realizada: { label: "Realizada", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   cancelada: { label: "Cancelada", color: "bg-red-500/20 text-red-400 border-red-500/30" },
