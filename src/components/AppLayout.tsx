@@ -7,6 +7,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import logo from "@/assets/logo.png";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 import CloserBlockDialog from "@/components/CloserBlockDialog";
+import NotificationBell from "@/components/NotificationBell";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/useTheme";
@@ -178,9 +179,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             Grupo <span className="text-primary">Silva</span>
           </span>
         </Link>
-        <button onClick={() => setMobileOpen(!mobileOpen)}>
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </header>
 
       {/* Mobile nav overlay */}
@@ -237,6 +241,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         "pt-14 md:pt-0",
         expanded ? "md:ml-64" : "md:ml-[4.5rem]"
       )}>
+        {/* Top bar (desktop): notification bell */}
+        <div className="hidden md:flex items-center justify-end px-4 pt-3">
+          <NotificationBell />
+        </div>
+
         {/* Google Calendar Banner */}
         <div className="px-4 pt-3">
           <GoogleCalendarBanner />

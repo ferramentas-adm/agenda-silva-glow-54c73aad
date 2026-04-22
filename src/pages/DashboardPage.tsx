@@ -977,7 +977,7 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
                           </Button>
                         )}
-                        {detailAg.status !== "realizada" && (
+                        {role !== "sdr" && detailAg.status !== "realizada" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
