@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Clock, AlertTriangle, PenLine, CalendarDays, Lock } from "lucide-react";
 import { useGoogleCalendarEvents } from "@/hooks/useGoogleCalendar";
@@ -102,6 +103,8 @@ function isCustomTimeConflicting(
 }
 
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
+  const { role } = useAuth();
+  const canOverrideBlock = role === "gestor" || role === "moderador";
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
@@ -197,7 +200,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return;
     }
 
-    // Check personal blocks
+    // Check personal blocks — bloqueio absoluto para SDR/Closer.
+    // Gestor/Moderador podem forçar (após confirmação) para casos excepcionais.
     const customH = parseInt(customInput.slice(0, 2), 10);
     const isBlockedByPersonal = closerBlocks.some((b: any) => {
       const startH = parseInt(b.start_time.slice(0, 2), 10);
@@ -205,8 +209,15 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return customH >= startH && customH < endH;
     });
     if (isBlockedByPersonal) {
-      setCustomError("Horário bloqueado por compromisso pessoal.");
-      return;
+      if (canOverrideBlock) {
+        const ok = window.confirm(
+          "Atenção: este horário está bloqueado por compromisso pessoal do closer.\n\nDeseja agendar mesmo assim? (apenas Gestor/Moderador pode forçar)",
+        );
+        if (!ok) return;
+      } else {
+        setCustomError("Horário bloqueado por compromisso pessoal do closer.");
+        return;
+      }
     }
 
     onSelect(customInput);
