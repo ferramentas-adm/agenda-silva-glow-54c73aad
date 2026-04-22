@@ -645,8 +645,14 @@ function FollowUpActionDialog({
         };
       }
 
-      const { error } = await supabase.from("vendas").update(updatePayload).eq("id", row.id);
+      const { data: updatedVenda, error } = await supabase
+        .from("vendas")
+        .update(updatePayload)
+        .eq("id", row.id)
+        .select("id")
+        .single();
       if (error) throw error;
+      if (!updatedVenda) throw new Error("O resultado não foi salvo. Tente novamente.");
 
       // Webhook DataCrazy
       const { data: agData } = await supabase

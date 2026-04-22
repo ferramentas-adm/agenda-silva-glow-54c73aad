@@ -63,7 +63,7 @@ export default function FollowUpEditDialog({ target, onClose, onDone }: Props) {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase
+      const { data: updatedVenda, error } = await supabase
         .from("vendas")
         .update({
           follow_up: true,
@@ -72,8 +72,11 @@ export default function FollowUpEditDialog({ target, onClose, onDone }: Props) {
           motivo_nao_fechamento: motivo || null,
           observacoes: observacoes.trim() || null,
         })
-        .eq("id", target.id);
+        .eq("id", target.id)
+        .select("id")
+        .single();
       if (error) throw error;
+      if (!updatedVenda) throw new Error("O follow-up não foi atualizado. Tente novamente.");
 
       await logAudit("follow_up_editado", "venda", target.agendamento_id, {
         lead_name: target.lead_name,
@@ -184,15 +187,18 @@ export async function removeFollowUp(
   leadName?: string,
 ): Promise<boolean> {
   try {
-    const { error } = await supabase
+    const { data: updatedVenda, error } = await supabase
       .from("vendas")
       .update({
         follow_up: false,
         follow_up_date: null,
         follow_up_time: null,
       })
-      .eq("id", vendaId);
+      .eq("id", vendaId)
+      .select("id")
+      .single();
     if (error) throw error;
+    if (!updatedVenda) throw new Error("O follow-up não foi removido. Tente novamente.");
 
     await logAudit("follow_up_removido", "venda", agendamentoId, { lead_name: leadName });
     toast.success("Follow-up removido");
