@@ -958,10 +958,10 @@ export function CalendarContent() {
               {canChangeStatus && (
                 <div className="space-y-2">
                   <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
-                  {/* Quando o agendamento já foi reagendado, closers/SDRs não podem mais alterar
-                      o status para evitar mudanças acidentais. Apenas gestor/moderador mantém o controle
-                      total para correções. */}
-                  {detailAg.status === "reagendada" && !isAdminLike ? (
+                  {/* Closers mantêm acesso total a Realizada/Reagendar mesmo em
+                      reagendamentos (criados por SDR ou outros). SDRs continuam
+                      bloqueados em status reagendada para evitar mudanças acidentais. */}
+                  {detailAg.status === "reagendada" && role === "sdr" ? (
                     <p className="text-[11px] text-muted-foreground italic rounded-md border border-primary/10 bg-muted/30 px-2 py-2">
                       Este agendamento foi marcado como <strong>Reagendada</strong>. Para alterar o status,
                       contate um gestor ou moderador.
