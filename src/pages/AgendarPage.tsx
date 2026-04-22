@@ -581,7 +581,7 @@ export default function AgendarPage() {
           {step === "confirm" ? (
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !canGoNext.confirm || (isReasonRequired && !resolvedReason)}
+              disabled={submitting || !canGoNext.confirm || (isCloser && isReschedule && !meetingReasonCustom.trim())}
               className="gap-2"
             >
               {submitting ? "Agendando..." : editId ? "Reagendar" : "Confirmar Agendamento"}
