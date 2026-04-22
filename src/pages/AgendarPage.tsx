@@ -260,7 +260,7 @@ export default function AgendarPage() {
         agendamentoId: insertedData?.id ?? null,
         meetingReason: resolvedReason,
         meetingReasonCustom: meetingReason === "outros" ? meetingReasonCustom : null,
-        channelType: channelType,
+        channelType: isCloser ? "Segunda Reunião" : channelType,
       });
 
       if (meetError) {
