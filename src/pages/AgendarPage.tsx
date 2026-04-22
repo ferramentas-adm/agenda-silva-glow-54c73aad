@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -126,12 +126,27 @@ export default function AgendarPage() {
     },
   });
 
-  // Pre-fill from edit data (when no lead info in URL params)
-  useState(() => {
-    if (editData && !lead) {
+  // Pre-fill from edit data — lead, channel_type e meeting_reason herdados do agendamento original
+  useEffect(() => {
+    if (!editData) return;
+    if (!lead) {
       setLead({ id: "edit", name: editData.lead_name, phone: editData.lead_phone });
     }
-  });
+    if (editData.channel_type && !channelType) {
+      setChannelType(editData.channel_type);
+    }
+    if (editData.meeting_reason && !meetingReason) {
+      // Se o motivo herdado for um valor canônico, marcar direto; senão, vai como "outros" + custom
+      const canonical = ["segunda_reuniao", "fechamento", "remarcado"];
+      if (canonical.includes(editData.meeting_reason)) {
+        setMeetingReason(editData.meeting_reason);
+      } else {
+        setMeetingReason("outros");
+        setMeetingReasonCustom(editData.meeting_reason);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editData]);
 
   const closerName = useMemo(
     () => closers.find((c) => c.id === closerId)?.name ?? "",
