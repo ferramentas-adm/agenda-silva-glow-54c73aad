@@ -360,7 +360,7 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
         />
         <KpiCard
           icon={Receipt}
-          label="Ticket Médio"
+          label="Coletado Médio"
           value={fmtBRL(ticketMedio)}
           sub={
             totalVendas > 0
@@ -369,7 +369,7 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
           }
           color="emerald"
           onClick={() =>
-            openDrill(`Ticket médio — ${dayLabel}`, fechadasIds, fmtBRL(ticketMedio))
+            openDrill(`Coletado médio — ${dayLabel}`, fechadasIds, fmtBRL(ticketMedio))
           }
         />
         <KpiCard

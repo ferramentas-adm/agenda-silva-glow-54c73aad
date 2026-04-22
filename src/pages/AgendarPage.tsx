@@ -236,7 +236,7 @@ export default function AgendarPage() {
         scheduled_time: time,
         observation: observation || null,
         briefing: briefingText.trim() || null,
-        status: editId ? "reagendada" : "confirmada",
+        status: editId ? "reagendada" : "agendada",
         meet_link: meetLink,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
@@ -244,6 +244,7 @@ export default function AgendarPage() {
         meeting_reason: resolvedReason || null,
         // Closer: canal sempre fixado como "Segunda Reunião"
         channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
+        // Status inicial: 'reagendada' se for reagendamento, senão 'agendada' (aguarda confirmação do lead)
       } as any).select("id").single();
 
       if (error) throw error;
