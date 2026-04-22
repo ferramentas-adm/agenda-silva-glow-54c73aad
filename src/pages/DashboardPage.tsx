@@ -382,11 +382,15 @@ export function CalendarContent() {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
     setTransferring(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ closer_id: transferTarget } as any)
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para transferir este lead.");
+      }
       const oldName = closerMap.get(detailAg.closer_id) || "—";
       const newName = closerMap.get(transferTarget) || "—";
       await logAudit("transfer_lead", "agendamento", detailAg.id, {
@@ -425,11 +429,15 @@ export function CalendarContent() {
   const handleChangeCloser = async (newCloserId: string) => {
     if (!detailAg || newCloserId === detailAg.closer_id) return;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ closer_id: newCloserId } as any)
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para alterar o closer deste agendamento.");
+      }
       const oldName = closerMap.get(detailAg.closer_id) || "—";
       const newName = closerMap.get(newCloserId) || "—";
       await logAudit("edit_agendamento", "agendamento", detailAg.id, {
@@ -454,11 +462,15 @@ export function CalendarContent() {
     const currentSdr = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
     if (newSdrId === currentSdr) return;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ sdr_responsavel_id: newSdrId } as any)
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para alterar o responsável deste agendamento.");
+      }
       const oldName = currentSdr ? (profilesMap.get(currentSdr) || "—") : "—";
       const newName = profilesMap.get(newSdrId) || "—";
       await logAudit("edit_agendamento", "agendamento", detailAg.id, {
@@ -483,11 +495,15 @@ export function CalendarContent() {
     if (!deleteTarget || !deleteReason.trim()) return;
     setDeleting(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id, deletion_reason: deleteReason.trim() })
-        .eq("id", deleteTarget.id);
+        .eq("id", deleteTarget.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para excluir este agendamento.");
+      }
       await logAudit("delete_agendamento", "agendamento", deleteTarget.id, { lead_name: deleteTarget.lead_name, closer_name: closerMap.get(deleteTarget.closer_id ?? "") || "", scheduled_date: deleteTarget.scheduled_date, scheduled_time: deleteTarget.scheduled_time, reason: deleteReason.trim() });
       toast.success("Agendamento excluído com sucesso.");
       await queryClient.refetchQueries({ queryKey: ["agendamentos"] });
@@ -509,11 +525,15 @@ export function CalendarContent() {
     }
     setUpdatingStatus(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ status: newStatus as any })
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para alterar o status deste agendamento.");
+      }
       await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, closer_name: closerMap.get(detailAg.closer_id ?? "") || "", scheduled_date: detailAg.scheduled_date, scheduled_time: detailAg.scheduled_time, old_status: detailAg.status, new_status: newStatus });
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
       const updatedAg = { ...detailAg, status: newStatus };
@@ -550,11 +570,15 @@ export function CalendarContent() {
     try {
       // Atualiza o horário e marca status como "reagendada"
       // O trigger notify_status_change_webhook envia o payload completo ao DataCrazy
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ scheduled_time: editTime, status: "reagendada" } as any)
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para editar este agendamento.");
+      }
       await logAudit("edit_agendamento", "agendamento", detailAg.id, {
         lead_name: detailAg.lead_name,
         closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
