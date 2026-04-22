@@ -482,10 +482,29 @@ export default function AgendarPage() {
                 </div>
               )}
 
+              {/* Closer: campo "Justificar Reagendamento" só aparece quando está reagendando */}
+              {isCloser && isReschedule && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Justificar Reagendamento <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    placeholder="Em poucas palavras, explique o motivo do reagendamento..."
+                    value={meetingReasonCustom}
+                    onChange={(e) => setMeetingReasonCustom(e.target.value.slice(0, 200))}
+                    maxLength={200}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Campo obrigatório. Máx. 200 caracteres.
+                  </p>
+                </div>
+              )}
+
+              {/* Motivo da reunião — apenas gestor/moderador */}
               {needsReason && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
-                    Motivo da reunião{isReasonRequired ? " (obrigatório)" : ""}
+                    Motivo da reunião
                   </label>
                   <Select value={meetingReason ?? ""} onValueChange={(v) => { setMeetingReason(v); if (v !== "outros") setMeetingReasonCustom(""); }}>
                     <SelectTrigger>
@@ -509,6 +528,11 @@ export default function AgendarPage() {
                   )}
                 </div>
               )}
+
+              {/* Tipo de canal — closer vê como label fixo "Segunda Reunião"; demais escolhem no select */}
+              {isCloser ? (
+                <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
+              ) : null}
 
               {(role === "sdr" || role === "moderador" || role === "gestor") && (
                 <div className="space-y-1.5">
