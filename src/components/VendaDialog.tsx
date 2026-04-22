@@ -311,7 +311,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="valor">Valor da venda *</Label>
+                <Label htmlFor="valor">Valor coletado no ato *</Label>
                 <Input
                   id="valor"
                   inputMode="numeric"
