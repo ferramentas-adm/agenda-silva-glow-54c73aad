@@ -483,11 +483,15 @@ export function CalendarContent() {
     if (!deleteTarget || !deleteReason.trim()) return;
     setDeleting(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id, deletion_reason: deleteReason.trim() })
-        .eq("id", deleteTarget.id);
+        .eq("id", deleteTarget.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para excluir este agendamento.");
+      }
       await logAudit("delete_agendamento", "agendamento", deleteTarget.id, { lead_name: deleteTarget.lead_name, closer_name: closerMap.get(deleteTarget.closer_id ?? "") || "", scheduled_date: deleteTarget.scheduled_date, scheduled_time: deleteTarget.scheduled_time, reason: deleteReason.trim() });
       toast.success("Agendamento excluído com sucesso.");
       await queryClient.refetchQueries({ queryKey: ["agendamentos"] });
@@ -509,11 +513,15 @@ export function CalendarContent() {
     }
     setUpdatingStatus(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agendamentos")
         .update({ status: newStatus as any })
-        .eq("id", detailAg.id);
+        .eq("id", detailAg.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para alterar o status deste agendamento.");
+      }
       await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, closer_name: closerMap.get(detailAg.closer_id ?? "") || "", scheduled_date: detailAg.scheduled_date, scheduled_time: detailAg.scheduled_time, old_status: detailAg.status, new_status: newStatus });
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
       const updatedAg = { ...detailAg, status: newStatus };
