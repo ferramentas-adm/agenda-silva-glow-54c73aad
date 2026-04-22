@@ -973,8 +973,9 @@ export function CalendarContent() {
                         juntos compõem o "Não comparecimento" do dia.
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {/* Confirmar — escondido para closer (closer só vê Realizada e Reagendar) */}
-                        {role !== "closer" && detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
+                        {/* Confirmar — disponível para SDR/Gestor/Mod quando status é "agendada"
+                            (lead aguardando confirmação). Closer não vê o botão Confirmar. */}
+                        {role !== "closer" && detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && detailAg.status !== "realizada" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
                             <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
                           </Button>
