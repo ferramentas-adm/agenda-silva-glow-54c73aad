@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, subWeeks } from "date-fns";
+import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Play, Pause, ChevronLeft, ChevronRight, CalendarDays,
@@ -201,38 +201,7 @@ export default function DashboardComercialPage() {
     };
   }, [agendamentos, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd]);
 
-  // ─── Ranking ───────────────────────────────────────────────────
-  const ranking = useMemo(() => {
-    const yesterdayStart = format(subDays(currentDate, 1), "yyyy-MM-dd");
-    const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
-
-    const sdrOf = (a: AgendamentoMetric) => a.sdr_responsavel_id ?? a.created_by;
-
-    return sdrProfiles.map(profile => {
-      const countInRange = (start: string, end: string) =>
-        createdAgs.filter(a =>
-          sdrOf(a) === profile.user_id &&
-          a.created_at >= start + "T00:00:00" &&
-          a.created_at <= end + "T23:59:59"
-        ).length;
-
-      const hoje = countInRange(dateStr, dateStr);
-      const paraHoje = agendamentos.filter(a =>
-        sdrOf(a) === profile.user_id &&
-        a.scheduled_date === dateStr
-      ).length;
-      const ontem = countInRange(yesterdayStart, yesterdayStart);
-      const semana = countInRange(weekStart, weekEnd);
-      const quinzena = countInRange(quinzenaStart, dateStr);
-      const mes = createdAgs.filter(a =>
-        sdrOf(a) === profile.user_id &&
-        a.created_at >= monthStart + "T00:00:00" &&
-        a.created_at <= monthEnd + "T23:59:59"
-      ).length;
-
-      return { ...profile, hoje, paraHoje, ontem, semana, quinzena, mes };
-    }).sort((a, b) => b.hoje - a.hoje || b.semana - a.semana || b.mes - a.mes);
-  }, [sdrProfiles, createdAgs, agendamentos, dateStr, weekStart, weekEnd, monthStart, monthEnd, currentDate]);
+  // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
 
   const updatedAgo = useMemo(() => {
     if (!dataUpdatedAt) return "";
@@ -358,9 +327,11 @@ export default function DashboardComercialPage() {
         {activeTab === 1 && <CalendarContent />}
         {activeTab === 2 && (
           <RankingSDRsTab
-            ranking={ranking}
+            sdrProfiles={sdrProfiles}
             updatedAgo={updatedAgo}
             createdAgs={createdAgs}
+            agendamentos={agendamentos}
+            currentDate={currentDate}
           />
         )}
         {activeTab === 3 && <VendasTab currentDate={currentDate} />}
@@ -616,31 +587,48 @@ function MetricasSDRsTab({
 }
 
 // ─── Ranking SDRs Tab ────────────────────────────────────────────
-type RankingColumnKey = "ontem" | "semana" | "quinzena" | "mes" | "personalizado";
+type RankingMetricType = "criadas" | "para" | "compareceu";
+type RankingPeriodKey = "hoje" | "ontem" | "amanha" | "semana" | "quinzena" | "mes" | "data" | "intervalo";
 
-const RANKING_COLUMNS: { key: RankingColumnKey; label: string }[] = [
+const METRIC_OPTIONS: { key: RankingMetricType; label: string; description: string }[] = [
+  { key: "criadas", label: "Criadas", description: "Agendamentos criados pelo SDR no período" },
+  { key: "para", label: "Para", description: "Agendamentos cuja reunião está marcada para o período" },
+  { key: "compareceu", label: "Compareceu", description: "Reuniões realizadas no período" },
+];
+
+const PERIOD_OPTIONS: { key: RankingPeriodKey; label: string }[] = [
+  { key: "hoje", label: "Hoje" },
   { key: "ontem", label: "Ontem" },
+  { key: "amanha", label: "Amanhã" },
   { key: "semana", label: "Semana" },
   { key: "quinzena", label: "Quinzena" },
   { key: "mes", label: "Mês" },
-  { key: "personalizado", label: "Personalizado" },
+  { key: "data", label: "Data específica" },
+  { key: "intervalo", label: "Período" },
 ];
 
 function RankingSDRsTab({
-  ranking,
+  sdrProfiles,
   updatedAgo,
   createdAgs,
+  agendamentos,
+  currentDate,
 }: {
-  ranking: { user_id: string; full_name: string; hoje: number; paraHoje: number; ontem: number; semana: number; quinzena: number; mes: number }[];
+  sdrProfiles: SDRProfile[];
   updatedAgo: string;
   createdAgs: AgendamentoMetric[];
+  agendamentos: AgendamentoMetric[];
+  currentDate: Date;
 }) {
-  const [visibleCols, setVisibleCols] = useState<Set<RankingColumnKey>>(new Set(["semana", "mes"]));
+  const [metricType, setMetricType] = useState<RankingMetricType>("criadas");
+  const [visiblePeriods, setVisiblePeriods] = useState<Set<RankingPeriodKey>>(new Set(["hoje", "semana", "mes"]));
+  const [specificDate, setSpecificDate] = useState<Date | undefined>(undefined);
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [dateOpen, setDateOpen] = useState(false);
   const [rangeOpen, setRangeOpen] = useState(false);
 
-  const toggleCol = (key: RankingColumnKey) => {
-    setVisibleCols(prev => {
+  const togglePeriod = (key: RankingPeriodKey) => {
+    setVisiblePeriods(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -648,30 +636,85 @@ function RankingSDRsTab({
     });
   };
 
-  // Custom range counts
-  const customCounts = useMemo(() => {
-    if (!customRange.from || !customRange.to) return new Map<string, number>();
-    const start = format(customRange.from, "yyyy-MM-dd");
-    const end = format(customRange.to, "yyyy-MM-dd");
-    const map = new Map<string, number>();
-    createdAgs.forEach(a => {
-      const sdrId = a.sdr_responsavel_id ?? a.created_by;
-      if (sdrId && a.created_at >= start + "T00:00:00" && a.created_at <= end + "T23:59:59") {
-        map.set(sdrId, (map.get(sdrId) || 0) + 1);
-      }
-    });
-    return map;
-  }, [createdAgs, customRange]);
+  const periodRanges = useMemo(() => {
+    const dateStr = format(currentDate, "yyyy-MM-dd");
+    const yesterdayStr = format(subDays(currentDate, 1), "yyyy-MM-dd");
+    const tomorrowStr = format(addDays(currentDate, 1), "yyyy-MM-dd");
+    const weekStart = format(startOfWeek(currentDate, { locale: ptBR }), "yyyy-MM-dd");
+    const weekEnd = format(endOfWeek(currentDate, { locale: ptBR }), "yyyy-MM-dd");
+    const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
+    const monthStart = format(startOfMonth(currentDate), "yyyy-MM-dd");
+    const monthEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
 
-  const getPosition = (index: number, row: typeof ranking[0]) => {
-    if (row.hoje === 0 && row.semana === 0 && row.mes === 0) {
+    const map: Record<RankingPeriodKey, { from: string; to: string } | null> = {
+      hoje: { from: dateStr, to: dateStr },
+      ontem: { from: yesterdayStr, to: yesterdayStr },
+      amanha: { from: tomorrowStr, to: tomorrowStr },
+      semana: { from: weekStart, to: weekEnd },
+      quinzena: { from: quinzenaStart, to: dateStr },
+      mes: { from: monthStart, to: monthEnd },
+      data: specificDate
+        ? { from: format(specificDate, "yyyy-MM-dd"), to: format(specificDate, "yyyy-MM-dd") }
+        : null,
+      intervalo: customRange.from && customRange.to
+        ? { from: format(customRange.from, "yyyy-MM-dd"), to: format(customRange.to, "yyyy-MM-dd") }
+        : null,
+    };
+    return map;
+  }, [currentDate, specificDate, customRange]);
+
+  const sdrOf = (a: AgendamentoMetric) => a.sdr_responsavel_id ?? a.created_by;
+
+  const countFor = (sdrId: string, range: { from: string; to: string } | null) => {
+    if (!range) return 0;
+    if (metricType === "criadas") {
+      return createdAgs.filter(a =>
+        sdrOf(a) === sdrId &&
+        a.created_at >= range.from + "T00:00:00" &&
+        a.created_at <= range.to + "T23:59:59"
+      ).length;
+    }
+    if (metricType === "para") {
+      return agendamentos.filter(a =>
+        sdrOf(a) === sdrId &&
+        a.scheduled_date >= range.from &&
+        a.scheduled_date <= range.to
+      ).length;
+    }
+    return agendamentos.filter(a =>
+      sdrOf(a) === sdrId &&
+      a.status === "realizada" &&
+      a.scheduled_date >= range.from &&
+      a.scheduled_date <= range.to
+    ).length;
+  };
+
+  const activePeriods = PERIOD_OPTIONS.filter(p => visiblePeriods.has(p.key));
+
+  const ranking = useMemo(() => {
+    return sdrProfiles
+      .map(profile => {
+        const counts: Record<string, number> = {};
+        let total = 0;
+        activePeriods.forEach(p => {
+          const v = countFor(profile.user_id, periodRanges[p.key]);
+          counts[p.key] = v;
+          total += v;
+        });
+        return { ...profile, counts, total };
+      })
+      .sort((a, b) => b.total - a.total);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sdrProfiles, createdAgs, agendamentos, metricType, periodRanges, visiblePeriods]);
+
+  const getPosition = (index: number, total: number) => {
+    if (total === 0) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive">
           Sem atividade
         </span>
       );
     }
-
     const pos = index + 1;
     const emoji = pos === 1 ? "🏆" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : "";
     const colors = pos === 1
@@ -681,7 +724,6 @@ function RankingSDRsTab({
         : pos === 3
           ? "border-amber-600/40 bg-amber-600/10 text-amber-500"
           : "border-primary/20 bg-card text-muted-foreground";
-
     return (
       <span className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium", colors)}>
         {emoji} {pos}º lugar
@@ -689,7 +731,15 @@ function RankingSDRsTab({
     );
   };
 
-  const activeNonFixedCols = RANKING_COLUMNS.filter(c => visibleCols.has(c.key));
+  const periodColumnLabel = (p: { key: RankingPeriodKey; label: string }) => {
+    if (p.key === "data" && specificDate) return format(specificDate, "dd/MM/yyyy");
+    if (p.key === "intervalo" && customRange.from && customRange.to) {
+      return `${format(customRange.from, "dd/MM")} — ${format(customRange.to, "dd/MM")}`;
+    }
+    return p.label;
+  };
+
+  const metricLabel = METRIC_OPTIONS.find(m => m.key === metricType)?.label ?? "";
 
   return (
     <div className="space-y-4">
@@ -699,34 +749,75 @@ function RankingSDRsTab({
         <span className="text-xs text-muted-foreground">{updatedAgo}</span>
       </div>
 
-      {/* Column toggles */}
+      {/* Metric type selector (mutually exclusive) */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-muted-foreground font-medium">Colunas:</span>
-        {RANKING_COLUMNS.map(col => (
+        <span className="text-xs text-muted-foreground font-medium">Métrica:</span>
+        {METRIC_OPTIONS.map(opt => (
           <Button
-            key={col.key}
-            variant={visibleCols.has(col.key) ? "default" : "outline"}
+            key={opt.key}
+            variant={metricType === opt.key ? "default" : "outline"}
             size="sm"
-            className="h-7 text-xs gap-1.5"
-            onClick={() => toggleCol(col.key)}
+            className="h-7 text-xs"
+            onClick={() => setMetricType(opt.key)}
+            title={opt.description}
           >
-            {visibleCols.has(col.key) ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-            {col.label}
+            {opt.label}
           </Button>
         ))}
       </div>
 
-      {/* Custom date range picker */}
-      {visibleCols.has("personalizado") && (
+      {/* Period toggles */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Períodos:</span>
+        {PERIOD_OPTIONS.map(p => (
+          <Button
+            key={p.key}
+            variant={visiblePeriods.has(p.key) ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={() => togglePeriod(p.key)}
+          >
+            {visiblePeriods.has(p.key) ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+            {p.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Specific date picker */}
+      {visiblePeriods.has("data") && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Período personalizado:</span>
+          <span className="text-xs text-muted-foreground">Data específica:</span>
+          <Popover open={dateOpen} onOpenChange={setDateOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                <CalendarDays className="h-3 w-3" />
+                {specificDate ? format(specificDate, "dd/MM/yyyy") : "Selecionar data"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={specificDate}
+                onSelect={(date) => { setSpecificDate(date); setDateOpen(false); }}
+                locale={ptBR}
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+
+      {/* Custom range picker */}
+      {visiblePeriods.has("intervalo") && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground">Intervalo:</span>
           <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
                 <CalendarDays className="h-3 w-3" />
                 {customRange.from && customRange.to
                   ? `${format(customRange.from, "dd/MM/yyyy")} — ${format(customRange.to, "dd/MM/yyyy")}`
-                  : "Selecionar período"}
+                  : "Selecionar intervalo"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -734,16 +825,12 @@ function RankingSDRsTab({
                 mode="range"
                 selected={customRange.from ? { from: customRange.from, to: customRange.to } : undefined}
                 onSelect={(range) => {
-                  // If user already has a complete range or no range, start fresh with new "from"
                   if (customRange.from && customRange.to) {
-                    // Had a complete range, so this click starts a new one
                     setCustomRange({ from: range?.to || range?.from, to: undefined });
                   } else if (customRange.from && !customRange.to && range?.to) {
-                    // Had only "from", now got "to" — complete the range
                     setCustomRange({ from: range.from, to: range.to });
                     setRangeOpen(false);
                   } else {
-                    // First click — set "from"
                     setCustomRange({ from: range?.from, to: undefined });
                   }
                 }}
@@ -762,51 +849,36 @@ function RankingSDRsTab({
             <tr className="border-b border-primary/10">
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">#</th>
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">Nome</th>
-              <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">Criadas Hoje</th>
-              <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">Para Hoje</th>
-              {activeNonFixedCols.map(col => (
-                <th key={col.key} className="text-center py-3 px-4 font-medium text-xs text-muted-foreground">
-                  {col.key === "personalizado" && customRange.from && customRange.to
-                    ? `${format(customRange.from, "dd/MM")} — ${format(customRange.to, "dd/MM")}`
-                    : col.label}
+              {activePeriods.map(p => (
+                <th key={p.key} className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">
+                  {metricLabel} — {periodColumnLabel(p)}
                 </th>
               ))}
               <th className="text-center py-3 px-4 font-medium text-xs text-muted-foreground italic">Posição</th>
             </tr>
           </thead>
           <tbody>
-            {ranking.length === 0 && (
+            {(ranking.length === 0 || activePeriods.length === 0) && (
               <tr>
-                <td colSpan={4 + activeNonFixedCols.length + 1} className="text-center text-muted-foreground py-8 text-xs">
-                  Nenhum SDR encontrado
+                <td colSpan={3 + activePeriods.length} className="text-center text-muted-foreground py-8 text-xs">
+                  {activePeriods.length === 0 ? "Selecione ao menos um período" : "Nenhum SDR encontrado"}
                 </td>
               </tr>
             )}
-            {ranking.map((row, i) => (
+            {activePeriods.length > 0 && ranking.map((row, i) => (
               <tr key={row.user_id} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                 <td className="py-3 px-4 text-muted-foreground">{i + 1}</td>
                 <td className="py-3 px-4 font-semibold">{row.full_name}</td>
-                <td className="py-3 px-4 text-center font-bold text-primary">
-                  {row.hoje > 0 ? row.hoje : "—"}
-                </td>
-                <td className="py-3 px-4 text-center font-bold text-primary">
-                  {row.paraHoje > 0 ? row.paraHoje : "—"}
-                </td>
-                {activeNonFixedCols.map(col => {
-                  let val = 0;
-                  if (col.key === "personalizado") {
-                    val = customCounts.get(row.user_id) || 0;
-                  } else {
-                    val = row[col.key as keyof typeof row] as number;
-                  }
+                {activePeriods.map(p => {
+                  const val = row.counts[p.key] ?? 0;
                   return (
-                    <td key={col.key} className="py-3 px-4 text-center">
+                    <td key={p.key} className="py-3 px-4 text-center font-bold text-primary">
                       {val > 0 ? val : "—"}
                     </td>
                   );
                 })}
                 <td className="py-3 px-4 text-center">
-                  {getPosition(i, row)}
+                  {getPosition(i, row.total)}
                 </td>
               </tr>
             ))}
