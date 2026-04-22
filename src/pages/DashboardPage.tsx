@@ -306,35 +306,34 @@ export function CalendarContent() {
   const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
 
-  // SDR-only filtered agendamentos for metrics (uses sdr_responsavel_id when set, else created_by)
-  const sdrFiltered = useMemo(
-    () => filtered.filter((a) => {
-      const sdrUserId = a.sdr_responsavel_id || a.created_by;
-      if (!sdrUserId) return false;
-      const role = userRolesMap.get(sdrUserId);
-      return role === "sdr";
-    }),
-    [filtered, userRolesMap]
+  // Status válidos para o "Total" da barra superior
+  const TOTAL_STATUSES = ["confirmada", "realizada", "cancelada", "no_show", "reagendada"];
+
+  // Métricas para Admin / Moderador / SDR — baseadas em todos os agendamentos do dia (filtrados por closer)
+  const totalSdrCount = useMemo(
+    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status)).length,
+    [filtered]
   );
 
-  // Closer-created agendamentos count for metrics
+  // Status counts gerais (admin/mod/sdr)
+  const statusCounts = useMemo(
+    () =>
+      filtered.reduce<Record<string, number>>((acc, agendamento) => {
+        acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
+        return acc;
+      }, {}),
+    [filtered]
+  );
+
+  // Total Closers (Admin/Mod/SDR view): reuniões REALIZADAS cujo created_by tem role 'closer'
   const closerCreatedCount = useMemo(
     () => filtered.filter((a) => {
-      if (a.sdr_responsavel_id) return false;
+      if (a.status !== "realizada") return false;
       if (!a.created_by) return false;
       const creatorRole = userRolesMap.get(a.created_by);
       return creatorRole === "closer";
     }).length,
     [filtered, userRolesMap]
-  );
-
-  const statusCounts = useMemo(
-    () =>
-      sdrFiltered.reduce<Record<string, number>>((acc, agendamento) => {
-        acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
-        return acc;
-      }, {}),
-    [sdrFiltered]
   );
 
   const closerMap = useMemo(() => {
@@ -349,6 +348,24 @@ export function CalendarContent() {
     const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
     return myCloser?.id ?? null;
   }, [role, user?.email, closers]);
+
+  // ─── Métricas para CLOSER (visão individual da própria agenda) ───
+  const closerOwnAgendamentos = useMemo(
+    () => filtered.filter((a) => a.closer_id === myCloserId),
+    [filtered, myCloserId]
+  );
+  const closerOwnTotal = useMemo(
+    () => closerOwnAgendamentos.filter((a) => TOTAL_STATUSES.includes(a.status)).length,
+    [closerOwnAgendamentos]
+  );
+  const closerOwnStatusCounts = useMemo(
+    () =>
+      closerOwnAgendamentos.reduce<Record<string, number>>((acc, a) => {
+        acc[a.status] = (acc[a.status] ?? 0) + 1;
+        return acc;
+      }, {}),
+    [closerOwnAgendamentos]
+  );
 
   const canChangeStatus = useMemo(() => {
     if (!detailAg) return false;
@@ -610,54 +627,65 @@ export function CalendarContent() {
         
 
         {/* Status counters */}
-        {!loadingAgendamentos && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            {[
-              { key: "total", label: "Total SDRs", icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
-              { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
-              { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-              { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
-              { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
-              { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
-              {
-                key: "nao_comparecimento",
-                label: "Não comparecimento",
-                icon: Ban,
-                color: "text-rose-400",
-                bg: "bg-rose-500/10",
-              },
-            ].map(({ key, label, icon: Icon, color, bg }) => {
-              let count: number;
-              if (key === "total") count = sdrFiltered.length;
-              else if (key === "nao_comparecimento") {
-                // Soma dos 3 status que representam ausência do lead
-                count =
-                  (statusCounts["cancelada"] ?? 0) +
-                  (statusCounts["no_show"] ?? 0) +
-                  (statusCounts["reagendada"] ?? 0);
-              } else {
-                count = statusCounts[key] ?? 0;
-              }
-              return (
-                <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
-                  <Icon className={cn("h-5 w-5 shrink-0", color)} />
+        {!loadingAgendamentos && (() => {
+          // Visão de Closer (individual): mostra apenas seus próprios números, sem "Total Closers"
+          const isCloserView = role === "closer";
+          const sourceTotal = isCloserView ? closerOwnTotal : totalSdrCount;
+          const sourceCounts = isCloserView ? closerOwnStatusCounts : statusCounts;
+          const totalLabel = isCloserView ? "Total Closer" : "Total SDRs";
+
+          const cards = [
+            { key: "total", label: totalLabel, icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
+            { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
+            { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+            { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
+            { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
+            { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
+            {
+              key: "nao_comparecimento",
+              label: "Não comparecimento",
+              icon: Ban,
+              color: "text-rose-400",
+              bg: "bg-rose-500/10",
+            },
+          ];
+
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              {cards.map(({ key, label, icon: Icon, color, bg }) => {
+                let count: number;
+                if (key === "total") count = sourceTotal;
+                else if (key === "nao_comparecimento") {
+                  count =
+                    (sourceCounts["cancelada"] ?? 0) +
+                    (sourceCounts["no_show"] ?? 0) +
+                    (sourceCounts["reagendada"] ?? 0);
+                } else {
+                  count = sourceCounts[key] ?? 0;
+                }
+                return (
+                  <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
+                    <Icon className={cn("h-5 w-5 shrink-0", color)} />
+                    <div>
+                      <p className="text-lg font-bold leading-none">{count}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Total Closers — apenas para Admin / Moderador / SDR */}
+              {!isCloserView && (
+                <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-purple-500/10")}>
+                  <Users className={cn("h-5 w-5 shrink-0 text-purple-400")} />
                   <div>
-                    <p className="text-lg font-bold leading-none">{count}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+                    <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Total Closers</p>
                   </div>
                 </div>
-              );
-            })}
-            {/* Closer-created total */}
-            <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-purple-500/10")}>
-              <Users className={cn("h-5 w-5 shrink-0 text-purple-400")} />
-              <div>
-                <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Closers</p>
-              </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -943,7 +971,8 @@ export function CalendarContent() {
                         juntos compõem o "Não comparecimento" do dia.
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
+                        {/* Confirmar — escondido para closer (closer só vê Realizada e Reagendar) */}
+                        {role !== "closer" && detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
                             <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
                           </Button>
@@ -973,12 +1002,13 @@ export function CalendarContent() {
                         >
                           <RotateCcw className="h-3.5 w-3.5" />Reagendar
                         </Button>
-                        {detailAg.status !== "cancelada" && (
+                        {/* Cancelar e No-show — escondidos para closer */}
+                        {role !== "closer" && detailAg.status !== "cancelada" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
                             <XCircle className="h-3.5 w-3.5" />Cancelar
                           </Button>
                         )}
-                        {detailAg.status !== "no_show" && (
+                        {role !== "closer" && detailAg.status !== "no_show" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
                             <AlertCircle className="h-3.5 w-3.5" />No-show
                           </Button>

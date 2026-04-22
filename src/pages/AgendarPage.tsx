@@ -85,6 +85,13 @@ export default function AgendarPage() {
 
   const isAdmin = role === "gestor" || role === "moderador";
 
+  // Closer: fixar canal como "Segunda Reunião" automaticamente em qualquer fluxo (novo ou reagendamento)
+  useEffect(() => {
+    if (role === "closer" && channelType !== "Segunda Reunião") {
+      setChannelType("Segunda Reunião");
+    }
+  }, [role, channelType]);
+
   // Fetch closers for name resolution
   const { data: closers = [] } = useQuery({
     queryKey: ["closers-active"],
@@ -133,11 +140,14 @@ export default function AgendarPage() {
     if (!lead) {
       setLead({ id: "edit", name: editData.lead_name, phone: editData.lead_phone });
     }
-    if (editData.channel_type && !channelType) {
+    // Closer: canal sempre fixado como "Segunda Reunião" — não herda do original.
+    if (role === "closer") {
+      if (!channelType) setChannelType("Segunda Reunião");
+    } else if (editData.channel_type && !channelType) {
       setChannelType(editData.channel_type);
     }
-    if (editData.meeting_reason && !meetingReason) {
-      // Se o motivo herdado for um valor canônico, marcar direto; senão, vai como "outros" + custom
+    // Closer reagendando: NÃO herda meeting_reason — ele precisa escrever uma nova justificativa.
+    if (role !== "closer" && editData.meeting_reason && !meetingReason) {
       const canonical = ["segunda_reuniao", "fechamento", "remarcado"];
       if (canonical.includes(editData.meeting_reason)) {
         setMeetingReason(editData.meeting_reason);
@@ -147,7 +157,7 @@ export default function AgendarPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editData]);
+  }, [editData, role]);
 
   const closerName = useMemo(
     () => closers.find((c) => c.id === closerId)?.name ?? "",
@@ -171,13 +181,22 @@ export default function AgendarPage() {
     if (stepIndex > 0) setStep(steps[stepIndex - 1]);
   };
 
-  const isReasonRequired = role === "closer";
-  const needsReason = role === "closer" || role === "gestor" || role === "moderador";
-  const resolvedReason = meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason;
+  const isCloser = role === "closer";
+  // Closer não vê o dropdown de motivo — toda reunião dele é "Segunda Reunião" automaticamente.
+  // No reagendamento, ele preenche o campo "Justificar Reagendamento" (obrigatório, salvo em meeting_reason).
+  const needsReason = role === "gestor" || role === "moderador";
+  const isReasonRequired = false;
+  const resolvedReason = isCloser
+    ? (isReschedule ? (meetingReasonCustom.trim() || null) : "segunda_reuniao")
+    : (meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason);
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
-    if (isReasonRequired && !resolvedReason) return;
+    // Closer reagendando deve obrigatoriamente justificar
+    if (isCloser && isReschedule && !resolvedReason) {
+      toast.error("Informe a justificativa do reagendamento.");
+      return;
+    }
     setSubmitting(true);
 
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -222,7 +241,8 @@ export default function AgendarPage() {
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason || null,
-        channel_type: channelType || null,
+        // Closer: canal sempre fixado como "Segunda Reunião"
+        channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
       } as any).select("id").single();
 
       if (error) throw error;
@@ -250,7 +270,7 @@ export default function AgendarPage() {
         agendamentoId: insertedData?.id ?? null,
         meetingReason: resolvedReason,
         meetingReasonCustom: meetingReason === "outros" ? meetingReasonCustom : null,
-        channelType: channelType,
+        channelType: isCloser ? "Segunda Reunião" : channelType,
       });
 
       if (meetError) {
@@ -462,10 +482,29 @@ export default function AgendarPage() {
                 </div>
               )}
 
+              {/* Closer: campo "Justificar Reagendamento" só aparece quando está reagendando */}
+              {isCloser && isReschedule && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Justificar Reagendamento <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    placeholder="Em poucas palavras, explique o motivo do reagendamento..."
+                    value={meetingReasonCustom}
+                    onChange={(e) => setMeetingReasonCustom(e.target.value.slice(0, 200))}
+                    maxLength={200}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Campo obrigatório. Máx. 200 caracteres.
+                  </p>
+                </div>
+              )}
+
+              {/* Motivo da reunião — apenas gestor/moderador */}
               {needsReason && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
-                    Motivo da reunião{isReasonRequired ? " (obrigatório)" : ""}
+                    Motivo da reunião
                   </label>
                   <Select value={meetingReason ?? ""} onValueChange={(v) => { setMeetingReason(v); if (v !== "outros") setMeetingReasonCustom(""); }}>
                     <SelectTrigger>
@@ -489,6 +528,11 @@ export default function AgendarPage() {
                   )}
                 </div>
               )}
+
+              {/* Tipo de canal — closer vê como label fixo "Segunda Reunião"; demais escolhem no select */}
+              {isCloser ? (
+                <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
+              ) : null}
 
               {(role === "sdr" || role === "moderador" || role === "gestor") && (
                 <div className="space-y-1.5">
@@ -537,7 +581,7 @@ export default function AgendarPage() {
           {step === "confirm" ? (
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !canGoNext.confirm || (isReasonRequired && !resolvedReason)}
+              disabled={submitting || !canGoNext.confirm || (isCloser && isReschedule && !meetingReasonCustom.trim())}
               className="gap-2"
             >
               {submitting ? "Agendando..." : editId ? "Reagendar" : "Confirmar Agendamento"}
