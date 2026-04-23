@@ -228,20 +228,27 @@ export default function AgendarPage() {
       }
 
       // Always create the agendamento, with or without meet link
+      // Para closer, anexamos a justificativa em `observation` (já que o campo
+      // "Motivo da reunião" foi removido); meeting_reason fica fixo em 'segunda_reuniao'.
+      const closerJustification = isCloser ? meetingReasonCustom.trim() : "";
+      const finalObservation = isCloser
+        ? [closerJustification, observation.trim()].filter(Boolean).join(" — ") || null
+        : (observation.trim() || null);
+
       const { data: insertedData, error } = await supabase.from("agendamentos").insert({
         lead_name: lead.name,
         lead_phone: lead.phone,
         closer_id: closerId,
         scheduled_date: dateStr,
         scheduled_time: time,
-        observation: observation || null,
+        observation: finalObservation,
         briefing: briefingText.trim() || null,
         status: editId ? "reagendada" : "agendada",
         meet_link: meetLink,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
-        meeting_reason: resolvedReason || null,
+        meeting_reason: resolvedReason,
         // Closer: canal sempre fixado como "Segunda Reunião"
         channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
         // Status inicial: 'reagendada' se for reagendamento, senão 'agendada' (aguarda confirmação do lead)
@@ -249,12 +256,18 @@ export default function AgendarPage() {
 
       if (error) throw error;
 
-      await logAudit("create_agendamento", "agendamento", insertedData?.id, {
-        lead_name: lead.name,
-        closer_name: closerName,
-        date: dateStr,
-        time,
-      });
+      await logAudit(
+        editId ? "reschedule_agendamento" : "create_agendamento",
+        "agendamento",
+        insertedData?.id,
+        {
+          lead_name: lead.name,
+          closer_name: closerName,
+          scheduled_date: dateStr,
+          scheduled_time: time,
+          ...(editId ? { original_agendamento_id: editId } : {}),
+        }
+      );
 
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
