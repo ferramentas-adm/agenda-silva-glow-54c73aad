@@ -5,24 +5,37 @@ import { ptBR } from "date-fns/locale";
 import {
   Play, Pause, ChevronLeft, ChevronRight, CalendarDays,
   TrendingUp, RefreshCw, Trophy, Users, Wifi, Eye, EyeOff,
+  LayoutGrid,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
 import VendasTab from "@/components/dashboard/VendasTab";
+import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
-const TAB_NAMES = ["Métricas SDRs", "Agenda Closers", "Ranking SDRs", "Vendas"];
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade";
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "metricas", label: "Métricas SDRs" },
+  { key: "agenda", label: "Agenda Closers" },
+  { key: "ranking", label: "Ranking SDRs" },
+  { key: "vendas", label: "Vendas" },
+  { key: "produtividade", label: "Produtividade SDR" },
+];
 const ROTATION_INTERVAL = 30000;
 
 interface AgendamentoMetric {
   id: string;
   scheduled_date: string;
+  scheduled_time: string | null;
   created_at: string;
   status: string;
   channel_type: string | null;
@@ -35,14 +48,81 @@ interface SDRProfile {
   full_name: string;
 }
 
+// ─── Visibilidade de Abas (localStorage por usuário) ─────────────
+const ALL_TAB_KEYS: TabKey[] = TABS.map((t) => t.key);
+const visibilityStorageKey = (userId: string | null | undefined) =>
+  `dashboard-tab-visibility:${userId ?? "anon"}`;
+
+function loadVisibleTabs(userId: string | null | undefined): Set<TabKey> {
+  try {
+    const raw = localStorage.getItem(visibilityStorageKey(userId));
+    if (!raw) return new Set(ALL_TAB_KEYS);
+    const parsed = JSON.parse(raw) as TabKey[];
+    const filtered = parsed.filter((k): k is TabKey => ALL_TAB_KEYS.includes(k));
+    return filtered.length > 0 ? new Set(filtered) : new Set(ALL_TAB_KEYS);
+  } catch {
+    return new Set(ALL_TAB_KEYS);
+  }
+}
+
+function saveVisibleTabs(userId: string | null | undefined, tabs: Set<TabKey>) {
+  try {
+    localStorage.setItem(visibilityStorageKey(userId), JSON.stringify(Array.from(tabs)));
+  } catch {
+    /* noop */
+  }
+}
+
 // ─── Main Page ───────────────────────────────────────────────────
 export default function DashboardComercialPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState(0);
+  const { user } = useAuth();
+
+  const [visibleTabs, setVisibleTabs] = useState<Set<TabKey>>(() => loadVisibleTabs(user?.id));
+  const [activeTabKey, setActiveTabKey] = useState<TabKey>("metricas");
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [clock, setClock] = useState(new Date());
+  const [tabSettingsOpen, setTabSettingsOpen] = useState(false);
+
+  // Recarrega preferências quando o usuário muda (login/logout)
+  useEffect(() => {
+    setVisibleTabs(loadVisibleTabs(user?.id));
+  }, [user?.id]);
+
+  // Persiste preferências no localStorage
+  useEffect(() => {
+    saveVisibleTabs(user?.id, visibleTabs);
+  }, [user?.id, visibleTabs]);
+
+  // Lista ordenada das abas atualmente visíveis
+  const visibleTabList = useMemo(
+    () => TABS.filter((t) => visibleTabs.has(t.key)),
+    [visibleTabs],
+  );
+
+  // Garante que activeTabKey continue sendo uma aba visível
+  useEffect(() => {
+    if (visibleTabList.length === 0) return;
+    if (!visibleTabList.some((t) => t.key === activeTabKey)) {
+      setActiveTabKey(visibleTabList[0].key);
+    }
+  }, [visibleTabList, activeTabKey]);
+
+  const toggleTabVisibility = (key: TabKey) => {
+    setVisibleTabs((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        // Não permitir esconder todas as abas
+        if (next.size === 1) return prev;
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   // Live clock
   useEffect(() => {
@@ -50,14 +130,19 @@ export default function DashboardComercialPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-rotation
+  // Auto-rotation (apenas entre abas visíveis)
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || visibleTabList.length <= 1) return;
     const interval = setInterval(() => {
-      setActiveTab(prev => (prev + 1) % TAB_NAMES.length);
+      setActiveTabKey((current) => {
+        const idx = visibleTabList.findIndex((t) => t.key === current);
+        const next = visibleTabList[(idx + 1) % visibleTabList.length];
+        return next.key;
+      });
     }, ROTATION_INTERVAL);
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, visibleTabList]);
+
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
   const yesterdayStr = format(subDays(currentDate, 1), "yyyy-MM-dd");
@@ -77,7 +162,7 @@ export default function DashboardComercialPage() {
       const maxDate = tomorrowStr > monthEnd ? tomorrowStr : monthEnd;
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
+        .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("scheduled_date", minDate)
         .lte("scheduled_date", maxDate)
@@ -93,7 +178,7 @@ export default function DashboardComercialPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
+        .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("scheduled_date", prevMonthStart)
         .lte("scheduled_date", prevMonthEnd);
@@ -111,7 +196,7 @@ export default function DashboardComercialPage() {
       const broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, scheduled_date, created_at, status, channel_type, created_by, sdr_responsavel_id")
+        .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id")
         .is("deleted_at", null)
         .gte("created_at", broadStart + "T00:00:00")
         .lte("created_at", broadEnd + "T23:59:59");
@@ -243,21 +328,67 @@ export default function DashboardComercialPage() {
           </div>
 
           <div className="flex gap-1 flex-wrap">
-            {TAB_NAMES.map((name, i) => (
+            {visibleTabList.map((tab) => (
               <Button
-                key={name}
-                variant={activeTab === i ? "default" : "outline"}
+                key={tab.key}
+                variant={activeTabKey === tab.key ? "default" : "outline"}
                 size="sm"
                 className={cn(
                   "text-xs",
-                  activeTab === i && "bg-primary text-primary-foreground"
+                  activeTabKey === tab.key && "bg-primary text-primary-foreground"
                 )}
-                onClick={() => { setActiveTab(i); setIsPlaying(false); }}
+                onClick={() => { setActiveTabKey(tab.key); setIsPlaying(false); }}
               >
-                {name}
+                {tab.label}
               </Button>
             ))}
           </div>
+
+          {/* Visibilidade de Abas */}
+          <Popover open={tabSettingsOpen} onOpenChange={setTabSettingsOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                title="Visibilidade de abas"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3" align="start">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Abas visíveis
+                </p>
+                <div className="space-y-1.5">
+                  {TABS.map((tab) => {
+                    const checked = visibleTabs.has(tab.key);
+                    const onlyOne = visibleTabs.size === 1 && checked;
+                    return (
+                      <label
+                        key={tab.key}
+                        className={cn(
+                          "flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1.5 hover:bg-muted/60 transition-colors",
+                          onlyOne && "opacity-60 cursor-not-allowed",
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          disabled={onlyOne}
+                          onCheckedChange={() => toggleTabVisibility(tab.key)}
+                        />
+                        <span>{tab.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  Preferência salva por usuário neste dispositivo.
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Clock + Online */}
           <div className="ml-auto flex items-center gap-4">
@@ -271,8 +402,8 @@ export default function DashboardComercialPage() {
           </div>
         </div>
 
-        {/* ─── Date nav (Métricas & Ranking tabs only) ──── */}
-        {activeTab !== 1 && (
+        {/* ─── Date nav (oculta na aba Agenda Closers) ──── */}
+        {activeTabKey !== "agenda" && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
@@ -319,15 +450,15 @@ export default function DashboardComercialPage() {
         )}
 
         {/* ─── Tab content ────────────────────────────────── */}
-        {activeTab === 0 && (
+        {activeTabKey === "metricas" && (
           <MetricasSDRsTab
             metrics={metrics}
             currentDate={currentDate}
             updatedAgo={updatedAgo}
           />
         )}
-        {activeTab === 1 && <CalendarContent />}
-        {activeTab === 2 && (
+        {activeTabKey === "agenda" && <CalendarContent />}
+        {activeTabKey === "ranking" && (
           <RankingSDRsTab
             sdrProfiles={sdrProfiles}
             updatedAgo={updatedAgo}
@@ -336,7 +467,16 @@ export default function DashboardComercialPage() {
             currentDate={currentDate}
           />
         )}
-        {activeTab === 3 && <VendasTab currentDate={currentDate} />}
+        {activeTabKey === "vendas" && <VendasTab currentDate={currentDate} />}
+        {activeTabKey === "produtividade" && (
+          <ProdutividadeSDRTab
+            agendamentos={agendamentos}
+            createdAgs={createdAgs}
+            sdrProfiles={sdrProfiles}
+            currentDate={currentDate}
+            updatedAgo={updatedAgo}
+          />
+        )}
       </div>
     </AppLayout>
   );

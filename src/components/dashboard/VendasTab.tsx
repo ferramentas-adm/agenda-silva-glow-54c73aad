@@ -145,8 +145,10 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
   const totalVendas = vendasDia.filter((v) => v.vendeu).length;
   const totalNaoFechou = vendasDia.filter((v) => !v.vendeu).length;
   const taxaConversao = totalReunioesComResultado > 0 ? (totalVendas / totalReunioesComResultado) * 100 : 0;
-  const receitaTotal = vendasDia.filter((v) => v.vendeu && v.valor).reduce((acc, v) => acc + (v.valor || 0), 0);
-  const ticketMedio = totalVendas > 0 ? receitaTotal / totalVendas : 0;
+  // Coletado Total = soma de todos os valores efetivamente fechados no dia.
+  const coletadoTotal = vendasDia.filter((v) => v.vendeu && v.valor).reduce((acc, v) => acc + (v.valor || 0), 0);
+  // Coletado Médio = Coletado Total / Total de Vendas fechadas.
+  const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
   // Follow-ups (escopo geral — não dependem do dia selecionado)
   const followUpsAgendados = vendas.filter((v) => v.follow_up && v.follow_up_date).length;
@@ -350,26 +352,26 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
         />
         <KpiCard
           icon={DollarSign}
-          label="Receita Total"
-          value={fmtBRL(receitaTotal)}
+          label="Coletado Total"
+          value={fmtBRL(coletadoTotal)}
           sub={`${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`}
           color="emerald"
           onClick={() =>
-            openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(receitaTotal))
+            openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(coletadoTotal))
           }
         />
         <KpiCard
           icon={Receipt}
           label="Coletado Médio"
-          value={fmtBRL(ticketMedio)}
+          value={fmtBRL(coletadoMedio)}
           sub={
             totalVendas > 0
-              ? `Base: ${totalVendas} venda${totalVendas !== 1 ? "s" : ""}`
+              ? `Coletado Total ÷ ${totalVendas} venda${totalVendas !== 1 ? "s" : ""}`
               : "Sem vendas no período"
           }
           color="emerald"
           onClick={() =>
-            openDrill(`Coletado médio — ${dayLabel}`, fechadasIds, fmtBRL(ticketMedio))
+            openDrill(`Coletado médio — ${dayLabel}`, fechadasIds, fmtBRL(coletadoMedio))
           }
         />
         <KpiCard
