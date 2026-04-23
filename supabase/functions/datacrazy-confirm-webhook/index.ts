@@ -37,6 +37,15 @@ Deno.serve(async (req) => {
     });
   }
 
+  const sharedSecret = Deno.env.get("DATACRAZY_SHARED_SECRET");
+  const incomingSecret = req.headers.get("x-datacrazy-secret");
+  if (!sharedSecret || !incomingSecret || incomingSecret !== sharedSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const body = (await req.json()) as Payload;
 

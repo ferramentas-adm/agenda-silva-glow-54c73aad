@@ -13,19 +13,27 @@ function generateRandomPassword(): string {
   const special = "!@#$%&*";
   const all = upper + lower + digits + special;
 
-  // Ensure at least 1 upper, 1 lower, 1 digit, 1 special
-  let pw = "";
-  pw += upper[Math.floor(Math.random() * upper.length)];
-  pw += lower[Math.floor(Math.random() * lower.length)];
-  pw += digits[Math.floor(Math.random() * digits.length)];
-  pw += special[Math.floor(Math.random() * special.length)];
+  // 12 values for character selection + 11 for Fisher-Yates shuffle
+  const rand = crypto.getRandomValues(new Uint32Array(23));
+  let ri = 0;
+  const pick = (charset: string) => charset[rand[ri++] % charset.length];
 
-  for (let i = 4; i < 12; i++) {
-    pw += all[Math.floor(Math.random() * all.length)];
+  // Ensure at least 1 upper, 1 lower, 1 digit, 1 special
+  const pw = [
+    pick(upper),
+    pick(lower),
+    pick(digits),
+    pick(special),
+    ...Array.from({ length: 8 }, () => pick(all)),
+  ];
+
+  // Fisher-Yates shuffle
+  for (let i = pw.length - 1; i > 0; i--) {
+    const j = rand[ri++] % (i + 1);
+    [pw[i], pw[j]] = [pw[j], pw[i]];
   }
 
-  // Shuffle
-  return pw.split("").sort(() => Math.random() - 0.5).join("");
+  return pw.join("");
 }
 
 Deno.serve(async (req) => {

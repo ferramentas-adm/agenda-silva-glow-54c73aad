@@ -7,6 +7,13 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
+  if (Deno.env.get("SEED_ENABLED") !== "true") {
+    return new Response(JSON.stringify({ error: "Endpoint desativado" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
