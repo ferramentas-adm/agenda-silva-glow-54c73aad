@@ -7,6 +7,10 @@ import { Clock, AlertTriangle, PenLine, CalendarDays, Lock } from "lucide-react"
 import { useGoogleCalendarEvents } from "@/hooks/useGoogleCalendar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TimeSlotPickerProps {
   closerId: string;
@@ -108,6 +112,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
@@ -210,10 +215,15 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     });
     if (isBlockedByPersonal) {
       if (canOverrideBlock) {
-        const ok = window.confirm(
-          "Atenção: este horário está bloqueado por compromisso pessoal do closer.\n\nDeseja agendar mesmo assim? (apenas Gestor/Moderador pode forçar)",
-        );
-        if (!ok) return;
+        setConfirmDialog({
+          message: "Atenção: este horário está bloqueado por compromisso pessoal do closer. Deseja agendar mesmo assim? (apenas Gestor/Moderador pode forçar)",
+          onConfirm: () => {
+            onSelect(customInput);
+            setCustomMode(false);
+            setConfirmDialog(null);
+          },
+        });
+        return;
       } else {
         setCustomError("Horário bloqueado por compromisso pessoal do closer.");
         return;
@@ -278,10 +288,16 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
               disabled={isPast || (isPersonalBlock && !canOverrideBlock)}
               onClick={() => {
                 if (isPersonalBlock && canOverrideBlock) {
-                  const ok = window.confirm(
-                    "Atenção: este horário está bloqueado por compromisso pessoal do closer.\n\nDeseja agendar mesmo assim?",
-                  );
-                  if (!ok) return;
+                  setConfirmDialog({
+                    message: "Atenção: este horário está bloqueado por compromisso pessoal do closer. Deseja agendar mesmo assim?",
+                    onConfirm: () => {
+                      onSelect(slot);
+                      setCustomMode(false);
+                      setCustomError(null);
+                      setConfirmDialog(null);
+                    },
+                  });
+                  return;
                 }
                 onSelect(slot);
                 setCustomMode(false);
@@ -327,6 +343,21 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           {isCustomSelected && !customMode ? selectedTime : "Outro"}
         </button>
       </div>
+
+      <AlertDialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar agendamento em horário bloqueado</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDialog?.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmDialog?.onConfirm()}>
+              Agendar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Custom time input */}
       {customMode && (
