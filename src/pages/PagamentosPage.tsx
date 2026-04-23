@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
 import AppLayout from "@/components/AppLayout";
+import LeadSearch, { type Lead } from "@/components/agendar/LeadSearch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -363,7 +364,7 @@ export default function PagamentosPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Cliente</TableHead>
+                      <TableHead>Lead</TableHead>
                       <TableHead>Closer</TableHead>
                       <TableHead>Data Prevista</TableHead>
                       <TableHead className="text-right">Previsto</TableHead>
@@ -514,6 +515,7 @@ function PagamentoDialog({
   const { user } = useAuth();
   const isEdit = !!target;
 
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [cliente, setCliente] = useState("");
   const [telefone, setTelefone] = useState("");
   const [valorPrevisto, setValorPrevisto] = useState("");
@@ -531,6 +533,11 @@ function PagamentoDialog({
   useEffect(() => {
     if (!open) return;
     if (target) {
+      setSelectedLead(
+        target.cliente_nome
+          ? { id: target.id, name: target.cliente_nome, phone: target.cliente_telefone ?? "" }
+          : null
+      );
       setCliente(target.cliente_nome);
       setTelefone(target.cliente_telefone ?? "");
       setValorPrevisto(Math.round(Number(target.valor_previsto) * 100).toString());
@@ -543,6 +550,7 @@ function PagamentoDialog({
       setCloserId(target.closer_id ?? "none");
       setObservacoes(target.observacoes ?? "");
     } else {
+      setSelectedLead(null);
       setCliente(""); setTelefone(""); setValorPrevisto(""); setValorRealizado(""); setValorApresentado("");
       setDataPrevista(undefined); setDataPagamento(undefined); setStatus("pendente");
       setMetodo(""); setCloserId("none"); setObservacoes("");
@@ -610,12 +618,20 @@ function PagamentoDialog({
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="cli">Cliente *</Label>
-              <Input id="cli" value={cliente} onChange={(e) => setCliente(e.target.value)} />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="tel">Telefone</Label>
-              <Input id="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+              <Label>Lead *</Label>
+              <LeadSearch
+                selectedLead={selectedLead}
+                onSelect={(lead) => {
+                  setSelectedLead(lead);
+                  setCliente(lead.name);
+                  setTelefone(lead.phone);
+                }}
+                onClear={() => {
+                  setSelectedLead(null);
+                  setCliente("");
+                  setTelefone("");
+                }}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="vp">Valor Previsto *</Label>
