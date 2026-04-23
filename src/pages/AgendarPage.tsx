@@ -182,14 +182,14 @@ export default function AgendarPage() {
   };
 
   const isCloser = role === "closer";
-  // Closer não vê o dropdown de motivo — toda reunião dele é "Segunda Reunião" automaticamente.
-  // Tanto em novo agendamento quanto em reagendamento, ele preenche o campo "Justificar Reagendamento"
-  // (obrigatório, salvo em meeting_reason).
-  const needsReason = role === "gestor" || role === "moderador";
+  // Campo "Motivo da reunião" foi removido do fluxo:
+  // - Closer: meeting_reason gravado automaticamente como 'segunda_reuniao'.
+  // - SDR / Gestor / Moderador: nenhum motivo é coletado/gravado (campo aposentado na UI).
+  // Closers continuam preenchendo "Justificar Reagendamento" em meetingReasonCustom,
+  // mas isso é salvo no campo `observation` (não em meeting_reason).
+  const needsReason = false;
   const isReasonRequired = false;
-  const resolvedReason = isCloser
-    ? (meetingReasonCustom.trim() || null)
-    : (meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason);
+  const resolvedReason = isCloser ? "segunda_reuniao" : null;
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
