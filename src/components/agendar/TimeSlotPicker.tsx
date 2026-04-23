@@ -205,8 +205,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return;
     }
 
-    // Check personal blocks — bloqueio absoluto para SDR/Closer.
-    // Gestor/Moderador podem forçar (após confirmação) para casos excepcionais.
+    // Check personal blocks — bloqueio absoluto para TODOS (incl. gestor/moderador).
     const customH = parseInt(customInput.slice(0, 2), 10);
     const isBlockedByPersonal = closerBlocks.some((b: any) => {
       const startH = parseInt(b.start_time.slice(0, 2), 10);
@@ -214,20 +213,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return customH >= startH && customH < endH;
     });
     if (isBlockedByPersonal) {
-      if (canOverrideBlock) {
-        setConfirmDialog({
-          message: "Atenção: este horário está bloqueado por compromisso pessoal do closer. Deseja agendar mesmo assim? (apenas Gestor/Moderador pode forçar)",
-          onConfirm: () => {
-            onSelect(customInput);
-            setCustomMode(false);
-            setConfirmDialog(null);
-          },
-        });
-        return;
-      } else {
-        setCustomError("Horário bloqueado por compromisso pessoal do closer.");
-        return;
-      }
+      setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
+      return;
     }
 
     onSelect(customInput);
