@@ -48,14 +48,81 @@ interface SDRProfile {
   full_name: string;
 }
 
+// ─── Visibilidade de Abas (localStorage por usuário) ─────────────
+const ALL_TAB_KEYS: TabKey[] = TABS.map((t) => t.key);
+const visibilityStorageKey = (userId: string | null | undefined) =>
+  `dashboard-tab-visibility:${userId ?? "anon"}`;
+
+function loadVisibleTabs(userId: string | null | undefined): Set<TabKey> {
+  try {
+    const raw = localStorage.getItem(visibilityStorageKey(userId));
+    if (!raw) return new Set(ALL_TAB_KEYS);
+    const parsed = JSON.parse(raw) as TabKey[];
+    const filtered = parsed.filter((k): k is TabKey => ALL_TAB_KEYS.includes(k));
+    return filtered.length > 0 ? new Set(filtered) : new Set(ALL_TAB_KEYS);
+  } catch {
+    return new Set(ALL_TAB_KEYS);
+  }
+}
+
+function saveVisibleTabs(userId: string | null | undefined, tabs: Set<TabKey>) {
+  try {
+    localStorage.setItem(visibilityStorageKey(userId), JSON.stringify(Array.from(tabs)));
+  } catch {
+    /* noop */
+  }
+}
+
 // ─── Main Page ───────────────────────────────────────────────────
 export default function DashboardComercialPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState(0);
+  const { user } = useAuth();
+
+  const [visibleTabs, setVisibleTabs] = useState<Set<TabKey>>(() => loadVisibleTabs(user?.id));
+  const [activeTabKey, setActiveTabKey] = useState<TabKey>("metricas");
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [clock, setClock] = useState(new Date());
+  const [tabSettingsOpen, setTabSettingsOpen] = useState(false);
+
+  // Recarrega preferências quando o usuário muda (login/logout)
+  useEffect(() => {
+    setVisibleTabs(loadVisibleTabs(user?.id));
+  }, [user?.id]);
+
+  // Persiste preferências no localStorage
+  useEffect(() => {
+    saveVisibleTabs(user?.id, visibleTabs);
+  }, [user?.id, visibleTabs]);
+
+  // Lista ordenada das abas atualmente visíveis
+  const visibleTabList = useMemo(
+    () => TABS.filter((t) => visibleTabs.has(t.key)),
+    [visibleTabs],
+  );
+
+  // Garante que activeTabKey continue sendo uma aba visível
+  useEffect(() => {
+    if (visibleTabList.length === 0) return;
+    if (!visibleTabList.some((t) => t.key === activeTabKey)) {
+      setActiveTabKey(visibleTabList[0].key);
+    }
+  }, [visibleTabList, activeTabKey]);
+
+  const toggleTabVisibility = (key: TabKey) => {
+    setVisibleTabs((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        // Não permitir esconder todas as abas
+        if (next.size === 1) return prev;
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   // Live clock
   useEffect(() => {
@@ -63,14 +130,19 @@ export default function DashboardComercialPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-rotation
+  // Auto-rotation (apenas entre abas visíveis)
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || visibleTabList.length <= 1) return;
     const interval = setInterval(() => {
-      setActiveTab(prev => (prev + 1) % TAB_NAMES.length);
+      setActiveTabKey((current) => {
+        const idx = visibleTabList.findIndex((t) => t.key === current);
+        const next = visibleTabList[(idx + 1) % visibleTabList.length];
+        return next.key;
+      });
     }, ROTATION_INTERVAL);
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, visibleTabList]);
+
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
   const yesterdayStr = format(subDays(currentDate, 1), "yyyy-MM-dd");
