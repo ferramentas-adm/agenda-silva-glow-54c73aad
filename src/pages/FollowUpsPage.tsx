@@ -237,6 +237,9 @@ export default function FollowUpsPage() {
           </div>
         </header>
 
+        {/* Tarefas avulsas */}
+        <TasksSection />
+
         {/* Filtros */}
         <Card>
           <CardContent className="pt-4 pb-4">
