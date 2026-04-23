@@ -23,6 +23,7 @@ const ROTATION_INTERVAL = 30000;
 interface AgendamentoMetric {
   id: string;
   scheduled_date: string;
+  scheduled_time: string | null;
   created_at: string;
   status: string;
   channel_type: string | null;
