@@ -52,19 +52,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     },
   });
 
+  const { can } = usePermissions();
+
   const navItems = [
-    { to: "/", label: "Calendário", icon: CalendarDays },
-    { to: "/reunioes", label: "Reuniões", icon: List },
-    ...((isCloser || isGestor || isModerador) ? [
-      { to: "/follow-ups", label: "Follow-ups", icon: CalendarClock },
-    ] : []),
-    ...((isGestor || isModerador) ? [
-      { to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3 },
-      { to: "/admin", label: "Admin", icon: Settings },
-    ] : []),
-    ...((isGestor || isModerador) ? [
-      { to: "/audit-logs", label: "Logs", icon: ScrollText },
-    ] : []),
+    ...(can("view_calendar") ? [{ to: "/", label: "Calendário", icon: CalendarDays }] : []),
+    ...(can("view_meetings") ? [{ to: "/reunioes", label: "Reuniões", icon: List }] : []),
+    ...(can("view_follow_ups") ? [{ to: "/follow-ups", label: "Follow-ups", icon: CalendarClock }] : []),
+    ...(can("view_payments") ? [{ to: "/pagamentos", label: "Pagamentos", icon: Wallet }] : []),
+    ...(can("view_dashboard_comercial") ? [{ to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3 }] : []),
+    ...(can("view_admin") ? [{ to: "/admin", label: "Admin", icon: Settings }] : []),
+    ...(can("view_audit_logs") ? [{ to: "/audit-logs", label: "Logs", icon: ScrollText }] : []),
   ];
 
   const isActive = (path: string) => location.pathname === path;

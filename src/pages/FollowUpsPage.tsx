@@ -34,6 +34,8 @@ import { DEFAULT_REASONS, isPendingStageReason } from "@/lib/vendaConstants";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { logAudit } from "@/services/auditLog";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
+import TasksSection from "@/components/tasks/TasksSection";
+import { useCan } from "@/hooks/usePermissions";
 
 interface FollowUpRow {
   id: string;
