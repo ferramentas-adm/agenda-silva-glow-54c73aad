@@ -515,34 +515,7 @@ export default function AgendarPage() {
                 </div>
               )}
 
-              {/* Motivo da reunião — apenas gestor/moderador */}
-              {needsReason && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">
-                    Motivo da reunião
-                  </label>
-                  <Select value={meetingReason ?? ""} onValueChange={(v) => { setMeetingReason(v); if (v !== "outros") setMeetingReasonCustom(""); }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o motivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="segunda_reuniao">Segunda Reunião</SelectItem>
-                      <SelectItem value="fechamento">Fechamento</SelectItem>
-                      <SelectItem value="remarcado">Remarcado</SelectItem>
-                      <SelectItem value="outros">Outros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {meetingReason === "outros" && (
-                    <Textarea
-                      placeholder="Descreva o motivo da reunião..."
-                      value={meetingReasonCustom}
-                      onChange={(e) => setMeetingReasonCustom(e.target.value.slice(0, 200))}
-                      className="resize-none mt-2"
-                      rows={2}
-                    />
-                  )}
-                </div>
-              )}
+              {/* Campo "Motivo da reunião" foi removido do fluxo para todas as funções. */}
 
               {/* Tipo de canal — closer vê como label fixo "Segunda Reunião"; demais escolhem no select */}
               {isCloser ? (
