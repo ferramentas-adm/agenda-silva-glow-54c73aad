@@ -352,26 +352,26 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
         />
         <KpiCard
           icon={DollarSign}
-          label="Receita Total"
-          value={fmtBRL(receitaTotal)}
+          label="Coletado Total"
+          value={fmtBRL(coletadoTotal)}
           sub={`${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`}
           color="emerald"
           onClick={() =>
-            openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(receitaTotal))
+            openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(coletadoTotal))
           }
         />
         <KpiCard
           icon={Receipt}
           label="Coletado Médio"
-          value={fmtBRL(ticketMedio)}
+          value={fmtBRL(coletadoMedio)}
           sub={
             totalVendas > 0
-              ? `Base: ${totalVendas} venda${totalVendas !== 1 ? "s" : ""}`
+              ? `Coletado Total ÷ ${totalVendas} venda${totalVendas !== 1 ? "s" : ""}`
               : "Sem vendas no período"
           }
           color="emerald"
           onClick={() =>
-            openDrill(`Coletado médio — ${dayLabel}`, fechadasIds, fmtBRL(ticketMedio))
+            openDrill(`Coletado médio — ${dayLabel}`, fechadasIds, fmtBRL(coletadoMedio))
           }
         />
         <KpiCard
