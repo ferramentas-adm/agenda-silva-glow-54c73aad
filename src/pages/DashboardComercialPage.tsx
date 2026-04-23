@@ -328,21 +328,67 @@ export default function DashboardComercialPage() {
           </div>
 
           <div className="flex gap-1 flex-wrap">
-            {TAB_NAMES.map((name, i) => (
+            {visibleTabList.map((tab) => (
               <Button
-                key={name}
-                variant={activeTab === i ? "default" : "outline"}
+                key={tab.key}
+                variant={activeTabKey === tab.key ? "default" : "outline"}
                 size="sm"
                 className={cn(
                   "text-xs",
-                  activeTab === i && "bg-primary text-primary-foreground"
+                  activeTabKey === tab.key && "bg-primary text-primary-foreground"
                 )}
-                onClick={() => { setActiveTab(i); setIsPlaying(false); }}
+                onClick={() => { setActiveTabKey(tab.key); setIsPlaying(false); }}
               >
-                {name}
+                {tab.label}
               </Button>
             ))}
           </div>
+
+          {/* Visibilidade de Abas */}
+          <Popover open={tabSettingsOpen} onOpenChange={setTabSettingsOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                title="Visibilidade de abas"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3" align="start">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Abas visíveis
+                </p>
+                <div className="space-y-1.5">
+                  {TABS.map((tab) => {
+                    const checked = visibleTabs.has(tab.key);
+                    const onlyOne = visibleTabs.size === 1 && checked;
+                    return (
+                      <label
+                        key={tab.key}
+                        className={cn(
+                          "flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1.5 hover:bg-muted/60 transition-colors",
+                          onlyOne && "opacity-60 cursor-not-allowed",
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          disabled={onlyOne}
+                          onCheckedChange={() => toggleTabVisibility(tab.key)}
+                        />
+                        <span>{tab.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  Preferência salva por usuário neste dispositivo.
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Clock + Online */}
           <div className="ml-auto flex items-center gap-4">
@@ -356,8 +402,8 @@ export default function DashboardComercialPage() {
           </div>
         </div>
 
-        {/* ─── Date nav (Métricas & Ranking tabs only) ──── */}
-        {activeTab !== 1 && (
+        {/* ─── Date nav (oculta na aba Agenda Closers) ──── */}
+        {activeTabKey !== "agenda" && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
@@ -404,15 +450,15 @@ export default function DashboardComercialPage() {
         )}
 
         {/* ─── Tab content ────────────────────────────────── */}
-        {activeTab === 0 && (
+        {activeTabKey === "metricas" && (
           <MetricasSDRsTab
             metrics={metrics}
             currentDate={currentDate}
             updatedAgo={updatedAgo}
           />
         )}
-        {activeTab === 1 && <CalendarContent />}
-        {activeTab === 2 && (
+        {activeTabKey === "agenda" && <CalendarContent />}
+        {activeTabKey === "ranking" && (
           <RankingSDRsTab
             sdrProfiles={sdrProfiles}
             updatedAgo={updatedAgo}
@@ -421,7 +467,16 @@ export default function DashboardComercialPage() {
             currentDate={currentDate}
           />
         )}
-        {activeTab === 3 && <VendasTab currentDate={currentDate} />}
+        {activeTabKey === "vendas" && <VendasTab currentDate={currentDate} />}
+        {activeTabKey === "produtividade" && (
+          <ProdutividadeSDRTab
+            agendamentos={agendamentos}
+            createdAgs={createdAgs}
+            sdrProfiles={sdrProfiles}
+            currentDate={currentDate}
+            updatedAgo={updatedAgo}
+          />
+        )}
       </div>
     </AppLayout>
   );
