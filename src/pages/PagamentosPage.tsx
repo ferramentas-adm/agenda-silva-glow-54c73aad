@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isBefore, isToday, eachWeekOfInterval, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -527,13 +527,8 @@ function PagamentoDialog({
   const [observacoes, setObservacoes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Reset/fill on open
-  useState(() => {
-    /* noop */
-  });
-
   // Sync from target when opens
-  useMemo(() => {
+  useEffect(() => {
     if (!open) return;
     if (target) {
       setCliente(target.cliente_nome);
