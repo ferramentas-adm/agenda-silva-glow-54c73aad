@@ -364,7 +364,7 @@ export default function PagamentosPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Cliente</TableHead>
+                      <TableHead>Lead</TableHead>
                       <TableHead>Closer</TableHead>
                       <TableHead>Data Prevista</TableHead>
                       <TableHead className="text-right">Previsto</TableHead>
