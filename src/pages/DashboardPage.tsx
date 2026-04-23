@@ -638,6 +638,7 @@ export function CalendarContent() {
 
           const cards = [
             { key: "total", label: totalLabel, icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
+            { key: "agendada", label: "Agendadas", icon: Clock, color: "text-blue-300", bg: "bg-blue-500/10" },
             { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
             { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
             { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
