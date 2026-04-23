@@ -332,6 +332,44 @@ function UsersSection() {
     setChangingPassword(false);
   };
 
+  // Gera senha temporária forte e segura (12 caracteres: maiúscula, minúscula, número, símbolo).
+  const generateTemporaryPassword = (): string => {
+    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // sem I/O para evitar confusão visual
+    const lower = "abcdefghijkmnpqrstuvwxyz"; // sem l/o
+    const digits = "23456789"; // sem 0/1
+    const symbols = "!@#$%&*";
+    const all = upper + lower + digits + symbols;
+    const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
+    const chars = [pick(upper), pick(lower), pick(digits), pick(symbols)];
+    for (let i = chars.length; i < 12; i++) chars.push(pick(all));
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join("");
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetTarget) return;
+    setResettingPassword(true);
+    setResetGeneratedPassword(null);
+    try {
+      const tempPassword = generateTemporaryPassword();
+      await invokeEdgeFunction("manage-user", {
+        user_id: resetTarget.userId,
+        action: "change_password",
+        new_password: tempPassword,
+      });
+      // A edge function `manage-user` já marca `must_change_password = true` automaticamente.
+      setResetGeneratedPassword(tempPassword);
+      toast.success("Senha temporária gerada. O usuário será obrigado a trocá-la no primeiro login.");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao redefinir senha");
+    }
+    setResettingPassword(false);
+  };
+
   const handleChangeRole = async () => {
     if (!roleChangeTarget || !newRole) return;
     setChangingRole(true);
