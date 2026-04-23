@@ -608,9 +608,11 @@ export function CalendarContent() {
         lead_name: detailAg.lead_name,
         closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
         scheduled_date: detailAg.scheduled_date,
-        old_time: detailAg.scheduled_time,
-        new_time: editTime,
-        new_status: "reagendada",
+        field: "scheduled_time",
+        from: detailAg.scheduled_time,
+        to: editTime,
+        status_from: detailAg.status,
+        status_to: "reagendada",
       });
       toast.success("Horário atualizado e reagendamento enviado!");
       setDetailAg({ ...detailAg, scheduled_time: editTime, status: "reagendada" as any });
