@@ -146,16 +146,8 @@ export default function AgendarPage() {
     } else if (editData.channel_type && !channelType) {
       setChannelType(editData.channel_type);
     }
-    // Closer reagendando: NÃO herda meeting_reason — ele precisa escrever uma nova justificativa.
-    if (role !== "closer" && editData.meeting_reason && !meetingReason) {
-      const canonical = ["segunda_reuniao", "fechamento", "remarcado"];
-      if (canonical.includes(editData.meeting_reason)) {
-        setMeetingReason(editData.meeting_reason);
-      } else {
-        setMeetingReason("outros");
-        setMeetingReasonCustom(editData.meeting_reason);
-      }
-    }
+    // Campo "Motivo da reunião" foi removido — não herdamos mais meeting_reason
+    // do agendamento original em reagendamentos para nenhuma função.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editData, role]);
 
