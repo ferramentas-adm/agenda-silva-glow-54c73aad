@@ -107,12 +107,12 @@ function isCustomTimeConflicting(
 }
 
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
-  const { role } = useAuth();
-  const canOverrideBlock = role === "gestor" || role === "moderador";
+  useAuth();
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  // Pop-up apenas informativo: nenhum usuário pode forçar agendamento em bloqueio pessoal.
+  const [blockedInfo, setBlockedInfo] = useState<string | null>(null);
 
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
@@ -205,8 +205,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return;
     }
 
-    // Check personal blocks — bloqueio absoluto para SDR/Closer.
-    // Gestor/Moderador podem forçar (após confirmação) para casos excepcionais.
+    // Check personal blocks — bloqueio absoluto para TODOS (incl. gestor/moderador).
     const customH = parseInt(customInput.slice(0, 2), 10);
     const isBlockedByPersonal = closerBlocks.some((b: any) => {
       const startH = parseInt(b.start_time.slice(0, 2), 10);
@@ -214,20 +213,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return customH >= startH && customH < endH;
     });
     if (isBlockedByPersonal) {
-      if (canOverrideBlock) {
-        setConfirmDialog({
-          message: "Atenção: este horário está bloqueado por compromisso pessoal do closer. Deseja agendar mesmo assim? (apenas Gestor/Moderador pode forçar)",
-          onConfirm: () => {
-            onSelect(customInput);
-            setCustomMode(false);
-            setConfirmDialog(null);
-          },
-        });
-        return;
-      } else {
-        setCustomError("Horário bloqueado por compromisso pessoal do closer.");
-        return;
-      }
+      setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
+      return;
     }
 
     onSelect(customInput);
@@ -285,25 +272,17 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           return (
             <button
               key={slot}
-              disabled={isPast || (isPersonalBlock && !canOverrideBlock)}
+              disabled={isPast}
               onClick={() => {
-                if (isPersonalBlock && canOverrideBlock) {
-                  setConfirmDialog({
-                    message: "Atenção: este horário está bloqueado por compromisso pessoal do closer. Deseja agendar mesmo assim?",
-                    onConfirm: () => {
-                      onSelect(slot);
-                      setCustomMode(false);
-                      setCustomError(null);
-                      setConfirmDialog(null);
-                    },
-                  });
+                if (isPersonalBlock) {
+                  setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
                   return;
                 }
                 onSelect(slot);
                 setCustomMode(false);
                 setCustomError(null);
               }}
-              title={isPersonalBlock && canOverrideBlock ? "Bloqueio pessoal — Gestor pode forçar" : title}
+              title={title}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
                 isSelected
@@ -344,17 +323,17 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         </button>
       </div>
 
-      <AlertDialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
+      <AlertDialog open={!!blockedInfo} onOpenChange={(open) => !open && setBlockedInfo(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar agendamento em horário bloqueado</AlertDialogTitle>
-            <AlertDialogDescription>{confirmDialog?.message}</AlertDialogDescription>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-rose-400" />
+              Horário bloqueado
+            </AlertDialogTitle>
+            <AlertDialogDescription>{blockedInfo}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmDialog?.onConfirm()}>
-              Agendar mesmo assim
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => setBlockedInfo(null)}>Entendi</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

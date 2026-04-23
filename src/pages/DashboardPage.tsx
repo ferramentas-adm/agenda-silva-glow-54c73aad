@@ -469,9 +469,9 @@ export function CalendarContent() {
         lead_name: detailAg.lead_name,
         scheduled_date: detailAg.scheduled_date,
         scheduled_time: detailAg.scheduled_time,
-        old_closer: oldName,
-        new_closer: newName,
         field: "closer_id",
+        from: oldName,
+        to: newName,
       });
       patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: newCloserId }));
       setDetailAg({ ...detailAg, closer_id: newCloserId });
@@ -502,9 +502,9 @@ export function CalendarContent() {
         lead_name: detailAg.lead_name,
         scheduled_date: detailAg.scheduled_date,
         scheduled_time: detailAg.scheduled_time,
-        old_sdr: oldName,
-        new_sdr: newName,
         field: "sdr_responsavel_id",
+        from: oldName,
+        to: newName,
       });
       patchAgendamentosCache(detailAg.id, (a) => ({ ...a, sdr_responsavel_id: newSdrId }));
       setDetailAg({ ...detailAg, sdr_responsavel_id: newSdrId } as any);
@@ -608,9 +608,11 @@ export function CalendarContent() {
         lead_name: detailAg.lead_name,
         closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
         scheduled_date: detailAg.scheduled_date,
-        old_time: detailAg.scheduled_time,
-        new_time: editTime,
-        new_status: "reagendada",
+        field: "scheduled_time",
+        from: detailAg.scheduled_time,
+        to: editTime,
+        status_from: detailAg.status,
+        status_to: "reagendada",
       });
       toast.success("Horário atualizado e reagendamento enviado!");
       setDetailAg({ ...detailAg, scheduled_time: editTime, status: "reagendada" as any });
@@ -638,6 +640,7 @@ export function CalendarContent() {
 
           const cards = [
             { key: "total", label: totalLabel, icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
+            { key: "agendada", label: "Agendadas", icon: Clock, color: "text-blue-300", bg: "bg-blue-500/10" },
             { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
             { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
             { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
@@ -1005,17 +1008,31 @@ export function CalendarContent() {
                         >
                           <RotateCcw className="h-3.5 w-3.5" />Reagendar
                         </Button>
-                        {/* Cancelar e No-show — escondidos para closer */}
-                        {role !== "closer" && detailAg.status !== "cancelada" && (
-                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
-                            <XCircle className="h-3.5 w-3.5" />Cancelar
-                          </Button>
-                        )}
-                        {role !== "closer" && detailAg.status !== "no_show" && (
-                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
-                            <AlertCircle className="h-3.5 w-3.5" />No-show
-                          </Button>
-                        )}
+                        {/* Cancelar e No-show:
+                            - SDR: nunca vê
+                            - Closer: vê apenas se for o criador (created_by = user.id)
+                            - Gestor / Moderador: sempre veem */}
+                        {(() => {
+                          const canSeeCancelNoShow =
+                            role === "gestor" ||
+                            role === "moderador" ||
+                            (role === "closer" && detailAg.created_by === user?.id);
+                          if (!canSeeCancelNoShow) return null;
+                          return (
+                            <>
+                              {detailAg.status !== "cancelada" && (
+                                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
+                                  <XCircle className="h-3.5 w-3.5" />Cancelar
+                                </Button>
+                              )}
+                              {detailAg.status !== "no_show" && (
+                                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
+                                  <AlertCircle className="h-3.5 w-3.5" />No-show
+                                </Button>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </>
                   )}

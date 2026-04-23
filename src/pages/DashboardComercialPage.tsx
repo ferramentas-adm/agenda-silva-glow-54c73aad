@@ -179,6 +179,7 @@ export default function DashboardComercialPage() {
       monthTotal: monthAgs.length,
       monthDiff: monthAgs.length - prevMonthAgs.length,
       confirmado: sc(todayAgs, "confirmada"),
+      agendado: sc(todayAgs, "agendada"),
       compareceu: sc(todayAgs, "realizada"),
       noShow: noShowCount,
       cancelado: canceladoCount,
@@ -194,6 +195,7 @@ export default function DashboardComercialPage() {
       tomorrowScheduledIds: tomorrowAgs.map(a => a.id),
       monthTotalIds: monthAgs.map(a => a.id),
       confirmadoIds: todayAgs.filter(a => a.status === "confirmada").map(a => a.id),
+      agendadoIds: todayAgs.filter(a => a.status === "agendada").map(a => a.id),
       compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
       noShowIds: todayAgs.filter(a => a.status === "no_show").map(a => a.id),
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
@@ -553,7 +555,8 @@ function MetricasSDRsTab({
       </div>
 
       {/* Row 3 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MetricCard title={`Agendado — ${selectedLabel}`} value={metrics.agendado} subtitle={subtitleSelected} onClick={() => openDrill(`Agendado — ${selectedLabel}`, metrics.agendadoIds)} />
         <MetricCard title={`Compareceu — ${selectedLabel}`} value={metrics.compareceu} subtitle={subtitleSelected} onClick={() => openDrill(`Compareceu — ${selectedLabel}`, metrics.compareceuIds)} />
         <MetricCard title={`No-show — ${selectedLabel}`} value={metrics.noShow} subtitle={subtitleSelected} onClick={() => openDrill(`No-show — ${selectedLabel}`, metrics.noShowIds)} />
         <MetricCard title={`Cancelado — ${selectedLabel}`} value={metrics.cancelado} subtitle={subtitleSelected} onClick={() => openDrill(`Cancelado — ${selectedLabel}`, metrics.canceladoIds)} />

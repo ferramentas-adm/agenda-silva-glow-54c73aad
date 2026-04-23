@@ -146,16 +146,8 @@ export default function AgendarPage() {
     } else if (editData.channel_type && !channelType) {
       setChannelType(editData.channel_type);
     }
-    // Closer reagendando: NÃO herda meeting_reason — ele precisa escrever uma nova justificativa.
-    if (role !== "closer" && editData.meeting_reason && !meetingReason) {
-      const canonical = ["segunda_reuniao", "fechamento", "remarcado"];
-      if (canonical.includes(editData.meeting_reason)) {
-        setMeetingReason(editData.meeting_reason);
-      } else {
-        setMeetingReason("outros");
-        setMeetingReasonCustom(editData.meeting_reason);
-      }
-    }
+    // Campo "Motivo da reunião" foi removido — não herdamos mais meeting_reason
+    // do agendamento original em reagendamentos para nenhuma função.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editData, role]);
 
@@ -182,19 +174,19 @@ export default function AgendarPage() {
   };
 
   const isCloser = role === "closer";
-  // Closer não vê o dropdown de motivo — toda reunião dele é "Segunda Reunião" automaticamente.
-  // Tanto em novo agendamento quanto em reagendamento, ele preenche o campo "Justificar Reagendamento"
-  // (obrigatório, salvo em meeting_reason).
-  const needsReason = role === "gestor" || role === "moderador";
+  // Campo "Motivo da reunião" foi removido do fluxo:
+  // - Closer: meeting_reason gravado automaticamente como 'segunda_reuniao'.
+  // - SDR / Gestor / Moderador: nenhum motivo é coletado/gravado (campo aposentado na UI).
+  // Closers continuam preenchendo "Justificar Reagendamento" em meetingReasonCustom,
+  // mas isso é salvo no campo `observation` (não em meeting_reason).
+  const needsReason = false;
   const isReasonRequired = false;
-  const resolvedReason = isCloser
-    ? (meetingReasonCustom.trim() || null)
-    : (meetingReason === "outros" ? (meetingReasonCustom.trim() || null) : meetingReason);
+  const resolvedReason = isCloser ? "segunda_reuniao" : null;
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
-    // Closer (novo agendamento ou reagendamento) deve obrigatoriamente justificar
-    if (isCloser && !resolvedReason) {
+    // Closer continua precisando justificar (vai para `observation`).
+    if (isCloser && !meetingReasonCustom.trim()) {
       toast.error("Informe a justificativa do agendamento.");
       return;
     }
@@ -228,20 +220,27 @@ export default function AgendarPage() {
       }
 
       // Always create the agendamento, with or without meet link
+      // Para closer, anexamos a justificativa em `observation` (já que o campo
+      // "Motivo da reunião" foi removido); meeting_reason fica fixo em 'segunda_reuniao'.
+      const closerJustification = isCloser ? meetingReasonCustom.trim() : "";
+      const finalObservation = isCloser
+        ? [closerJustification, observation.trim()].filter(Boolean).join(" — ") || null
+        : (observation.trim() || null);
+
       const { data: insertedData, error } = await supabase.from("agendamentos").insert({
         lead_name: lead.name,
         lead_phone: lead.phone,
         closer_id: closerId,
         scheduled_date: dateStr,
         scheduled_time: time,
-        observation: observation || null,
+        observation: finalObservation,
         briefing: briefingText.trim() || null,
         status: editId ? "reagendada" : "agendada",
         meet_link: meetLink,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
-        meeting_reason: resolvedReason || null,
+        meeting_reason: resolvedReason,
         // Closer: canal sempre fixado como "Segunda Reunião"
         channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
         // Status inicial: 'reagendada' se for reagendamento, senão 'agendada' (aguarda confirmação do lead)
@@ -249,12 +248,18 @@ export default function AgendarPage() {
 
       if (error) throw error;
 
-      await logAudit("create_agendamento", "agendamento", insertedData?.id, {
-        lead_name: lead.name,
-        closer_name: closerName,
-        date: dateStr,
-        time,
-      });
+      await logAudit(
+        editId ? "reschedule_agendamento" : "create_agendamento",
+        "agendamento",
+        insertedData?.id,
+        {
+          lead_name: lead.name,
+          closer_name: closerName,
+          scheduled_date: dateStr,
+          scheduled_time: time,
+          ...(editId ? { original_agendamento_id: editId } : {}),
+        }
+      );
 
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
@@ -502,34 +507,7 @@ export default function AgendarPage() {
                 </div>
               )}
 
-              {/* Motivo da reunião — apenas gestor/moderador */}
-              {needsReason && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">
-                    Motivo da reunião
-                  </label>
-                  <Select value={meetingReason ?? ""} onValueChange={(v) => { setMeetingReason(v); if (v !== "outros") setMeetingReasonCustom(""); }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o motivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="segunda_reuniao">Segunda Reunião</SelectItem>
-                      <SelectItem value="fechamento">Fechamento</SelectItem>
-                      <SelectItem value="remarcado">Remarcado</SelectItem>
-                      <SelectItem value="outros">Outros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {meetingReason === "outros" && (
-                    <Textarea
-                      placeholder="Descreva o motivo da reunião..."
-                      value={meetingReasonCustom}
-                      onChange={(e) => setMeetingReasonCustom(e.target.value.slice(0, 200))}
-                      className="resize-none mt-2"
-                      rows={2}
-                    />
-                  )}
-                </div>
-              )}
+              {/* Campo "Motivo da reunião" foi removido do fluxo para todas as funções. */}
 
               {/* Tipo de canal — closer vê como label fixo "Segunda Reunião"; demais escolhem no select */}
               {isCloser ? (
