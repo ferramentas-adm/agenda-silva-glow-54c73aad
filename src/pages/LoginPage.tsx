@@ -2,14 +2,12 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 import loginBg from "@/assets/login-bg.webp";
-import OAuthErrorDialog from "@/components/OAuthErrorDialog";
 
 export default function LoginPage() {
   const { signIn, user } = useAuth();
