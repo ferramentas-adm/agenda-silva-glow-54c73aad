@@ -19,12 +19,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
 import DynamicListManager from "@/components/DynamicListManager";
 import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 
 /* ─── Listas dinâmicas (Motivos / Canais) ─────────────────────── */
 function DynamicListsSection() {
@@ -1326,10 +1327,14 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 bg-secondary">
+            <TabsList className="grid w-full grid-cols-5 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
+              </TabsTrigger>
+              <TabsTrigger value="permissions" className="gap-1.5 text-xs sm:text-sm">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Permissões
               </TabsTrigger>
               <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
                 <Settings className="h-3.5 w-3.5" />
@@ -1347,6 +1352,9 @@ export default function AdminPage() {
 
             <TabsContent value="users">
               <UsersSection />
+            </TabsContent>
+            <TabsContent value="permissions">
+              <PermissionsMatrix />
             </TabsContent>
             <TabsContent value="settings">
               <SettingsSection />
