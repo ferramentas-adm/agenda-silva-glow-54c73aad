@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, parseISO, isBefore, isSameDay, startOfMonth, endOfMonth } from "date-fns";
+import { format, parseISO, isBefore, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
@@ -75,8 +75,6 @@ type DrilldownState = {
 export default function VendasTab({ currentDate }: VendasTabProps) {
   const dateStr = format(currentDate, "yyyy-MM-dd");
   const todayStr = format(new Date(), "yyyy-MM-dd");
-  const startStr = format(startOfMonth(currentDate), "yyyy-MM-dd");
-  const endStr = format(endOfMonth(currentDate), "yyyy-MM-dd");
 
   // Rótulo amigável do dia (Hoje / Ontem / Amanhã / data)
   const dayLabel = useMemo(() => {
@@ -89,29 +87,25 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     return format(currentDate, "dd 'de' MMMM", { locale: ptBR });
   }, [currentDate]);
 
-  // Vendas: filtradas pelo mês do currentDate via created_at.
+  // Vendas: buscamos todas (volume baixo); filtramos por data via agendamentos.
   const { data: vendas = [] } = useQuery<VendaRow[]>({
-    queryKey: ["vendas-tab", startStr],
+    queryKey: ["vendas-tab"],
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, observacoes, created_at")
-        .gte("created_at", startStr)
-        .lte("created_at", endStr);
+        .select("id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, observacoes, created_at");
       return (data ?? []) as VendaRow[];
     },
     refetchInterval: 60_000,
   });
 
   const { data: agendamentos = [] } = useQuery<AgendamentoRow[]>({
-    queryKey: ["vendas-tab-agendamentos", startStr],
+    queryKey: ["vendas-tab-agendamentos"],
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
         .select("id, closer_id, scheduled_date, lead_name")
-        .is("deleted_at", null)
-        .gte("scheduled_date", startStr)
-        .lte("scheduled_date", endStr);
+        .is("deleted_at", null);
       return (data ?? []) as AgendamentoRow[];
     },
     staleTime: 30_000,
