@@ -60,7 +60,6 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
-      <OAuthErrorDialog />
       {/* Background image + overlay */}
       <img src={loginBg} alt="" className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-black/55" />
