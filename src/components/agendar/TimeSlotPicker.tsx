@@ -323,17 +323,17 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         </button>
       </div>
 
-      <AlertDialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
+      <AlertDialog open={!!blockedInfo} onOpenChange={(open) => !open && setBlockedInfo(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar agendamento em horário bloqueado</AlertDialogTitle>
-            <AlertDialogDescription>{confirmDialog?.message}</AlertDialogDescription>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-rose-400" />
+              Horário bloqueado
+            </AlertDialogTitle>
+            <AlertDialogDescription>{blockedInfo}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmDialog?.onConfirm()}>
-              Agendar mesmo assim
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => setBlockedInfo(null)}>Entendi</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
