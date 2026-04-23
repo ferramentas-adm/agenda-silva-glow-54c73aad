@@ -1006,17 +1006,31 @@ export function CalendarContent() {
                         >
                           <RotateCcw className="h-3.5 w-3.5" />Reagendar
                         </Button>
-                        {/* Cancelar e No-show — escondidos para closer */}
-                        {role !== "closer" && detailAg.status !== "cancelada" && (
-                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
-                            <XCircle className="h-3.5 w-3.5" />Cancelar
-                          </Button>
-                        )}
-                        {role !== "closer" && detailAg.status !== "no_show" && (
-                          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
-                            <AlertCircle className="h-3.5 w-3.5" />No-show
-                          </Button>
-                        )}
+                        {/* Cancelar e No-show:
+                            - SDR: nunca vê
+                            - Closer: vê apenas se for o criador (created_by = user.id)
+                            - Gestor / Moderador: sempre veem */}
+                        {(() => {
+                          const canSeeCancelNoShow =
+                            role === "gestor" ||
+                            role === "moderador" ||
+                            (role === "closer" && detailAg.created_by === user?.id);
+                          if (!canSeeCancelNoShow) return null;
+                          return (
+                            <>
+                              {detailAg.status !== "cancelada" && (
+                                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
+                                  <XCircle className="h-3.5 w-3.5" />Cancelar
+                                </Button>
+                              )}
+                              {detailAg.status !== "no_show" && (
+                                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
+                                  <AlertCircle className="h-3.5 w-3.5" />No-show
+                                </Button>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </>
                   )}
