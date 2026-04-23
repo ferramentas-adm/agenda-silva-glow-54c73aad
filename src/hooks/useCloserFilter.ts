@@ -33,12 +33,7 @@ export function useCloserFilter() {
 
   // Initialize from localStorage or select all (closers only see their own)
   useEffect(() => {
-    if (initialized || !user || role === null || isLoading) return;
-    // Query settled with empty result (e.g. 406 or no active closers) — unblock rendering
-    if (!closers.length) {
-      setInitialized(true);
-      return;
-    }
+    if (initialized || !user || role === null) return;
     const allIds = closers.map((c) => c.id);
 
     // Closers can only see their own calendar
@@ -68,7 +63,7 @@ export function useCloserFilter() {
 
     setSelectedIds(new Set(allIds));
     setInitialized(true);
-  }, [closers, isLoading, user, initialized, role]);
+  }, [closers, user, initialized, role]);
 
   // Clean up selectedIds when closers list changes (e.g. closer deleted/deactivated)
   useEffect(() => {
