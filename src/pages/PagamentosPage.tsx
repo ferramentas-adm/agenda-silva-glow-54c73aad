@@ -515,6 +515,7 @@ function PagamentoDialog({
   const { user } = useAuth();
   const isEdit = !!target;
 
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [cliente, setCliente] = useState("");
   const [telefone, setTelefone] = useState("");
   const [valorPrevisto, setValorPrevisto] = useState("");
