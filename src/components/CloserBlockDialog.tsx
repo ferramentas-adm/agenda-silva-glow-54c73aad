@@ -59,7 +59,7 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
     queryKey: ["my-closer-record", user?.email],
     enabled: !!user?.email,
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id").eq("email", user!.email!).single();
+      const { data } = await supabase.from("closers").select("id").eq("email", user!.email!).maybeSingle();
       return data;
     },
   });

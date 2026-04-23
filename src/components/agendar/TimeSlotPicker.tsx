@@ -120,7 +120,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const { data: closerData } = useQuery({
     queryKey: ["closer-hours", closerId],
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("business_hours_start, business_hours_end, business_hours_ranges").eq("id", closerId).single();
+      const { data } = await supabase.from("closers").select("business_hours_start, business_hours_end, business_hours_ranges").eq("id", closerId).maybeSingle();
       return data;
     },
   });

@@ -265,7 +265,7 @@ export async function reuniaoAgendada(ag: AgendamentoData) {
   let sdrDatacrazyId = ag.sdrId;
 
   try {
-    const { data: closerData } = await supabase.from("closers").select("datacrazy_id").eq("id", ag.closerId).single();
+    const { data: closerData } = await supabase.from("closers").select("datacrazy_id").eq("id", ag.closerId).maybeSingle();
     if (closerData?.datacrazy_id) closerDatacrazyId = closerData.datacrazy_id;
 
     const { data: profileData } = await supabase.from("profiles").select("datacrazy_id").eq("user_id", ag.sdrId).single();
@@ -363,7 +363,7 @@ export async function reuniaoRealizada(ag: AgendamentoData) {
   // Resolve DataCrazy ID for closer
   let closerDatacrazyId = ag.closerId;
   try {
-    const { data: closerData } = await supabase.from("closers").select("datacrazy_id").eq("id", ag.closerId).single();
+    const { data: closerData } = await supabase.from("closers").select("datacrazy_id").eq("id", ag.closerId).maybeSingle();
     if (closerData?.datacrazy_id) closerDatacrazyId = closerData.datacrazy_id;
   } catch {
     console.warn("Could not resolve closer DataCrazy ID for reuniaoRealizada");
