@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
 import AppLayout from "@/components/AppLayout";
-import LeadSearch, { type Lead } from "@/components/agendar/LeadSearch";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -515,16 +515,8 @@ function PagamentoDialog({
   const { user } = useAuth();
   const isEdit = !!target;
 
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [cliente, setCliente] = useState("");
-  const [telefone, setTelefone] = useState("");
   const [valorPrevisto, setValorPrevisto] = useState("");
-  const [valorRealizado, setValorRealizado] = useState("");
-  const [valorApresentado, setValorApresentado] = useState("");
   const [dataPrevista, setDataPrevista] = useState<Date | undefined>(undefined);
-  const [dataPagamento, setDataPagamento] = useState<Date | undefined>(undefined);
-  const [status, setStatus] = useState("pendente");
-  const [metodo, setMetodo] = useState("");
   const [closerId, setCloserId] = useState<string>("none");
   const [observacoes, setObservacoes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -533,46 +525,32 @@ function PagamentoDialog({
   useEffect(() => {
     if (!open) return;
     if (target) {
-      setSelectedLead(
-        target.cliente_nome
-          ? { id: target.id, name: target.cliente_nome, phone: target.cliente_telefone ?? "" }
-          : null
-      );
-      setCliente(target.cliente_nome);
-      setTelefone(target.cliente_telefone ?? "");
       setValorPrevisto(Math.round(Number(target.valor_previsto) * 100).toString());
-      setValorRealizado(target.valor_realizado != null ? Math.round(Number(target.valor_realizado) * 100).toString() : "");
-      setValorApresentado(target.valor_apresentado != null ? Math.round(Number(target.valor_apresentado) * 100).toString() : "");
       setDataPrevista(parseISO(target.data_prevista));
-      setDataPagamento(target.data_pagamento ? parseISO(target.data_pagamento) : undefined);
-      setStatus(target.status);
-      setMetodo(target.metodo ?? "");
       setCloserId(target.closer_id ?? "none");
       setObservacoes(target.observacoes ?? "");
     } else {
-      setSelectedLead(null);
-      setCliente(""); setTelefone(""); setValorPrevisto(""); setValorRealizado(""); setValorApresentado("");
-      setDataPrevista(undefined); setDataPagamento(undefined); setStatus("pendente");
-      setMetodo(""); setCloserId("none"); setObservacoes("");
+      setValorPrevisto("");
+      setDataPrevista(undefined);
+      setCloserId("none");
+      setObservacoes("");
     }
   }, [open, target?.id]);
 
-  const canSubmit = cliente.trim().length > 0 && !!dataPrevista && digitsToNumber(valorPrevisto) > 0;
+  const canSubmit = !!dataPrevista && digitsToNumber(valorPrevisto) > 0;
 
   const handleSubmit = async () => {
     if (!canSubmit || !user) return;
     setSubmitting(true);
     try {
+      const closerName =
+        closerId !== "none"
+          ? closersList.find((c) => c.id === closerId)?.name ?? "—"
+          : "—";
+
       const payload = {
-        cliente_nome: cliente.trim(),
-        cliente_telefone: telefone.trim() || null,
         valor_previsto: digitsToNumber(valorPrevisto),
-        valor_realizado: valorRealizado ? digitsToNumber(valorRealizado) : null,
-        valor_apresentado: valorApresentado ? digitsToNumber(valorApresentado) : null,
         data_prevista: format(dataPrevista!, "yyyy-MM-dd"),
-        data_pagamento: dataPagamento ? format(dataPagamento, "yyyy-MM-dd") : null,
-        status,
-        metodo: metodo.trim() || null,
         closer_id: closerId === "none" ? null : closerId,
         observacoes: observacoes.trim() || null,
       };
@@ -583,16 +561,25 @@ function PagamentoDialog({
           .update({ ...payload, updated_by: user.id })
           .eq("id", target.id);
         if (error) throw error;
-        await logAudit("pagamento_atualizado", "pagamento", target.id, { cliente: cliente.trim() });
+        await logAudit("pagamento_atualizado", "pagamento", target.id, {
+          valor: payload.valor_previsto,
+        });
         toast.success("Pagamento atualizado.");
       } else {
+        // cliente_nome é NOT NULL no schema — usamos o closer como referência.
         const { data, error } = await supabase
           .from("pagamentos")
-          .insert({ ...payload, created_by: user.id })
+          .insert({
+            ...payload,
+            cliente_nome: closerName,
+            created_by: user.id,
+          })
           .select("id")
           .single();
         if (error) throw error;
-        await logAudit("pagamento_criado", "pagamento", data.id, { cliente: cliente.trim(), valor: payload.valor_previsto });
+        await logAudit("pagamento_criado", "pagamento", data.id, {
+          valor: payload.valor_previsto,
+        });
         toast.success("Pagamento registrado.");
       }
       onDone();
@@ -607,104 +594,63 @@ function PagamentoDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar Pagamento" : "Novo Pagamento"}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "Atualize os dados do pagamento." : "Registre um pagamento previsto ou recebido."}
+            {isEdit ? "Atualize os dados do pagamento." : "Registre um pagamento previsto."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5 col-span-2">
-              <Label>Lead *</Label>
-              <LeadSearch
-                selectedLead={selectedLead}
-                onSelect={(lead) => {
-                  setSelectedLead(lead);
-                  setCliente(lead.name);
-                  setTelefone(lead.phone);
-                }}
-                onClear={() => {
-                  setSelectedLead(null);
-                  setCliente("");
-                  setTelefone("");
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="vp">Valor Previsto *</Label>
-              <Input id="vp" inputMode="numeric" value={formatBRL(valorPrevisto)} onChange={(e) => setValorPrevisto(e.target.value.replace(/\D/g, ""))} placeholder="0,00" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="vr">Valor Realizado</Label>
-              <Input id="vr" inputMode="numeric" value={formatBRL(valorRealizado)} onChange={(e) => setValorRealizado(e.target.value.replace(/\D/g, ""))} placeholder="0,00" />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="va">Valor Apresentado ao Cliente</Label>
-              <Input id="va" inputMode="numeric" value={formatBRL(valorApresentado)} onChange={(e) => setValorApresentado(e.target.value.replace(/\D/g, ""))} placeholder="0,00" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Data Prevista *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dataPrevista && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dataPrevista ? format(dataPrevista, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dataPrevista} onSelect={setDataPrevista} locale={ptBR} initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Data Pagamento</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dataPagamento && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dataPagamento ? format(dataPagamento, "dd/MM/yyyy", { locale: ptBR }) : "—"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dataPagamento} onSelect={setDataPagamento} locale={ptBR} initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pendente">Pendente</SelectItem>
-                  <SelectItem value="pago">Pago</SelectItem>
-                  <SelectItem value="atrasado">Atrasado</SelectItem>
-                  <SelectItem value="cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Método</Label>
-              <Input value={metodo} onChange={(e) => setMetodo(e.target.value)} placeholder="PIX, Boleto, Cartão..." />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label>Closer responsável</Label>
-              <Select value={closerId} onValueChange={setCloserId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Nenhum —</SelectItem>
-                  {closersList.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label>Observações</Label>
-              <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="vp">Valor Previsto *</Label>
+            <Input
+              id="vp"
+              inputMode="numeric"
+              value={formatBRL(valorPrevisto)}
+              onChange={(e) => setValorPrevisto(e.target.value.replace(/\D/g, ""))}
+              placeholder="0,00"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Data Prevista *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dataPrevista && "text-muted-foreground",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dataPrevista ? format(dataPrevista, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dataPrevista} onSelect={setDataPrevista} locale={ptBR} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Closer responsável</Label>
+            <Select value={closerId} onValueChange={setCloserId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Nenhum —</SelectItem>
+                {closersList.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Observações</Label>
+            <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} />
           </div>
         </div>
 
