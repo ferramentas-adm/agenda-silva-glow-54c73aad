@@ -5,19 +5,31 @@ import { ptBR } from "date-fns/locale";
 import {
   Play, Pause, ChevronLeft, ChevronRight, CalendarDays,
   TrendingUp, RefreshCw, Trophy, Users, Wifi, Eye, EyeOff,
+  LayoutGrid,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
 import VendasTab from "@/components/dashboard/VendasTab";
+import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
-const TAB_NAMES = ["Métricas SDRs", "Agenda Closers", "Ranking SDRs", "Vendas"];
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade";
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "metricas", label: "Métricas SDRs" },
+  { key: "agenda", label: "Agenda Closers" },
+  { key: "ranking", label: "Ranking SDRs" },
+  { key: "vendas", label: "Vendas" },
+  { key: "produtividade", label: "Produtividade SDR" },
+];
 const ROTATION_INTERVAL = 30000;
 
 interface AgendamentoMetric {
