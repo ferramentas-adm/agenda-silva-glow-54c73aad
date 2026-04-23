@@ -592,11 +592,11 @@ export function CalendarContent() {
 
     setSavingEdit(true);
     try {
-      // Atualiza o horário e marca status como "reagendada"
-      // O trigger notify_status_change_webhook envia o payload completo ao DataCrazy
+      // Edição de horário NO MESMO DIA: apenas move o card, mantém o status atual
+      // (não vira 'reagendada' — reagendamento só ocorre quando muda de DIA, via /agendar).
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ scheduled_time: editTime, status: "reagendada" } as any)
+        .update({ scheduled_time: editTime } as any)
         .eq("id", detailAg.id)
         .select("id");
       if (error) throw error;
@@ -610,11 +610,10 @@ export function CalendarContent() {
         field: "scheduled_time",
         from: detailAg.scheduled_time,
         to: editTime,
-        status_from: detailAg.status,
-        status_to: "reagendada",
       });
-      toast.success("Horário atualizado e reagendamento enviado!");
-      setDetailAg({ ...detailAg, scheduled_time: editTime, status: "reagendada" as any });
+      toast.success("Horário atualizado!");
+      setDetailAg({ ...detailAg, scheduled_time: editTime });
+      patchAgendamentosCache(detailAg.id, (ag) => ({ ...ag, scheduled_time: editTime }));
       setEditMode(false);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
