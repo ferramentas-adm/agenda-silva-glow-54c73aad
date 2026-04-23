@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
 import AppLayout from "@/components/AppLayout";
-import LeadSearch, { type Lead } from "@/components/agendar/LeadSearch";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
