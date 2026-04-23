@@ -96,9 +96,9 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
   realizada: "bg-emerald-500/20 text-emerald-400",
   cancelada: "bg-destructive/20 text-destructive",
   no_show: "bg-orange-500/20 text-orange-400",
-  // Reagendada exibe-se como Confirmada na UI (mas no banco continua 'reagendada'
-  // para que o webhook do DataCrazy envie status "Reagendada")
-  reagendada: "bg-primary/20 text-primary",
+  // Reagendada: o card no dia ORIGINAL exibe "Reagendada" (lead movido para outra data).
+  // O novo agendamento na nova data é criado com status 'confirmada'.
+  reagendada: "bg-blue-500/20 text-blue-400",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -107,8 +107,7 @@ const STATUS_LABELS: Record<string, string> = {
   realizada: "Realizada",
   cancelada: "Cancelada",
   no_show: "No-show",
-  // Visualmente o lead reagendado aparece como "Confirmada" na sua nova data
-  reagendada: "Confirmada",
+  reagendada: "Reagendada",
 };
 
 
