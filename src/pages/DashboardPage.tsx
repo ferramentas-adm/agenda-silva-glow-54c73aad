@@ -469,9 +469,9 @@ export function CalendarContent() {
         lead_name: detailAg.lead_name,
         scheduled_date: detailAg.scheduled_date,
         scheduled_time: detailAg.scheduled_time,
-        old_closer: oldName,
-        new_closer: newName,
         field: "closer_id",
+        from: oldName,
+        to: newName,
       });
       patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: newCloserId }));
       setDetailAg({ ...detailAg, closer_id: newCloserId });
