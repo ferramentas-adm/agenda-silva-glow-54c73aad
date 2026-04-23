@@ -71,10 +71,10 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
-      .eq("role", "gestor");
+      .in("role", ["gestor", "moderador"]);
 
     if (!roles || roles.length === 0) {
-      return new Response(JSON.stringify({ error: "Acesso negado. Apenas gestores podem criar usuários." }), {
+      return new Response(JSON.stringify({ error: "Acesso negado. Apenas gestores e moderadores podem criar usuários." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

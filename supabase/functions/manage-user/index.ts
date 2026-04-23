@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", callerId)
-      .eq("role", "gestor");
+      .in("role", ["gestor", "moderador"]);
 
     if (!roles || roles.length === 0) {
       return new Response(JSON.stringify({ error: "Acesso negado." }), {
@@ -88,7 +88,6 @@ Deno.serve(async (req) => {
 
       // Clean up user records
       await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
-      await supabaseAdmin.from("audit_logs").delete().eq("user_id", user_id);
       await supabaseAdmin.from("profiles").delete().eq("user_id", user_id);
 
       console.log(`[delete] Deleting auth user ${user_id}...`);
