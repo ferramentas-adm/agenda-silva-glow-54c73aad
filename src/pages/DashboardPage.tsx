@@ -96,9 +96,9 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
   realizada: "bg-emerald-500/20 text-emerald-400",
   cancelada: "bg-destructive/20 text-destructive",
   no_show: "bg-orange-500/20 text-orange-400",
-  // Reagendada exibe-se como Confirmada na UI (mas no banco continua 'reagendada'
-  // para que o webhook do DataCrazy envie status "Reagendada")
-  reagendada: "bg-primary/20 text-primary",
+  // Reagendada: o card no dia ORIGINAL exibe "Reagendada" (lead movido para outra data).
+  // O novo agendamento na nova data é criado com status 'confirmada'.
+  reagendada: "bg-blue-500/20 text-blue-400",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -107,8 +107,7 @@ const STATUS_LABELS: Record<string, string> = {
   realizada: "Realizada",
   cancelada: "Cancelada",
   no_show: "No-show",
-  // Visualmente o lead reagendado aparece como "Confirmada" na sua nova data
-  reagendada: "Confirmada",
+  reagendada: "Reagendada",
 };
 
 
@@ -593,11 +592,11 @@ export function CalendarContent() {
 
     setSavingEdit(true);
     try {
-      // Atualiza o horário e marca status como "reagendada"
-      // O trigger notify_status_change_webhook envia o payload completo ao DataCrazy
+      // Edição de horário NO MESMO DIA: apenas move o card, mantém o status atual
+      // (não vira 'reagendada' — reagendamento só ocorre quando muda de DIA, via /agendar).
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ scheduled_time: editTime, status: "reagendada" } as any)
+        .update({ scheduled_time: editTime } as any)
         .eq("id", detailAg.id)
         .select("id");
       if (error) throw error;
@@ -611,11 +610,10 @@ export function CalendarContent() {
         field: "scheduled_time",
         from: detailAg.scheduled_time,
         to: editTime,
-        status_from: detailAg.status,
-        status_to: "reagendada",
       });
-      toast.success("Horário atualizado e reagendamento enviado!");
-      setDetailAg({ ...detailAg, scheduled_time: editTime, status: "reagendada" as any });
+      toast.success("Horário atualizado!");
+      setDetailAg({ ...detailAg, scheduled_time: editTime });
+      patchAgendamentosCache(detailAg.id, (ag) => ({ ...ag, scheduled_time: editTime }));
       setEditMode(false);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
@@ -660,10 +658,7 @@ export function CalendarContent() {
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
                 if (key === "total") count = sourceTotal;
-                else if (key === "confirmada") {
-                  // No calendário "reagendada" aparece como "Confirmada" — somar ambos para bater com a UI
-                  count = (sourceCounts["confirmada"] ?? 0) + (sourceCounts["reagendada"] ?? 0);
-                } else if (key === "nao_comparecimento") {
+                else if (key === "nao_comparecimento") {
                   count =
                     (sourceCounts["cancelada"] ?? 0) +
                     (sourceCounts["no_show"] ?? 0);

@@ -196,8 +196,9 @@ export default function AgendarPage() {
     const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
-      // Note: old agendamento keeps its current status (cancelada/no_show)
-      // The NEW agendamento will get "reagendada" status if it comes from an edit
+      // Reagendamento: o NOVO agendamento entra como 'confirmada' na nova data.
+      // O ORIGINAL é marcado como 'reagendada' para que o card no dia antigo
+      // apareça como "Reagendada" e seja contabilizado no board.
 
       // Try to create Google Calendar event + Meet link
       let meetLink: string | null = null;
@@ -235,7 +236,8 @@ export default function AgendarPage() {
         scheduled_time: time,
         observation: finalObservation,
         briefing: briefingText.trim() || null,
-        status: editId ? "reagendada" : "agendada",
+        // Novo agendamento (incluindo reagendamento) entra como 'confirmada' na nova data.
+        status: "confirmada",
         meet_link: meetLink,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
@@ -243,10 +245,21 @@ export default function AgendarPage() {
         meeting_reason: resolvedReason,
         // Closer: canal sempre fixado como "Segunda Reunião"
         channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
-        // Status inicial: 'reagendada' se for reagendamento, senão 'agendada' (aguarda confirmação do lead)
       } as any).select("id").single();
 
       if (error) throw error;
+
+      // Se for reagendamento, marcar o agendamento ORIGINAL como 'reagendada'
+      // para que apareça no calendário do dia antigo com o badge correto.
+      if (editId) {
+        const { error: updateOriginalError } = await supabase
+          .from("agendamentos")
+          .update({ status: "reagendada" } as any)
+          .eq("id", editId);
+        if (updateOriginalError) {
+          console.warn("Falha ao atualizar status do agendamento original:", updateOriginalError);
+        }
+      }
 
       await logAudit(
         editId ? "reschedule_agendamento" : "create_agendamento",
