@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
+import { resendAgendamentoWebhook } from "@/services/datacrazyAgendamento";
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
 
@@ -273,6 +274,15 @@ export default function AgendarPage() {
           ...(editId ? { original_agendamento_id: editId } : {}),
         }
       );
+
+      // Reagendamento (mudou de DIA via /agendar): envia o NOVO agendamento
+      // ao DataCrazy com status "Reagendado", usando o mesmo formato JSON.
+      if (editId && insertedData?.id) {
+        void resendAgendamentoWebhook({
+          agendamentoId: insertedData.id,
+          statusDisplay: "Reagendado",
+        });
+      }
 
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });

@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
+import { resendAgendamentoWebhook } from "@/services/datacrazyAgendamento";
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
@@ -610,6 +611,11 @@ export function CalendarContent() {
         field: "scheduled_time",
         from: detailAg.scheduled_time,
         to: editTime,
+      });
+      // Reenvia ao DataCrazy com status "Confirmado" (mesmo dia, novo horário).
+      void resendAgendamentoWebhook({
+        agendamentoId: detailAg.id,
+        statusDisplay: "Confirmado",
       });
       toast.success("Horário atualizado!");
       setDetailAg({ ...detailAg, scheduled_time: editTime });
