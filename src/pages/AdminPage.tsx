@@ -90,6 +90,11 @@ function UsersSection() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Password reset state (gera senha temporária automaticamente)
+  const [resetTarget, setResetTarget] = useState<{ userId: string; name: string; email: string } | null>(null);
+  const [resetGeneratedPassword, setResetGeneratedPassword] = useState<string | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
+
   // Role change state
   const [roleChangeTarget, setRoleChangeTarget] = useState<{ userId: string; name: string; currentRole: string } | null>(null);
   const [newRole, setNewRole] = useState<string>("");
@@ -327,6 +332,44 @@ function UsersSection() {
     setChangingPassword(false);
   };
 
+  // Gera senha temporária forte e segura (12 caracteres: maiúscula, minúscula, número, símbolo).
+  const generateTemporaryPassword = (): string => {
+    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // sem I/O para evitar confusão visual
+    const lower = "abcdefghijkmnpqrstuvwxyz"; // sem l/o
+    const digits = "23456789"; // sem 0/1
+    const symbols = "!@#$%&*";
+    const all = upper + lower + digits + symbols;
+    const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
+    const chars = [pick(upper), pick(lower), pick(digits), pick(symbols)];
+    for (let i = chars.length; i < 12; i++) chars.push(pick(all));
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join("");
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetTarget) return;
+    setResettingPassword(true);
+    setResetGeneratedPassword(null);
+    try {
+      const tempPassword = generateTemporaryPassword();
+      await invokeEdgeFunction("manage-user", {
+        user_id: resetTarget.userId,
+        action: "change_password",
+        new_password: tempPassword,
+      });
+      // A edge function `manage-user` já marca `must_change_password = true` automaticamente.
+      setResetGeneratedPassword(tempPassword);
+      toast.success("Senha temporária gerada. O usuário será obrigado a trocá-la no primeiro login.");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao redefinir senha");
+    }
+    setResettingPassword(false);
+  };
+
   const handleChangeRole = async () => {
     if (!roleChangeTarget || !newRole) return;
     setChangingRole(true);
@@ -549,9 +592,13 @@ function UsersSection() {
                               onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
                               <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha"
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha (definir manualmente)"
                               onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
                               <KeyRound className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Redefinir senha (gera senha temporária)"
+                              onClick={() => { setResetTarget({ userId: u.userId, name: u.name, email: u.email || "" }); setResetGeneratedPassword(null); }}>
+                              <RefreshCw className="h-3.5 w-3.5" />
                             </Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(u.userId); setEditName(u.name); setEditEmail(u.email); }}>
                               <Pencil className="h-3.5 w-3.5" />
@@ -637,7 +684,88 @@ function UsersSection() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Role change dialog */}
+      {/* Reset password dialog (gera senha temporária e força troca no primeiro login) */}
+      <AlertDialog
+        open={!!resetTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetTarget(null);
+            setResetGeneratedPassword(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-primary" />
+              Redefinir senha
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              {resetGeneratedPassword ? (
+                <span className="block">
+                  Senha temporária gerada para <strong>{resetTarget?.name}</strong>.
+                  Copie e envie ao usuário por canal seguro. No próximo login ele será obrigado a definir uma nova senha.
+                </span>
+              ) : (
+                <span className="block">
+                  Será gerada uma <strong>senha temporária</strong> para <strong>{resetTarget?.name}</strong>
+                  {resetTarget?.email ? <> ({resetTarget.email})</> : null}.
+                  O usuário será <strong>obrigado a trocá-la</strong> no primeiro login.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {resetGeneratedPassword && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Senha temporária</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded bg-secondary px-3 py-2 font-mono text-sm select-all break-all">
+                  {resetGeneratedPassword}
+                </code>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(resetGeneratedPassword);
+                    toast.success("Senha copiada!");
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Esta senha não será exibida novamente. Copie agora.
+              </p>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            {resetGeneratedPassword ? (
+              <AlertDialogAction
+                onClick={() => {
+                  setResetTarget(null);
+                  setResetGeneratedPassword(null);
+                }}
+              >
+                Concluir
+              </AlertDialogAction>
+            ) : (
+              <>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResetPassword} disabled={resettingPassword}>
+                  {resettingPassword ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Gerar senha temporária"
+                  )}
+                </AlertDialogAction>
+              </>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={!!roleChangeTarget} onOpenChange={(open) => { if (!open) { setRoleChangeTarget(null); setNewRole(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
