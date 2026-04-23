@@ -502,9 +502,9 @@ export function CalendarContent() {
         lead_name: detailAg.lead_name,
         scheduled_date: detailAg.scheduled_date,
         scheduled_time: detailAg.scheduled_time,
-        old_sdr: oldName,
-        new_sdr: newName,
         field: "sdr_responsavel_id",
+        from: oldName,
+        to: newName,
       });
       patchAgendamentosCache(detailAg.id, (a) => ({ ...a, sdr_responsavel_id: newSdrId }));
       setDetailAg({ ...detailAg, sdr_responsavel_id: newSdrId } as any);
