@@ -318,6 +318,91 @@ export type Database = {
         }
         Relationships: []
       }
+      pagamentos: {
+        Row: {
+          agendamento_id: string | null
+          cliente_nome: string
+          cliente_telefone: string | null
+          closer_id: string | null
+          created_at: string
+          created_by: string
+          data_pagamento: string | null
+          data_prevista: string
+          id: string
+          metodo: string | null
+          observacoes: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          valor_apresentado: number | null
+          valor_previsto: number
+          valor_realizado: number | null
+          venda_id: string | null
+        }
+        Insert: {
+          agendamento_id?: string | null
+          cliente_nome: string
+          cliente_telefone?: string | null
+          closer_id?: string | null
+          created_at?: string
+          created_by: string
+          data_pagamento?: string | null
+          data_prevista: string
+          id?: string
+          metodo?: string | null
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          valor_apresentado?: number | null
+          valor_previsto?: number
+          valor_realizado?: number | null
+          venda_id?: string | null
+        }
+        Update: {
+          agendamento_id?: string | null
+          cliente_nome?: string
+          cliente_telefone?: string | null
+          closer_id?: string | null
+          created_at?: string
+          created_by?: string
+          data_pagamento?: string | null
+          data_prevista?: string
+          id?: string
+          metodo?: string | null
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          valor_apresentado?: number | null
+          valor_previsto?: number
+          valor_realizado?: number | null
+          venda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active: boolean
@@ -356,6 +441,93 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          allowed: boolean
+          id: string
+          permission_key: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed?: boolean
+          id?: string
+          permission_key: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed?: boolean
+          id?: string
+          permission_key?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          agendamento_id: string | null
+          assigned_closer_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          due_time: string | null
+          id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          assigned_closer_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          assigned_closer_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_assigned_closer_id_fkey"
+            columns: ["assigned_closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
