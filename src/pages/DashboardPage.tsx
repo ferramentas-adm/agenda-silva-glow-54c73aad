@@ -660,11 +660,13 @@ export function CalendarContent() {
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
                 if (key === "total") count = sourceTotal;
-                else if (key === "nao_comparecimento") {
+                else if (key === "confirmada") {
+                  // No calendário "reagendada" aparece como "Confirmada" — somar ambos para bater com a UI
+                  count = (sourceCounts["confirmada"] ?? 0) + (sourceCounts["reagendada"] ?? 0);
+                } else if (key === "nao_comparecimento") {
                   count =
                     (sourceCounts["cancelada"] ?? 0) +
-                    (sourceCounts["no_show"] ?? 0) +
-                    (sourceCounts["reagendada"] ?? 0);
+                    (sourceCounts["no_show"] ?? 0);
                 } else {
                   count = sourceCounts[key] ?? 0;
                 }
