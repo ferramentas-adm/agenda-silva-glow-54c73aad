@@ -107,12 +107,12 @@ function isCustomTimeConflicting(
 }
 
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
-  const { role } = useAuth();
-  const canOverrideBlock = role === "gestor" || role === "moderador";
+  useAuth();
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  // Pop-up apenas informativo: nenhum usuário pode forçar agendamento em bloqueio pessoal.
+  const [blockedInfo, setBlockedInfo] = useState<string | null>(null);
 
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
