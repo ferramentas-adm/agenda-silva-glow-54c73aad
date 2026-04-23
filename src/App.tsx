@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -5,19 +6,37 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import LoginPage from "@/pages/LoginPage";
-import ResetPasswordPage from "@/pages/ResetPasswordPage";
-import ForceChangePasswordPage from "@/pages/ForceChangePasswordPage";
-import DashboardPage from "@/pages/DashboardPage";
-import AgendarPage from "@/pages/AgendarPage";
-import AdminPage from "@/pages/AdminPage";
-import AuditLogsPage from "@/pages/AuditLogsPage";
-import ReunioesListPage from "@/pages/ReunioesListPage";
-import DashboardComercialPage from "@/pages/DashboardComercialPage";
-import FollowUpsPage from "@/pages/FollowUpsPage";
-import NotFound from "@/pages/NotFound";
 
-const queryClient = new QueryClient();
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
+const ForceChangePasswordPage = lazy(() => import("@/pages/ForceChangePasswordPage"));
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const AgendarPage = lazy(() => import("@/pages/AgendarPage"));
+const AdminPage = lazy(() => import("@/pages/AdminPage"));
+const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
+const ReunioesListPage = lazy(() => import("@/pages/ReunioesListPage"));
+const DashboardComercialPage = lazy(() => import("@/pages/DashboardComercialPage"));
+const FollowUpsPage = lazy(() => import("@/pages/FollowUpsPage"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: (failureCount, error: unknown) => {
+        const status = (error as any)?.status;
+        if (typeof status === "number" && status >= 400 && status < 500) return false;
+        return failureCount < 3;
+      },
+    },
+  },
+});
+
+const PageSpinner = () => (
+  <div className="flex h-screen w-full items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -26,19 +45,21 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/alterar-senha" element={<ProtectedRoute><ForceChangePasswordPage /></ProtectedRoute>} />
-            <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-            <Route path="/agendar" element={<ProtectedRoute><AgendarPage /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
-            <Route path="/audit-logs" element={<ProtectedRoute requireAdmin><AuditLogsPage /></ProtectedRoute>} />
-            <Route path="/dashboard-comercial" element={<ProtectedRoute requireAdmin><DashboardComercialPage /></ProtectedRoute>} />
-            <Route path="/reunioes" element={<ProtectedRoute><ReunioesListPage /></ProtectedRoute>} />
-            <Route path="/follow-ups" element={<ProtectedRoute><FollowUpsPage /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<PageSpinner />}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/alterar-senha" element={<ProtectedRoute><ForceChangePasswordPage /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+              <Route path="/agendar" element={<ProtectedRoute><AgendarPage /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
+              <Route path="/audit-logs" element={<ProtectedRoute requireAdmin><AuditLogsPage /></ProtectedRoute>} />
+              <Route path="/dashboard-comercial" element={<ProtectedRoute requireAdmin><DashboardComercialPage /></ProtectedRoute>} />
+              <Route path="/reunioes" element={<ProtectedRoute><ReunioesListPage /></ProtectedRoute>} />
+              <Route path="/follow-ups" element={<ProtectedRoute><FollowUpsPage /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -201,7 +201,7 @@ export function CalendarContent() {
       (data ?? []).forEach((r: { user_id: string; role: string }) => map.set(r.user_id, r.role));
       return map;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,
   });
 
   // Fetch profiles for name resolution (responsável, briefing reader, etc.)
@@ -215,7 +215,7 @@ export function CalendarContent() {
       (data ?? []).forEach((p: { user_id: string; full_name: string }) => map.set(p.user_id, p.full_name));
       return map;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,
   });
 
   // Realtime: ouve mudanças em agendamentos para TODOS os usuários (independente da função).
