@@ -272,25 +272,17 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           return (
             <button
               key={slot}
-              disabled={isPast || (isPersonalBlock && !canOverrideBlock)}
+              disabled={isPast}
               onClick={() => {
-                if (isPersonalBlock && canOverrideBlock) {
-                  setConfirmDialog({
-                    message: "Atenção: este horário está bloqueado por compromisso pessoal do closer. Deseja agendar mesmo assim?",
-                    onConfirm: () => {
-                      onSelect(slot);
-                      setCustomMode(false);
-                      setCustomError(null);
-                      setConfirmDialog(null);
-                    },
-                  });
+                if (isPersonalBlock) {
+                  setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
                   return;
                 }
                 onSelect(slot);
                 setCustomMode(false);
                 setCustomError(null);
               }}
-              title={isPersonalBlock && canOverrideBlock ? "Bloqueio pessoal — Gestor pode forçar" : title}
+              title={title}
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
                 isSelected
