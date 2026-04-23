@@ -533,6 +533,11 @@ function PagamentoDialog({
   useEffect(() => {
     if (!open) return;
     if (target) {
+      setSelectedLead(
+        target.cliente_nome
+          ? { id: target.id, name: target.cliente_nome, phone: target.cliente_telefone ?? "" }
+          : null
+      );
       setCliente(target.cliente_nome);
       setTelefone(target.cliente_telefone ?? "");
       setValorPrevisto(Math.round(Number(target.valor_previsto) * 100).toString());
@@ -545,6 +550,7 @@ function PagamentoDialog({
       setCloserId(target.closer_id ?? "none");
       setObservacoes(target.observacoes ?? "");
     } else {
+      setSelectedLead(null);
       setCliente(""); setTelefone(""); setValorPrevisto(""); setValorRealizado(""); setValorApresentado("");
       setDataPrevista(undefined); setDataPagamento(undefined); setStatus("pendente");
       setMetodo(""); setCloserId("none"); setObservacoes("");
