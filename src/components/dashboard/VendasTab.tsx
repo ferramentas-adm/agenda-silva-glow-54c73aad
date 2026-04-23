@@ -145,8 +145,10 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
   const totalVendas = vendasDia.filter((v) => v.vendeu).length;
   const totalNaoFechou = vendasDia.filter((v) => !v.vendeu).length;
   const taxaConversao = totalReunioesComResultado > 0 ? (totalVendas / totalReunioesComResultado) * 100 : 0;
-  const receitaTotal = vendasDia.filter((v) => v.vendeu && v.valor).reduce((acc, v) => acc + (v.valor || 0), 0);
-  const ticketMedio = totalVendas > 0 ? receitaTotal / totalVendas : 0;
+  // Coletado Total = soma de todos os valores efetivamente fechados no dia.
+  const coletadoTotal = vendasDia.filter((v) => v.vendeu && v.valor).reduce((acc, v) => acc + (v.valor || 0), 0);
+  // Coletado Médio = Coletado Total / Total de Vendas fechadas.
+  const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
   // Follow-ups (escopo geral — não dependem do dia selecionado)
   const followUpsAgendados = vendas.filter((v) => v.follow_up && v.follow_up_date).length;
