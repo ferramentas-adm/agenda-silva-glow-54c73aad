@@ -193,8 +193,8 @@ export default function AgendarPage() {
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
-    // Closer (novo agendamento ou reagendamento) deve obrigatoriamente justificar
-    if (isCloser && !resolvedReason) {
+    // Closer continua precisando justificar (vai para `observation`).
+    if (isCloser && !meetingReasonCustom.trim()) {
       toast.error("Informe a justificativa do agendamento.");
       return;
     }
