@@ -90,6 +90,11 @@ function UsersSection() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Password reset state (gera senha temporária automaticamente)
+  const [resetTarget, setResetTarget] = useState<{ userId: string; name: string; email: string } | null>(null);
+  const [resetGeneratedPassword, setResetGeneratedPassword] = useState<string | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
+
   // Role change state
   const [roleChangeTarget, setRoleChangeTarget] = useState<{ userId: string; name: string; currentRole: string } | null>(null);
   const [newRole, setNewRole] = useState<string>("");
