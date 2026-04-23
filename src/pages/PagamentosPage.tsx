@@ -618,12 +618,20 @@ function PagamentoDialog({
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="cli">Cliente *</Label>
-              <Input id="cli" value={cliente} onChange={(e) => setCliente(e.target.value)} />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="tel">Telefone</Label>
-              <Input id="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+              <Label>Lead *</Label>
+              <LeadSearch
+                selectedLead={selectedLead}
+                onSelect={(lead) => {
+                  setSelectedLead(lead);
+                  setCliente(lead.name);
+                  setTelefone(lead.phone);
+                }}
+                onClear={() => {
+                  setSelectedLead(null);
+                  setCliente("");
+                  setTelefone("");
+                }}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="vp">Valor Previsto *</Label>
