@@ -99,8 +99,21 @@ export default function MetricDrilldownDialog({
     },
   });
 
+  const { data: vendas = [] } = useQuery({
+    queryKey: ["drilldown-vendas", agendamentoIds.join(",")],
+    enabled: open && agendamentoIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendas")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento")
+        .in("agendamento_id", agendamentoIds);
+      return data ?? [];
+    },
+  });
+
   const closerMap = new Map(closers.map((c: any) => [c.id, c.name]));
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
+  const vendaMap = new Map(vendas.map((v: any) => [v.agendamento_id, v]));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
