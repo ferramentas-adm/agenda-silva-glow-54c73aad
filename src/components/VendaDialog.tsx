@@ -67,6 +67,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [isEditing, setIsEditing] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
 
+  // Recebimento futuro (sinal/entrada/parcela acordada na reunião) → vai para Pagamentos
+  const [hasRecebimento, setHasRecebimento] = useState(false);
+  const [valorPrevisto, setValorPrevisto] = useState(""); // dígitos (centavos)
+  const [dataPrevista, setDataPrevista] = useState<Date | undefined>(undefined);
+
   const motivoIsPending = isPendingStageReason(motivo);
 
   // Se o motivo for um motivo de etapa em andamento, esconder seção de follow-up
@@ -90,6 +95,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setMotivo("");
     setObservacoes("");
     setIsEditing(false);
+    setHasRecebimento(false);
+    setValorPrevisto("");
+    setDataPrevista(undefined);
   };
 
   // Sempre que o dialog FECHA, limpa tudo (defesa em profundidade contra vazamento de estado)
@@ -137,10 +145,15 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const valorNumParsed = digitsToNumber(valor);
   const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
 
+  const valorPrevistoNum = digitsToNumber(valorPrevisto);
+  const valorPrevistoValido = !isNaN(valorPrevistoNum) && valorPrevistoNum > 0;
+  const recebimentoValido = !hasRecebimento || (valorPrevistoValido && !!dataPrevista);
+
   const canSubmit = (() => {
     if (!vendeu) return false;
     // Resumo/Observações é obrigatório em qualquer cenário (sim/não), independente do follow-up
     if (!observacoes.trim()) return false;
+    if (!recebimentoValido) return false;
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
@@ -236,6 +249,25 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         outcome,
         registered_at: new Date().toISOString(),
       });
+
+      // Cria pagamento previsto se foi acordado recebimento de valor durante a reunião
+      if (hasRecebimento && valorPrevistoValido && dataPrevista) {
+        const { error: pagError } = await supabase.from("pagamentos").insert({
+          cliente_nome: agData?.lead_name ?? leadName,
+          cliente_telefone: agData?.lead_phone ?? null,
+          valor_previsto: valorPrevistoNum,
+          data_prevista: format(dataPrevista, "yyyy-MM-dd"),
+          status: "pendente",
+          closer_id: agData?.closer_id ?? null,
+          agendamento_id: agendamentoId,
+          observacoes: observacoes.trim() || null,
+          created_by: user.id,
+        });
+        if (pagError) {
+          console.warn("[pagamentos] falha ao criar pagamento previsto:", pagError);
+          toast.warning("Venda registrada, mas falhou ao criar pagamento previsto.");
+        }
+      }
 
       await logAudit("venda_registrada", "venda", agendamentoId, {
         lead_name: leadName,
@@ -421,6 +453,74 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 </p>
               </div>
             </>
+          )}
+
+          {vendeu && (
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="space-y-2">
+                <Label>Foi acordado recebimento de valor (sinal/entrada/parcela)?</Label>
+                <RadioGroup
+                  value={hasRecebimento ? "sim" : "nao"}
+                  onValueChange={(v) => setHasRecebimento(v === "sim")}
+                >
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="sim" id="receb-sim" />
+                      <Label htmlFor="receb-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="nao" id="receb-nao" />
+                      <Label htmlFor="receb-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  Se sim, será criado um pagamento previsto na aba Pagamentos.
+                </p>
+              </div>
+
+              {hasRecebimento && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="valor-previsto">Valor previsto *</Label>
+                    <Input
+                      id="valor-previsto"
+                      inputMode="numeric"
+                      value={formatBRL(valorPrevisto)}
+                      onChange={(e) => setValorPrevisto(e.target.value.replace(/\D/g, ""))}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Data prevista *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !dataPrevista && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dataPrevista ? format(dataPrevista, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dataPrevista}
+                          onSelect={setDataPrevista}
+                          disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                          locale={ptBR}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {vendeu && (
