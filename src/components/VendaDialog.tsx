@@ -95,6 +95,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setMotivo("");
     setObservacoes("");
     setIsEditing(false);
+    setHasRecebimento(false);
+    setValorPrevisto("");
+    setDataPrevista(undefined);
   };
 
   // Sempre que o dialog FECHA, limpa tudo (defesa em profundidade contra vazamento de estado)
