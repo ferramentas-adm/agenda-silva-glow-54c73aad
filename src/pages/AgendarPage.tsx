@@ -237,8 +237,9 @@ export default function AgendarPage() {
         scheduled_time: time,
         observation: finalObservation,
         briefing: briefingText.trim() || null,
-        // Novo agendamento (incluindo reagendamento) entra como 'confirmada' na nova data.
-        status: "confirmada",
+        // Novo agendamento entra como 'agendada' (trigger envia "Agendado" ao DataCrazy).
+        // Reagendamento (mudou de dia) entra como 'reagendada' (trigger envia "Reagendada").
+        status: editId ? "reagendada" : "agendada",
         meet_link: meetLink,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
