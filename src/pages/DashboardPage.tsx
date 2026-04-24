@@ -437,7 +437,7 @@ export function CalendarContent() {
     setTransferring(false);
   };
 
-  // Lista de usuários (qualquer função) para selecionar como responsável
+  // Lista de usuários (qualquer função) para selecionar como responsável — ordem alfabética
   const { data: allUsers = [] } = useQuery({
     queryKey: ["all-users-for-detail"],
     enabled: canEditSdr,
@@ -446,7 +446,22 @@ export function CalendarContent() {
         .from("profiles")
         .select("user_id, full_name")
         .eq("active", true)
-        .order("full_name");
+        .order("full_name", { ascending: true });
+      return data ?? [];
+    },
+  });
+
+  // Closers ativos para o dialog "Transferir lead" — independente do filtro do usuário
+  // (closers role só veem o próprio no useCloserFilter, mas precisam ver TODOS os destinos possíveis aqui).
+  const { data: transferableClosers = [] } = useQuery({
+    queryKey: ["transferable-closers"],
+    enabled: transferOpen,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name", { ascending: true });
       return data ?? [];
     },
   });
