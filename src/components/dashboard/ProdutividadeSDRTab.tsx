@@ -188,7 +188,7 @@ export default function ProdutividadeSDRTab({
 
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
   const kpis = useMemo(() => {
-    if (!range) return { criadas: 0, compareceu: 0, naoCompareceu: 0 };
+    if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0 };
     const criadas = createdAgs.filter(
       (a) =>
         a.created_by &&
@@ -203,9 +203,10 @@ export default function ProdutividadeSDRTab({
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to,
     );
+    const para = dia.length;
     const compareceu = dia.filter((a) => a.status === "realizada").length;
     const naoCompareceu = dia.filter((a) => a.status === "no_show" || a.status === "cancelada").length;
-    return { criadas, compareceu, naoCompareceu };
+    return { criadas, para, compareceu, naoCompareceu };
   }, [agendamentos, createdAgs, sdrIds, range]);
 
   // ─── Quadros de turno (Manhã / Tarde / Noite) ─────────────────
