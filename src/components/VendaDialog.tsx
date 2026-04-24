@@ -175,6 +175,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (!vendeu) return false;
     // Resumo/Observações é obrigatório em qualquer cenário (sim/não), independente do follow-up
     if (!observacoes.trim()) return false;
+    // Faturamento do lead é obrigatório em qualquer cenário
+    if (!leadRevenue) return false;
     if (!recebimentoValido) return false;
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
@@ -213,8 +215,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
           motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
           observacoes: observacoes.trim() || null,
+          lead_revenue: leadRevenue || null,
           created_by: user.id,
-        },
+        } as any,
         { onConflict: "agendamento_id" },
       );
       if (vendaError) {
