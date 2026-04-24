@@ -287,7 +287,7 @@ export default function DashboardComercialPage() {
       yesterdayScheduled: yesterdayAgs.length,
       tomorrowScheduled: tomorrowAgs.length,
       monthTotal: monthAgs.length,
-      monthDiff: monthAgs.length - prevMonthAgs.length,
+      monthDiff: monthAgs.length - prevMonthAgs.filter(a => a.created_by && sdrUserIds.has(a.created_by)).length,
       confirmado: sc(todayAgs, "confirmada"),
       agendado: sc(todayAgs, "agendada"),
       compareceu: sc(todayAgs, "realizada"),
