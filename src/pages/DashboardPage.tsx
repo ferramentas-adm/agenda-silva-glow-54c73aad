@@ -1118,7 +1118,7 @@ export function CalendarContent() {
                   <SelectValue placeholder="Selecionar closer destinatário" />
                 </SelectTrigger>
                 <SelectContent>
-                  {closers
+                  {transferableClosers
                     .filter((c) => c.id !== detailAg?.closer_id)
                     .map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
