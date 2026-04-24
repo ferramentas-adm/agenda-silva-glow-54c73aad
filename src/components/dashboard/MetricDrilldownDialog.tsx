@@ -99,8 +99,21 @@ export default function MetricDrilldownDialog({
     },
   });
 
+  const { data: vendas = [] } = useQuery({
+    queryKey: ["drilldown-vendas", agendamentoIds.join(",")],
+    enabled: open && agendamentoIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendas")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento")
+        .in("agendamento_id", agendamentoIds);
+      return data ?? [];
+    },
+  });
+
   const closerMap = new Map(closers.map((c: any) => [c.id, c.name]));
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
+  const vendaMap = new Map(vendas.map((v: any) => [v.agendamento_id, v]));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -175,6 +188,20 @@ export default function MetricDrilldownDialog({
                         )}
                       </div>
                     )}
+                    {(() => {
+                      const v = vendaMap.get(d.id) as any;
+                      if (!v?.observacoes) return null;
+                      return (
+                        <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                            Resumo do cliente / observações
+                          </p>
+                          <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                            {v.observacoes}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
