@@ -9,6 +9,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { retryWithBackoff } from "@/lib/retryWithBackoff";
 
 export type AgendamentoWebhookStatus =
   | "Agendado"
