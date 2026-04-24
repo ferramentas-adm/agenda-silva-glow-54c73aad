@@ -184,11 +184,18 @@ export default function AgendarPage() {
   const isReasonRequired = false;
   const resolvedReason = isCloser ? "segunda_reuniao" : null;
 
+  // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
+  const channelTypeRequired = role === "sdr" || role === "moderador" || role === "gestor";
+
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
     // Closer continua precisando justificar (vai para `observation`).
     if (isCloser && !meetingReasonCustom.trim()) {
       toast.error("Informe a justificativa do agendamento.");
+      return;
+    }
+    if (channelTypeRequired && !channelType) {
+      toast.error("Selecione o Tipo de Canal.");
       return;
     }
     setSubmitting(true);
@@ -535,7 +542,9 @@ export default function AgendarPage() {
 
               {(role === "sdr" || role === "moderador" || role === "gestor") && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Tipo de Canal</label>
+                  <label className="text-sm font-medium">
+                    Tipo de Canal <span className="text-destructive">*</span>
+                  </label>
                   <Select value={channelType ?? ""} onValueChange={setChannelType}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o canal" />
@@ -546,6 +555,9 @@ export default function AgendarPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {!channelType && (
+                    <p className="text-xs text-destructive">Campo obrigatório.</p>
+                  )}
                 </div>
               )}
               <div className="space-y-1.5">
@@ -580,7 +592,12 @@ export default function AgendarPage() {
           {step === "confirm" ? (
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !canGoNext.confirm || (isCloser && !meetingReasonCustom.trim())}
+              disabled={
+                submitting ||
+                !canGoNext.confirm ||
+                (isCloser && !meetingReasonCustom.trim()) ||
+                (channelTypeRequired && !channelType)
+              }
               className="gap-2"
             >
               {submitting ? "Agendando..." : editId ? "Reagendar" : "Confirmar Agendamento"}

@@ -31,6 +31,15 @@ interface VendaDialogProps {
   onSuccess: () => void;
 }
 
+const LEAD_REVENUE_OPTIONS = [
+  "Abaixo de 10k/mês",
+  "Entre 10k e 30k/mês",
+  "Entre 30k e 50k/mês",
+  "Entre 50k e 100k/mês",
+  "Acima de 100k/mês",
+  "Não tenho essa informação",
+] as const;
+
 // Formata centavos (string de dígitos) como BRL: "123456" -> "1.234,56"
 const formatBRL = (digits: string) => {
   const cleaned = digits.replace(/\D/g, "");
@@ -63,6 +72,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [followUpTime, setFollowUpTime] = useState<string>("");
   const [motivo, setMotivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
@@ -104,6 +114,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setFollowUpTime("");
     setMotivo("");
     setObservacoes("");
+    setLeadRevenue("");
     setIsEditing(false);
     setHasRecebimento(false);
     setValorPrevisto("");
@@ -147,6 +158,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setFollowUpTime((data as { follow_up_time?: string | null }).follow_up_time ?? "");
         setMotivo(data.motivo_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
+        setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
       }
       setLoadingExisting(false);
     })();
@@ -163,6 +175,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (!vendeu) return false;
     // Resumo/Observações é obrigatório em qualquer cenário (sim/não), independente do follow-up
     if (!observacoes.trim()) return false;
+    // Faturamento do lead é obrigatório em qualquer cenário
+    if (!leadRevenue) return false;
     if (!recebimentoValido) return false;
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
@@ -201,8 +215,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
           motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
           observacoes: observacoes.trim() || null,
+          lead_revenue: leadRevenue || null,
           created_by: user.id,
-        },
+        } as any,
         { onConflict: "agendamento_id" },
       );
       if (vendaError) {
@@ -258,7 +273,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         observacoes: observacoes.trim() || null,
         outcome,
         registered_at: new Date().toISOString(),
-      });
+        lead_revenue: leadRevenue || null,
+      } as any);
 
       // Cria pagamento previsto se foi acordado recebimento de valor durante a reunião
       if (hasRecebimento && valorPrevistoValido && dataPrevista) {
@@ -326,6 +342,23 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Faturamento do lead *</Label>
+            <Select value={leadRevenue} onValueChange={setLeadRevenue}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o faturamento" />
+              </SelectTrigger>
+              <SelectContent>
+                {LEAD_REVENUE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Campo obrigatório — selecione a faixa de faturamento mensal informada pelo lead.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label>Vendeu? *</Label>
             <RadioGroup value={vendeu ?? ""} onValueChange={(v) => setVendeu(v as "sim" | "nao")}>

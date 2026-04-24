@@ -556,6 +556,7 @@ export type Database = {
           follow_up_date: string | null
           follow_up_time: string | null
           id: string
+          lead_revenue: string | null
           motivo_nao_fechamento: string | null
           observacoes: string | null
           resumo_venda: string | null
@@ -571,6 +572,7 @@ export type Database = {
           follow_up_date?: string | null
           follow_up_time?: string | null
           id?: string
+          lead_revenue?: string | null
           motivo_nao_fechamento?: string | null
           observacoes?: string | null
           resumo_venda?: string | null
@@ -586,6 +588,7 @@ export type Database = {
           follow_up_date?: string | null
           follow_up_time?: string | null
           id?: string
+          lead_revenue?: string | null
           motivo_nao_fechamento?: string | null
           observacoes?: string | null
           resumo_venda?: string | null
