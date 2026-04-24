@@ -138,14 +138,12 @@ export default function ProdutividadeSDRTab({
   const pool = useMemo(() => {
     if (!range) return [];
     if (filter === "criadas") {
-      // Filtramos por created_at no range.
-      return createdAgs.filter(
-        (a) =>
-          a.created_by &&
-          sdrIds.has(a.created_by) &&
-          a.created_at >= `${range.from}T00:00:00` &&
-          a.created_at <= `${range.to}T23:59:59`,
-      );
+      // Filtramos por created_at convertido para a data LOCAL do navegador.
+      return createdAgs.filter((a) => {
+        if (!a.created_by || !sdrIds.has(a.created_by)) return false;
+        const localDay = localDateOf(a.created_at);
+        return localDay >= range.from && localDay <= range.to;
+      });
     }
     // Para / Compareceu / Não compareceu → usamos scheduled_date como referência
     const byDate = agendamentos.filter(
