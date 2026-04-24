@@ -1191,6 +1191,29 @@ export function CalendarContent() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Justificativa do reagendamento (closer) — janela dedicada similar ao briefing */}
+      <Dialog open={viewJustification} onOpenChange={setViewJustification}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-amber-500" />
+              Justificativa do reagendamento
+            </DialogTitle>
+            <DialogDescription>
+              {detailAg?.lead_name && (
+                <span>
+                  Reunião com <strong>{detailAg.lead_name}</strong>
+                  {detailAg && ` · ${format(new Date(detailAg.scheduled_date + "T12:00:00"), "dd/MM/yyyy")} às ${detailAg.scheduled_time}`}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm leading-6 whitespace-pre-wrap break-words" style={{ overflowWrap: "anywhere" }}>
+            {detailAg?.observation || "—"}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Briefing Drawer */}
       <BriefingDrawer
         open={viewBriefing}
