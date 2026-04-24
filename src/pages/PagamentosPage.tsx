@@ -138,6 +138,26 @@ export default function PagamentosPage() {
     });
   }, [pagamentos, filterCloser, filterStatus, filterFrom, filterTo]);
 
+  // Agrupa pagamentos por dia (chave = data_prevista YYYY-MM-DD)
+  const groupedByDay = useMemo(() => {
+    const map = new Map<string, Pagamento[]>();
+    for (const p of filtered) {
+      const key = p.data_prevista;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(p);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([dateKey, items]) => {
+        const totalPrev = items.reduce((s, p) => s + Number(p.valor_previsto ?? 0), 0);
+        const totalReal = items.reduce(
+          (s, p) => s + (computeEffectiveStatus(p) === "pago" ? Number(p.valor_realizado ?? p.valor_previsto ?? 0) : 0),
+          0,
+        );
+        return { dateKey, items, totalPrev, totalReal };
+      });
+  }, [filtered]);
+
   const totals = useMemo(() => {
     let previsto = 0;
     let recebido = 0;
