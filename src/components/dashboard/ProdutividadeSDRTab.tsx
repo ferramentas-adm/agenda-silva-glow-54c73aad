@@ -88,8 +88,10 @@ export default function ProdutividadeSDRTab({
   updatedAgo,
 }: Props) {
   const [filter, setFilter] = useState<FilterType>("criadas");
-  const [period, setPeriod] = useState<PeriodKey>("hoje");
-  const [specificDate, setSpecificDate] = useState<Date | undefined>(undefined);
+  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
   const [dateOpen, setDateOpen] = useState(false);
 
   // ─── Lookup: somente user_ids de SDRs ─────────────────────────
@@ -100,29 +102,19 @@ export default function ProdutividadeSDRTab({
     return m;
   }, [sdrProfiles]);
 
-  // ─── Range do período selecionado ─────────────────────────────
+  // ─── Range efetivo ────────────────────────────────────────────
+  // Modo "intervalo": usuário escolheu from + to no calendário.
+  // Modo "single":   usa o currentDate vindo do filtro superior.
+  const isIntervalMode = Boolean(customRange.from && customRange.to);
   const range = useMemo(() => {
     const fmt = (d: Date) => format(d, "yyyy-MM-dd");
-    switch (period) {
-      case "hoje":
-        return { from: fmt(currentDate), to: fmt(currentDate) };
-      case "ontem": {
-        const d = subDays(currentDate, 1);
-        return { from: fmt(d), to: fmt(d) };
-      }
-      case "semana":
-        return {
-          from: fmt(startOfWeek(currentDate, { locale: ptBR })),
-          to: fmt(endOfWeek(currentDate, { locale: ptBR })),
-        };
-      case "mes":
-        return { from: fmt(startOfMonth(currentDate)), to: fmt(endOfMonth(currentDate)) };
-      case "data":
-        return specificDate ? { from: fmt(specificDate), to: fmt(specificDate) } : null;
-      default:
-        return null;
+    if (isIntervalMode && customRange.from && customRange.to) {
+      const a = customRange.from <= customRange.to ? customRange.from : customRange.to;
+      const b = customRange.from <= customRange.to ? customRange.to : customRange.from;
+      return { from: fmt(a), to: fmt(b) };
     }
-  }, [period, currentDate, specificDate]);
+    return { from: fmt(currentDate), to: fmt(currentDate) };
+  }, [isIntervalMode, customRange, currentDate]);
 
   // ─── Pool de agendamentos a considerar (apenas SDRs via /agendar) ─
   // Regra de negócio: somente reuniões cujo criador seja um SDR.
