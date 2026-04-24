@@ -368,74 +368,106 @@ export default function PagamentosPage() {
           </CardContent>
         </Card>
 
-        {/* Tabela */}
-        <Card>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground text-sm">
-                Nenhum pagamento encontrado.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Lead</TableHead>
-                      <TableHead>Closer</TableHead>
-                      <TableHead>Data Prevista</TableHead>
-                      <TableHead className="text-right">Previsto</TableHead>
-                      <TableHead className="text-right">Realizado</TableHead>
-                      <TableHead>Status</TableHead>
-                      {canManage && <TableHead className="text-right">Ações</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((p) => {
-                      const eff = computeEffectiveStatus(p);
-                      const meta = STATUS_META[eff] ?? STATUS_META.pendente;
-                      return (
-                        <TableRow key={p.id}>
-                          <TableCell className="font-medium">{p.cliente_nome}</TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {p.closers?.name ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {format(parseISO(p.data_prevista), "dd/MM/yyyy", { locale: ptBR })}
-                          </TableCell>
-                          <TableCell className="text-right text-sm">{numberToBRL(Number(p.valor_previsto))}</TableCell>
-                          <TableCell className="text-right text-sm">
-                            {p.valor_realizado != null ? numberToBRL(Number(p.valor_realizado)) : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={cn("text-xs", meta.cls)}>
-                              {meta.label}
-                            </Badge>
-                          </TableCell>
-                          {canManage && (
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditTarget(p); setOpenDialog(true); }}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(p)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Seções por dia */}
+        {isLoading ? (
+          <Card>
+            <CardContent className="flex justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : filtered.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground text-sm">
+              Nenhum pagamento encontrado.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {groupedByDay.map(({ dateKey, items, totalPrev, totalReal }) => {
+              const d = parseISO(dateKey);
+              const isDayToday = isToday(d);
+              const isPast = isBefore(d, new Date()) && !isDayToday;
+              return (
+                <Card key={dateKey}>
+                  <CardHeader className="pb-2 flex flex-row items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className={cn(
+                        "h-4 w-4",
+                        isDayToday ? "text-primary" : isPast ? "text-destructive" : "text-muted-foreground",
+                      )} />
+                      <CardTitle className="text-base capitalize">
+                        {format(d, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      </CardTitle>
+                      {isDayToday && (
+                        <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
+                          Hoje
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{items.length} pagamento{items.length !== 1 ? "s" : ""}</span>
+                      <span>·</span>
+                      <span>Previsto: <strong className="text-foreground">{numberToBRL(totalPrev)}</strong></span>
+                      <span>·</span>
+                      <span>Recebido: <strong className="text-emerald-600 dark:text-emerald-400">{numberToBRL(totalReal)}</strong></span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Lead</TableHead>
+                            <TableHead>Closer</TableHead>
+                            <TableHead className="text-right">Previsto</TableHead>
+                            <TableHead className="text-right">Realizado</TableHead>
+                            <TableHead>Status</TableHead>
+                            {canManage && <TableHead className="text-right">Ações</TableHead>}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {items.map((p) => {
+                            const eff = computeEffectiveStatus(p);
+                            const meta = STATUS_META[eff] ?? STATUS_META.pendente;
+                            return (
+                              <TableRow key={p.id}>
+                                <TableCell className="font-medium">{p.cliente_nome}</TableCell>
+                                <TableCell className="text-muted-foreground text-sm">
+                                  {p.closers?.name ?? "—"}
+                                </TableCell>
+                                <TableCell className="text-right text-sm">{numberToBRL(Number(p.valor_previsto))}</TableCell>
+                                <TableCell className="text-right text-sm">
+                                  {p.valor_realizado != null ? numberToBRL(Number(p.valor_realizado)) : "—"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={cn("text-xs", meta.cls)}>
+                                    {meta.label}
+                                  </Badge>
+                                </TableCell>
+                                {canManage && (
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-1">
+                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditTarget(p); setOpenDialog(true); }}>
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(p)}>
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {canManage && (
           <PagamentoDialog
