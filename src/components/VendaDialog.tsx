@@ -67,6 +67,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [isEditing, setIsEditing] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
 
+  // Recebimento futuro (sinal/entrada/parcela acordada na reunião) → vai para Pagamentos
+  const [hasRecebimento, setHasRecebimento] = useState(false);
+  const [valorPrevisto, setValorPrevisto] = useState(""); // dígitos (centavos)
+  const [dataPrevista, setDataPrevista] = useState<Date | undefined>(undefined);
+
   const motivoIsPending = isPendingStageReason(motivo);
 
   // Se o motivo for um motivo de etapa em andamento, esconder seção de follow-up
