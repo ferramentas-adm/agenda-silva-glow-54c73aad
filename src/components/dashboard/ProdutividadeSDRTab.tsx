@@ -175,12 +175,16 @@ export default function ProdutividadeSDRTab({
       counts.set(key, (counts.get(key) || 0) + 1);
     });
     return sdrProfiles
-      .map((p) => ({
-        sdr: p.full_name,
-        // primeiro nome para legibilidade no eixo X
-        shortName: p.full_name.split(" ")[0],
-        total: counts.get(p.user_id) || 0,
-      }))
+      .map((p) => {
+        const parts = p.full_name.trim().split(/\s+/);
+        const shortName =
+          parts.length >= 2 ? `${parts[0]} ${parts[1].charAt(0).toUpperCase()}.` : parts[0];
+        return {
+          sdr: p.full_name,
+          shortName,
+          total: counts.get(p.user_id) || 0,
+        };
+      })
       .sort((a, b) => b.total - a.total);
   }, [pool, sdrProfiles]);
 
