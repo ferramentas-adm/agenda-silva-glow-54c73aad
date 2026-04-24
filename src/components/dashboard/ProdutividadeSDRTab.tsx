@@ -45,21 +45,12 @@ interface SDRProfile {
 }
 
 type FilterType = "criadas" | "para" | "compareceu" | "nao_compareceu";
-type PeriodKey = "hoje" | "ontem" | "semana" | "mes" | "data";
 
 const FILTER_OPTIONS: { key: FilterType; label: string; icon: typeof CalendarDays; color: string }[] = [
   { key: "criadas", label: "Criadas", icon: CalendarDays, color: "text-primary" },
   { key: "para", label: "Para", icon: CalendarClock, color: "text-sky-500" },
   { key: "compareceu", label: "Compareceu", icon: CheckCircle2, color: "text-emerald-500" },
   { key: "nao_compareceu", label: "Não compareceu", icon: XCircle, color: "text-destructive" },
-];
-
-const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
-  { key: "hoje", label: "Hoje" },
-  { key: "ontem", label: "Ontem" },
-  { key: "semana", label: "Semana" },
-  { key: "mes", label: "Mês" },
-  { key: "data", label: "Data específica" },
 ];
 
 interface Props {
