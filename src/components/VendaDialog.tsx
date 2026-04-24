@@ -83,6 +83,16 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     }
   }, [motivoIsPending]);
 
+  // Venda perdida (não vendeu + sem follow-up) → não faz sentido registrar recebimento
+  const isVendaPerdida = vendeu === "nao" && !motivoIsPending && followUp === "nao";
+  useEffect(() => {
+    if (isVendaPerdida) {
+      setHasRecebimento(false);
+      setValorPrevisto("");
+      setDataPrevista(undefined);
+    }
+  }, [isVendaPerdida]);
+
   // Helper para limpar TODOS os campos — usado em todas as transições para
   // garantir que dados de leads anteriores nunca apareçam por engano.
   const resetAllFields = () => {
