@@ -371,7 +371,10 @@ export default function ProdutividadeSDRTab({
                     border: "1px solid hsl(var(--border))",
                     borderRadius: 8,
                     fontSize: 12,
+                    color: "hsl(var(--primary))",
                   }}
+                  itemStyle={{ color: "hsl(var(--primary))", fontWeight: 600 }}
+                  labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
                   formatter={(value: number) => [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel]}
                   labelFormatter={(label, payload) => {
                     const entry = payload?.[0]?.payload as { sdr?: string } | undefined;
