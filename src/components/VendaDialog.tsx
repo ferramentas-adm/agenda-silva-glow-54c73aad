@@ -250,6 +250,25 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         registered_at: new Date().toISOString(),
       });
 
+      // Cria pagamento previsto se foi acordado recebimento de valor durante a reunião
+      if (hasRecebimento && valorPrevistoValido && dataPrevista) {
+        const { error: pagError } = await supabase.from("pagamentos").insert({
+          cliente_nome: agData?.lead_name ?? leadName,
+          cliente_telefone: agData?.lead_phone ?? null,
+          valor_previsto: valorPrevistoNum,
+          data_prevista: format(dataPrevista, "yyyy-MM-dd"),
+          status: "pendente",
+          closer_id: agData?.closer_id ?? null,
+          agendamento_id: agendamentoId,
+          observacoes: observacoes.trim() || null,
+          created_by: user.id,
+        });
+        if (pagError) {
+          console.warn("[pagamentos] falha ao criar pagamento previsto:", pagError);
+          toast.warning("Venda registrada, mas falhou ao criar pagamento previsto.");
+        }
+      }
+
       await logAudit("venda_registrada", "venda", agendamentoId, {
         lead_name: leadName,
         vendeu: vendeu === "sim",
