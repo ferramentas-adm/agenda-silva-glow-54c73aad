@@ -342,6 +342,23 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
         <div className="space-y-4">
           <div className="space-y-2">
+            <Label>Faturamento do lead *</Label>
+            <Select value={leadRevenue} onValueChange={setLeadRevenue}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o faturamento" />
+              </SelectTrigger>
+              <SelectContent>
+                {LEAD_REVENUE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Campo obrigatório — selecione a faixa de faturamento mensal informada pelo lead.
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label>Vendeu? *</Label>
             <RadioGroup value={vendeu ?? ""} onValueChange={(v) => setVendeu(v as "sim" | "nao")}>
               <div className="flex gap-4">
