@@ -5,6 +5,7 @@ import { Search, X, Tag, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { buscarLeadsComTagId, type DataCrazyLead } from "@/services/datacrazy";
+import { DataCrazyUnavailableError } from "@/lib/retryWithBackoff";
 import { cn } from "@/lib/utils";
 
 export interface Lead {
@@ -105,14 +106,23 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
   }
 
   if (error || taggedLeads.length === 0) {
+    const isUnavailable = error instanceof DataCrazyUnavailableError;
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-primary/30 bg-card py-10 text-center">
         <Tag className="h-8 w-8 text-primary" />
         <p className="text-sm font-medium text-foreground">
-          Nenhum lead disponível para agendamento.
+          {isUnavailable
+            ? "Serviço temporariamente indisponível"
+            : "Nenhum lead disponível para agendamento."}
         </p>
         <p className="text-xs text-muted-foreground max-w-xs">
-          Adicione a tag <span className="font-semibold text-primary">"agendamento"</span> ao lead no DataCrazy para que ele apareça aqui.
+          {isUnavailable ? (
+            "Não conseguimos carregar os leads do DataCrazy agora. Tente novamente em alguns instantes."
+          ) : (
+            <>
+              Adicione a tag <span className="font-semibold text-primary">"agendamento"</span> ao lead no DataCrazy para que ele apareça aqui.
+            </>
+          )}
         </p>
         <Button
           variant="outline"
@@ -122,7 +132,7 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
           className="mt-2 gap-2"
         >
           <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          Atualizar
+          {isUnavailable ? "Tentar novamente" : "Atualizar"}
         </Button>
       </div>
     );
