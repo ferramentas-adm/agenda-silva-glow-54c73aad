@@ -31,6 +31,15 @@ interface VendaDialogProps {
   onSuccess: () => void;
 }
 
+const LEAD_REVENUE_OPTIONS = [
+  "Abaixo de 10k/mês",
+  "Entre 10k e 30k/mês",
+  "Entre 30k e 50k/mês",
+  "Entre 50k e 100k/mês",
+  "Acima de 100k/mês",
+  "Não tenho essa informação",
+] as const;
+
 // Formata centavos (string de dígitos) como BRL: "123456" -> "1.234,56"
 const formatBRL = (digits: string) => {
   const cleaned = digits.replace(/\D/g, "");
@@ -63,6 +72,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [followUpTime, setFollowUpTime] = useState<string>("");
   const [motivo, setMotivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
@@ -104,6 +114,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setFollowUpTime("");
     setMotivo("");
     setObservacoes("");
+    setLeadRevenue("");
     setIsEditing(false);
     setHasRecebimento(false);
     setValorPrevisto("");
@@ -147,6 +158,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setFollowUpTime((data as { follow_up_time?: string | null }).follow_up_time ?? "");
         setMotivo(data.motivo_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
+        setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
       }
       setLoadingExisting(false);
     })();
