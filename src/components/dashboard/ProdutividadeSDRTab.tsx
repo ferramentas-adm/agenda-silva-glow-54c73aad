@@ -213,13 +213,11 @@ export default function ProdutividadeSDRTab({
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
   const kpis = useMemo(() => {
     if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0 };
-    const criadas = createdAgs.filter(
-      (a) =>
-        a.created_by &&
-        sdrIds.has(a.created_by) &&
-        a.created_at >= `${range.from}T00:00:00` &&
-        a.created_at <= `${range.to}T23:59:59`,
-    ).length;
+    const criadas = createdAgs.filter((a) => {
+      if (!a.created_by || !sdrIds.has(a.created_by)) return false;
+      const localDay = localDateOf(a.created_at);
+      return localDay >= range.from && localDay <= range.to;
+    }).length;
     const dia = agendamentos.filter(
       (a) =>
         a.created_by &&
