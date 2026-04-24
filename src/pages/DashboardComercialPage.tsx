@@ -226,12 +226,37 @@ export default function DashboardComercialPage() {
   });
 
   // ─── Computed metrics ──────────────────────────────────────────
+  // Regra de negócio: TODAS as métricas deste painel consideram apenas
+  // agendamentos criados por usuários com função SDR (mesma regra do
+  // painel "Produtividade SDR"). Agendamentos criados por closers/
+  // gestores/moderadores via Calendário não entram na contagem.
+  const sdrUserIds = useMemo(
+    () => new Set(sdrProfiles.map(p => p.user_id)),
+    [sdrProfiles],
+  );
+
   const metrics = useMemo(() => {
-    const todayAgs = agendamentos.filter(a => a.scheduled_date === dateStr);
-    const todayCreated = agendamentos.filter(a => a.created_at.startsWith(dateStr));
-    const yesterdayAgs = agendamentos.filter(a => a.scheduled_date === yesterdayStr);
-    const tomorrowAgs = agendamentos.filter(a => a.scheduled_date === tomorrowStr);
-    const monthAgs = agendamentos.filter(a => a.scheduled_date >= monthStart && a.scheduled_date <= monthEnd);
+    // Helper: converte timestamp ISO para YYYY-MM-DD na timezone LOCAL
+    // (evita que reuniões criadas à noite no Brasil sejam contadas como
+    // "amanhã" pela UTC).
+    const localDateOf = (iso: string): string => {
+      const d = new Date(iso);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
+    // Pool base: somente agendamentos criados por SDRs.
+    const sdrAgs = agendamentos.filter(
+      a => a.created_by && sdrUserIds.has(a.created_by),
+    );
+
+    const todayAgs = sdrAgs.filter(a => a.scheduled_date === dateStr);
+    const todayCreated = sdrAgs.filter(a => localDateOf(a.created_at) === dateStr);
+    const yesterdayAgs = sdrAgs.filter(a => a.scheduled_date === yesterdayStr);
+    const tomorrowAgs = sdrAgs.filter(a => a.scheduled_date === tomorrowStr);
+    const monthAgs = sdrAgs.filter(a => a.scheduled_date >= monthStart && a.scheduled_date <= monthEnd);
 
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
