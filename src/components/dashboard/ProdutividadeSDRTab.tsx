@@ -431,13 +431,14 @@ function SummaryCard({
   icon: typeof CalendarDays;
   label: string;
   value: number;
-  accent: "primary" | "emerald" | "destructive";
+  accent: "primary" | "emerald" | "destructive" | "sky";
   active: boolean;
 }) {
   const accentClass = {
     primary: "text-primary",
     emerald: "text-emerald-500",
     destructive: "text-destructive",
+    sky: "text-sky-500",
   }[accent];
   return (
     <div
