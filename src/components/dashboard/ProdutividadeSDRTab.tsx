@@ -148,7 +148,7 @@ export default function ProdutividadeSDRTab({
           a.created_at <= `${range.to}T23:59:59`,
       );
     }
-    // Compareceu / Não compareceu → usamos scheduled_date como referência
+    // Para / Compareceu / Não compareceu → usamos scheduled_date como referência
     const byDate = agendamentos.filter(
       (a) =>
         a.created_by &&
@@ -156,6 +156,10 @@ export default function ProdutividadeSDRTab({
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to,
     );
+    if (filter === "para") {
+      // Todas as reuniões agendadas PARA o período (qualquer status)
+      return byDate;
+    }
     if (filter === "compareceu") {
       return byDate.filter((a) => a.status === "realizada");
     }
