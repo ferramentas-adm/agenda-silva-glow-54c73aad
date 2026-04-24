@@ -683,7 +683,8 @@ export function CalendarContent() {
                 else if (key === "nao_comparecimento") {
                   count =
                     (sourceCounts["cancelada"] ?? 0) +
-                    (sourceCounts["no_show"] ?? 0);
+                    (sourceCounts["no_show"] ?? 0) +
+                    (sourceCounts["reagendada"] ?? 0);
                 } else {
                   count = sourceCounts[key] ?? 0;
                 }
