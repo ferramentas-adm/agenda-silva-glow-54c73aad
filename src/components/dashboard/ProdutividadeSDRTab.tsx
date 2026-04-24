@@ -20,6 +20,7 @@ import {
   CalendarDays,
   CheckCircle2,
   XCircle,
+  CalendarClock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -43,11 +44,12 @@ interface SDRProfile {
   full_name: string;
 }
 
-type FilterType = "criadas" | "compareceu" | "nao_compareceu";
+type FilterType = "criadas" | "para" | "compareceu" | "nao_compareceu";
 type PeriodKey = "hoje" | "ontem" | "semana" | "mes" | "data";
 
 const FILTER_OPTIONS: { key: FilterType; label: string; icon: typeof CalendarDays; color: string }[] = [
   { key: "criadas", label: "Criadas", icon: CalendarDays, color: "text-primary" },
+  { key: "para", label: "Para", icon: CalendarClock, color: "text-sky-500" },
   { key: "compareceu", label: "Compareceu", icon: CheckCircle2, color: "text-emerald-500" },
   { key: "nao_compareceu", label: "Não compareceu", icon: XCircle, color: "text-destructive" },
 ];
@@ -146,7 +148,7 @@ export default function ProdutividadeSDRTab({
           a.created_at <= `${range.to}T23:59:59`,
       );
     }
-    // Compareceu / Não compareceu → usamos scheduled_date como referência
+    // Para / Compareceu / Não compareceu → usamos scheduled_date como referência
     const byDate = agendamentos.filter(
       (a) =>
         a.created_by &&
@@ -154,6 +156,10 @@ export default function ProdutividadeSDRTab({
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to,
     );
+    if (filter === "para") {
+      // Todas as reuniões agendadas PARA o período (qualquer status)
+      return byDate;
+    }
     if (filter === "compareceu") {
       return byDate.filter((a) => a.status === "realizada");
     }
@@ -182,7 +188,7 @@ export default function ProdutividadeSDRTab({
 
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
   const kpis = useMemo(() => {
-    if (!range) return { criadas: 0, compareceu: 0, naoCompareceu: 0 };
+    if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0 };
     const criadas = createdAgs.filter(
       (a) =>
         a.created_by &&
@@ -197,9 +203,10 @@ export default function ProdutividadeSDRTab({
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to,
     );
+    const para = dia.length;
     const compareceu = dia.filter((a) => a.status === "realizada").length;
     const naoCompareceu = dia.filter((a) => a.status === "no_show" || a.status === "cancelada").length;
-    return { criadas, compareceu, naoCompareceu };
+    return { criadas, para, compareceu, naoCompareceu };
   }, [agendamentos, createdAgs, sdrIds, range]);
 
   // ─── Quadros de turno (Manhã / Tarde / Noite) ─────────────────
@@ -294,13 +301,20 @@ export default function ProdutividadeSDRTab({
       </div>
 
       {/* KPIs principais (todos visíveis para referência) */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard
           icon={CalendarDays}
           label="Criadas"
           value={kpis.criadas}
           accent="primary"
           active={filter === "criadas"}
+        />
+        <SummaryCard
+          icon={CalendarClock}
+          label="Para"
+          value={kpis.para}
+          accent="sky"
+          active={filter === "para"}
         />
         <SummaryCard
           icon={CheckCircle2}
@@ -417,13 +431,14 @@ function SummaryCard({
   icon: typeof CalendarDays;
   label: string;
   value: number;
-  accent: "primary" | "emerald" | "destructive";
+  accent: "primary" | "emerald" | "destructive" | "sky";
   active: boolean;
 }) {
   const accentClass = {
     primary: "text-primary",
     emerald: "text-emerald-500",
     destructive: "text-destructive",
+    sky: "text-sky-500",
   }[accent];
   return (
     <div
