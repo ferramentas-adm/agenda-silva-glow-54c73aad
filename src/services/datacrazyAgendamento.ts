@@ -114,7 +114,17 @@ export async function resendAgendamentoWebhook({
     if (closerName) payload.closer_name = closerName;
     if (ag.meet_link) payload.meet_link = ag.meet_link;
 
-    await supabase.functions.invoke("datacrazy-webhook", { body: payload });
+    await retryWithBackoff(
+      async () => {
+        const { error: invokeErr } = await supabase.functions.invoke("datacrazy-webhook", { body: payload });
+        if (invokeErr) {
+          const wrapped = new Error(invokeErr.message) as Error & { status?: number };
+          wrapped.status = (invokeErr as { status?: number }).status;
+          throw wrapped;
+        }
+      },
+      { label: "datacrazy-webhook (resend)" },
+    );
   } catch (e) {
     console.warn("[resendAgendamentoWebhook] falha ao enviar webhook", e);
   }
