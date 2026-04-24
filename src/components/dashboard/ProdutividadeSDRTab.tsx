@@ -9,7 +9,7 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
-import { format, subDays, addDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
+import { format, subDays, addDays, eachDayOfInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   BarChart3,
@@ -45,21 +45,12 @@ interface SDRProfile {
 }
 
 type FilterType = "criadas" | "para" | "compareceu" | "nao_compareceu";
-type PeriodKey = "hoje" | "ontem" | "semana" | "mes" | "data";
 
 const FILTER_OPTIONS: { key: FilterType; label: string; icon: typeof CalendarDays; color: string }[] = [
   { key: "criadas", label: "Criadas", icon: CalendarDays, color: "text-primary" },
   { key: "para", label: "Para", icon: CalendarClock, color: "text-sky-500" },
   { key: "compareceu", label: "Compareceu", icon: CheckCircle2, color: "text-emerald-500" },
   { key: "nao_compareceu", label: "Não compareceu", icon: XCircle, color: "text-destructive" },
-];
-
-const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
-  { key: "hoje", label: "Hoje" },
-  { key: "ontem", label: "Ontem" },
-  { key: "semana", label: "Semana" },
-  { key: "mes", label: "Mês" },
-  { key: "data", label: "Data específica" },
 ];
 
 interface Props {
@@ -97,8 +88,10 @@ export default function ProdutividadeSDRTab({
   updatedAgo,
 }: Props) {
   const [filter, setFilter] = useState<FilterType>("criadas");
-  const [period, setPeriod] = useState<PeriodKey>("hoje");
-  const [specificDate, setSpecificDate] = useState<Date | undefined>(undefined);
+  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
   const [dateOpen, setDateOpen] = useState(false);
 
   // ─── Lookup: somente user_ids de SDRs ─────────────────────────
@@ -109,29 +102,19 @@ export default function ProdutividadeSDRTab({
     return m;
   }, [sdrProfiles]);
 
-  // ─── Range do período selecionado ─────────────────────────────
+  // ─── Range efetivo ────────────────────────────────────────────
+  // Modo "intervalo": usuário escolheu from + to no calendário.
+  // Modo "single":   usa o currentDate vindo do filtro superior.
+  const isIntervalMode = Boolean(customRange.from && customRange.to);
   const range = useMemo(() => {
     const fmt = (d: Date) => format(d, "yyyy-MM-dd");
-    switch (period) {
-      case "hoje":
-        return { from: fmt(currentDate), to: fmt(currentDate) };
-      case "ontem": {
-        const d = subDays(currentDate, 1);
-        return { from: fmt(d), to: fmt(d) };
-      }
-      case "semana":
-        return {
-          from: fmt(startOfWeek(currentDate, { locale: ptBR })),
-          to: fmt(endOfWeek(currentDate, { locale: ptBR })),
-        };
-      case "mes":
-        return { from: fmt(startOfMonth(currentDate)), to: fmt(endOfMonth(currentDate)) };
-      case "data":
-        return specificDate ? { from: fmt(specificDate), to: fmt(specificDate) } : null;
-      default:
-        return null;
+    if (isIntervalMode && customRange.from && customRange.to) {
+      const a = customRange.from <= customRange.to ? customRange.from : customRange.to;
+      const b = customRange.from <= customRange.to ? customRange.to : customRange.from;
+      return { from: fmt(a), to: fmt(b) };
     }
-  }, [period, currentDate, specificDate]);
+    return { from: fmt(currentDate), to: fmt(currentDate) };
+  }, [isIntervalMode, customRange, currentDate]);
 
   // ─── Pool de agendamentos a considerar (apenas SDRs via /agendar) ─
   // Regra de negócio: somente reuniões cujo criador seja um SDR.
@@ -167,8 +150,31 @@ export default function ProdutividadeSDRTab({
     return byDate.filter((a) => a.status === "no_show" || a.status === "cancelada");
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
-  // ─── Dados do gráfico (agendamentos por SDR) ──────────────────
+  // ─── Dados do gráfico ─────────────────────────────────────────
+  // - Single mode (1 dia): cada coluna = um SDR (somatório do dia).
+  // - Interval mode (período): cada coluna = um dia, somando todos os SDRs.
   const chartData = useMemo(() => {
+    if (isIntervalMode) {
+      // Iteramos cada dia do intervalo e contamos a partir do pool.
+      const days = eachDayOfInterval({
+        start: parseISO(range.from),
+        end: parseISO(range.to),
+      });
+      const dayCounts = new Map<string, number>();
+      pool.forEach((a) => {
+        const day =
+          filter === "criadas" ? a.created_at.slice(0, 10) : a.scheduled_date;
+        dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
+      });
+      return days.map((d) => {
+        const key = format(d, "yyyy-MM-dd");
+        return {
+          sdr: format(d, "EEEE, dd/MM/yyyy", { locale: ptBR }),
+          shortName: format(d, "dd/MM"),
+          total: dayCounts.get(key) || 0,
+        };
+      });
+    }
     const counts = new Map<string, number>();
     pool.forEach((a) => {
       const key = a.created_by!;
@@ -186,7 +192,7 @@ export default function ProdutividadeSDRTab({
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [pool, sdrProfiles]);
+  }, [pool, sdrProfiles, isIntervalMode, range, filter]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
 
@@ -226,14 +232,11 @@ export default function ProdutividadeSDRTab({
   }, [pool]);
 
   const periodLabel = useMemo(() => {
-    if (!range) return "—";
-    if (period === "hoje") return `Hoje (${format(currentDate, "dd/MM")})`;
-    if (period === "ontem") return `Ontem (${format(subDays(currentDate, 1), "dd/MM")})`;
-    if (period === "semana") return `Semana (${format(new Date(range.from), "dd/MM")} — ${format(new Date(range.to), "dd/MM")})`;
-    if (period === "mes") return `Mês (${format(currentDate, "MMMM/yyyy", { locale: ptBR })})`;
-    if (period === "data" && specificDate) return format(specificDate, "dd/MM/yyyy");
-    return "—";
-  }, [period, range, currentDate, specificDate]);
+    if (isIntervalMode) {
+      return `${format(new Date(range.from), "dd/MM/yyyy")} — ${format(new Date(range.to), "dd/MM/yyyy")}`;
+    }
+    return format(currentDate, "dd/MM/yyyy");
+  }, [isIntervalMode, range, currentDate]);
 
   const filterLabel = FILTER_OPTIONS.find((f) => f.key === filter)?.label ?? "";
 
@@ -245,7 +248,7 @@ export default function ProdutividadeSDRTab({
         <span className="text-xs text-muted-foreground">{updatedAgo}</span>
       </div>
 
-      {/* Filtro: tipo de métrica */}
+      {/* Filtro: tipo de métrica + intervalo */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground font-medium">Filtro:</span>
         {FILTER_OPTIONS.map((opt) => {
@@ -264,43 +267,44 @@ export default function ProdutividadeSDRTab({
             </Button>
           );
         })}
-      </div>
 
-      {/* Filtro: período */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-muted-foreground font-medium">Período:</span>
-        {PERIOD_OPTIONS.map((p) => (
+        <span className="text-xs text-muted-foreground font-medium ml-2">Intervalo:</span>
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant={isIntervalMode ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs gap-1.5"
+            >
+              <CalendarDays className="h-3 w-3" />
+              {isIntervalMode
+                ? `${format(new Date(range.from), "dd/MM")} — ${format(new Date(range.to), "dd/MM")}`
+                : "Selecionar período"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              selected={{ from: customRange.from, to: customRange.to }}
+              onSelect={(rng) => {
+                setCustomRange({ from: rng?.from, to: rng?.to });
+                if (rng?.from && rng?.to) setDateOpen(false);
+              }}
+              numberOfMonths={2}
+              locale={ptBR}
+              className="p-3 pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+        {isIntervalMode && (
           <Button
-            key={p.key}
-            variant={period === p.key ? "default" : "outline"}
+            variant="ghost"
             size="sm"
             className="h-7 text-xs"
-            onClick={() => setPeriod(p.key)}
+            onClick={() => setCustomRange({ from: undefined, to: undefined })}
           >
-            {p.label}
+            Limpar
           </Button>
-        ))}
-        {period === "data" && (
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                <CalendarDays className="h-3 w-3" />
-                {specificDate ? format(specificDate, "dd/MM/yyyy") : "Selecionar data"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={specificDate}
-                onSelect={(date) => {
-                  setSpecificDate(date);
-                  setDateOpen(false);
-                }}
-                locale={ptBR}
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
         )}
       </div>
 
@@ -341,7 +345,7 @@ export default function ProdutividadeSDRTab({
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">
-            Agendamentos por SDR — {filterLabel}
+            {isIntervalMode ? `Agendamentos por dia — ${filterLabel}` : `Agendamentos por SDR — ${filterLabel}`}
           </h3>
           <span className="ml-auto text-xs text-muted-foreground">
             Total: <span className="font-bold text-foreground">{totalGeral}</span>
