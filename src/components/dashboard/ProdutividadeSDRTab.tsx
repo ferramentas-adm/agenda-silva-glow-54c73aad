@@ -177,7 +177,7 @@ export default function ProdutividadeSDRTab({
       const dayCounts = new Map<string, number>();
       pool.forEach((a) => {
         const day =
-          filter === "criadas" ? a.created_at.slice(0, 10) : a.scheduled_date;
+          filter === "criadas" ? localDateOf(a.created_at) : a.scheduled_date;
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
       });
       return days.map((d) => {
