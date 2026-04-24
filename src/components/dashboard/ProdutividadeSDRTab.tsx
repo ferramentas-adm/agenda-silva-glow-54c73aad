@@ -209,14 +209,11 @@ export default function ProdutividadeSDRTab({
   }, [pool]);
 
   const periodLabel = useMemo(() => {
-    if (!range) return "—";
-    if (period === "hoje") return `Hoje (${format(currentDate, "dd/MM")})`;
-    if (period === "ontem") return `Ontem (${format(subDays(currentDate, 1), "dd/MM")})`;
-    if (period === "semana") return `Semana (${format(new Date(range.from), "dd/MM")} — ${format(new Date(range.to), "dd/MM")})`;
-    if (period === "mes") return `Mês (${format(currentDate, "MMMM/yyyy", { locale: ptBR })})`;
-    if (period === "data" && specificDate) return format(specificDate, "dd/MM/yyyy");
-    return "—";
-  }, [period, range, currentDate, specificDate]);
+    if (isIntervalMode) {
+      return `${format(new Date(range.from), "dd/MM/yyyy")} — ${format(new Date(range.to), "dd/MM/yyyy")}`;
+    }
+    return format(currentDate, "dd/MM/yyyy");
+  }, [isIntervalMode, range, currentDate]);
 
   const filterLabel = FILTER_OPTIONS.find((f) => f.key === filter)?.label ?? "";
 
@@ -228,7 +225,7 @@ export default function ProdutividadeSDRTab({
         <span className="text-xs text-muted-foreground">{updatedAgo}</span>
       </div>
 
-      {/* Filtro: tipo de métrica */}
+      {/* Filtro: tipo de métrica + intervalo */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground font-medium">Filtro:</span>
         {FILTER_OPTIONS.map((opt) => {
@@ -247,43 +244,44 @@ export default function ProdutividadeSDRTab({
             </Button>
           );
         })}
-      </div>
 
-      {/* Filtro: período */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-muted-foreground font-medium">Período:</span>
-        {PERIOD_OPTIONS.map((p) => (
+        <span className="text-xs text-muted-foreground font-medium ml-2">Intervalo:</span>
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant={isIntervalMode ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs gap-1.5"
+            >
+              <CalendarDays className="h-3 w-3" />
+              {isIntervalMode
+                ? `${format(new Date(range.from), "dd/MM")} — ${format(new Date(range.to), "dd/MM")}`
+                : "Selecionar período"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              selected={{ from: customRange.from, to: customRange.to }}
+              onSelect={(rng) => {
+                setCustomRange({ from: rng?.from, to: rng?.to });
+                if (rng?.from && rng?.to) setDateOpen(false);
+              }}
+              numberOfMonths={2}
+              locale={ptBR}
+              className="p-3 pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+        {isIntervalMode && (
           <Button
-            key={p.key}
-            variant={period === p.key ? "default" : "outline"}
+            variant="ghost"
             size="sm"
             className="h-7 text-xs"
-            onClick={() => setPeriod(p.key)}
+            onClick={() => setCustomRange({ from: undefined, to: undefined })}
           >
-            {p.label}
+            Limpar
           </Button>
-        ))}
-        {period === "data" && (
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                <CalendarDays className="h-3 w-3" />
-                {specificDate ? format(specificDate, "dd/MM/yyyy") : "Selecionar data"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={specificDate}
-                onSelect={(date) => {
-                  setSpecificDate(date);
-                  setDateOpen(false);
-                }}
-                locale={ptBR}
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
         )}
       </div>
 
