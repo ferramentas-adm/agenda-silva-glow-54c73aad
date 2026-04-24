@@ -80,6 +80,22 @@ function getShift(hour: number | null): "manha" | "tarde" | "noite" | "outros" {
   return "outros";
 }
 
+/**
+ * Devolve o YYYY-MM-DD correspondente ao timestamp ISO no fuso LOCAL do
+ * navegador. Usamos isso para garantir que filtros por data e a classificação
+ * por turno (manhã/tarde/noite) usem a mesma referência temporal — caso
+ * contrário um agendamento criado às 21h BRT (00h UTC do dia seguinte) seria
+ * filtrado como "hoje" via UTC mas classificado como "noite de ontem" via
+ * hora local.
+ */
+function localDateOf(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function ProdutividadeSDRTab({
   agendamentos,
   createdAgs,
