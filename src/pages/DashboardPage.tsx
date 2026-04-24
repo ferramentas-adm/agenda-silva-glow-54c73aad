@@ -1041,13 +1041,18 @@ export function CalendarContent() {
                           <RotateCcw className="h-3.5 w-3.5" />Reagendar
                         </Button>
                         {/* Cancelar e No-show:
-                            - SDR: nunca vê
+                            - SDR: vê quando é o criador do agendamento (sdr_responsavel_id ou created_by = user.id)
                             - Closer: vê apenas se for o criador (created_by = user.id)
                             - Gestor / Moderador: sempre veem */}
                         {(() => {
+                          const isOwnerSDR =
+                            role === "sdr" &&
+                            (detailAg.sdr_responsavel_id === user?.id ||
+                              detailAg.created_by === user?.id);
                           const canSeeCancelNoShow =
                             role === "gestor" ||
                             role === "moderador" ||
+                            isOwnerSDR ||
                             (role === "closer" && detailAg.created_by === user?.id);
                           if (!canSeeCancelNoShow) return null;
                           return (
