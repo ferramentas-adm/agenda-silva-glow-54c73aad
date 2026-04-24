@@ -145,10 +145,15 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const valorNumParsed = digitsToNumber(valor);
   const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
 
+  const valorPrevistoNum = digitsToNumber(valorPrevisto);
+  const valorPrevistoValido = !isNaN(valorPrevistoNum) && valorPrevistoNum > 0;
+  const recebimentoValido = !hasRecebimento || (valorPrevistoValido && !!dataPrevista);
+
   const canSubmit = (() => {
     if (!vendeu) return false;
     // Resumo/Observações é obrigatório em qualquer cenário (sim/não), independente do follow-up
     if (!observacoes.trim()) return false;
+    if (!recebimentoValido) return false;
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
