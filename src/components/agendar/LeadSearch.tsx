@@ -5,6 +5,7 @@ import { Search, X, Tag, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { buscarLeadsComTagId, type DataCrazyLead } from "@/services/datacrazy";
+import { DataCrazyUnavailableError } from "@/lib/retryWithBackoff";
 import { cn } from "@/lib/utils";
 
 export interface Lead {
