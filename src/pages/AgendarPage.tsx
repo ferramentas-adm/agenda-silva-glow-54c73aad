@@ -22,7 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
-import { resendAgendamentoWebhook } from "@/services/datacrazyAgendamento";
+
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
 
