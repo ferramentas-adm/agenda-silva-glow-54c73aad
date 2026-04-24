@@ -150,8 +150,31 @@ export default function ProdutividadeSDRTab({
     return byDate.filter((a) => a.status === "no_show" || a.status === "cancelada");
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
-  // ─── Dados do gráfico (agendamentos por SDR) ──────────────────
+  // ─── Dados do gráfico ─────────────────────────────────────────
+  // - Single mode (1 dia): cada coluna = um SDR (somatório do dia).
+  // - Interval mode (período): cada coluna = um dia, somando todos os SDRs.
   const chartData = useMemo(() => {
+    if (isIntervalMode) {
+      // Iteramos cada dia do intervalo e contamos a partir do pool.
+      const days = eachDayOfInterval({
+        start: parseISO(range.from),
+        end: parseISO(range.to),
+      });
+      const dayCounts = new Map<string, number>();
+      pool.forEach((a) => {
+        const day =
+          filter === "criadas" ? a.created_at.slice(0, 10) : a.scheduled_date;
+        dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
+      });
+      return days.map((d) => {
+        const key = format(d, "yyyy-MM-dd");
+        return {
+          sdr: format(d, "EEEE, dd/MM/yyyy", { locale: ptBR }),
+          shortName: format(d, "dd/MM"),
+          total: dayCounts.get(key) || 0,
+        };
+      });
+    }
     const counts = new Map<string, number>();
     pool.forEach((a) => {
       const key = a.created_by!;
@@ -169,7 +192,7 @@ export default function ProdutividadeSDRTab({
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [pool, sdrProfiles]);
+  }, [pool, sdrProfiles, isIntervalMode, range, filter]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
 
