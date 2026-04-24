@@ -22,7 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
-import { resendAgendamentoWebhook } from "@/services/datacrazyAgendamento";
+
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
 
@@ -237,8 +237,9 @@ export default function AgendarPage() {
         scheduled_time: time,
         observation: finalObservation,
         briefing: briefingText.trim() || null,
-        // Novo agendamento (incluindo reagendamento) entra como 'confirmada' na nova data.
-        status: "confirmada",
+        // Novo agendamento entra como 'agendada' (trigger envia "Agendado" ao DataCrazy).
+        // Reagendamento (mudou de dia) entra como 'reagendada' (trigger envia "Reagendada").
+        status: editId ? "reagendada" : "agendada",
         meet_link: meetLink,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
@@ -275,14 +276,9 @@ export default function AgendarPage() {
         }
       );
 
-      // Reagendamento (mudou de DIA via /agendar): envia o NOVO agendamento
-      // ao DataCrazy com status "Reagendado", usando o mesmo formato JSON.
-      if (editId && insertedData?.id) {
-        void resendAgendamentoWebhook({
-          agendamentoId: insertedData.id,
-          statusDisplay: "Reagendado",
-        });
-      }
+      // Reagendamento: o trigger do banco já envia "Reagendada" ao DataCrazy
+      // automaticamente no INSERT (status = 'reagendada'), então NÃO chamamos
+      // o helper aqui para evitar webhook duplicado.
 
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
