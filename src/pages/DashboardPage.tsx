@@ -151,6 +151,7 @@ export function CalendarContent() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingBriefing, setSavingBriefing] = useState(false);
   const [viewBriefing, setViewBriefing] = useState(false);
+  const [viewJustification, setViewJustification] = useState(false);
   const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
   // Transfer lead between closers
   const [transferTarget, setTransferTarget] = useState<string>("");
