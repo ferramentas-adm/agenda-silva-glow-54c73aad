@@ -301,13 +301,20 @@ export default function ProdutividadeSDRTab({
       </div>
 
       {/* KPIs principais (todos visíveis para referência) */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard
           icon={CalendarDays}
           label="Criadas"
           value={kpis.criadas}
           accent="primary"
           active={filter === "criadas"}
+        />
+        <SummaryCard
+          icon={CalendarClock}
+          label="Para"
+          value={kpis.para}
+          accent="sky"
+          active={filter === "para"}
         />
         <SummaryCard
           icon={CheckCircle2}
