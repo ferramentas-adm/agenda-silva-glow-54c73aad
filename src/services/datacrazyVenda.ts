@@ -16,6 +16,7 @@ export interface VendaWebhookPayload {
   observacoes: string | null;
   outcome: "fechou" | "perdeu" | "follow_up" | "em_andamento";
   registered_at: string;
+  lead_revenue?: string | null;
 }
 
 /**

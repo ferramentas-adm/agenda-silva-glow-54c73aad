@@ -273,7 +273,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         observacoes: observacoes.trim() || null,
         outcome,
         registered_at: new Date().toISOString(),
-      });
+        lead_revenue: leadRevenue || null,
+      } as any);
 
       // Cria pagamento previsto se foi acordado recebimento de valor durante a reunião
       if (hasRecebimento && valorPrevistoValido && dataPrevista) {
