@@ -188,6 +188,20 @@ export default function MetricDrilldownDialog({
                         )}
                       </div>
                     )}
+                    {(() => {
+                      const v = vendaMap.get(d.id) as any;
+                      if (!v?.observacoes) return null;
+                      return (
+                        <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                            Resumo do cliente / observações
+                          </p>
+                          <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                            {v.observacoes}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
