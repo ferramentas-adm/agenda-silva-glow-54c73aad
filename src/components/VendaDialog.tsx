@@ -455,7 +455,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             </>
           )}
 
-          {vendeu && (
+          {vendeu && !(vendeu === "nao" && !motivoIsPending && followUp === "nao") && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
               <div className="space-y-2">
                 <Label>Foi acordado recebimento de valor (sinal/entrada/parcela)?</Label>
