@@ -250,7 +250,17 @@ export async function removerTag(leadId: string, tagId: string) {
 
 async function webhookPost(payload: Record<string, unknown>) {
   try {
-    await supabase.functions.invoke("datacrazy-webhook", { body: payload });
+    await retryWithBackoff(
+      async () => {
+        const { error } = await supabase.functions.invoke("datacrazy-webhook", { body: payload });
+        if (error) {
+          const wrapped = new Error(error.message) as Error & { status?: number };
+          wrapped.status = (error as { status?: number }).status;
+          throw wrapped;
+        }
+      },
+      { label: "datacrazy-webhook" },
+    );
   } catch (e) {
     console.warn("Webhook post failed:", e);
   }
