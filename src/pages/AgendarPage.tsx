@@ -115,7 +115,7 @@ export default function AgendarPage() {
         .from("profiles")
         .select("user_id, full_name, email")
         .eq("active", true)
-        .order("full_name");
+        .order("full_name", { ascending: true });
       return profiles ?? [];
     },
   });
