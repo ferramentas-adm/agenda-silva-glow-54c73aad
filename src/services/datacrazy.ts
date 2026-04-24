@@ -4,17 +4,32 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { retryWithBackoff } from "@/lib/retryWithBackoff";
 
 // ─── Proxy helper ────────────────────────────────────────────────
 
 async function api(method: string, path: string, payload?: unknown) {
-  const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
-    body: { method, path, payload },
-  });
+  return retryWithBackoff(
+    async () => {
+      const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
+        body: { method, path, payload },
+      });
 
-  if (error) throw new Error(`DataCrazy proxy error: ${error.message}`);
-  if (data?.error) throw new Error(`DataCrazy API error: ${data.error}`);
-  return data;
+      if (error) {
+        // Preserva status (quando disponível) para o decisor de retry
+        const wrapped = new Error(`DataCrazy proxy error: ${error.message}`) as Error & {
+          status?: number;
+          context?: unknown;
+        };
+        wrapped.status = (error as { status?: number }).status;
+        wrapped.context = (error as { context?: unknown }).context;
+        throw wrapped;
+      }
+      if (data?.error) throw new Error(`DataCrazy API error: ${data.error}`);
+      return data;
+    },
+    { label: `datacrazy-proxy ${method} ${path}` },
+  );
 }
 
 // Settings from app_settings (loaded at runtime)
