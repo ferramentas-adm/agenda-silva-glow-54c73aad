@@ -80,6 +80,22 @@ function getShift(hour: number | null): "manha" | "tarde" | "noite" | "outros" {
   return "outros";
 }
 
+/**
+ * Devolve o YYYY-MM-DD correspondente ao timestamp ISO no fuso LOCAL do
+ * navegador. Usamos isso para garantir que filtros por data e a classificação
+ * por turno (manhã/tarde/noite) usem a mesma referência temporal — caso
+ * contrário um agendamento criado às 21h BRT (00h UTC do dia seguinte) seria
+ * filtrado como "hoje" via UTC mas classificado como "noite de ontem" via
+ * hora local.
+ */
+function localDateOf(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function ProdutividadeSDRTab({
   agendamentos,
   createdAgs,
@@ -122,14 +138,12 @@ export default function ProdutividadeSDRTab({
   const pool = useMemo(() => {
     if (!range) return [];
     if (filter === "criadas") {
-      // Filtramos por created_at no range.
-      return createdAgs.filter(
-        (a) =>
-          a.created_by &&
-          sdrIds.has(a.created_by) &&
-          a.created_at >= `${range.from}T00:00:00` &&
-          a.created_at <= `${range.to}T23:59:59`,
-      );
+      // Filtramos por created_at convertido para a data LOCAL do navegador.
+      return createdAgs.filter((a) => {
+        if (!a.created_by || !sdrIds.has(a.created_by)) return false;
+        const localDay = localDateOf(a.created_at);
+        return localDay >= range.from && localDay <= range.to;
+      });
     }
     // Para / Compareceu / Não compareceu → usamos scheduled_date como referência
     const byDate = agendamentos.filter(
@@ -163,7 +177,7 @@ export default function ProdutividadeSDRTab({
       const dayCounts = new Map<string, number>();
       pool.forEach((a) => {
         const day =
-          filter === "criadas" ? a.created_at.slice(0, 10) : a.scheduled_date;
+          filter === "criadas" ? localDateOf(a.created_at) : a.scheduled_date;
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
       });
       return days.map((d) => {
@@ -199,13 +213,11 @@ export default function ProdutividadeSDRTab({
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
   const kpis = useMemo(() => {
     if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0 };
-    const criadas = createdAgs.filter(
-      (a) =>
-        a.created_by &&
-        sdrIds.has(a.created_by) &&
-        a.created_at >= `${range.from}T00:00:00` &&
-        a.created_at <= `${range.to}T23:59:59`,
-    ).length;
+    const criadas = createdAgs.filter((a) => {
+      if (!a.created_by || !sdrIds.has(a.created_by)) return false;
+      const localDay = localDateOf(a.created_at);
+      return localDay >= range.from && localDay <= range.to;
+    }).length;
     const dia = agendamentos.filter(
       (a) =>
         a.created_by &&
