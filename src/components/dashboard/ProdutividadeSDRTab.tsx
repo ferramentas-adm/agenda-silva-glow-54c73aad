@@ -220,16 +220,40 @@ export default function ProdutividadeSDRTab({
   }, [agendamentos, createdAgs, sdrIds, range]);
 
   // ─── Quadros de turno (Manhã / Tarde / Noite) ─────────────────
+  // Para o filtro "Para" (reuniões agendadas para o período), mostramos todas
+  // independentemente da hora atual — pois o usuário quer saber a distribuição
+  // futura por turno.
+  // Para "Criadas", "Compareceu" e "Não compareceu", consideramos apenas
+  // reuniões cujo horário agendado já tenha chegado (≤ agora). Assim, dentro
+  // do dia corrente, o turno da noite só aparece após as 18h, etc.
   const shiftCounts = useMemo(() => {
     const acc = { manha: 0, tarde: 0, noite: 0 };
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const nowHour = new Date().getHours();
+    const nowMin = new Date().getMinutes();
+
     pool.forEach((a) => {
-      const shift = getShift(getHourFromTime(a.scheduled_time));
-      if (shift === "manha" || shift === "tarde" || shift === "noite") {
-        acc[shift] += 1;
+      const hour = getHourFromTime(a.scheduled_time);
+      const shift = getShift(hour);
+      if (shift !== "manha" && shift !== "tarde" && shift !== "noite") return;
+
+      // Aplica o "corte temporal" apenas para filtros que dependem do horário
+      // já ter ocorrido, e somente quando a reunião é do dia de hoje.
+      if (filter !== "para" && a.scheduled_date === todayStr && hour !== null) {
+        const minute = (() => {
+          const m = /^(\d{1,2}):(\d{2})/.exec(a.scheduled_time || "");
+          return m ? Number(m[2]) : 0;
+        })();
+        if (hour > nowHour || (hour === nowHour && minute > nowMin)) return;
       }
+      // Reuniões em datas futuras (range que cobre dias adiante) também
+      // são descartadas para "criadas/compareceu/nao_compareceu".
+      if (filter !== "para" && a.scheduled_date > todayStr) return;
+
+      acc[shift] += 1;
     });
     return acc;
-  }, [pool]);
+  }, [pool, filter]);
 
   const periodLabel = useMemo(() => {
     if (isIntervalMode) {
