@@ -276,14 +276,9 @@ export default function AgendarPage() {
         }
       );
 
-      // Reagendamento (mudou de DIA via /agendar): envia o NOVO agendamento
-      // ao DataCrazy com status "Reagendado", usando o mesmo formato JSON.
-      if (editId && insertedData?.id) {
-        void resendAgendamentoWebhook({
-          agendamentoId: insertedData.id,
-          statusDisplay: "Reagendado",
-        });
-      }
+      // Reagendamento: o trigger do banco já envia "Reagendada" ao DataCrazy
+      // automaticamente no INSERT (status = 'reagendada'), então NÃO chamamos
+      // o helper aqui para evitar webhook duplicado.
 
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
