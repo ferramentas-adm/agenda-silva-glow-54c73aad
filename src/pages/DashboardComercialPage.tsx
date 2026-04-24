@@ -251,9 +251,16 @@ export default function DashboardComercialPage() {
     const sdrAgs = agendamentos.filter(
       a => a.created_by && sdrUserIds.has(a.created_by),
     );
+    // Para "Geradas/Criadas" usamos o pool fetched por created_at (createdAgs)
+    // — assim incluímos reuniões criadas hoje mesmo que agendadas para fora
+    // do range mensal (o pool `agendamentos` é filtrado por scheduled_date).
+    // Isto garante paridade exata com o painel "Produtividade SDR".
+    const sdrCreatedAgs = createdAgs.filter(
+      a => a.created_by && sdrUserIds.has(a.created_by),
+    );
 
     const todayAgs = sdrAgs.filter(a => a.scheduled_date === dateStr);
-    const todayCreated = sdrAgs.filter(a => localDateOf(a.created_at) === dateStr);
+    const todayCreated = sdrCreatedAgs.filter(a => localDateOf(a.created_at) === dateStr);
     const yesterdayAgs = sdrAgs.filter(a => a.scheduled_date === yesterdayStr);
     const tomorrowAgs = sdrAgs.filter(a => a.scheduled_date === tomorrowStr);
     const monthAgs = sdrAgs.filter(a => a.scheduled_date >= monthStart && a.scheduled_date <= monthEnd);
@@ -311,7 +318,7 @@ export default function DashboardComercialPage() {
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
     };
-  }, [agendamentos, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds]);
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
 
