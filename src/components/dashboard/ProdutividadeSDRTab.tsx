@@ -345,7 +345,7 @@ export default function ProdutividadeSDRTab({
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">
-            Agendamentos por SDR — {filterLabel}
+            {isIntervalMode ? `Agendamentos por dia — ${filterLabel}` : `Agendamentos por SDR — ${filterLabel}`}
           </h3>
           <span className="ml-auto text-xs text-muted-foreground">
             Total: <span className="font-bold text-foreground">{totalGeral}</span>
