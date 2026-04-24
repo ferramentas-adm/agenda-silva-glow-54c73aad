@@ -957,6 +957,18 @@ export function CalendarContent() {
                 </Button>
               )}
 
+              {/* Justificativa do closer (reagendamento) — abre dialog dedicado */}
+              {detailAg.observation && detailAg.observation.trim().length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                  onClick={() => setViewJustification(true)}
+                >
+                  <FileText className="h-3.5 w-3.5" />Ver justificativa
+                </Button>
+              )}
+
               {/* Edit button */}
               <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
                 <Pencil className="h-3.5 w-3.5" />Editar horário
