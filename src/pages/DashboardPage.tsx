@@ -151,6 +151,7 @@ export function CalendarContent() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingBriefing, setSavingBriefing] = useState(false);
   const [viewBriefing, setViewBriefing] = useState(false);
+  const [viewJustification, setViewJustification] = useState(false);
   const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
   // Transfer lead between closers
   const [transferTarget, setTransferTarget] = useState<string>("");
@@ -437,7 +438,7 @@ export function CalendarContent() {
     setTransferring(false);
   };
 
-  // Lista de usuários (qualquer função) para selecionar como responsável
+  // Lista de usuários (qualquer função) para selecionar como responsável — ordem alfabética
   const { data: allUsers = [] } = useQuery({
     queryKey: ["all-users-for-detail"],
     enabled: canEditSdr,
@@ -446,7 +447,22 @@ export function CalendarContent() {
         .from("profiles")
         .select("user_id, full_name")
         .eq("active", true)
-        .order("full_name");
+        .order("full_name", { ascending: true });
+      return data ?? [];
+    },
+  });
+
+  // Closers ativos para o dialog "Transferir lead" — independente do filtro do usuário
+  // (closers role só veem o próprio no useCloserFilter, mas precisam ver TODOS os destinos possíveis aqui).
+  const { data: transferableClosers = [] } = useQuery({
+    queryKey: ["transferable-closers"],
+    enabled: transferOpen,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name", { ascending: true });
       return data ?? [];
     },
   });
@@ -941,6 +957,18 @@ export function CalendarContent() {
                 </Button>
               )}
 
+              {/* Justificativa do closer (reagendamento) — abre dialog dedicado */}
+              {detailAg.observation && detailAg.observation.trim().length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                  onClick={() => setViewJustification(true)}
+                >
+                  <FileText className="h-3.5 w-3.5" />Ver justificativa
+                </Button>
+              )}
+
               {/* Edit button */}
               <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
                 <Pencil className="h-3.5 w-3.5" />Editar horário
@@ -1103,7 +1131,7 @@ export function CalendarContent() {
                   <SelectValue placeholder="Selecionar closer destinatário" />
                 </SelectTrigger>
                 <SelectContent>
-                  {closers
+                  {transferableClosers
                     .filter((c) => c.id !== detailAg?.closer_id)
                     .map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -1162,6 +1190,29 @@ export function CalendarContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Justificativa do reagendamento (closer) — janela dedicada similar ao briefing */}
+      <Dialog open={viewJustification} onOpenChange={setViewJustification}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-amber-500" />
+              Justificativa do reagendamento
+            </DialogTitle>
+            <DialogDescription>
+              {detailAg?.lead_name && (
+                <span>
+                  Reunião com <strong>{detailAg.lead_name}</strong>
+                  {detailAg && ` · ${format(new Date(detailAg.scheduled_date + "T12:00:00"), "dd/MM/yyyy")} às ${detailAg.scheduled_time}`}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm leading-6 whitespace-pre-wrap break-words" style={{ overflowWrap: "anywhere" }}>
+            {detailAg?.observation || "—"}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Briefing Drawer */}
       <BriefingDrawer

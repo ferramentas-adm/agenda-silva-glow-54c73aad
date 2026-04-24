@@ -139,6 +139,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const canSubmit = (() => {
     if (!vendeu) return false;
+    // Resumo/Observações é obrigatório em qualquer cenário (sim/não), independente do follow-up
+    if (!observacoes.trim()) return false;
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
@@ -423,7 +425,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
           {vendeu && (
             <div className="space-y-1.5">
-              <Label htmlFor="obs">Resumo do cliente / observações adicionais</Label>
+              <Label htmlFor="obs">Resumo do cliente / observações adicionais *</Label>
               <Textarea
                 id="obs"
                 value={observacoes}
@@ -431,6 +433,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 placeholder="Notas adicionais sobre o lead/conversa..."
                 rows={2}
               />
+              <p className="text-xs text-muted-foreground">
+                Campo obrigatório — sempre registre um resumo da reunião, independente do follow-up.
+              </p>
             </div>
           )}
         </div>
