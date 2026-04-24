@@ -139,6 +139,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const canSubmit = (() => {
     if (!vendeu) return false;
+    // Resumo/Observações é obrigatório em qualquer cenário (sim/não), independente do follow-up
+    if (!observacoes.trim()) return false;
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
