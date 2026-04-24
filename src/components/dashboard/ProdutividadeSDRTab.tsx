@@ -220,35 +220,51 @@ export default function ProdutividadeSDRTab({
   }, [agendamentos, createdAgs, sdrIds, range]);
 
   // ─── Quadros de turno (Manhã / Tarde / Noite) ─────────────────
-  // Para o filtro "Para" (reuniões agendadas para o período), mostramos todas
-  // independentemente da hora atual — pois o usuário quer saber a distribuição
-  // futura por turno.
-  // Para "Criadas", "Compareceu" e "Não compareceu", consideramos apenas
-  // reuniões cujo horário agendado já tenha chegado (≤ agora). Assim, dentro
-  // do dia corrente, o turno da noite só aparece após as 18h, etc.
+  // A referência temporal muda conforme o filtro:
+  //  - "Criadas": turno calculado pela HORA DE CRIAÇÃO (created_at).
+  //  - "Para" / "Compareceu" / "Não compareceu": turno calculado pelo
+  //    HORÁRIO AGENDADO (scheduled_time).
+  // Para "Compareceu" e "Não compareceu" no dia de hoje, ainda aplicamos
+  // o corte temporal: só conta se o horário agendado já tiver chegado.
   const shiftCounts = useMemo(() => {
     const acc = { manha: 0, tarde: 0, noite: 0 };
-    const todayStr = format(new Date(), "yyyy-MM-dd");
-    const nowHour = new Date().getHours();
-    const nowMin = new Date().getMinutes();
+    const now = new Date();
+    const todayStr = format(now, "yyyy-MM-dd");
+    const nowHour = now.getHours();
+    const nowMin = now.getMinutes();
 
     pool.forEach((a) => {
-      const hour = getHourFromTime(a.scheduled_time);
+      let hour: number | null;
+      let minute = 0;
+
+      if (filter === "criadas") {
+        // Usa o created_at (timestamp ISO local do navegador)
+        const dt = new Date(a.created_at);
+        hour = dt.getHours();
+        minute = dt.getMinutes();
+      } else {
+        hour = getHourFromTime(a.scheduled_time);
+        const m = /^(\d{1,2}):(\d{2})/.exec(a.scheduled_time || "");
+        minute = m ? Number(m[2]) : 0;
+      }
+
       const shift = getShift(hour);
       if (shift !== "manha" && shift !== "tarde" && shift !== "noite") return;
 
-      // Aplica o "corte temporal" apenas para filtros que dependem do horário
-      // já ter ocorrido, e somente quando a reunião é do dia de hoje.
-      if (filter !== "para" && a.scheduled_date === todayStr && hour !== null) {
-        const minute = (() => {
-          const m = /^(\d{1,2}):(\d{2})/.exec(a.scheduled_time || "");
-          return m ? Number(m[2]) : 0;
-        })();
+      // Corte temporal somente para Compareceu / Não compareceu no dia de hoje.
+      if (
+        (filter === "compareceu" || filter === "nao_compareceu") &&
+        a.scheduled_date === todayStr &&
+        hour !== null
+      ) {
         if (hour > nowHour || (hour === nowHour && minute > nowMin)) return;
       }
-      // Reuniões em datas futuras (range que cobre dias adiante) também
-      // são descartadas para "criadas/compareceu/nao_compareceu".
-      if (filter !== "para" && a.scheduled_date > todayStr) return;
+      if (
+        (filter === "compareceu" || filter === "nao_compareceu") &&
+        a.scheduled_date > todayStr
+      ) {
+        return;
+      }
 
       acc[shift] += 1;
     });
