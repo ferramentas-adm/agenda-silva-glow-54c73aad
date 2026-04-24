@@ -9,7 +9,7 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
-import { format, subDays, addDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
+import { format, subDays, addDays, eachDayOfInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   BarChart3,
