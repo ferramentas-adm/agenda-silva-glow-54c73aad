@@ -133,9 +133,8 @@ export function LeadsDashboardContent() {
   }, [filtered]);
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard de Leads</h1>
