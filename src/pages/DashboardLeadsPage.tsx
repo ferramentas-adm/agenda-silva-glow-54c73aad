@@ -44,6 +44,14 @@ const RANGE_OPTIONS = [
 ] as const;
 
 export default function DashboardLeadsPage() {
+  return (
+    <AppLayout>
+      <LeadsDashboardContent />
+    </AppLayout>
+  );
+}
+
+export function LeadsDashboardContent() {
   const [range, setRange] = useState<string>("30");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
 
