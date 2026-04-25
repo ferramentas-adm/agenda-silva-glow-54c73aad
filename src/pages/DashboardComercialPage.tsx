@@ -511,6 +511,7 @@ export default function DashboardComercialPage() {
             updatedAgo={updatedAgo}
           />
         )}
+        {activeTabKey === "leads" && <LeadsDashboardContent />}
       </div>
     </AppLayout>
   );
