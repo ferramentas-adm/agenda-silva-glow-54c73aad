@@ -15,6 +15,7 @@ const AdminPage = lazy(() => import("@/pages/AdminPage"));
 const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
 const ReunioesListPage = lazy(() => import("@/pages/ReunioesListPage"));
 const DashboardComercialPage = lazy(() => import("@/pages/DashboardComercialPage"));
+const DashboardLeadsPage = lazy(() => import("@/pages/DashboardLeadsPage"));
 const FollowUpsPage = lazy(() => import("@/pages/FollowUpsPage"));
 const PagamentosPage = lazy(() => import("@/pages/PagamentosPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
               <Route path="/audit-logs" element={<ProtectedRoute requireAdmin><AuditLogsPage /></ProtectedRoute>} />
               <Route path="/dashboard-comercial" element={<ProtectedRoute requireAdmin><DashboardComercialPage /></ProtectedRoute>} />
+              <Route path="/dashboard-leads" element={<ProtectedRoute><DashboardLeadsPage /></ProtectedRoute>} />
               <Route path="/reunioes" element={<ProtectedRoute><ReunioesListPage /></ProtectedRoute>} />
               <Route path="/follow-ups" element={<ProtectedRoute><FollowUpsPage /></ProtectedRoute>} />
               <Route path="/pagamentos" element={<ProtectedRoute><PagamentosPage /></ProtectedRoute>} />
