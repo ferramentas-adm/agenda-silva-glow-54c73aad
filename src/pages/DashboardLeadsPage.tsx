@@ -44,6 +44,14 @@ const RANGE_OPTIONS = [
 ] as const;
 
 export default function DashboardLeadsPage() {
+  return (
+    <AppLayout>
+      <LeadsDashboardContent />
+    </AppLayout>
+  );
+}
+
+export function LeadsDashboardContent() {
   const [range, setRange] = useState<string>("30");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
 
@@ -125,9 +133,8 @@ export default function DashboardLeadsPage() {
   }, [filtered]);
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard de Leads</h1>
@@ -366,9 +373,8 @@ export default function DashboardLeadsPage() {
               </div>
             )}
           </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
+      </Card>
+    </div>
   );
 }
 

@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Sparkles } from "lucide-react";
+import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useState, useRef, useCallback, useEffect } from "react";
 import logo from "@/assets/logo.png";
@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ...(can("view_follow_ups") ? [{ to: "/follow-ups", label: "Follow-ups", icon: CalendarClock }] : []),
     ...(can("view_payments") ? [{ to: "/pagamentos", label: "Pagamentos", icon: Wallet }] : []),
     ...(can("view_dashboard_comercial") ? [{ to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3 }] : []),
-    ...(can("view_dashboard_leads") ? [{ to: "/dashboard-leads", label: "Leads", icon: Sparkles }] : []),
+    ...(can("view_dashboard_leads") && !can("view_dashboard_comercial") ? [{ to: "/dashboard-leads", label: "Leads", icon: BarChart3 }] : []),
     ...(can("view_admin") ? [{ to: "/admin", label: "Admin", icon: Settings }] : []),
     ...(can("view_audit_logs") ? [{ to: "/audit-logs", label: "Logs", icon: ScrollText }] : []),
   ];

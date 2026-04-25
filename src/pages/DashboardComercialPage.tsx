@@ -10,6 +10,7 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
+import { LeadsDashboardContent } from "@/pages/DashboardLeadsPage";
 import VendasTab from "@/components/dashboard/VendasTab";
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
@@ -21,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "metricas", label: "Métricas SDRs" },
@@ -29,6 +30,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
+  { key: "leads", label: "Leads" },
 ];
 const ROTATION_INTERVAL = 30000;
 
@@ -435,7 +437,7 @@ export default function DashboardComercialPage() {
         </div>
 
         {/* ─── Date nav (oculta na aba Agenda Closers) ──── */}
-        {activeTabKey !== "agenda" && (
+        {activeTabKey !== "agenda" && activeTabKey !== "leads" && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
@@ -509,6 +511,7 @@ export default function DashboardComercialPage() {
             updatedAgo={updatedAgo}
           />
         )}
+        {activeTabKey === "leads" && <LeadsDashboardContent />}
       </div>
     </AppLayout>
   );
