@@ -10,6 +10,7 @@ export type PermissionKey =
   | "view_follow_ups"
   | "manage_tasks"
   | "view_dashboard_comercial"
+  | "view_dashboard_leads"
   | "manage_payments"
   | "view_payments"
   | "view_admin"
@@ -22,6 +23,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   view_follow_ups:         { label: "Follow-ups",            description: "Acessar a área de follow-ups" },
   manage_tasks:            { label: "Gerenciar Tarefas",     description: "Criar, editar e remover tarefas em Follow-ups" },
   view_dashboard_comercial:{ label: "Dashboard Comercial",   description: "Visualizar painéis e métricas comerciais" },
+  view_dashboard_leads:    { label: "Dashboard de Leads",    description: "Visualizar métricas de captação de leads externos" },
   view_payments:           { label: "Visualizar Pagamentos", description: "Acessar o módulo de pagamentos" },
   manage_payments:         { label: "Gerenciar Pagamentos",  description: "Criar, editar e excluir pagamentos" },
   view_admin:              { label: "Configurações",         description: "Acesso à área de Administração" },
