@@ -2,3 +2,6 @@ project_id = "jrnyccjhsxcggmgupvzp"
 
 [functions.datacrazy-confirm-webhook]
 verify_jwt = false
+
+[functions.lead-metrics-webhook]
+verify_jwt = false
