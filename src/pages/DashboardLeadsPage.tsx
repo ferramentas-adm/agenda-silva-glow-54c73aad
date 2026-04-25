@@ -47,9 +47,16 @@ export default function DashboardLeadsPage() {
   const [range, setRange] = useState<string>("30");
   const [origemFilter, setOrigemFilter] = useState<string>("all");
 
-  const fromDate = useMemo(() => {
-    if (range === "all") return null;
-    return startOfDay(subDays(new Date(), Number(range)));
+  // range pode ser "7" | "30" | "90" | "all" | "today" | "yesterday"
+  const dateBounds = useMemo(() => {
+    const today = startOfDay(new Date());
+    if (range === "today") return { from: today, to: today };
+    if (range === "yesterday") {
+      const y = subDays(today, 1);
+      return { from: y, to: y };
+    }
+    if (range === "all") return { from: null, to: null };
+    return { from: startOfDay(subDays(new Date(), Number(range))), to: null };
   }, [range]);
 
   const { data: metrics = [], isLoading, refetch, isFetching } = useQuery({
@@ -60,7 +67,8 @@ export default function DashboardLeadsPage() {
         .select("id, origem, evento, periodo, data_referencia, leads_iniciados, leads_finalizados, taxa_conclusao, enviado_em, received_at")
         .order("data_referencia", { ascending: false })
         .limit(500);
-      if (fromDate) q = q.gte("data_referencia", format(fromDate, "yyyy-MM-dd"));
+      if (dateBounds.from) q = q.gte("data_referencia", format(dateBounds.from, "yyyy-MM-dd"));
+      if (dateBounds.to) q = q.lte("data_referencia", format(dateBounds.to, "yyyy-MM-dd"));
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as LeadMetric[];
