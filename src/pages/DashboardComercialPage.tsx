@@ -437,7 +437,7 @@ export default function DashboardComercialPage() {
         </div>
 
         {/* ─── Date nav (oculta na aba Agenda Closers) ──── */}
-        {activeTabKey !== "agenda" && (
+        {activeTabKey !== "agenda" && activeTabKey !== "leads" && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
