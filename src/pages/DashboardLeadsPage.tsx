@@ -137,12 +137,43 @@ export default function DashboardLeadsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-md border bg-card p-0.5">
+              <Button
+                type="button"
+                variant={range === "today" ? "default" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => setRange("today")}
+              >
+                Hoje
+              </Button>
+              <Button
+                type="button"
+                variant={range === "yesterday" ? "default" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => setRange("yesterday")}
+              >
+                Ontem
+              </Button>
+            </div>
+
             <Select value={range} onValueChange={setRange}>
-              <SelectTrigger className="w-[180px]">
-                <CalendarIcon className="h-4 w-4 mr-2" />
-                <SelectValue />
+              <SelectTrigger className="w-[200px]">
+                <CalendarIcon className="h-4 w-4 mr-2 text-primary" />
+                <SelectValue placeholder="Selecionar período" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="today">
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarIcon className="h-3.5 w-3.5" /> Hoje
+                  </span>
+                </SelectItem>
+                <SelectItem value="yesterday">
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarIcon className="h-3.5 w-3.5" /> Ontem
+                  </span>
+                </SelectItem>
                 {RANGE_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                 ))}
