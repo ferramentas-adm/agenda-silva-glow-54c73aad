@@ -373,9 +373,8 @@ export function LeadsDashboardContent() {
               </div>
             )}
           </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
+      </Card>
+    </div>
   );
 }
 
