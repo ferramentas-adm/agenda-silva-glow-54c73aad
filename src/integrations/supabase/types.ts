@@ -282,6 +282,51 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_metrics: {
+        Row: {
+          created_at: string
+          data_referencia: string
+          enviado_em: string | null
+          evento: string
+          id: string
+          leads_finalizados: number
+          leads_iniciados: number
+          origem: string
+          periodo: string | null
+          raw_payload: Json
+          received_at: string
+          taxa_conclusao: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_referencia: string
+          enviado_em?: string | null
+          evento: string
+          id?: string
+          leads_finalizados?: number
+          leads_iniciados?: number
+          origem: string
+          periodo?: string | null
+          raw_payload?: Json
+          received_at?: string
+          taxa_conclusao?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_referencia?: string
+          enviado_em?: string | null
+          evento?: string
+          id?: string
+          leads_finalizados?: number
+          leads_iniciados?: number
+          origem?: string
+          periodo?: string | null
+          raw_payload?: Json
+          received_at?: string
+          taxa_conclusao?: number | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
