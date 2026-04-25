@@ -10,6 +10,7 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
+import { LeadsDashboardContent } from "@/pages/DashboardLeadsPage";
 import VendasTab from "@/components/dashboard/VendasTab";
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
@@ -21,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "metricas", label: "Métricas SDRs" },
@@ -29,6 +30,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
+  { key: "leads", label: "Leads" },
 ];
 const ROTATION_INTERVAL = 30000;
 
