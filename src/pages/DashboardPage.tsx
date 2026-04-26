@@ -990,13 +990,20 @@ export function CalendarContent() {
                 </Button>
               )}
 
-              {canChangeStatus && (
+              {canChangeStatus && (() => {
+                // SDR só pode operar em reagendadas se ele mesmo criou o reagendamento.
+                const sdrIsOwnerOfReschedule =
+                  role === "sdr" &&
+                  (detailAg.sdr_responsavel_id === user?.id || detailAg.created_by === user?.id);
+                const sdrBlocked =
+                  detailAg.status === "reagendada" && role === "sdr" && !sdrIsOwnerOfReschedule;
+                return (
                 <div className="space-y-2">
                   <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
                   {/* Closers mantêm acesso total a Realizada/Reagendar mesmo em
-                      reagendamentos (criados por SDR ou outros). SDRs continuam
-                      bloqueados em status reagendada para evitar mudanças acidentais. */}
-                  {detailAg.status === "reagendada" && role === "sdr" ? (
+                      reagendamentos. SDRs ficam bloqueados em reagendada quando
+                      NÃO foram os criadores do reagendamento. */}
+                  {sdrBlocked ? (
                     <p className="text-[11px] text-muted-foreground italic rounded-md border border-primary/10 bg-muted/30 px-2 py-2">
                       Este agendamento foi marcado como <strong>Reagendada</strong>. Para alterar o status,
                       contate um gestor ou moderador.
@@ -1074,7 +1081,8 @@ export function CalendarContent() {
                     </>
                   )}
                 </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
