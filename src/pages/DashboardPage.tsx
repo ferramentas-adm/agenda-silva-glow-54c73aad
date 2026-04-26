@@ -1529,9 +1529,9 @@ function DayView({
                                 <span className={cn(
                                   "rounded px-1 py-0.5 font-medium uppercase tracking-wider whitespace-nowrap shrink-0",
                                   isCompact ? "text-[8px]" : "text-[9px]",
-                                  STATUS_BADGE_COLORS[ag.status]
+                                  STATUS_BADGE_COLORS[effStatus]
                                 )}>
-                                  {STATUS_LABELS[ag.status] || ag.status}
+                                  {STATUS_LABELS[effStatus] || effStatus}
                                 </span>
                                 {ag.meeting_reason && (
                                   <span className={cn(
