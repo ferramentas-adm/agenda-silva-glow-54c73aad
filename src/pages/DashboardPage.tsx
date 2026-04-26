@@ -1479,7 +1479,8 @@ function DayView({
                     {agList.length > 0 && (
                       <div className="flex gap-0.5 overflow-hidden">
                         {agList.map((ag) => {
-                          const isCancelled = CANCELLED_STATUSES.includes(ag.status);
+                          const effStatus = getEffectiveStatus(ag);
+                          const isCancelled = CANCELLED_STATUSES.includes(effStatus);
                           const isCompact = agList.length >= 3;
                           return (
                             <div
