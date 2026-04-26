@@ -56,6 +56,20 @@ interface Agendamento {
   channel_type: string | null;
   briefing_read_at: string | null;
   briefing_read_by: string | null;
+  original_agendamento_id: string | null;
+}
+
+// ─── Status efetivo (apenas visual / contagem) ───────────────────
+// Quando um agendamento é reagendado, o NOVO registro (criado na nova data)
+// fica com status='reagendada' E carrega original_agendamento_id apontando
+// para o antigo. Para fins visuais e de contagem queremos tratar esse novo
+// como "Confirmada" — sem alterar o status real no banco nem o webhook
+// enviado ao DataCrazy (que continua recebendo "Reagendada").
+// O original (que foi reagendado) tem status='reagendada' e
+// original_agendamento_id=null → permanece exibido como "Reagendada".
+function getEffectiveStatus(ag: { status: string; original_agendamento_id?: string | null }): string {
+  if (ag.status === "reagendada" && ag.original_agendamento_id) return "confirmada";
+  return ag.status;
 }
 
 interface GoogleBusyBlock {
