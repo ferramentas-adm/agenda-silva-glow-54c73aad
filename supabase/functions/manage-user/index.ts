@@ -210,11 +210,11 @@ Deno.serve(async (req) => {
         .eq("user_id", user_id)
         .single();
 
-      // If changing TO closer, create closer record if not exists
+      // If changing TO closer, create closer record if not exists, or reactivate if it exists but inactive
       if (new_role === "closer" && profile?.email) {
         const { data: existing } = await supabaseAdmin
           .from("closers")
-          .select("id")
+          .select("id, active, name")
           .eq("email", profile.email)
           .maybeSingle();
 
@@ -222,7 +222,13 @@ Deno.serve(async (req) => {
           await supabaseAdmin.from("closers").insert({
             name: profile.full_name || profile.email,
             email: profile.email,
+            active: true,
           });
+        } else if (!existing.active) {
+          await supabaseAdmin
+            .from("closers")
+            .update({ active: true, name: profile.full_name || existing.name })
+            .eq("id", existing.id);
         }
       }
 
