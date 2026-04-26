@@ -37,6 +37,21 @@ interface AgendamentoMetric {
   channel_type: string | null;
   created_by: string | null;
   sdr_responsavel_id: string | null;
+  original_agendamento_id?: string | null;
+}
+
+/**
+ * Status efetivo (apenas visual / contagem).
+ * Quando um agendamento foi reagendado, o NOVO registro fica com
+ * status='reagendada' E carrega original_agendamento_id apontando para o
+ * antigo. Para fins de métricas, tratamos esse novo como "confirmada"
+ * — sem alterar nada no banco nem no webhook do DataCrazy.
+ * O original (foi reagendado) tem status='reagendada' e
+ * original_agendamento_id=null → permanece "reagendada".
+ */
+function getEffectiveStatus(a: { status: string; original_agendamento_id?: string | null }): string {
+  if (a.status === "reagendada" && a.original_agendamento_id) return "confirmada";
+  return a.status;
 }
 
 interface SDRProfile {
