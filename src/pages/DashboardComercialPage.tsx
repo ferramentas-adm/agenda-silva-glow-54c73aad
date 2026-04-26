@@ -43,6 +43,7 @@ interface AgendamentoMetric {
   channel_type: string | null;
   created_by: string | null;
   sdr_responsavel_id: string | null;
+  original_agendamento_id: string | null;
 }
 
 interface SDRProfile {
