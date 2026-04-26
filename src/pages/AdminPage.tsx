@@ -1324,7 +1324,7 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5 bg-secondary">
+            <TabsList className="grid w-full grid-cols-4 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
@@ -1341,10 +1341,6 @@ export default function AdminPage() {
                 <Plus className="h-3.5 w-3.5" />
                 Listas
               </TabsTrigger>
-              <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
-                <ShieldAlert className="h-3.5 w-3.5" />
-                Justificativas
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -1359,27 +1355,17 @@ export default function AdminPage() {
             <TabsContent value="lists">
               <DynamicListsSection />
             </TabsContent>
-            <TabsContent value="reasons">
-              <DeletionReasonsSection />
-            </TabsContent>
           </Tabs>
         ) : isModerador ? (
           <Tabs defaultValue="lists" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+            <TabsList className="grid w-full grid-cols-1 bg-secondary">
               <TabsTrigger value="lists" className="gap-1.5 text-xs sm:text-sm">
                 <Plus className="h-3.5 w-3.5" />
                 Listas
               </TabsTrigger>
-              <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
-                <ShieldAlert className="h-3.5 w-3.5" />
-                Justificativas
-              </TabsTrigger>
             </TabsList>
             <TabsContent value="lists">
               <DynamicListsSection />
-            </TabsContent>
-            <TabsContent value="reasons">
-              <DeletionReasonsSection />
             </TabsContent>
           </Tabs>
         ) : (
