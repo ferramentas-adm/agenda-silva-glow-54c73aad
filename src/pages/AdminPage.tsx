@@ -27,34 +27,31 @@ import DynamicListManager from "@/components/DynamicListManager";
 import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 
-/* ─── Listas dinâmicas (Motivos / Canais) ─────────────────────── */
+/* ─── Listas dinâmicas (Canais / Motivos / Justificativas) ───── */
 function DynamicListsSection() {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <DynamicListManager
-        settingKey={APP_SETTING_KEYS.meeting_reasons}
-        title="Motivos da reunião"
-        description="Opções disponíveis ao agendar uma reunião."
-        defaults={["Apresentação", "Diagnóstico", "Fechamento", "Follow-up", "Segunda Reunião"]}
-      />
-      <DynamicListManager
-        settingKey={APP_SETTING_KEYS.channel_types}
-        title="Tipos de canal"
-        description="Origem do lead para classificação."
-        defaults={["CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago"]}
-      />
-      <DynamicListManager
-        settingKey={APP_SETTING_KEYS.block_reasons}
-        title="Motivos de compromissos pessoais"
-        description="Opções para o Closer ao bloquear horários."
-        defaults={["Almoço", "Compromisso pessoal", "Folga", "Reunião interna", "Treinamento"]}
-      />
-      <DynamicListManager
-        settingKey={APP_SETTING_KEYS.motivos_nao_fechamento}
-        title="Motivos de não fechamento"
-        description="Opções no pop-up de venda quando 'Vendeu? Não'."
-        defaults={["Expectativas desalinhadas", "Não é o momento", "Sem capacidade financeira"]}
-      />
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <DynamicListManager
+          settingKey={APP_SETTING_KEYS.channel_types}
+          title="Tipos de canal"
+          description="Origem do lead para classificação."
+          defaults={["CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago"]}
+        />
+        <DynamicListManager
+          settingKey={APP_SETTING_KEYS.block_reasons}
+          title="Motivos de compromissos pessoais"
+          description="Opções para o Closer ao bloquear horários."
+          defaults={["Almoço", "Compromisso pessoal", "Folga", "Reunião interna", "Treinamento"]}
+        />
+        <DynamicListManager
+          settingKey={APP_SETTING_KEYS.motivos_nao_fechamento}
+          title="Motivos de não fechamento"
+          description="Opções no pop-up de venda quando 'Vendeu? Não'."
+          defaults={["Expectativas desalinhadas", "Não é o momento", "Sem capacidade financeira"]}
+        />
+      </div>
+      <DeletionReasonsSection />
     </div>
   );
 }
