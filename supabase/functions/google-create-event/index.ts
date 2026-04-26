@@ -102,11 +102,19 @@ serve(async (req) => {
     }
 
     // Build event — use proper offset for America/Sao_Paulo (-03:00)
+    // Compute end = start + 1 hour, handling day rollover (e.g. 23:00 -> next day 00:00)
     const startDateTime = `${scheduled_date}T${scheduled_time}:00-03:00`;
-    const [hours, minutes] = scheduled_time.split(':').map(Number);
-    const endHours = hours + 1;
-    const endTime = `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    const endDateTime = `${scheduled_date}T${endTime}:00-03:00`;
+    const startMs = new Date(startDateTime).getTime();
+    const endMs = startMs + 60 * 60 * 1000;
+    const endDate = new Date(endMs);
+    // Format as local -03:00 wall clock
+    const pad = (n: number) => String(n).padStart(2, '0');
+    // Convert to São Paulo offset manually: endMs is absolute; -03:00 means add -3h offset to UTC components
+    const spOffsetMs = -3 * 60 * 60 * 1000;
+    const sp = new Date(endMs + spOffsetMs); // shift so UTC getters return SP wall time
+    const endDateStr = `${sp.getUTCFullYear()}-${pad(sp.getUTCMonth() + 1)}-${pad(sp.getUTCDate())}`;
+    const endTimeStr = `${pad(sp.getUTCHours())}:${pad(sp.getUTCMinutes())}`;
+    const endDateTime = `${endDateStr}T${endTimeStr}:00-03:00`;
 
     const description = [
       `Lead: ${lead_name}`,
