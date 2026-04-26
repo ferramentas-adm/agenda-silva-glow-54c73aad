@@ -245,8 +245,11 @@ export default function ProdutividadeSDRTab({
         a.scheduled_date <= range.to,
     );
     const para = dia.length;
-    const compareceu = dia.filter((a) => a.status === "realizada").length;
-    const naoCompareceu = dia.filter((a) => a.status === "no_show" || a.status === "cancelada").length;
+    const compareceu = dia.filter((a) => getEffectiveStatus(a) === "realizada").length;
+    const naoCompareceu = dia.filter((a) => {
+      const eff = getEffectiveStatus(a);
+      return eff === "no_show" || eff === "cancelada";
+    }).length;
     return { criadas, para, compareceu, naoCompareceu };
   }, [agendamentos, createdAgs, sdrIds, range]);
 
