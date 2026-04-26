@@ -37,6 +37,21 @@ interface AgendamentoMetric {
   channel_type: string | null;
   created_by: string | null;
   sdr_responsavel_id: string | null;
+  original_agendamento_id?: string | null;
+}
+
+/**
+ * Status efetivo (apenas visual / contagem).
+ * Quando um agendamento foi reagendado, o NOVO registro fica com
+ * status='reagendada' E carrega original_agendamento_id apontando para o
+ * antigo. Para fins de métricas, tratamos esse novo como "confirmada"
+ * — sem alterar nada no banco nem no webhook do DataCrazy.
+ * O original (foi reagendado) tem status='reagendada' e
+ * original_agendamento_id=null → permanece "reagendada".
+ */
+function getEffectiveStatus(a: { status: string; original_agendamento_id?: string | null }): string {
+  if (a.status === "reagendada" && a.original_agendamento_id) return "confirmada";
+  return a.status;
 }
 
 interface SDRProfile {
@@ -158,10 +173,14 @@ export default function ProdutividadeSDRTab({
       return byDate;
     }
     if (filter === "compareceu") {
-      return byDate.filter((a) => a.status === "realizada");
+      return byDate.filter((a) => getEffectiveStatus(a) === "realizada");
     }
-    // nao_compareceu = no_show + cancelada
-    return byDate.filter((a) => a.status === "no_show" || a.status === "cancelada");
+    // nao_compareceu = no_show + cancelada (status efetivo — reagendamentos
+    // novos viram "confirmada" e NÃO entram aqui).
+    return byDate.filter((a) => {
+      const eff = getEffectiveStatus(a);
+      return eff === "no_show" || eff === "cancelada";
+    });
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
   // ─── Dados do gráfico ─────────────────────────────────────────
@@ -226,8 +245,11 @@ export default function ProdutividadeSDRTab({
         a.scheduled_date <= range.to,
     );
     const para = dia.length;
-    const compareceu = dia.filter((a) => a.status === "realizada").length;
-    const naoCompareceu = dia.filter((a) => a.status === "no_show" || a.status === "cancelada").length;
+    const compareceu = dia.filter((a) => getEffectiveStatus(a) === "realizada").length;
+    const naoCompareceu = dia.filter((a) => {
+      const eff = getEffectiveStatus(a);
+      return eff === "no_show" || eff === "cancelada";
+    }).length;
     return { criadas, para, compareceu, naoCompareceu };
   }, [agendamentos, createdAgs, sdrIds, range]);
 

@@ -56,6 +56,20 @@ interface Agendamento {
   channel_type: string | null;
   briefing_read_at: string | null;
   briefing_read_by: string | null;
+  original_agendamento_id: string | null;
+}
+
+// ─── Status efetivo (apenas visual / contagem) ───────────────────
+// Quando um agendamento é reagendado, o NOVO registro (criado na nova data)
+// fica com status='reagendada' E carrega original_agendamento_id apontando
+// para o antigo. Para fins visuais e de contagem queremos tratar esse novo
+// como "Confirmada" — sem alterar o status real no banco nem o webhook
+// enviado ao DataCrazy (que continua recebendo "Reagendada").
+// O original (que foi reagendado) tem status='reagendada' e
+// original_agendamento_id=null → permanece exibido como "Reagendada".
+function getEffectiveStatus(ag: { status: string; original_agendamento_id?: string | null }): string {
+  if (ag.status === "reagendada" && ag.original_agendamento_id) return "confirmada";
+  return ag.status;
 }
 
 interface GoogleBusyBlock {
@@ -183,7 +197,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -322,7 +336,8 @@ export function CalendarContent() {
   const statusCounts = useMemo(
     () =>
       filtered.reduce<Record<string, number>>((acc, agendamento) => {
-        acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
+        const eff = getEffectiveStatus(agendamento);
+        acc[eff] = (acc[eff] ?? 0) + 1;
         return acc;
       }, {}),
     [filtered]
@@ -364,7 +379,8 @@ export function CalendarContent() {
   const closerOwnStatusCounts = useMemo(
     () =>
       closerOwnAgendamentos.reduce<Record<string, number>>((acc, a) => {
-        acc[a.status] = (acc[a.status] ?? 0) + 1;
+        const eff = getEffectiveStatus(a);
+        acc[eff] = (acc[eff] ?? 0) + 1;
         return acc;
       }, {}),
     [closerOwnAgendamentos]
@@ -926,9 +942,14 @@ export function CalendarContent() {
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs">Status atual</p>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[detailAg.status])}>
-                    {STATUS_LABELS[detailAg.status] || detailAg.status}
-                  </Badge>
+                  {(() => {
+                    const eff = getEffectiveStatus(detailAg);
+                    return (
+                      <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[eff])}>
+                        {STATUS_LABELS[eff] || eff}
+                      </Badge>
+                    );
+                  })()}
                   {detailAg.meeting_reason && (
                     <Badge variant="outline" className="text-xs bg-violet-500/20 text-violet-400 border-violet-500/30">
                       {detailAg.meeting_reason}
@@ -1458,7 +1479,8 @@ function DayView({
                     {agList.length > 0 && (
                       <div className="flex gap-0.5 overflow-hidden">
                         {agList.map((ag) => {
-                          const isCancelled = CANCELLED_STATUSES.includes(ag.status);
+                          const effStatus = getEffectiveStatus(ag);
+                          const isCancelled = CANCELLED_STATUSES.includes(effStatus);
                           const isCompact = agList.length >= 3;
                           return (
                             <div
@@ -1471,7 +1493,7 @@ function DayView({
                                 isCancelled && "opacity-60"
                               )}
                               onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
-                              title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[ag.status] || ag.status}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
+                              title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[effStatus] || effStatus}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
                             >
                               {/* Briefing tag - top-right label */}
                               <span className={cn(
@@ -1507,9 +1529,9 @@ function DayView({
                                 <span className={cn(
                                   "rounded px-1 py-0.5 font-medium uppercase tracking-wider whitespace-nowrap shrink-0",
                                   isCompact ? "text-[8px]" : "text-[9px]",
-                                  STATUS_BADGE_COLORS[ag.status]
+                                  STATUS_BADGE_COLORS[effStatus]
                                 )}>
-                                  {STATUS_LABELS[ag.status] || ag.status}
+                                  {STATUS_LABELS[effStatus] || effStatus}
                                 </span>
                                 {ag.meeting_reason && (
                                   <span className={cn(
