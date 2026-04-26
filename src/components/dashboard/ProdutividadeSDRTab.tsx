@@ -173,10 +173,14 @@ export default function ProdutividadeSDRTab({
       return byDate;
     }
     if (filter === "compareceu") {
-      return byDate.filter((a) => a.status === "realizada");
+      return byDate.filter((a) => getEffectiveStatus(a) === "realizada");
     }
-    // nao_compareceu = no_show + cancelada
-    return byDate.filter((a) => a.status === "no_show" || a.status === "cancelada");
+    // nao_compareceu = no_show + cancelada (status efetivo — reagendamentos
+    // novos viram "confirmada" e NÃO entram aqui).
+    return byDate.filter((a) => {
+      const eff = getEffectiveStatus(a);
+      return eff === "no_show" || eff === "cancelada";
+    });
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
   // ─── Dados do gráfico ─────────────────────────────────────────
