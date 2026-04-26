@@ -379,7 +379,8 @@ export function CalendarContent() {
   const closerOwnStatusCounts = useMemo(
     () =>
       closerOwnAgendamentos.reduce<Record<string, number>>((acc, a) => {
-        acc[a.status] = (acc[a.status] ?? 0) + 1;
+        const eff = getEffectiveStatus(a);
+        acc[eff] = (acc[eff] ?? 0) + 1;
         return acc;
       }, {}),
     [closerOwnAgendamentos]
