@@ -942,9 +942,14 @@ export function CalendarContent() {
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs">Status atual</p>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[detailAg.status])}>
-                    {STATUS_LABELS[detailAg.status] || detailAg.status}
-                  </Badge>
+                  {(() => {
+                    const eff = getEffectiveStatus(detailAg);
+                    return (
+                      <Badge variant="outline" className={cn("text-xs", STATUS_BADGE_COLORS[eff])}>
+                        {STATUS_LABELS[eff] || eff}
+                      </Badge>
+                    );
+                  })()}
                   {detailAg.meeting_reason && (
                     <Badge variant="outline" className="text-xs bg-violet-500/20 text-violet-400 border-violet-500/30">
                       {detailAg.meeting_reason}
