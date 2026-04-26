@@ -336,7 +336,8 @@ export function CalendarContent() {
   const statusCounts = useMemo(
     () =>
       filtered.reduce<Record<string, number>>((acc, agendamento) => {
-        acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
+        const eff = getEffectiveStatus(agendamento);
+        acc[eff] = (acc[eff] ?? 0) + 1;
         return acc;
       }, {}),
     [filtered]
