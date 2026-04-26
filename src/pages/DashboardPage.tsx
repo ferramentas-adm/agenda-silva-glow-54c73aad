@@ -1493,7 +1493,7 @@ function DayView({
                                 isCancelled && "opacity-60"
                               )}
                               onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
-                              title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[ag.status] || ag.status}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
+                              title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[effStatus] || effStatus}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
                             >
                               {/* Briefing tag - top-right label */}
                               <span className={cn(
