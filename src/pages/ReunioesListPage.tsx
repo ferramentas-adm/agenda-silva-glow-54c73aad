@@ -37,7 +37,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   no_show: { label: "No-show", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
 };
 
-const MEETING_REASONS = ["Segunda Reunião", "Fechamento", "Remarcado", "Outros"];
+
 const CHANNEL_TYPES = ["CTA", "Tráfego Pago", "Reativação", "Social Selling", "Renovação", "Indicação", "Formulário Bio"];
 const PAGE_SIZE = 20;
 
@@ -58,7 +58,7 @@ export default function ReunioesListPage() {
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterReason, setFilterReason] = useState<string>("all");
+  
   const [filterMeetingDateFrom, setFilterMeetingDateFrom] = useState<Date | undefined>();
   const [filterMeetingDateTo, setFilterMeetingDateTo] = useState<Date | undefined>();
   const [filterCreatedDateFrom, setFilterCreatedDateFrom] = useState<Date | undefined>();
@@ -167,14 +167,6 @@ export default function ReunioesListPage() {
       if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
       if (filterChannelType !== "all" && (ag as any).channel_type !== filterChannelType) return false;
-      if (filterReason !== "all") {
-        if (!ag.meeting_reason) return false;
-        if (filterReason === "Outros" && !MEETING_REASONS.slice(0, 3).includes(ag.meeting_reason) && ag.meeting_reason !== "Outros") {
-          // custom reason counts as "Outros"
-        } else if (ag.meeting_reason !== filterReason) {
-          return false;
-        }
-      }
       if (filterMeetingDateFrom && ag.scheduled_date < format(filterMeetingDateFrom, "yyyy-MM-dd")) return false;
       if (filterMeetingDateTo && ag.scheduled_date > format(filterMeetingDateTo, "yyyy-MM-dd")) return false;
       if (filterCreatedDateFrom) {
@@ -191,7 +183,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -227,13 +219,12 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterReason !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText;
 
   const clearFilters = () => {
     setFilterCloser("all");
     setFilterSDR("all");
     setFilterStatus("all");
-    setFilterReason("all");
     setFilterChannelType("all");
     setFilterMeetingDateFrom(undefined);
     setFilterMeetingDateTo(undefined);
@@ -370,14 +361,6 @@ export default function ReunioesListPage() {
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
                 {Object.entries(STATUS_MAP).map(([key, { label }]) => (<SelectItem key={key} value={key}>{label}</SelectItem>))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterReason} onValueChange={(v) => { setFilterReason(v); setCurrentPage(1); }}>
-              <SelectTrigger className="glass-input"><SelectValue placeholder="Motivo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Motivos</SelectItem>
-                {MEETING_REASONS.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
               </SelectContent>
             </Select>
 
