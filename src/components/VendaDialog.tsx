@@ -71,6 +71,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>(undefined);
   const [followUpTime, setFollowUpTime] = useState<string>("");
   const [motivo, setMotivo] = useState("");
+  const [explicacaoNaoFechamento, setExplicacaoNaoFechamento] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
