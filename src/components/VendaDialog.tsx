@@ -159,6 +159,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         }
         setFollowUpTime((data as { follow_up_time?: string | null }).follow_up_time ?? "");
         setMotivo(data.motivo_nao_fechamento ?? "");
+        setExplicacaoNaoFechamento((data as { explicacao_nao_fechamento?: string | null }).explicacao_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
       }
