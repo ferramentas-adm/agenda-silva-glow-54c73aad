@@ -184,6 +184,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
+      if (!explicacaoNaoFechamento.trim()) return false;
       // Motivos de etapa em andamento dispensam follow-up
       if (motivoIsPending) return true;
       if (followUp === null) return false;
