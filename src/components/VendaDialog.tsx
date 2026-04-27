@@ -71,6 +71,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>(undefined);
   const [followUpTime, setFollowUpTime] = useState<string>("");
   const [motivo, setMotivo] = useState("");
+  const [explicacaoNaoFechamento, setExplicacaoNaoFechamento] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -113,6 +114,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setFollowUpDate(undefined);
     setFollowUpTime("");
     setMotivo("");
+    setExplicacaoNaoFechamento("");
     setObservacoes("");
     setLeadRevenue("");
     setIsEditing(false);
@@ -157,6 +159,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         }
         setFollowUpTime((data as { follow_up_time?: string | null }).follow_up_time ?? "");
         setMotivo(data.motivo_nao_fechamento ?? "");
+        setExplicacaoNaoFechamento((data as { explicacao_nao_fechamento?: string | null }).explicacao_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
       }
@@ -181,6 +184,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
+      if (!explicacaoNaoFechamento.trim()) return false;
       // Motivos de etapa em andamento dispensam follow-up
       if (motivoIsPending) return true;
       if (followUp === null) return false;
@@ -214,6 +218,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
           motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
+          explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
           observacoes: observacoes.trim() || null,
           lead_revenue: leadRevenue || null,
           created_by: user.id,
@@ -267,6 +272,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
         valor: valorNum,
         motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
+        explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
         follow_up: fuActive,
         follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
         follow_up_time: fuActive && followUpTime ? followUpTime : null,
@@ -421,6 +427,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 )}
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="explicacao-nao-fechou">Explicação do porque não fechou. *</Label>
+                <Textarea
+                  id="explicacao-nao-fechou"
+                  value={explicacaoNaoFechamento}
+                  onChange={(e) => setExplicacaoNaoFechamento(e.target.value)}
+                  placeholder="Detalhe o motivo do lead não ter fechado..."
+                  rows={3}
+                />
+              </div>
+
               {!motivoIsPending && (
                 <>
                   <div className="space-y-2">
@@ -568,7 +585,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
           {vendeu && (
             <div className="space-y-1.5">
-              <Label htmlFor="obs">Resumo do cliente / observações adicionais *</Label>
+              <Label htmlFor="obs">Descreva brevemente o que o cliente faz *</Label>
               <Textarea
                 id="obs"
                 value={observacoes}

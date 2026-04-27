@@ -597,6 +597,7 @@ export type Database = {
           agendamento_id: string
           created_at: string
           created_by: string
+          explicacao_nao_fechamento: string | null
           follow_up: boolean
           follow_up_date: string | null
           follow_up_time: string | null
@@ -613,6 +614,7 @@ export type Database = {
           agendamento_id: string
           created_at?: string
           created_by: string
+          explicacao_nao_fechamento?: string | null
           follow_up?: boolean
           follow_up_date?: string | null
           follow_up_time?: string | null
@@ -629,6 +631,7 @@ export type Database = {
           agendamento_id?: string
           created_at?: string
           created_by?: string
+          explicacao_nao_fechamento?: string | null
           follow_up?: boolean
           follow_up_date?: string | null
           follow_up_time?: string | null
