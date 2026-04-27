@@ -15,7 +15,8 @@ export type PermissionKey =
   | "view_payments"
   | "view_admin"
   | "view_audit_logs"
-  | "create_appointment";
+  | "create_appointment"
+  | "edit_appointment_time";
 
 export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string }> = {
   view_calendar:           { label: "Calendário",            description: "Acesso à página de calendário e agendamentos" },
@@ -29,6 +30,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   view_admin:              { label: "Configurações",         description: "Acesso à área de Administração" },
   view_audit_logs:         { label: "Logs de Auditoria",     description: "Visualizar histórico de atividades do sistema" },
   create_appointment:      { label: "Criar Agendamento",     description: "Permissão para agendar novas reuniões" },
+  edit_appointment_time:   { label: "Editar horário",        description: "Permite ver e usar o botão 'Editar horário' nos detalhes do agendamento" },
 };
 
 export const ALL_ROLES: AppRole[] = ["gestor", "moderador", "closer", "sdr"];
