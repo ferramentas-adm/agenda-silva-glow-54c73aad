@@ -37,7 +37,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   no_show: { label: "No-show", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
 };
 
-const MEETING_REASONS = ["Segunda Reunião", "Fechamento", "Remarcado", "Outros"];
+
 const CHANNEL_TYPES = ["CTA", "Tráfego Pago", "Reativação", "Social Selling", "Renovação", "Indicação", "Formulário Bio"];
 const PAGE_SIZE = 20;
 
@@ -58,7 +58,7 @@ export default function ReunioesListPage() {
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterReason, setFilterReason] = useState<string>("all");
+  
   const [filterMeetingDateFrom, setFilterMeetingDateFrom] = useState<Date | undefined>();
   const [filterMeetingDateTo, setFilterMeetingDateTo] = useState<Date | undefined>();
   const [filterCreatedDateFrom, setFilterCreatedDateFrom] = useState<Date | undefined>();
@@ -191,7 +191,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterReason, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -227,13 +227,12 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterReason !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText;
 
   const clearFilters = () => {
     setFilterCloser("all");
     setFilterSDR("all");
     setFilterStatus("all");
-    setFilterReason("all");
     setFilterChannelType("all");
     setFilterMeetingDateFrom(undefined);
     setFilterMeetingDateTo(undefined);
