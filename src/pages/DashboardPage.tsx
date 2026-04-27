@@ -143,6 +143,7 @@ export function CalendarContent() {
   const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
   
   const { user, role } = useAuth();
+  const canEditTime = useCan("edit_appointment_time");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: deletionReasons = [] } = useDeletionReasons();
@@ -995,10 +996,12 @@ export function CalendarContent() {
                 </Button>
               )}
 
-              {/* Edit button */}
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
-                <Pencil className="h-3.5 w-3.5" />Editar horário
-              </Button>
+              {/* Edit button — controlado pela permissão "edit_appointment_time" */}
+              {canEditTime && (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={startEdit}>
+                  <Pencil className="h-3.5 w-3.5" />Editar horário
+                </Button>
+              )}
 
               {/* Transfer lead — apenas dono atual (closer) ou gestor/moderador */}
               {canTransfer && (
