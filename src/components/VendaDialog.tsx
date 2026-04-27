@@ -218,6 +218,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
           motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
+          explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
           observacoes: observacoes.trim() || null,
           lead_revenue: leadRevenue || null,
           created_by: user.id,
