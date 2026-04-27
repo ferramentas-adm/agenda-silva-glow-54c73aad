@@ -114,6 +114,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setFollowUpDate(undefined);
     setFollowUpTime("");
     setMotivo("");
+    setExplicacaoNaoFechamento("");
     setObservacoes("");
     setLeadRevenue("");
     setIsEditing(false);
