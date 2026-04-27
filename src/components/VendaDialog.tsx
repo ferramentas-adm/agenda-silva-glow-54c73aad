@@ -427,6 +427,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 )}
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="explicacao-nao-fechou">Explicação do porque não fechou. *</Label>
+                <Textarea
+                  id="explicacao-nao-fechou"
+                  value={explicacaoNaoFechamento}
+                  onChange={(e) => setExplicacaoNaoFechamento(e.target.value)}
+                  placeholder="Detalhe o motivo do lead não ter fechado..."
+                  rows={3}
+                />
+              </div>
+
               {!motivoIsPending && (
                 <>
                   <div className="space-y-2">
