@@ -36,6 +36,7 @@ import { resendAgendamentoWebhook } from "@/services/datacrazyAgendamento";
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
+import { useCan } from "@/hooks/usePermissions";
 
 interface Agendamento {
   id: string;
