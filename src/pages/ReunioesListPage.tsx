@@ -167,14 +167,6 @@ export default function ReunioesListPage() {
       if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
       if (filterChannelType !== "all" && (ag as any).channel_type !== filterChannelType) return false;
-      if (filterReason !== "all") {
-        if (!ag.meeting_reason) return false;
-        if (filterReason === "Outros" && !MEETING_REASONS.slice(0, 3).includes(ag.meeting_reason) && ag.meeting_reason !== "Outros") {
-          // custom reason counts as "Outros"
-        } else if (ag.meeting_reason !== filterReason) {
-          return false;
-        }
-      }
       if (filterMeetingDateFrom && ag.scheduled_date < format(filterMeetingDateFrom, "yyyy-MM-dd")) return false;
       if (filterMeetingDateTo && ag.scheduled_date > format(filterMeetingDateTo, "yyyy-MM-dd")) return false;
       if (filterCreatedDateFrom) {
@@ -369,14 +361,6 @@ export default function ReunioesListPage() {
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
                 {Object.entries(STATUS_MAP).map(([key, { label }]) => (<SelectItem key={key} value={key}>{label}</SelectItem>))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterReason} onValueChange={(v) => { setFilterReason(v); setCurrentPage(1); }}>
-              <SelectTrigger className="glass-input"><SelectValue placeholder="Motivo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Motivos</SelectItem>
-                {MEETING_REASONS.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
               </SelectContent>
             </Select>
 
