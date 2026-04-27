@@ -585,7 +585,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
           {vendeu && (
             <div className="space-y-1.5">
-              <Label htmlFor="obs">Resumo do cliente / observações adicionais *</Label>
+              <Label htmlFor="obs">Descreva brevemente o que o cliente faz *</Label>
               <Textarea
                 id="obs"
                 value={observacoes}
