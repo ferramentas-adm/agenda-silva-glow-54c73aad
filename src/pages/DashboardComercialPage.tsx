@@ -30,7 +30,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
-  { key: "leads", label: "Leads" },
+  { key: "leads", label: "Formulário Bio" },
 ];
 const ROTATION_INTERVAL = 30000;
 
