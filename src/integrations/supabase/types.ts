@@ -284,46 +284,67 @@ export type Database = {
       }
       lead_metrics: {
         Row: {
+          classificacao: string | null
           created_at: string
           data_referencia: string
           enviado_em: string | null
           evento: string
+          faturamento: string | null
           id: string
+          lead_email: string | null
+          lead_nome: string | null
+          lead_telefone: string | null
           leads_finalizados: number
           leads_iniciados: number
           origem: string
           periodo: string | null
           raw_payload: Json
           received_at: string
+          renda: string | null
           taxa_conclusao: number | null
+          tem_empresa: boolean | null
         }
         Insert: {
+          classificacao?: string | null
           created_at?: string
           data_referencia: string
           enviado_em?: string | null
           evento: string
+          faturamento?: string | null
           id?: string
+          lead_email?: string | null
+          lead_nome?: string | null
+          lead_telefone?: string | null
           leads_finalizados?: number
           leads_iniciados?: number
           origem: string
           periodo?: string | null
           raw_payload?: Json
           received_at?: string
+          renda?: string | null
           taxa_conclusao?: number | null
+          tem_empresa?: boolean | null
         }
         Update: {
+          classificacao?: string | null
           created_at?: string
           data_referencia?: string
           enviado_em?: string | null
           evento?: string
+          faturamento?: string | null
           id?: string
+          lead_email?: string | null
+          lead_nome?: string | null
+          lead_telefone?: string | null
           leads_finalizados?: number
           leads_iniciados?: number
           origem?: string
           periodo?: string | null
           raw_payload?: Json
           received_at?: string
+          renda?: string | null
           taxa_conclusao?: number | null
+          tem_empresa?: boolean | null
         }
         Relationships: []
       }
