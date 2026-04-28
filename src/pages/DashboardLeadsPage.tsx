@@ -4,6 +4,7 @@ import { format, subDays, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Activity, Target, TrendingUp, Users, Calendar as CalendarIcon, RefreshCw,
+  Briefcase, Wallet, UserX,
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -34,6 +35,9 @@ interface LeadMetric {
   taxa_conclusao: number | null;
   enviado_em: string | null;
   received_at: string;
+  classificacao: string | null;
+  faturamento: string | null;
+  renda: string | null;
 }
 
 const RANGE_OPTIONS = [
@@ -72,7 +76,7 @@ export function LeadsDashboardContent() {
     queryFn: async () => {
       let q = supabase
         .from("lead_metrics")
-        .select("id, origem, evento, periodo, data_referencia, leads_iniciados, leads_finalizados, taxa_conclusao, enviado_em, received_at")
+        .select("id, origem, evento, periodo, data_referencia, leads_iniciados, leads_finalizados, taxa_conclusao, enviado_em, received_at, classificacao, faturamento, renda")
         .order("data_referencia", { ascending: false })
         .limit(500);
       if (dateBounds.from) q = q.gte("data_referencia", format(dateBounds.from, "yyyy-MM-dd"));
@@ -98,7 +102,13 @@ export function LeadsDashboardContent() {
     const iniciados = filtered.reduce((s, m) => s + (m.leads_iniciados || 0), 0);
     const finalizados = filtered.reduce((s, m) => s + (m.leads_finalizados || 0), 0);
     const taxa = iniciados > 0 ? (finalizados / iniciados) * 100 : 0;
-    return { iniciados, finalizados, taxa, registros: filtered.length };
+    let qualFat = 0, qualRenda = 0, desq = 0;
+    for (const m of filtered) {
+      if (m.classificacao === "qualificado_faturamento") qualFat++;
+      else if (m.classificacao === "qualificado_renda") qualRenda++;
+      else if (m.classificacao === "desqualificado") desq++;
+    }
+    return { iniciados, finalizados, taxa, qualFat, qualRenda, desq };
   }, [filtered]);
 
   // ── Série temporal (agregada por dia) ──
@@ -137,7 +147,7 @@ export function LeadsDashboardContent() {
       {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard de Leads</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard de Formulário</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Métricas agregadas recebidas de fontes externas (formulários, captação, etc.)
             </p>
@@ -214,7 +224,7 @@ export function LeadsDashboardContent() {
         </div>
 
         {/* KPI cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           <KpiCard
             icon={<Users className="h-4 w-4" />}
             label="Leads iniciados"
@@ -234,9 +244,21 @@ export function LeadsDashboardContent() {
             tone="accent"
           />
           <KpiCard
-            icon={<Activity className="h-4 w-4" />}
-            label="Registros recebidos"
-            value={totals.registros.toLocaleString("pt-BR")}
+            icon={<Briefcase className="h-4 w-4" />}
+            label="Qualificados Faturamento"
+            value={totals.qualFat.toLocaleString("pt-BR")}
+            tone="primary"
+          />
+          <KpiCard
+            icon={<Wallet className="h-4 w-4" />}
+            label="Qualificados Renda"
+            value={totals.qualRenda.toLocaleString("pt-BR")}
+            tone="success"
+          />
+          <KpiCard
+            icon={<UserX className="h-4 w-4" />}
+            label="Desqualificados"
+            value={totals.desq.toLocaleString("pt-BR")}
             tone="muted"
           />
         </div>
