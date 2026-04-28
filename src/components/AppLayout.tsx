@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ...(can("view_follow_ups") ? [{ to: "/follow-ups", label: "Follow-ups", icon: CalendarClock }] : []),
     ...(can("view_payments") ? [{ to: "/pagamentos", label: "Pagamentos", icon: Wallet }] : []),
     ...(can("view_dashboard_comercial") ? [{ to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3 }] : []),
-    ...(can("view_dashboard_leads") && !can("view_dashboard_comercial") ? [{ to: "/dashboard-leads", label: "Leads", icon: BarChart3 }] : []),
+    ...(can("view_dashboard_leads") && !can("view_dashboard_comercial") ? [{ to: "/dashboard-leads", label: "Dashboard de Formulário", icon: BarChart3 }] : []),
     ...(can("view_admin") ? [{ to: "/admin", label: "Admin", icon: Settings }] : []),
     ...(can("view_audit_logs") ? [{ to: "/audit-logs", label: "Logs", icon: ScrollText }] : []),
   ];
