@@ -85,17 +85,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const motivoIsPending = isPendingStageReason(motivo);
 
-  // Se o motivo for um motivo de etapa em andamento, esconder seção de follow-up
-  useEffect(() => {
-    if (motivoIsPending) {
-      setFollowUp(null);
-      setFollowUpDate(undefined);
-      setFollowUpTime("");
-    }
-  }, [motivoIsPending]);
-
   // Venda perdida (não vendeu + sem follow-up) → não faz sentido registrar recebimento
-  const isVendaPerdida = vendeu === "nao" && !motivoIsPending && followUp === "nao";
+  const isVendaPerdida = vendeu === "nao" && followUp === "nao";
   useEffect(() => {
     if (isVendaPerdida) {
       setHasRecebimento(false);
@@ -185,8 +176,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (!explicacaoNaoFechamento.trim()) return false;
-      // Motivos de etapa em andamento dispensam follow-up
-      if (motivoIsPending) return true;
       if (followUp === null) return false;
       if (followUp === "sim" && (!followUpDate || !followUpTime)) return false;
       return true;
@@ -196,8 +185,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const computeOutcome = (): "fechou" | "perdeu" | "follow_up" | "em_andamento" => {
     if (vendeu === "sim") return "fechou";
-    if (motivoIsPending) return "em_andamento";
     if (followUp === "sim") return "follow_up";
+    if (motivoIsPending) return "em_andamento";
     return "perdeu";
   };
 
