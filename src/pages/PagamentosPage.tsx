@@ -103,8 +103,11 @@ export default function PagamentosPage() {
   // Filtros
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterFrom, setFilterFrom] = useState<Date | undefined>(undefined);
-  const [filterTo, setFilterTo] = useState<Date | undefined>(undefined);
+  const todayDate = startOfDay(new Date());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const filterFrom = dateRange?.from;
+  const filterTo = dateRange?.to ?? dateRange?.from;
 
   const { data: pagamentos = [], isLoading } = useQuery({
     queryKey: ["pagamentos"],
