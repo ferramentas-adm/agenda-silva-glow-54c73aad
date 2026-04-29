@@ -347,8 +347,8 @@ export default function AuditLogsPage() {
                           </button>
                         )}
                       </td>
-                      <td className="px-4 py-3 max-w-[300px]">
-                        <p className="text-xs text-muted-foreground truncate">
+                      <td className="px-4 py-3 max-w-[420px]">
+                        <p className="text-xs text-muted-foreground whitespace-normal break-words">
                           {formatDetails(log)}
                         </p>
                       </td>
