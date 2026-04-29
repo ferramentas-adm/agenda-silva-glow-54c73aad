@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfDay } from "date-fns";
+import { format, startOfDay, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 import {
@@ -157,6 +157,33 @@ export function LeadsDashboardContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {(() => {
+              const yesterday = subDays(today, 1);
+              const isSameDay = (a?: Date | null, b?: Date | null) =>
+                !!a && !!b && format(a, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
+              const isToday = isSameDay(fromDate, today) && isSameDay(toDate, today);
+              const isYesterday = isSameDay(fromDate, yesterday) && isSameDay(toDate, yesterday);
+              return (
+                <>
+                  <Button
+                    variant={isToday ? "default" : "outline"}
+                    size="sm"
+                    className="h-9"
+                    onClick={() => setDateRange({ from: today, to: today })}
+                  >
+                    Hoje
+                  </Button>
+                  <Button
+                    variant={isYesterday ? "default" : "outline"}
+                    size="sm"
+                    className="h-9"
+                    onClick={() => setDateRange({ from: yesterday, to: yesterday })}
+                  >
+                    Ontem
+                  </Button>
+                </>
+              );
+            })()}
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
