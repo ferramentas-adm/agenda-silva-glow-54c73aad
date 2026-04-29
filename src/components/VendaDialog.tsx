@@ -195,7 +195,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setSubmitting(true);
     try {
       const valorNum = valorValido ? valorNumParsed : null;
-      const fuActive = vendeu === "nao" && !motivoIsPending && followUp === "sim";
+      const fuActive = vendeu === "nao" && followUp === "sim";
 
       const { error: vendaError } = await supabase.from("vendas").upsert(
         {
