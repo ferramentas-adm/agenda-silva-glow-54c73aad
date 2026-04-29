@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isBefore, isToday, eachWeekOfInterval, addDays } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isBefore, isToday, eachWeekOfInterval, addDays, startOfDay, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
 import {
   Wallet, Plus, Pencil, Trash2, Loader2, CalendarIcon, Filter, X,
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, BarChart3,
@@ -102,8 +103,11 @@ export default function PagamentosPage() {
   // Filtros
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterFrom, setFilterFrom] = useState<Date | undefined>(undefined);
-  const [filterTo, setFilterTo] = useState<Date | undefined>(undefined);
+  const todayDate = startOfDay(new Date());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const filterFrom = dateRange?.from;
+  const filterTo = dateRange?.to ?? dateRange?.from;
 
   const { data: pagamentos = [], isLoading } = useQuery({
     queryKey: ["pagamentos"],
@@ -312,51 +316,110 @@ export default function PagamentosPage() {
         {/* Filtros */}
         <Card>
           <CardContent className="pt-4 pb-4">
-            <div className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mr-1">
                 <Filter className="h-4 w-4" />
                 Filtros
               </div>
 
-              <div className="min-w-[140px]">
-                <Label className="text-xs">De</Label>
-                <DatePickerField value={filterFrom} onChange={setFilterFrom} />
-              </div>
+              {(() => {
+                const yesterday = subDays(todayDate, 1);
+                const isSameDay = (a?: Date | null, b?: Date | null) =>
+                  !!a && !!b && format(a, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
+                const isTodayActive = isSameDay(filterFrom, todayDate) && isSameDay(filterTo, todayDate);
+                const isYesterdayActive = isSameDay(filterFrom, yesterday) && isSameDay(filterTo, yesterday);
+                return (
+                  <>
+                    <Button
+                      variant={isTodayActive ? "default" : "outline"}
+                      size="sm"
+                      className="h-9"
+                      onClick={() => setDateRange({ from: todayDate, to: todayDate })}
+                    >
+                      Hoje
+                    </Button>
+                    <Button
+                      variant={isYesterdayActive ? "default" : "outline"}
+                      size="sm"
+                      className="h-9"
+                      onClick={() => setDateRange({ from: yesterday, to: yesterday })}
+                    >
+                      Ontem
+                    </Button>
+                  </>
+                );
+              })()}
 
-              <div className="min-w-[140px]">
-                <Label className="text-xs">Até</Label>
-                <DatePickerField value={filterTo} onChange={setFilterTo} />
-              </div>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 justify-start text-left font-normal min-w-[220px]"
+                  >
+                    <CalendarIcon className="h-4 w-4 mr-2 text-primary" />
+                    {filterFrom && filterTo ? (
+                      format(filterFrom, "yyyy-MM-dd") !== format(filterTo, "yyyy-MM-dd") ? (
+                        <span>
+                          {format(filterFrom, "dd/MM/yy", { locale: ptBR })} – {format(filterTo, "dd/MM/yy", { locale: ptBR })}
+                        </span>
+                      ) : (
+                        <span>{format(filterFrom, "dd/MM/yyyy", { locale: ptBR })}</span>
+                      )
+                    ) : (
+                      <span className="text-muted-foreground">Selecionar período</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={(r) => {
+                      setDateRange(r);
+                      if (r?.from && r?.to) setCalendarOpen(false);
+                    }}
+                    numberOfMonths={2}
+                    locale={ptBR}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                  <div className="flex items-center justify-end gap-2 p-2 border-t">
+                    <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>
+                      Limpar
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
-              <div className="min-w-[160px]">
-                <Label className="text-xs">Status</Label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="pago">Pago</SelectItem>
-                    <SelectItem value="atrasado">Atrasado</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="h-9 min-w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos status</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="pago">Pago</SelectItem>
+                  <SelectItem value="atrasado">Atrasado</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
 
-              <div className="min-w-[180px]">
-                <Label className="text-xs">Closer</Label>
-                <Select value={filterCloser} onValueChange={setFilterCloser}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {closersList.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={filterCloser} onValueChange={setFilterCloser}>
+                <SelectTrigger className="h-9 min-w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos closers</SelectItem>
+                  {closersList.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               {(filterCloser !== "all" || filterStatus !== "all" || filterFrom || filterTo) && (
-                <Button variant="ghost" size="sm" onClick={() => { setFilterCloser("all"); setFilterStatus("all"); setFilterFrom(undefined); setFilterTo(undefined); }} className="h-9">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setFilterCloser("all"); setFilterStatus("all"); setDateRange(undefined); }}
+                  className="h-9"
+                >
                   <X className="h-3.5 w-3.5 mr-1" />
                   Limpar
                 </Button>
@@ -430,8 +493,15 @@ export default function PagamentosPage() {
                             const eff = computeEffectiveStatus(p);
                             const meta = STATUS_META[eff] ?? STATUS_META.pendente;
                             return (
-                              <TableRow key={p.id}>
-                                <TableCell className="font-medium">{p.cliente_nome}</TableCell>
+                              <TableRow key={p.id} className="align-top">
+                                <TableCell className="font-medium">
+                                  <div>{p.cliente_nome}</div>
+                                  {p.observacoes && (
+                                    <p className="mt-1 text-xs font-normal text-muted-foreground whitespace-pre-wrap break-words max-w-[320px]">
+                                      {p.observacoes}
+                                    </p>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-muted-foreground text-sm">
                                   {p.closers?.name ?? "—"}
                                 </TableCell>
