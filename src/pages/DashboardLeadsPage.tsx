@@ -157,48 +157,58 @@ export function LeadsDashboardContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-md border bg-card p-0.5">
-              <Button
-                type="button"
-                variant={range === "today" ? "default" : "ghost"}
-                size="sm"
-                className="h-8 px-3"
-                onClick={() => setRange("today")}
-              >
-                Hoje
-              </Button>
-              <Button
-                type="button"
-                variant={range === "yesterday" ? "default" : "ghost"}
-                size="sm"
-                className="h-8 px-3"
-                onClick={() => setRange("yesterday")}
-              >
-                Ontem
-              </Button>
-            </div>
-
-            <Select value={range} onValueChange={setRange}>
-              <SelectTrigger className="w-[200px]">
-                <CalendarIcon className="h-4 w-4 mr-2 text-primary" />
-                <SelectValue placeholder="Selecionar período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">
-                  <span className="inline-flex items-center gap-2">
-                    <CalendarIcon className="h-3.5 w-3.5" /> Hoje
-                  </span>
-                </SelectItem>
-                <SelectItem value="yesterday">
-                  <span className="inline-flex items-center gap-2">
-                    <CalendarIcon className="h-3.5 w-3.5" /> Ontem
-                  </span>
-                </SelectItem>
-                {RANGE_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 justify-start text-left font-normal min-w-[220px]"
+                >
+                  <CalendarIcon className="h-4 w-4 mr-2 text-primary" />
+                  {fromDate && toDate ? (
+                    format(fromDate, "yyyy-MM-dd") !== format(toDate, "yyyy-MM-dd") ? (
+                      <span>
+                        {format(fromDate, "dd/MM/yy", { locale: ptBR })} – {format(toDate, "dd/MM/yy", { locale: ptBR })}
+                      </span>
+                    ) : (
+                      <span>{format(fromDate, "dd/MM/yyyy", { locale: ptBR })}</span>
+                    )
+                  ) : (
+                    <span className="text-muted-foreground">Selecionar período</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={(r) => {
+                    setDateRange(r);
+                    if (r?.from && r?.to) setCalendarOpen(false);
+                  }}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+                <div className="flex items-center justify-between gap-2 p-2 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDateRange({ from: today, to: today })}
+                  >
+                    Hoje
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDateRange(undefined)}
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             {origens.length > 0 && (
               <Select value={origemFilter} onValueChange={setOrigemFilter}>
