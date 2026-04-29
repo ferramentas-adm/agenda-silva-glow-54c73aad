@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isBefore, isToday, eachWeekOfInterval, addDays } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isBefore, isToday, eachWeekOfInterval, addDays, startOfDay, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
 import {
   Wallet, Plus, Pencil, Trash2, Loader2, CalendarIcon, Filter, X,
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, BarChart3,
