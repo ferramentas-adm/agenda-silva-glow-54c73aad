@@ -430,8 +430,15 @@ export default function PagamentosPage() {
                             const eff = computeEffectiveStatus(p);
                             const meta = STATUS_META[eff] ?? STATUS_META.pendente;
                             return (
-                              <TableRow key={p.id}>
-                                <TableCell className="font-medium">{p.cliente_nome}</TableCell>
+                              <TableRow key={p.id} className="align-top">
+                                <TableCell className="font-medium">
+                                  <div>{p.cliente_nome}</div>
+                                  {p.observacoes && (
+                                    <p className="mt-1 text-xs font-normal text-muted-foreground whitespace-pre-wrap break-words max-w-[320px]">
+                                      {p.observacoes}
+                                    </p>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-muted-foreground text-sm">
                                   {p.closers?.name ?? "—"}
                                 </TableCell>
