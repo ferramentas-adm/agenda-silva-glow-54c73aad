@@ -409,11 +409,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                     ))}
                   </SelectContent>
                 </Select>
-                {motivoIsPending && (
-                  <p className="text-xs text-muted-foreground">
-                    Este motivo representa uma etapa em andamento no CRM — não é necessário marcar follow-up.
-                  </p>
-                )}
               </div>
 
               <div className="space-y-1.5">
@@ -427,8 +422,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 />
               </div>
 
-              {!motivoIsPending && (
-                <>
+              <>
+
                   <div className="space-y-2">
                     <Label>Follow-up? *</Label>
                     <RadioGroup value={followUp ?? ""} onValueChange={(v) => setFollowUp(v as "sim" | "nao")}>
@@ -486,7 +481,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                     </div>
                   )}
                 </>
-              )}
 
               <div className="space-y-1.5">
                 <Label htmlFor="valor-apresentado">Valor apresentado ao cliente (opcional)</Label>
@@ -504,7 +498,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             </>
           )}
 
-          {vendeu && !(vendeu === "nao" && !motivoIsPending && followUp === "nao") && (
+          {vendeu && !(vendeu === "nao" && followUp === "nao") && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
               <div className="space-y-2">
                 <Label>Foi acordado recebimento de valor (sinal/entrada/restante)?</Label>
