@@ -218,14 +218,7 @@ export function LeadsDashboardContent() {
                   initialFocus
                   className="pointer-events-auto"
                 />
-                <div className="flex items-center justify-between gap-2 p-2 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDateRange({ from: today, to: today })}
-                  >
-                    Hoje
-                  </Button>
+                <div className="flex items-center justify-end gap-2 p-2 border-t">
                   <Button
                     variant="ghost"
                     size="sm"
