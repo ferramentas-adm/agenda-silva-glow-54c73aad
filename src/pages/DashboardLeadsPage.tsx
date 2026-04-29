@@ -100,29 +100,62 @@ export function LeadsDashboardContent() {
     return metrics.filter((m) => m.origem === origemFilter);
   }, [metrics, origemFilter]);
 
-  // ── KPIs agregados ──
+  // Considera apenas eventos per-lead (1 registro = 1 lead).
+  // Snapshots agregados (ex.: evento "lead_finalizado" com totais como 1089/195)
+  // são ignorados para evitar dupla contagem.
+  const perLead = useMemo(
+    () => filtered.filter((m) => m.evento === "lead_qualificado"),
+    [filtered],
+  );
+
+  // ── KPIs agregados (contagem 1 a 1) ──
   const totals = useMemo(() => {
-    const iniciados = filtered.reduce((s, m) => s + (m.leads_iniciados || 0), 0);
-    const finalizados = filtered.reduce((s, m) => s + (m.leads_finalizados || 0), 0);
-    const taxa = iniciados > 0 ? (finalizados / iniciados) * 100 : 0;
+    const finalizados = perLead.length;
     let qualFat = 0, qualRenda = 0, desq = 0;
-    for (const m of filtered) {
+    for (const m of perLead) {
       if (m.classificacao === "qualificado_faturamento") qualFat++;
       else if (m.classificacao === "qualificado_renda") qualRenda++;
       else if (m.classificacao === "desqualificado") desq++;
     }
+    // "Leads iniciados" vem do snapshot diário (evento "leads_iniciados_diario").
+    // Pegamos o MAIOR valor por dia (mais recente do dia) e somamos.
+    const iniciadosPorDia = new Map<string, number>();
+    for (const m of filtered) {
+      if (m.evento === "leads_iniciados_diario" || m.evento === "atualizacao_manual") {
+        const cur = iniciadosPorDia.get(m.data_referencia) ?? 0;
+        if ((m.leads_iniciados || 0) > cur) {
+          iniciadosPorDia.set(m.data_referencia, m.leads_iniciados || 0);
+        }
+      }
+    }
+    const iniciados = Array.from(iniciadosPorDia.values()).reduce((s, v) => s + v, 0);
+    const taxa = iniciados > 0 ? (finalizados / iniciados) * 100 : 0;
     return { iniciados, finalizados, taxa, qualFat, qualRenda, desq };
-  }, [filtered]);
+  }, [perLead, filtered]);
 
-  // ── Série temporal (agregada por dia) ──
+  // ── Série temporal (1 lead = 1 ponto) ──
   const chartData = useMemo(() => {
     const byDay = new Map<string, { date: string; iniciados: number; finalizados: number }>();
-    for (const m of filtered) {
+    for (const m of perLead) {
       const key = m.data_referencia;
       const cur = byDay.get(key) ?? { date: key, iniciados: 0, finalizados: 0 };
-      cur.iniciados += m.leads_iniciados || 0;
-      cur.finalizados += m.leads_finalizados || 0;
+      cur.finalizados += 1;
       byDay.set(key, cur);
+    }
+    // Agrega "iniciados" do snapshot diário (maior valor do dia)
+    const iniciadosDay = new Map<string, number>();
+    for (const m of filtered) {
+      if (m.evento === "leads_iniciados_diario" || m.evento === "atualizacao_manual") {
+        const cur = iniciadosDay.get(m.data_referencia) ?? 0;
+        if ((m.leads_iniciados || 0) > cur) {
+          iniciadosDay.set(m.data_referencia, m.leads_iniciados || 0);
+        }
+      }
+    }
+    for (const [date, ini] of iniciadosDay) {
+      const cur = byDay.get(date) ?? { date, iniciados: 0, finalizados: 0 };
+      cur.iniciados = ini;
+      byDay.set(date, cur);
     }
     return Array.from(byDay.values())
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -131,19 +164,18 @@ export function LeadsDashboardContent() {
         label: format(new Date(d.date + "T00:00:00"), "dd/MM", { locale: ptBR }),
         taxa: d.iniciados > 0 ? Math.round((d.finalizados / d.iniciados) * 100) : 0,
       }));
-  }, [filtered]);
+  }, [perLead, filtered]);
 
-  // ── Por origem ──
+  // ── Por origem (1 lead = 1 contagem) ──
   const byOrigem = useMemo(() => {
     const map = new Map<string, { origem: string; iniciados: number; finalizados: number }>();
-    for (const m of filtered) {
+    for (const m of perLead) {
       const cur = map.get(m.origem) ?? { origem: m.origem, iniciados: 0, finalizados: 0 };
-      cur.iniciados += m.leads_iniciados || 0;
-      cur.finalizados += m.leads_finalizados || 0;
+      cur.finalizados += 1;
       map.set(m.origem, cur);
     }
-    return Array.from(map.values()).sort((a, b) => b.iniciados - a.iniciados);
-  }, [filtered]);
+    return Array.from(map.values()).sort((a, b) => b.finalizados - a.finalizados);
+  }, [perLead]);
 
   return (
     <div className="space-y-6">
