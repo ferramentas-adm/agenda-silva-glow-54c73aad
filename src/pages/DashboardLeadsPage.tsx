@@ -59,31 +59,31 @@ export default function DashboardLeadsPage() {
 }
 
 export function LeadsDashboardContent() {
-  const [range, setRange] = useState<string>("30");
+  const today = startOfDay(new Date());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: today,
+    to: today,
+  });
   const [origemFilter, setOrigemFilter] = useState<string>("all");
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
-  // range pode ser "7" | "30" | "90" | "all" | "today" | "yesterday"
-  const dateBounds = useMemo(() => {
-    const today = startOfDay(new Date());
-    if (range === "today") return { from: today, to: today };
-    if (range === "yesterday") {
-      const y = subDays(today, 1);
-      return { from: y, to: y };
-    }
-    if (range === "all") return { from: null, to: null };
-    return { from: startOfDay(subDays(new Date(), Number(range))), to: null };
-  }, [range]);
+  const fromDate = dateRange?.from ?? null;
+  const toDate = dateRange?.to ?? dateRange?.from ?? null;
 
   const { data: metrics = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["lead-metrics", range],
+    queryKey: [
+      "lead-metrics",
+      fromDate ? format(fromDate, "yyyy-MM-dd") : null,
+      toDate ? format(toDate, "yyyy-MM-dd") : null,
+    ],
     queryFn: async () => {
       let q = supabase
         .from("lead_metrics")
         .select("id, origem, evento, periodo, data_referencia, leads_iniciados, leads_finalizados, taxa_conclusao, enviado_em, received_at, classificacao, faturamento, renda")
         .order("data_referencia", { ascending: false })
-        .limit(500);
-      if (dateBounds.from) q = q.gte("data_referencia", format(dateBounds.from, "yyyy-MM-dd"));
-      if (dateBounds.to) q = q.lte("data_referencia", format(dateBounds.to, "yyyy-MM-dd"));
+        .limit(1000);
+      if (fromDate) q = q.gte("data_referencia", format(fromDate, "yyyy-MM-dd"));
+      if (toDate) q = q.lte("data_referencia", format(toDate, "yyyy-MM-dd"));
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as LeadMetric[];
