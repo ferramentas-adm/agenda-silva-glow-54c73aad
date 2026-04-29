@@ -399,22 +399,50 @@ const STATUS_LABELS_DETAIL: Record<string, string> = {
   nao_confirmada: "Não confirmada",
 };
 
+const FIELD_LABELS: Record<string, string> = {
+  closer_id: "Closer",
+  sdr_responsavel_id: "Responsável (SDR)",
+  scheduled_time: "Horário",
+  scheduled_date: "Data",
+  status: "Status",
+};
+
+function formatDateBR(dateStr: string, timeStr?: string | null): string {
+  try {
+    const [y, m, day] = String(dateStr).split("-");
+    return `${day}/${m}/${y}${timeStr ? ` às ${timeStr}` : ""}`;
+  } catch {
+    return `${dateStr}${timeStr ? ` às ${timeStr}` : ""}`;
+  }
+}
+
 function formatDetails(log: AuditLog): string {
   const d = log.details;
   if (!d || Object.keys(d).length === 0) return "—";
 
   const parts: string[] = [];
   if (d.lead_name) parts.push(`Lead: ${d.lead_name}`);
+
+  // create_agendamento → mostrar closer + data/hora da reunião
+  if (log.action === "create_agendamento") {
+    if (d.closer_name) parts.push(`Closer: ${d.closer_name}`);
+    if (d.scheduled_date) parts.push(`Reunião: ${formatDateBR(String(d.scheduled_date), d.scheduled_time as string | undefined)}`);
+    return parts.length > 0 ? parts.join(" · ") : JSON.stringify(d);
+  }
+
+  // edit_agendamento → mostrar campo editado de/para
+  if (log.action === "edit_agendamento" && d.field) {
+    const fieldLabel = FIELD_LABELS[String(d.field)] || String(d.field);
+    const fromVal = d.from != null && d.from !== "" ? String(d.from) : "—";
+    const toVal = d.to != null && d.to !== "" ? String(d.to) : "—";
+    if (d.scheduled_date) parts.push(`Reunião: ${formatDateBR(String(d.scheduled_date), d.scheduled_time as string | undefined)}`);
+    parts.push(`${fieldLabel}: ${fromVal} → ${toVal}`);
+    return parts.length > 0 ? parts.join(" · ") : JSON.stringify(d);
+  }
+
   if (d.closer_name) parts.push(`Closer: ${d.closer_name}`);
   if (d.scheduled_date) {
-    const dateStr = String(d.scheduled_date);
-    const timeStr = d.scheduled_time ? ` às ${d.scheduled_time}` : "";
-    try {
-      const [y, m, day] = dateStr.split("-");
-      parts.push(`Data: ${day}/${m}/${y}${timeStr}`);
-    } catch {
-      parts.push(`Data: ${dateStr}${timeStr}`);
-    }
+    parts.push(`Data: ${formatDateBR(String(d.scheduled_date), d.scheduled_time as string | undefined)}`);
   }
   // Show old → new status for update_status action
   if (log.action === "update_status" && d.old_status && d.new_status) {
