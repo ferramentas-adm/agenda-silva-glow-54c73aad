@@ -86,6 +86,7 @@ export default function DashboardComercialPage() {
   const [activeTabKey, setActiveTabKey] = useState<TabKey>("metricas");
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [clock, setClock] = useState(new Date());
   const [tabSettingsOpen, setTabSettingsOpen] = useState(false);
