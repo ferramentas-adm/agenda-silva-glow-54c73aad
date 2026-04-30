@@ -395,6 +395,7 @@ export type Database = {
           data_pagamento: string | null
           data_prevista: string
           id: string
+          is_hot: boolean
           metodo: string | null
           observacoes: string | null
           status: string
@@ -415,6 +416,7 @@ export type Database = {
           data_pagamento?: string | null
           data_prevista: string
           id?: string
+          is_hot?: boolean
           metodo?: string | null
           observacoes?: string | null
           status?: string
@@ -435,6 +437,7 @@ export type Database = {
           data_pagamento?: string | null
           data_prevista?: string
           id?: string
+          is_hot?: boolean
           metodo?: string | null
           observacoes?: string | null
           status?: string

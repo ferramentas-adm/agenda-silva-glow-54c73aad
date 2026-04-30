@@ -1,0 +1,1 @@
+ALTER TABLE public.pagamentos ADD COLUMN IF NOT EXISTS is_hot boolean NOT NULL DEFAULT false;

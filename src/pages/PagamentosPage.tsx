@@ -5,7 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 import {
   Wallet, Plus, Pencil, Trash2, Loader2, CalendarIcon, Filter, X,
-  TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, BarChart3,
+  TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, BarChart3, Flame,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,6 +56,7 @@ interface Pagamento {
   venda_id: string | null;
   created_by: string;
   created_at: string;
+  is_hot?: boolean | null;
   closers?: { name: string } | null;
 }
 
@@ -209,6 +210,27 @@ export default function PagamentosPage() {
       };
     });
   }, [filtered]);
+
+  const toggleHot = async (p: Pagamento) => {
+    const next = !p.is_hot;
+    // Optimistic update
+    queryClient.setQueryData<Pagamento[]>(["pagamentos"], (old) =>
+      (old ?? []).map((x) => (x.id === p.id ? { ...x, is_hot: next } : x)),
+    );
+    const { error } = await supabase
+      .from("pagamentos")
+      .update({ is_hot: next, updated_by: user?.id })
+      .eq("id", p.id);
+    if (error) {
+      toast.error(error.message);
+      queryClient.invalidateQueries({ queryKey: ["pagamentos"] });
+      return;
+    }
+    await logAudit(next ? "pagamento_marcado_quente" : "pagamento_desmarcado_quente", "pagamento", p.id, {
+      cliente: p.cliente_nome,
+    });
+    toast.success(next ? "Lead marcado como quente 🔥" : "Marcação removida.");
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -493,9 +515,14 @@ export default function PagamentosPage() {
                             const eff = computeEffectiveStatus(p);
                             const meta = STATUS_META[eff] ?? STATUS_META.pendente;
                             return (
-                              <TableRow key={p.id} className="align-top">
+                              <TableRow key={p.id} className={cn("align-top", p.is_hot && "bg-orange-500/5")}>
                                 <TableCell className="font-medium">
-                                  <div>{p.cliente_nome}</div>
+                                  <div className="flex items-center gap-1.5">
+                                    {p.is_hot && (
+                                      <Flame className="h-4 w-4 text-orange-500 fill-orange-500/30 shrink-0" aria-label="Lead quente" />
+                                    )}
+                                    <span>{p.cliente_nome}</span>
+                                  </div>
                                   {p.observacoes && (
                                     <p className="mt-1 text-xs font-normal text-muted-foreground whitespace-pre-wrap break-words max-w-[320px]">
                                       {p.observacoes}
@@ -517,6 +544,20 @@ export default function PagamentosPage() {
                                 {canManage && (
                                   <TableCell className="text-right">
                                     <div className="flex justify-end gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className={cn(
+                                          "h-8 w-8",
+                                          p.is_hot
+                                            ? "text-orange-500 hover:text-orange-600"
+                                            : "text-muted-foreground hover:text-orange-500",
+                                        )}
+                                        title={p.is_hot ? "Remover marcação de lead quente" : "Marcar como lead quente"}
+                                        onClick={() => toggleHot(p)}
+                                      >
+                                        <Flame className={cn("h-4 w-4", p.is_hot && "fill-orange-500/40")} />
+                                      </Button>
                                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditTarget(p); setOpenDialog(true); }}>
                                         <Pencil className="h-4 w-4" />
                                       </Button>
