@@ -55,6 +55,7 @@ interface CloserRow {
 
 interface VendasTabProps {
   currentDate: Date;
+  dateRange?: DateRange;
 }
 
 const COLORS = [
@@ -73,12 +74,20 @@ type DrilldownState = {
   ids: string[];
 };
 
-export default function VendasTab({ currentDate }: VendasTabProps) {
+export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
+  // Quando há intervalo válido com from!=to, usamos modo intervalo;
+  // caso contrário, mantemos o comportamento por dia único (currentDate).
+  const isRange = !!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to));
+  const rangeFromStr = isRange ? format(dateRange!.from!, "yyyy-MM-dd") : null;
+  const rangeToStr = isRange ? format(dateRange!.to!, "yyyy-MM-dd") : null;
   const dateStr = format(currentDate, "yyyy-MM-dd");
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
-  // Rótulo amigável do dia (Hoje / Ontem / Amanhã / data)
+  // Rótulo amigável (Hoje / Ontem / Amanhã / data / intervalo)
   const dayLabel = useMemo(() => {
+    if (isRange) {
+      return `${format(dateRange!.from!, "dd/MM")} – ${format(dateRange!.to!, "dd/MM")}`;
+    }
     const today = new Date();
     const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
     const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
@@ -86,7 +95,7 @@ export default function VendasTab({ currentDate }: VendasTabProps) {
     if (isSameDay(currentDate, yesterday)) return "Ontem";
     if (isSameDay(currentDate, tomorrow)) return "Amanhã";
     return format(currentDate, "dd 'de' MMMM", { locale: ptBR });
-  }, [currentDate]);
+  }, [currentDate, isRange, dateRange]);
 
   // Vendas: buscamos todas (volume baixo); filtramos por data via agendamentos.
   const { data: vendas = [] } = useQuery<VendaRow[]>({
