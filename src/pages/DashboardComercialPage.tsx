@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
   Play, Pause, ChevronLeft, ChevronRight, CalendarDays,
