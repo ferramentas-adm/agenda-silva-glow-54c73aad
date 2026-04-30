@@ -339,7 +339,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         <h2 className="text-xl font-bold">
           Vendas — {dayLabel}
           <span className="ml-2 text-sm font-normal text-muted-foreground">
-            ({format(currentDate, "dd/MM/yyyy")})
+            ({isRange ? `${format(dateRange!.from!, "dd/MM/yyyy")} a ${format(dateRange!.to!, "dd/MM/yyyy")}` : format(currentDate, "dd/MM/yyyy")})
           </span>
         </h2>
         <p className="text-xs text-muted-foreground">
