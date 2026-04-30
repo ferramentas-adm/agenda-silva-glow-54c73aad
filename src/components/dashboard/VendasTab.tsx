@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, isBefore, isSameDay } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
