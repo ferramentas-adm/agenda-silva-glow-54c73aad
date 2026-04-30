@@ -530,7 +530,7 @@ export default function DashboardComercialPage() {
             currentDate={currentDate}
           />
         )}
-        {activeTabKey === "vendas" && <VendasTab currentDate={currentDate} />}
+        {activeTabKey === "vendas" && <VendasTab currentDate={currentDate} dateRange={dateRange} />}
         {activeTabKey === "produtividade" && (
           <ProdutividadeSDRTab
             agendamentos={agendamentos}
