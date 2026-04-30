@@ -56,6 +56,7 @@ interface Pagamento {
   venda_id: string | null;
   created_by: string;
   created_at: string;
+  is_hot?: boolean | null;
   closers?: { name: string } | null;
 }
 
