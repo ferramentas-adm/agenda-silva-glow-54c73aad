@@ -141,14 +141,17 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return m;
   }, [closers]);
 
-  // Vendas do DIA selecionado (mesma janela de Métricas SDRs)
+  // Vendas do período selecionado (dia único OU intervalo)
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (!ag) return false;
+      if (isRange && rangeFromStr && rangeToStr) {
+        return ag.scheduled_date >= rangeFromStr && ag.scheduled_date <= rangeToStr;
+      }
       return ag.scheduled_date === dateStr;
     });
-  }, [vendas, agMap, dateStr]);
+  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr]);
 
   // KPIs
   const totalReunioesComResultado = vendasDia.length;
