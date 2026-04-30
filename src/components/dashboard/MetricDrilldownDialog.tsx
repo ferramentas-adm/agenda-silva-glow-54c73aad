@@ -105,7 +105,7 @@ export default function MetricDrilldownDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -190,14 +190,24 @@ export default function MetricDrilldownDialog({
                     )}
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
-                      if (!v?.observacoes) return null;
+                      // Quando o drill é por "Motivo de não fechamento", mostramos a
+                      // explicação textual do porquê não fechou. Em outros contextos
+                      // (sem motivo), caímos no resumo/observações da venda.
+                      const isMotivoDrill = !!v?.motivo_nao_fechamento;
+                      const text = isMotivoDrill
+                        ? (v?.explicacao_nao_fechamento ?? null)
+                        : (v?.observacoes ?? null);
+                      const label = isMotivoDrill
+                        ? "Explicação do porquê não fechou"
+                        : "Resumo do cliente / observações";
+                      if (!text) return null;
                       return (
                         <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
-                            Resumo do cliente / observações
+                            {label}
                           </p>
                           <p className="text-xs text-foreground whitespace-pre-wrap break-words">
-                            {v.observacoes}
+                            {text}
                           </p>
                         </div>
                       );
