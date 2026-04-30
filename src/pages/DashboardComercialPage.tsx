@@ -335,9 +335,9 @@ export default function DashboardComercialPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUpdatedAt, clock]);
 
-  const goPrev = () => setCurrentDate(d => subDays(d, 1));
-  const goNext = () => setCurrentDate(d => addDays(d, 1));
-  const goToday = () => setCurrentDate(new Date());
+  const goPrev = () => { setDateRange(undefined); setCurrentDate(d => subDays(d, 1)); };
+  const goNext = () => { setDateRange(undefined); setCurrentDate(d => addDays(d, 1)); };
+  const goToday = () => { setDateRange(undefined); setCurrentDate(new Date()); };
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-metrics"] });
