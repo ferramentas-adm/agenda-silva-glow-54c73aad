@@ -211,6 +211,27 @@ export default function PagamentosPage() {
     });
   }, [filtered]);
 
+  const toggleHot = async (p: Pagamento) => {
+    const next = !p.is_hot;
+    // Optimistic update
+    queryClient.setQueryData<Pagamento[]>(["pagamentos"], (old) =>
+      (old ?? []).map((x) => (x.id === p.id ? { ...x, is_hot: next } : x)),
+    );
+    const { error } = await supabase
+      .from("pagamentos")
+      .update({ is_hot: next, updated_by: user?.id })
+      .eq("id", p.id);
+    if (error) {
+      toast.error(error.message);
+      queryClient.invalidateQueries({ queryKey: ["pagamentos"] });
+      return;
+    }
+    await logAudit(next ? "pagamento_marcado_quente" : "pagamento_desmarcado_quente", "pagamento", p.id, {
+      cliente: p.cliente_nome,
+    });
+    toast.success(next ? "Lead marcado como quente 🔥" : "Marcação removida.");
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
