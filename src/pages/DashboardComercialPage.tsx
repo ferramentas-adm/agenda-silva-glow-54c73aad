@@ -443,22 +443,28 @@ export default function DashboardComercialPage() {
         {activeTabKey !== "agenda" && activeTabKey !== "leads" && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
-              {format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
-                ? "Calendário"
-                : `Calendário — ${format(currentDate, "dd/MM/yyyy")}`}
+              {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
+                ? `Calendário — ${format(dateRange.from, "dd/MM/yyyy")} a ${format(dateRange.to, "dd/MM/yyyy")}`
+                : format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+                  ? "Calendário"
+                  : `Calendário — ${format(currentDate, "dd/MM/yyyy")}`}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
+                ? `Intervalo de ${format(dateRange.from, "dd/MM", { locale: ptBR })} até ${format(dateRange.to, "dd/MM", { locale: ptBR })}`
+                : format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
 
             <div className="ml-auto flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goPrev}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goPrev} disabled={!!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to))}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="text-xs font-medium min-w-[100px] text-center">
-                {format(currentDate, "dd/MM/yyyy")}
+                {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
+                  ? `${format(dateRange.from, "dd/MM")} – ${format(dateRange.to, "dd/MM")}`
+                  : format(currentDate, "dd/MM/yyyy")}
               </span>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goNext}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goNext} disabled={!!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to))}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="sm" className="h-7 text-xs ml-1" onClick={goToday}>
@@ -472,11 +478,31 @@ export default function DashboardComercialPage() {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
-                    mode="single"
-                    selected={currentDate}
-                    onSelect={(date) => { if (date) { setCurrentDate(date); setCalendarOpen(false); } }}
+                    mode="range"
+                    selected={dateRange ?? { from: currentDate, to: currentDate }}
+                    onSelect={(r) => {
+                      setDateRange(r);
+                      if (r?.from && !r.to) {
+                        setCurrentDate(r.from);
+                      } else if (r?.from && r?.to) {
+                        setCurrentDate(r.from);
+                        if (isSameDay(r.from, r.to)) {
+                          setDateRange(undefined);
+                        }
+                        setCalendarOpen(false);
+                      }
+                    }}
                     locale={ptBR}
+                    numberOfMonths={2}
+                    className="pointer-events-auto"
                   />
+                  {dateRange?.from && (
+                    <div className="flex justify-end p-2 border-t">
+                      <Button variant="ghost" size="sm" onClick={() => { setDateRange(undefined); setCalendarOpen(false); }}>
+                        Limpar intervalo
+                      </Button>
+                    </div>
+                  )}
                 </PopoverContent>
               </Popover>
               <Button variant="ghost" size="icon" className="h-7 w-7 ml-1" onClick={handleRefresh} title="Atualizar dados">
