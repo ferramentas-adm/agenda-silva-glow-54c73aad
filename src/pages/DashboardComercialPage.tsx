@@ -159,12 +159,19 @@ export default function DashboardComercialPage() {
   const weekStart = format(startOfWeek(currentDate, { locale: ptBR }), "yyyy-MM-dd");
   const weekEnd = format(endOfWeek(currentDate, { locale: ptBR }), "yyyy-MM-dd");
 
-  // Broad fetch: all agendamentos for current month + adjacent days
+  // Range ativo (intervalo selecionado pelo usuário)
+  const isRangeActive = !!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to));
+  const rangeFromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : null;
+  const rangeToStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : null;
+
+  // Broad fetch: all agendamentos for current month + adjacent days (+ range, se ativo)
   const { data: agendamentos = [], dataUpdatedAt } = useQuery<AgendamentoMetric[]>({
-    queryKey: ["dashboard-comercial-metrics", monthStart, monthEnd, yesterdayStr, tomorrowStr],
+    queryKey: ["dashboard-comercial-metrics", monthStart, monthEnd, yesterdayStr, tomorrowStr, rangeFromStr, rangeToStr],
     queryFn: async () => {
-      const minDate = yesterdayStr < monthStart ? yesterdayStr : monthStart;
-      const maxDate = tomorrowStr > monthEnd ? tomorrowStr : monthEnd;
+      let minDate = yesterdayStr < monthStart ? yesterdayStr : monthStart;
+      let maxDate = tomorrowStr > monthEnd ? tomorrowStr : monthEnd;
+      if (rangeFromStr && rangeFromStr < minDate) minDate = rangeFromStr;
+      if (rangeToStr && rangeToStr > maxDate) maxDate = rangeToStr;
       const { data } = await supabase
         .from("agendamentos")
         .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
