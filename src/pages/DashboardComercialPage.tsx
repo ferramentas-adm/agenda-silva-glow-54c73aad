@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay } from "date-fns";
+import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, parseISO } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
@@ -212,8 +212,11 @@ export default function DashboardComercialPage() {
         .from("agendamentos")
         .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
         .is("deleted_at", null)
-        .gte("created_at", broadStart + "T00:00:00")
-        .lte("created_at", broadEnd + "T23:59:59");
+        // Janela ampliada em ±1 dia para garantir que registros próximos da
+        // virada de dia em BRT (UTC-3) não sejam cortados pelo filtro UTC.
+        // O filtro fino por dia BRT é aplicado no cliente via localDateOf.
+        .gte("created_at", format(subDays(parseISO(broadStart), 1), "yyyy-MM-dd") + "T00:00:00")
+        .lte("created_at", format(addDays(parseISO(broadEnd), 1), "yyyy-MM-dd") + "T23:59:59");
       return (data ?? []) as AgendamentoMetric[];
     },
     refetchInterval: 2 * 60 * 1000,

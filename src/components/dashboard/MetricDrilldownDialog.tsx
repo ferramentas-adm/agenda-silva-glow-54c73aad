@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { formatBRDateTime } from "@/lib/timezone";
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -171,7 +172,7 @@ export default function MetricDrilldownDialog({
                       <CalendarDays className="h-3 w-3" />
                       <span>
                         Agendado em{" "}
-                        {format(new Date(d.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        {formatBRDateTime(d.created_at).replace(" ", " às ")}
                       </span>
                     </div>
                     {(d.channel_type || d.meeting_reason) && (

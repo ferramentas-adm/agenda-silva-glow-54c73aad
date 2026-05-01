@@ -48,7 +48,13 @@ const brDateFmt = new Intl.DateTimeFormat("en-CA", {
   month: "2-digit",
   day: "2-digit",
 });
+const brDateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit", month: "2-digit", year: "numeric",
+  hour: "2-digit", minute: "2-digit", hour12: false,
+});
 const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
+const formatBR = (iso: string): string => brDateTimeFmt.format(new Date(iso)).replace(",", "");
 
 export default function ReunioesListPage() {
   const { user, role, isGestor, isModerador } = useAuth();
@@ -252,7 +258,7 @@ export default function ReunioesListPage() {
       sdrIdOf(ag) ? (profileMap[sdrIdOf(ag)!] || "—") : "—",
       format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy"),
       ag.scheduled_time,
-      format(new Date(ag.created_at), "dd/MM/yyyy HH:mm"),
+      formatBR(ag.created_at),
       STATUS_MAP[ag.status]?.label || ag.status,
       ag.meeting_reason || "—",
       (ag as any).channel_type || "—",
@@ -496,7 +502,7 @@ export default function ReunioesListPage() {
                           <div>{format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}</div>
                           <div className="text-xs text-muted-foreground">{ag.scheduled_time}</div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{format(new Date(ag.created_at), "dd/MM/yyyy HH:mm")}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{formatBR(ag.created_at)}</td>
                         <td className="px-4 py-3">
                           <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
                         </td>

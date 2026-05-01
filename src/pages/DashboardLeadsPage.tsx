@@ -26,6 +26,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { formatBRDateTime } from "@/lib/timezone";
 
 interface LeadMetric {
   id: string;
@@ -451,7 +452,7 @@ export function LeadsDashboardContent() {
                           {m.taxa_conclusao !== null ? `${Number(m.taxa_conclusao).toFixed(1)}%` : "—"}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {format(new Date(m.received_at), "dd/MM HH:mm", { locale: ptBR })}
+                          {new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(m.received_at)).replace(",", "")}
                         </TableCell>
                       </TableRow>
                     ))}

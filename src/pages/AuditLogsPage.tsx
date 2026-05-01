@@ -12,6 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollText, Search, ChevronLeft, ChevronRight, CalendarIcon, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatBRDateTime, pickedDateToYMD } from "@/lib/timezone";
 
 interface AuditLog {
   id: string;
@@ -67,12 +68,16 @@ export default function AuditLogsPage() {
         .order("created_at", { ascending: false });
 
       if (dateFrom) {
-        query = query.gte("created_at", format(dateFrom, "yyyy-MM-dd"));
+        // Início do dia em BRT (UTC-3, sem DST) = 03:00 UTC
+        const ymd = pickedDateToYMD(dateFrom);
+        query = query.gte("created_at", `${ymd}T03:00:00.000Z`);
       }
       if (dateTo) {
+        // Fim do dia em BRT = 03:00 UTC do dia seguinte
         const endDate = new Date(dateTo);
         endDate.setDate(endDate.getDate() + 1);
-        query = query.lt("created_at", format(endDate, "yyyy-MM-dd"));
+        const ymd = pickedDateToYMD(endDate);
+        query = query.lt("created_at", `${ymd}T03:00:00.000Z`);
       }
       if (entityIdFilter.trim()) {
         query = query.eq("entity_id", entityIdFilter.trim());
@@ -146,8 +151,8 @@ export default function AuditLogsPage() {
       "Status": STATUS_LABELS_AG[a.status] || a.status,
       "Link da Reunião": a.meet_link || "",
       "Observações": a.observation || "",
-      "Criado em": a.created_at ? format(new Date(a.created_at), "dd/MM/yyyy HH:mm") : "",
-      "Excluído em": a.deleted_at ? format(new Date(a.deleted_at), "dd/MM/yyyy HH:mm") : "",
+      "Criado em": a.created_at ? formatBRDateTime(a.created_at) : "",
+      "Excluído em": a.deleted_at ? formatBRDateTime(a.deleted_at) : "",
       "Motivo Exclusão": a.deletion_reason || "",
     }));
 
@@ -320,7 +325,7 @@ export default function AuditLogsPage() {
                   {filtered.map((log) => (
                     <tr key={log.id} className="border-b border-primary/5 hover:bg-secondary/20 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground font-mono">
-                        {format(new Date(log.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        {formatBRDateTime(log.created_at)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap font-medium">
                         {log.user_name}

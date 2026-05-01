@@ -87,10 +87,16 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
         }
       });
 
-      // Check past hours for today
-      const now = new Date();
-      const isToday = dateStr === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-      const currentHourStr = isToday ? `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}` : null;
+      // Verifica horários passados de hoje, considerando o fuso de Brasília.
+      const nowParts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      }).formatToParts(new Date());
+      const get = (t: string) => nowParts.find((p) => p.type === t)?.value ?? "";
+      const todayBR = `${get("year")}-${get("month")}-${get("day")}`;
+      const isToday = dateStr === todayBR;
+      const currentHourStr = isToday ? `${get("hour")}:${get("minute")}` : null;
 
       return activeClosers.map((c: any) => {
         // Slots fixos 09–23 (independente do horário do closer)
