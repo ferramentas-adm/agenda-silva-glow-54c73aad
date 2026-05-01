@@ -810,8 +810,8 @@ function MetricasSDRsTab({
 
       {/* Channel tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChannelTable title={getChannelTableLabel(currentDate, "para")} data={metrics.channelsToday} />
-        <ChannelTable title={getChannelTableLabel(currentDate, "criadas")} data={metrics.channelsCreatedToday} />
+        <ChannelTable title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")} data={metrics.channelsToday} />
+        <ChannelTable title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")} data={metrics.channelsCreatedToday} />
       </div>
 
       <MetricDrilldownDialog
