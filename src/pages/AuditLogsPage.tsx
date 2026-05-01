@@ -325,7 +325,7 @@ export default function AuditLogsPage() {
                   {filtered.map((log) => (
                     <tr key={log.id} className="border-b border-primary/5 hover:bg-secondary/20 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground font-mono">
-                        {format(new Date(log.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        {formatBRDateTime(log.created_at)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap font-medium">
                         {log.user_name}
