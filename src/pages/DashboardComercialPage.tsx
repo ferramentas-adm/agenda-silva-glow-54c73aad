@@ -537,6 +537,7 @@ export default function DashboardComercialPage() {
             metrics={metrics}
             currentDate={currentDate}
             updatedAgo={updatedAgo}
+            dateRange={isRangeActive ? dateRange : undefined}
           />
         )}
         {activeTabKey === "agenda" && <CalendarContent />}
