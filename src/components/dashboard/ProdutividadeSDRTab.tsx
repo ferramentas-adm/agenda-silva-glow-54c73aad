@@ -269,19 +269,30 @@ export default function ProdutividadeSDRTab({
   const shiftCounts = useMemo(() => {
     const acc = { manha: 0, tarde: 0, noite: 0 };
     const now = new Date();
-    const todayStr = format(now, "yyyy-MM-dd");
-    const nowHour = now.getHours();
-    const nowMin = now.getMinutes();
+    const todayStr = brDateFmt.format(now);
+    const nowParts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: BR_TZ,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+    const nowHour = Number(nowParts.find((p) => p.type === "hour")?.value ?? 0);
+    const nowMin = Number(nowParts.find((p) => p.type === "minute")?.value ?? 0);
 
     pool.forEach((a) => {
       let hour: number | null;
       let minute = 0;
 
       if (filter === "criadas") {
-        // Usa o created_at (timestamp ISO local do navegador)
-        const dt = new Date(a.created_at);
-        hour = dt.getHours();
-        minute = dt.getMinutes();
+        // Hora de criação no fuso de Brasília
+        const parts = new Intl.DateTimeFormat("en-GB", {
+          timeZone: BR_TZ,
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).formatToParts(new Date(a.created_at));
+        hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+        minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
       } else {
         hour = getHourFromTime(a.scheduled_time);
         const m = /^(\d{1,2}):(\d{2})/.exec(a.scheduled_time || "");
