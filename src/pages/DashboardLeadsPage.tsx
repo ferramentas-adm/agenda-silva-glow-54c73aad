@@ -452,7 +452,7 @@ export function LeadsDashboardContent() {
                           {m.taxa_conclusao !== null ? `${Number(m.taxa_conclusao).toFixed(1)}%` : "—"}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {format(new Date(m.received_at), "dd/MM HH:mm", { locale: ptBR })}
+                          {formatBRDateTime(m.received_at).slice(0, 5) /* dd/MM */ + " " + formatBRDateTime(m.received_at).slice(11, 16) /* HH:mm */}
                         </TableCell>
                       </TableRow>
                     ))}
