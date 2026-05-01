@@ -201,11 +201,13 @@ export default function DashboardComercialPage() {
 
   // Broad fetch for ranking: all agendamentos created in a wide range (for custom date ranges)
   const { data: createdAgs = [] } = useQuery<AgendamentoMetric[]>({
-    queryKey: ["dashboard-comercial-created", monthStart, monthEnd],
+    queryKey: ["dashboard-comercial-created", monthStart, monthEnd, rangeFromStr, rangeToStr],
     queryFn: async () => {
       // Fetch a broader range to support custom date filters
-      const broadStart = format(subMonths(startOfMonth(currentDate), 2), "yyyy-MM-dd");
-      const broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
+      let broadStart = format(subMonths(startOfMonth(currentDate), 2), "yyyy-MM-dd");
+      let broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
+      if (rangeFromStr && rangeFromStr < broadStart) broadStart = rangeFromStr;
+      if (rangeToStr && rangeToStr > broadEnd) broadEnd = rangeToStr;
       const { data } = await supabase
         .from("agendamentos")
         .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
