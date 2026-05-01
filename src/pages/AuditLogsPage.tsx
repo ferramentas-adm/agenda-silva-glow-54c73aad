@@ -151,8 +151,8 @@ export default function AuditLogsPage() {
       "Status": STATUS_LABELS_AG[a.status] || a.status,
       "Link da Reunião": a.meet_link || "",
       "Observações": a.observation || "",
-      "Criado em": a.created_at ? format(new Date(a.created_at), "dd/MM/yyyy HH:mm") : "",
-      "Excluído em": a.deleted_at ? format(new Date(a.deleted_at), "dd/MM/yyyy HH:mm") : "",
+      "Criado em": a.created_at ? formatBRDateTime(a.created_at) : "",
+      "Excluído em": a.deleted_at ? formatBRDateTime(a.deleted_at) : "",
       "Motivo Exclusão": a.deletion_reason || "",
     }));
 
