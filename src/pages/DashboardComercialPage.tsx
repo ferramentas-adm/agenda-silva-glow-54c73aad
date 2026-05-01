@@ -273,8 +273,18 @@ export default function DashboardComercialPage() {
       a => a.created_by && sdrUserIds.has(a.created_by),
     );
 
-    const todayAgs = sdrAgs.filter(a => a.scheduled_date === dateStr);
-    const todayCreated = sdrCreatedAgs.filter(a => localDateOf(a.created_at) === dateStr);
+    // Quando há intervalo ativo, "todayAgs"/"todayCreated" passam a ser
+    // a soma agregada de todo o período selecionado. Caso contrário, mantém
+    // o comportamento de dia único (currentDate).
+    const todayAgs = isRangeActive && rangeFromStr && rangeToStr
+      ? sdrAgs.filter(a => a.scheduled_date >= rangeFromStr && a.scheduled_date <= rangeToStr)
+      : sdrAgs.filter(a => a.scheduled_date === dateStr);
+    const todayCreated = isRangeActive && rangeFromStr && rangeToStr
+      ? sdrCreatedAgs.filter(a => {
+          const d = localDateOf(a.created_at);
+          return d >= rangeFromStr && d <= rangeToStr;
+        })
+      : sdrCreatedAgs.filter(a => localDateOf(a.created_at) === dateStr);
     const yesterdayAgs = sdrAgs.filter(a => a.scheduled_date === yesterdayStr);
     const tomorrowAgs = sdrAgs.filter(a => a.scheduled_date === tomorrowStr);
     const monthAgs = sdrAgs.filter(a => a.scheduled_date >= monthStart && a.scheduled_date <= monthEnd);
@@ -332,7 +342,7 @@ export default function DashboardComercialPage() {
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr]);
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
 
