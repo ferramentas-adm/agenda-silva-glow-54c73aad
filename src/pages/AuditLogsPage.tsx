@@ -12,6 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollText, Search, ChevronLeft, ChevronRight, CalendarIcon, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatBRDateTime, pickedDateToYMD } from "@/lib/timezone";
 
 interface AuditLog {
   id: string;
