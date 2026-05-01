@@ -48,7 +48,13 @@ const brDateFmt = new Intl.DateTimeFormat("en-CA", {
   month: "2-digit",
   day: "2-digit",
 });
+const brDateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit", month: "2-digit", year: "numeric",
+  hour: "2-digit", minute: "2-digit", hour12: false,
+});
 const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
+const formatBR = (iso: string): string => brDateTimeFmt.format(new Date(iso)).replace(",", "");
 
 export default function ReunioesListPage() {
   const { user, role, isGestor, isModerador } = useAuth();
