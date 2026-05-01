@@ -68,12 +68,16 @@ export default function AuditLogsPage() {
         .order("created_at", { ascending: false });
 
       if (dateFrom) {
-        query = query.gte("created_at", format(dateFrom, "yyyy-MM-dd"));
+        // Início do dia em BRT (UTC-3, sem DST) = 03:00 UTC
+        const ymd = pickedDateToYMD(dateFrom);
+        query = query.gte("created_at", `${ymd}T03:00:00.000Z`);
       }
       if (dateTo) {
+        // Fim do dia em BRT = 03:00 UTC do dia seguinte
         const endDate = new Date(dateTo);
         endDate.setDate(endDate.getDate() + 1);
-        query = query.lt("created_at", format(endDate, "yyyy-MM-dd"));
+        const ymd = pickedDateToYMD(endDate);
+        query = query.lt("created_at", `${ymd}T03:00:00.000Z`);
       }
       if (entityIdFilter.trim()) {
         query = query.eq("entity_id", entityIdFilter.trim());
