@@ -179,11 +179,11 @@ export default function ReunioesListPage() {
       if (filterMeetingDateFrom && ag.scheduled_date < format(filterMeetingDateFrom, "yyyy-MM-dd")) return false;
       if (filterMeetingDateTo && ag.scheduled_date > format(filterMeetingDateTo, "yyyy-MM-dd")) return false;
       if (filterCreatedDateFrom) {
-        const createdDate = ag.created_at.slice(0, 10);
+        const createdDate = localDateOf(ag.created_at);
         if (createdDate < format(filterCreatedDateFrom, "yyyy-MM-dd")) return false;
       }
       if (filterCreatedDateTo) {
-        const createdDate = ag.created_at.slice(0, 10);
+        const createdDate = localDateOf(ag.created_at);
         if (createdDate > format(filterCreatedDateTo, "yyyy-MM-dd")) return false;
       }
       if (searchText) {
