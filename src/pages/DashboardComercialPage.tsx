@@ -250,16 +250,19 @@ export default function DashboardComercialPage() {
   );
 
   const metrics = useMemo(() => {
-    // Helper: converte timestamp ISO para YYYY-MM-DD na timezone LOCAL
-    // (evita que reuniões criadas à noite no Brasil sejam contadas como
-    // "amanhã" pela UTC).
-    const localDateOf = (iso: string): string => {
-      const d = new Date(iso);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    };
+    // Helper: converte timestamp ISO para YYYY-MM-DD no fuso de operação
+    // (America/Sao_Paulo). Não depende do timezone do navegador — assim
+    // uma reunião criada às 21h BRT (00h UTC do dia seguinte) é sempre
+    // contabilizada no dia BRT correto, independentemente de onde o
+    // gestor esteja acessando.
+    const BR_TZ = "America/Sao_Paulo";
+    const brDateFmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: BR_TZ,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
 
     // Pool base: somente agendamentos criados por SDRs.
     const sdrAgs = agendamentos.filter(
