@@ -171,7 +171,7 @@ export default function MetricDrilldownDialog({
                       <CalendarDays className="h-3 w-3" />
                       <span>
                         Agendado em{" "}
-                        {format(new Date(d.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        {formatBRDateTime(d.created_at).replace(" ", " às ")}
                       </span>
                     </div>
                     {(d.channel_type || d.meeting_reason) && (
