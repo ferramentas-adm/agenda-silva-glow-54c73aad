@@ -502,7 +502,7 @@ export default function ReunioesListPage() {
                           <div>{format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}</div>
                           <div className="text-xs text-muted-foreground">{ag.scheduled_time}</div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{format(new Date(ag.created_at), "dd/MM/yyyy HH:mm")}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{formatBR(ag.created_at)}</td>
                         <td className="px-4 py-3">
                           <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
                         </td>
