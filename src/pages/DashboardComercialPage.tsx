@@ -906,14 +906,28 @@ function RankingSDRsTab({
 
   const sdrOf = (a: AgendamentoMetric) => a.sdr_responsavel_id ?? a.created_by;
 
+  // Normaliza created_at (UTC) para a data local em America/Sao_Paulo,
+  // evitando que reuniões criadas após 21h BRT sejam contabilizadas no
+  // dia seguinte por causa da conversão para UTC.
+  const brDateFmt = useMemo(
+    () => new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }),
+    [],
+  );
+  const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
+
   const countFor = (sdrId: string, range: { from: string; to: string } | null) => {
     if (!range) return 0;
     if (metricType === "criadas") {
-      return createdAgs.filter(a =>
-        sdrOf(a) === sdrId &&
-        a.created_at >= range.from + "T00:00:00" &&
-        a.created_at <= range.to + "T23:59:59"
-      ).length;
+      return createdAgs.filter(a => {
+        if (sdrOf(a) !== sdrId) return false;
+        const d = localDateOf(a.created_at);
+        return d >= range.from && d <= range.to;
+      }).length;
     }
     if (metricType === "para") {
       return agendamentos.filter(a =>
