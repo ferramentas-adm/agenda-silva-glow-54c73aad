@@ -715,24 +715,35 @@ function MetricasSDRsTab({
   metrics,
   currentDate,
   updatedAgo,
+  dateRange,
 }: {
   metrics: ReturnType<any>;
   currentDate: Date;
   updatedAgo: string;
+  dateRange?: DateRange;
 }) {
+  const isRange = !!(dateRange?.from && dateRange?.to);
+  const rangeLabel = isRange
+    ? `${format(dateRange!.from!, "dd/MM/yyyy")} a ${format(dateRange!.to!, "dd/MM/yyyy")}`
+    : "";
+
   const prevDay = subDays(currentDate, 1);
   const nextDay = addDays(currentDate, 1);
 
-  const titlePara = getDateLabel(currentDate, currentDate, "Para");
-  const titleGeradas = getDateLabel(currentDate, currentDate, "Geradas");
+  const titlePara = isRange
+    ? `Agendas Para ${rangeLabel}`
+    : getDateLabel(currentDate, currentDate, "Para");
+  const titleGeradas = isRange
+    ? `Agendas Geradas ${rangeLabel}`
+    : getDateLabel(currentDate, currentDate, "Geradas");
   const titleDe = getDateLabel(currentDate, prevDay, "De");
   const titleAmanha = getDateLabel(currentDate, nextDay, "Para");
 
-  const subtitleSelected = getSubtitleLabel(currentDate);
+  const subtitleSelected = isRange ? rangeLabel : getSubtitleLabel(currentDate);
   const subtitlePrev = getSubtitleLabel(prevDay);
   const subtitleNext = getSubtitleLabel(nextDay);
 
-  const selectedLabel = getSubtitleLabel(currentDate);
+  const selectedLabel = isRange ? rangeLabel : getSubtitleLabel(currentDate);
   const monthLabel = format(currentDate, "MMMM/yyyy", { locale: ptBR });
 
   const [drillIds, setDrillIds] = useState<string[] | null>(null);
