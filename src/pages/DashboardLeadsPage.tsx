@@ -452,7 +452,7 @@ export function LeadsDashboardContent() {
                           {m.taxa_conclusao !== null ? `${Number(m.taxa_conclusao).toFixed(1)}%` : "—"}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {formatBRDateTime(m.received_at).slice(0, 5) /* dd/MM */ + " " + formatBRDateTime(m.received_at).slice(11, 16) /* HH:mm */}
+                          {new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(m.received_at)).replace(",", "")}
                         </TableCell>
                       </TableRow>
                     ))}
