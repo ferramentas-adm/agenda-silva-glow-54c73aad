@@ -252,7 +252,7 @@ export default function ReunioesListPage() {
       sdrIdOf(ag) ? (profileMap[sdrIdOf(ag)!] || "—") : "—",
       format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy"),
       ag.scheduled_time,
-      format(new Date(ag.created_at), "dd/MM/yyyy HH:mm"),
+      brDateTimeFmt.format(new Date(ag.created_at)),
       STATUS_MAP[ag.status]?.label || ag.status,
       ag.meeting_reason || "—",
       (ag as any).channel_type || "—",
