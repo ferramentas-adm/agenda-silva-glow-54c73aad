@@ -41,6 +41,15 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 const CHANNEL_TYPES = ["CTA", "Tráfego Pago", "Reativação", "Social Selling", "Renovação", "Indicação", "Formulário Bio"];
 const PAGE_SIZE = 20;
 
+// Normalize a UTC timestamp to a Brasília (BRT) yyyy-MM-dd date string.
+const brDateFmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Sao_Paulo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
+
 export default function ReunioesListPage() {
   const { user, role, isGestor, isModerador } = useAuth();
   const queryClient = useQueryClient();
