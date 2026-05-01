@@ -159,12 +159,19 @@ export default function DashboardComercialPage() {
   const weekStart = format(startOfWeek(currentDate, { locale: ptBR }), "yyyy-MM-dd");
   const weekEnd = format(endOfWeek(currentDate, { locale: ptBR }), "yyyy-MM-dd");
 
-  // Broad fetch: all agendamentos for current month + adjacent days
+  // Range ativo (intervalo selecionado pelo usuário)
+  const isRangeActive = !!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to));
+  const rangeFromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : null;
+  const rangeToStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : null;
+
+  // Broad fetch: all agendamentos for current month + adjacent days (+ range, se ativo)
   const { data: agendamentos = [], dataUpdatedAt } = useQuery<AgendamentoMetric[]>({
-    queryKey: ["dashboard-comercial-metrics", monthStart, monthEnd, yesterdayStr, tomorrowStr],
+    queryKey: ["dashboard-comercial-metrics", monthStart, monthEnd, yesterdayStr, tomorrowStr, rangeFromStr, rangeToStr],
     queryFn: async () => {
-      const minDate = yesterdayStr < monthStart ? yesterdayStr : monthStart;
-      const maxDate = tomorrowStr > monthEnd ? tomorrowStr : monthEnd;
+      let minDate = yesterdayStr < monthStart ? yesterdayStr : monthStart;
+      let maxDate = tomorrowStr > monthEnd ? tomorrowStr : monthEnd;
+      if (rangeFromStr && rangeFromStr < minDate) minDate = rangeFromStr;
+      if (rangeToStr && rangeToStr > maxDate) maxDate = rangeToStr;
       const { data } = await supabase
         .from("agendamentos")
         .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
@@ -194,11 +201,13 @@ export default function DashboardComercialPage() {
 
   // Broad fetch for ranking: all agendamentos created in a wide range (for custom date ranges)
   const { data: createdAgs = [] } = useQuery<AgendamentoMetric[]>({
-    queryKey: ["dashboard-comercial-created", monthStart, monthEnd],
+    queryKey: ["dashboard-comercial-created", monthStart, monthEnd, rangeFromStr, rangeToStr],
     queryFn: async () => {
       // Fetch a broader range to support custom date filters
-      const broadStart = format(subMonths(startOfMonth(currentDate), 2), "yyyy-MM-dd");
-      const broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
+      let broadStart = format(subMonths(startOfMonth(currentDate), 2), "yyyy-MM-dd");
+      let broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
+      if (rangeFromStr && rangeFromStr < broadStart) broadStart = rangeFromStr;
+      if (rangeToStr && rangeToStr > broadEnd) broadEnd = rangeToStr;
       const { data } = await supabase
         .from("agendamentos")
         .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
@@ -264,8 +273,18 @@ export default function DashboardComercialPage() {
       a => a.created_by && sdrUserIds.has(a.created_by),
     );
 
-    const todayAgs = sdrAgs.filter(a => a.scheduled_date === dateStr);
-    const todayCreated = sdrCreatedAgs.filter(a => localDateOf(a.created_at) === dateStr);
+    // Quando há intervalo ativo, "todayAgs"/"todayCreated" passam a ser
+    // a soma agregada de todo o período selecionado. Caso contrário, mantém
+    // o comportamento de dia único (currentDate).
+    const todayAgs = isRangeActive && rangeFromStr && rangeToStr
+      ? sdrAgs.filter(a => a.scheduled_date >= rangeFromStr && a.scheduled_date <= rangeToStr)
+      : sdrAgs.filter(a => a.scheduled_date === dateStr);
+    const todayCreated = isRangeActive && rangeFromStr && rangeToStr
+      ? sdrCreatedAgs.filter(a => {
+          const d = localDateOf(a.created_at);
+          return d >= rangeFromStr && d <= rangeToStr;
+        })
+      : sdrCreatedAgs.filter(a => localDateOf(a.created_at) === dateStr);
     const yesterdayAgs = sdrAgs.filter(a => a.scheduled_date === yesterdayStr);
     const tomorrowAgs = sdrAgs.filter(a => a.scheduled_date === tomorrowStr);
     const monthAgs = sdrAgs.filter(a => a.scheduled_date >= monthStart && a.scheduled_date <= monthEnd);
@@ -323,7 +342,7 @@ export default function DashboardComercialPage() {
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr]);
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
 
@@ -518,6 +537,7 @@ export default function DashboardComercialPage() {
             metrics={metrics}
             currentDate={currentDate}
             updatedAgo={updatedAgo}
+            dateRange={isRangeActive ? dateRange : undefined}
           />
         )}
         {activeTabKey === "agenda" && <CalendarContent />}
@@ -695,24 +715,35 @@ function MetricasSDRsTab({
   metrics,
   currentDate,
   updatedAgo,
+  dateRange,
 }: {
   metrics: ReturnType<any>;
   currentDate: Date;
   updatedAgo: string;
+  dateRange?: DateRange;
 }) {
+  const isRange = !!(dateRange?.from && dateRange?.to);
+  const rangeLabel = isRange
+    ? `${format(dateRange!.from!, "dd/MM/yyyy")} a ${format(dateRange!.to!, "dd/MM/yyyy")}`
+    : "";
+
   const prevDay = subDays(currentDate, 1);
   const nextDay = addDays(currentDate, 1);
 
-  const titlePara = getDateLabel(currentDate, currentDate, "Para");
-  const titleGeradas = getDateLabel(currentDate, currentDate, "Geradas");
+  const titlePara = isRange
+    ? `Agendas Para ${rangeLabel}`
+    : getDateLabel(currentDate, currentDate, "Para");
+  const titleGeradas = isRange
+    ? `Agendas Geradas ${rangeLabel}`
+    : getDateLabel(currentDate, currentDate, "Geradas");
   const titleDe = getDateLabel(currentDate, prevDay, "De");
   const titleAmanha = getDateLabel(currentDate, nextDay, "Para");
 
-  const subtitleSelected = getSubtitleLabel(currentDate);
+  const subtitleSelected = isRange ? rangeLabel : getSubtitleLabel(currentDate);
   const subtitlePrev = getSubtitleLabel(prevDay);
   const subtitleNext = getSubtitleLabel(nextDay);
 
-  const selectedLabel = getSubtitleLabel(currentDate);
+  const selectedLabel = isRange ? rangeLabel : getSubtitleLabel(currentDate);
   const monthLabel = format(currentDate, "MMMM/yyyy", { locale: ptBR });
 
   const [drillIds, setDrillIds] = useState<string[] | null>(null);
@@ -779,8 +810,8 @@ function MetricasSDRsTab({
 
       {/* Channel tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChannelTable title={getChannelTableLabel(currentDate, "para")} data={metrics.channelsToday} />
-        <ChannelTable title={getChannelTableLabel(currentDate, "criadas")} data={metrics.channelsCreatedToday} />
+        <ChannelTable title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")} data={metrics.channelsToday} />
+        <ChannelTable title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")} data={metrics.channelsCreatedToday} />
       </div>
 
       <MetricDrilldownDialog
