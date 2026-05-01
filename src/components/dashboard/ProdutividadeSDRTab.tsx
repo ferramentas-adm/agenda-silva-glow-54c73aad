@@ -103,12 +103,18 @@ function getShift(hour: number | null): "manha" | "tarde" | "noite" | "outros" {
  * filtrado como "hoje" via UTC mas classificado como "noite de ontem" via
  * hora local.
  */
+const BR_TZ = "America/Sao_Paulo";
+const brDateFmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: BR_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 function localDateOf(iso: string): string {
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  // Sempre no fuso de operação (BRT). Evita que o timezone do navegador
+  // do gestor (UTC, Europa, etc.) faça uma agenda criada às 21h BRT
+  // aparecer como "amanhã".
+  return brDateFmt.format(new Date(iso));
 }
 
 export default function ProdutividadeSDRTab({
