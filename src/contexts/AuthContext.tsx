@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logAudit } from "@/services/auditLog";
 import type { User, Session } from "@supabase/supabase-js";
 
 type AppRole = "sdr" | "gestor" | "closer" | "moderador";
