@@ -58,6 +58,7 @@ interface Agendamento {
   briefing_read_at: string | null;
   briefing_read_by: string | null;
   original_agendamento_id: string | null;
+  duration_minutes: number | null;
 }
 
 // ─── Status efetivo (apenas visual / contagem) ───────────────────
@@ -199,7 +200,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -1388,6 +1389,8 @@ function DayView({
   };
 
   // Group agendamentos by closer+hour — allow MULTIPLE per slot (stacking)
+  // Cards começam no slot do horário inicial e ocupam visualmente todas as
+  // horas cobertas pelo `duration_minutes` (mínimo 60).
   const slotMap = useMemo(() => {
     const m = new Map<string, Agendamento[]>();
     agendamentos.forEach((a) => {
@@ -1396,6 +1399,34 @@ function DayView({
       const list = m.get(key) || [];
       list.push(a);
       m.set(key, list);
+    });
+    return m;
+  }, [agendamentos]);
+
+  // Slots que estão "cobertos" por um agendamento de duração > 60min
+  // (mas não são o slot inicial). Estes não devem renderizar célula própria.
+  const coveredSet = useMemo(() => {
+    const s = new Set<string>();
+    agendamentos.forEach((a) => {
+      const startHour = parseInt(a.scheduled_time.slice(0, 2), 10);
+      const dur = a.duration_minutes ?? 60;
+      const span = Math.max(1, Math.ceil(dur / 60));
+      for (let i = 1; i < span; i++) {
+        s.add(`${a.closer_id}-${String(startHour + i).padStart(2, "0")}`);
+      }
+    });
+    return s;
+  }, [agendamentos]);
+
+  // Span (em linhas do grid) máximo do slot inicial — usa o maior agendamento
+  const slotSpanMap = useMemo(() => {
+    const m = new Map<string, number>();
+    agendamentos.forEach((a) => {
+      const hourPrefix = a.scheduled_time.slice(0, 2);
+      const key = `${a.closer_id}-${hourPrefix}`;
+      const dur = a.duration_minutes ?? 60;
+      const span = Math.max(1, Math.ceil(dur / 60));
+      m.set(key, Math.max(m.get(key) ?? 1, span));
     });
     return m;
   }, [agendamentos]);
@@ -1459,19 +1490,23 @@ function DayView({
                 <span className="text-sm text-muted-foreground font-mono font-medium">{hour}</span>
               </div>
               {closers.map((c) => {
-                const agList = slotMap.get(`${c.id}-${hourPrefix}`) || [];
-                const busy = busyMap.get(`${c.id}-${hourPrefix}`) ?? null;
-                const block = blockMap.get(`${c.id}-${hourPrefix}`) ?? null;
+                const slotKey = `${c.id}-${hourPrefix}`;
+                const isCovered = coveredSet.has(slotKey);
+                const agList = isCovered ? [] : (slotMap.get(slotKey) || []);
+                const busy = busyMap.get(slotKey) ?? null;
+                const block = blockMap.get(slotKey) ?? null;
                 const idx = closerIndexMap.get(c.id) ?? 0;
                 const closerColor = getCloserColor(c.id, idx);
-                const canClickToSchedule = !busy && !block;
+                const span = slotSpanMap.get(slotKey) ?? 1;
+                const canClickToSchedule = !busy && !block && !isCovered;
 
                 return (
                   <div
                     key={`${c.id}-${hour}`}
                     className={cn(
-                      "border-b border-l border-primary/5 px-1.5 py-1.5 min-h-[72px]",
-                      canClickToSchedule && "cursor-pointer hover:bg-primary/5 transition-colors"
+                      "relative border-b border-l border-primary/5 px-1.5 py-1.5 min-h-[72px]",
+                      canClickToSchedule && "cursor-pointer hover:bg-primary/5 transition-colors",
+                      span > 1 && "z-10"
                     )}
                     onClick={() => {
                       if (canClickToSchedule) {
@@ -1481,7 +1516,10 @@ function DayView({
                     title={canClickToSchedule ? `Agendar às ${hour} com ${c.name}` : undefined}
                   >
                     {agList.length > 0 && (
-                      <div className="flex gap-0.5 overflow-hidden">
+                      <div
+                        className="flex gap-0.5 overflow-hidden absolute left-1.5 right-1.5 top-1.5"
+                        style={{ height: `${span * 72 + (span - 1)}px` }}
+                      >
                         {agList.map((ag) => {
                           const effStatus = getEffectiveStatus(ag);
                           const isCancelled = CANCELLED_STATUSES.includes(effStatus);
@@ -1514,7 +1552,15 @@ function DayView({
                               </div>
                               <div className="flex items-center gap-1 text-[11px] opacity-80">
                                 <Clock className="h-3 w-3 shrink-0" />
-                                <span className={cn("truncate", isCancelled && "line-through")}>{ag.scheduled_time}</span>
+                                <span className={cn("truncate", isCancelled && "line-through")}>{(() => {
+                                  const dur = ag.duration_minutes ?? 60;
+                                  if (dur <= 60) return ag.scheduled_time;
+                                  const [hh, mm] = ag.scheduled_time.split(":").map(Number);
+                                  const endTotal = hh * 60 + mm + dur;
+                                  const eh = String(Math.floor(endTotal / 60) % 24).padStart(2, "0");
+                                  const em = String(endTotal % 60).padStart(2, "0");
+                                  return `${ag.scheduled_time}–${eh}:${em}`;
+                                })()}</span>
                                 {!isCompact && ag.meet_link && (
                                   <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <Video className="h-2.5 w-2.5" />
