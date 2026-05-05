@@ -327,6 +327,7 @@ export default function AgendarPage() {
     setCloserId(null);
     setDate(undefined);
     setTime(null);
+    setDurationMinutes(60);
     setObservation("");
     setMeetingReason(null);
     setMeetingReasonCustom("");
