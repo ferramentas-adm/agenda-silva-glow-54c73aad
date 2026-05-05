@@ -1150,6 +1150,7 @@ function DeletionReasonsSection() {
         if (error) throw error;
       }
       queryClient.invalidateQueries({ queryKey: ["app-settings", "deletion_reasons"] });
+      await logAudit("update_settings", "settings", null as any, { key: "deletion_reasons", count: next.length });
       toast.success("Justificativas atualizadas!");
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar justificativas");
