@@ -304,6 +304,7 @@ function UsersSection() {
       }
       queryClient.invalidateQueries({ queryKey: ["closers"] });
       queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+      await logAudit("toggle_active", user.type === "closer" ? "closer" : "user", user.userId || user.id, { name: user.name, new_active: !user.active });
       toast.success(!user.active ? "Usuário ativado" : "Usuário desativado");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
