@@ -1517,8 +1517,8 @@ function DayView({
                   >
                     {agList.length > 0 && (
                       <div
-                        className="flex gap-0.5 overflow-hidden absolute inset-x-1.5 top-1.5"
-                        style={{ height: `calc(${span * 100}% + ${(span - 1) * 1}px - 12px)` }}
+                        className="flex gap-0.5 overflow-hidden absolute left-1.5 right-1.5 top-1.5"
+                        style={{ height: `${span * 72 + (span - 1)}px` }}
                       >
                         {agList.map((ag) => {
                           const effStatus = getEffectiveStatus(ag);
