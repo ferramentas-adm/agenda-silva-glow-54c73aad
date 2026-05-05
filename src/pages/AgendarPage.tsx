@@ -244,6 +244,7 @@ export default function AgendarPage() {
         closer_id: closerId,
         scheduled_date: dateStr,
         scheduled_time: time,
+        duration_minutes: durationMinutes,
         observation: finalObservation,
         briefing: briefingText.trim() || null,
         // Novo agendamento entra como 'agendada' (trigger envia "Agendado" ao DataCrazy).
