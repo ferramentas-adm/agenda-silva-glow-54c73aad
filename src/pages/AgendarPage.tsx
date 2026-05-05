@@ -350,6 +350,7 @@ export default function AgendarPage() {
       sdr_name: sdrName,
       scheduled_date: dateStr,
       scheduled_time: success.time,
+      duration_minutes: durationMinutes,
     });
 
     if (result.success && result.meet_link) {
