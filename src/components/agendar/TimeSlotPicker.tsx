@@ -16,7 +16,13 @@ interface TimeSlotPickerProps {
   closerId: string;
   date: Date;
   selectedTime: string | null;
-  onSelect: (time: string) => void;
+  onSelect: (time: string, durationMinutes?: number) => void;
+}
+
+function timeToMin(t: string): number | null {
+  const m = t.match(/^(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
 interface TimeRange {
