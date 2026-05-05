@@ -162,7 +162,7 @@ export function CalendarContent() {
   const [deleting, setDeleting] = useState(false);
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [rescheduleOffer, setRescheduleOffer] = useState<Agendamento | null>(null);
+  
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
