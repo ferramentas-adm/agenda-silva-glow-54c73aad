@@ -268,8 +268,10 @@ function UsersSection() {
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ["closers"] });
         queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+        await logAudit("delete_user", "closer", deleteTarget.userId, { name: deleteTarget.name, email: deleteTarget.email });
       } else {
         await invokeEdgeFunction("manage-user", { user_id: deleteTarget.userId, action: "delete" });
+        await logAudit("delete_user", "user", deleteTarget.userId, { name: deleteTarget.name, email: deleteTarget.email });
       }
       toast.success("Usuário excluído!");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
