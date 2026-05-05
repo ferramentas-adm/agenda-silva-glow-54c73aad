@@ -379,6 +379,7 @@ function UsersSection() {
     setChangingRole(true);
     try {
       await invokeEdgeFunction("manage-user", { user_id: roleChangeTarget.userId, action: "change_role", new_role: newRole });
+      await logAudit("change_role", "user", roleChangeTarget.userId, { name: (roleChangeTarget as any).name, new_role: newRole });
       toast.success(`Função alterada para ${roleLabel(newRole)}`);
       setRoleChangeTarget(null);
       setNewRole("");
