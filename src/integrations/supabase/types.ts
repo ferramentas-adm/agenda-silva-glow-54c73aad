@@ -26,6 +26,7 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           deletion_reason: string | null
+          duration_minutes: number
           id: string
           lead_name: string
           lead_phone: string
@@ -50,6 +51,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
+          duration_minutes?: number
           id?: string
           lead_name: string
           lead_phone: string
@@ -74,6 +76,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
+          duration_minutes?: number
           id?: string
           lead_name?: string
           lead_phone?: string

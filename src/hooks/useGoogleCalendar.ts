@@ -54,6 +54,7 @@ export interface CreateEventParams {
   sdr_name: string;
   scheduled_date: string;
   scheduled_time: string;
+  duration_minutes?: number;
 }
 
 export interface CreateEventResult {

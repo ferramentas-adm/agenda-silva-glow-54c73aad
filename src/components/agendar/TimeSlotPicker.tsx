@@ -16,7 +16,13 @@ interface TimeSlotPickerProps {
   closerId: string;
   date: Date;
   selectedTime: string | null;
-  onSelect: (time: string) => void;
+  onSelect: (time: string, durationMinutes?: number) => void;
+}
+
+function timeToMin(t: string): number | null {
+  const m = t.match(/^(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
 interface TimeRange {
@@ -109,7 +115,8 @@ function isCustomTimeConflicting(
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
   useAuth();
   const [customMode, setCustomMode] = useState(false);
-  const [customInput, setCustomInput] = useState("");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
   // Pop-up apenas informativo: nenhum usuário pode forçar agendamento em bloqueio pessoal.
   const [blockedInfo, setBlockedInfo] = useState<string | null>(null);
@@ -200,24 +207,35 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const handleCustomConfirm = () => {
     setCustomError(null);
 
-    if (!isCustomTimeValid(customInput, dateStr, isToday, now, ranges)) {
-      setCustomError("Horário inválido ou já passou.");
+    const startMin = timeToMin(customStart);
+    const endMin = timeToMin(customEnd);
+    if (startMin === null || endMin === null) {
+      setCustomError("Informe horário inicial e final válidos (HH:MM).");
+      return;
+    }
+    if (endMin <= startMin) {
+      setCustomError("O horário final deve ser maior que o inicial.");
+      return;
+    }
+    if (!isCustomTimeValid(customStart, dateStr, isToday, now, ranges)) {
+      setCustomError("Horário inicial inválido ou já passou.");
       return;
     }
 
     // Check personal blocks — bloqueio absoluto para TODOS (incl. gestor/moderador).
-    const customH = parseInt(customInput.slice(0, 2), 10);
+    // Verifica qualquer sobreposição entre [startMin, endMin) e os bloqueios.
     const isBlockedByPersonal = closerBlocks.some((b: any) => {
-      const startH = parseInt(b.start_time.slice(0, 2), 10);
-      const endH = parseInt(b.end_time.slice(0, 2), 10);
-      return customH >= startH && customH < endH;
+      const bStart = parseInt(b.start_time.slice(0, 2), 10) * 60 + parseInt(b.start_time.slice(3, 5) || "0", 10);
+      const bEnd = parseInt(b.end_time.slice(0, 2), 10) * 60 + parseInt(b.end_time.slice(3, 5) || "0", 10);
+      return startMin < bEnd && endMin > bStart;
     });
     if (isBlockedByPersonal) {
       setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
       return;
     }
 
-    onSelect(customInput);
+    const duration = endMin - startMin;
+    onSelect(customStart, duration);
     setCustomMode(false);
   };
 
@@ -309,7 +327,10 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           onClick={() => {
             setCustomMode(!customMode);
             setCustomError(null);
-            if (!customMode) setCustomInput("");
+            if (!customMode) {
+              setCustomStart("");
+              setCustomEnd("");
+            }
           }}
           className={cn(
             "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
@@ -340,16 +361,16 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
 
       {/* Custom time input */}
       {customMode && (
-        <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-          <div className="flex-1 space-y-1.5">
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              Horário personalizado (ex: 16:20)
+              Horário inicial
             </label>
             <Input
               type="time"
-              value={customInput}
+              value={customStart}
               onChange={(e) => {
-                setCustomInput(e.target.value);
+                setCustomStart(e.target.value);
                 setCustomError(null);
               }}
               onKeyDown={(e) => {
@@ -359,18 +380,35 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
               className="h-9 w-32 font-mono"
               autoFocus
             />
-            {customError && (
-              <p className="text-xs text-destructive">{customError}</p>
-            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              Horário final
+            </label>
+            <Input
+              type="time"
+              value={customEnd}
+              onChange={(e) => {
+                setCustomEnd(e.target.value);
+                setCustomError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCustomConfirm();
+              }}
+              placeholder="HH:MM"
+              className="h-9 w-32 font-mono"
+            />
           </div>
           <Button
             size="sm"
             onClick={handleCustomConfirm}
-            disabled={!customInput}
-            className="mt-5"
+            disabled={!customStart || !customEnd}
           >
             Confirmar
           </Button>
+          {customError && (
+            <p className="w-full text-xs text-destructive">{customError}</p>
+          )}
         </div>
       )}
     </div>

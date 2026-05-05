@@ -74,6 +74,7 @@ export default function AgendarPage() {
     preDateStr ? new Date(preDateStr + "T12:00:00") : undefined
   );
   const [time, setTime] = useState<string | null>(preTime || null);
+  const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [observation, setObservation] = useState("");
   const [meetingReason, setMeetingReason] = useState<string | null>(null);
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
@@ -219,6 +220,7 @@ export default function AgendarPage() {
         sdr_name: sdrName,
         scheduled_date: dateStr,
         scheduled_time: time,
+        duration_minutes: durationMinutes,
       });
 
       if (googleResult.success && googleResult.meet_link) {
@@ -242,6 +244,7 @@ export default function AgendarPage() {
         closer_id: closerId,
         scheduled_date: dateStr,
         scheduled_time: time,
+        duration_minutes: durationMinutes,
         observation: finalObservation,
         briefing: briefingText.trim() || null,
         // Novo agendamento entra como 'agendada' (trigger envia "Agendado" ao DataCrazy).
@@ -324,6 +327,7 @@ export default function AgendarPage() {
     setCloserId(null);
     setDate(undefined);
     setTime(null);
+    setDurationMinutes(60);
     setObservation("");
     setMeetingReason(null);
     setMeetingReasonCustom("");
@@ -346,6 +350,7 @@ export default function AgendarPage() {
       sdr_name: sdrName,
       scheduled_date: dateStr,
       scheduled_time: success.time,
+      duration_minutes: durationMinutes,
     });
 
     if (result.success && result.meet_link) {
@@ -464,7 +469,10 @@ export default function AgendarPage() {
                     closerId={closerId}
                     date={date}
                     selectedTime={time}
-                    onSelect={setTime}
+                    onSelect={(t, dur) => {
+                      setTime(t);
+                      setDurationMinutes(dur ?? 60);
+                    }}
                   />
                 )}
 
@@ -485,7 +493,17 @@ export default function AgendarPage() {
                 <SummaryRow label="Lead" value={`${lead.name} · ${lead.phone}`} />
                 <SummaryRow label="Closer" value={closerName} />
                 <SummaryRow label="Data" value={format(date, "dd/MM/yyyy")} />
-                <SummaryRow label="Horário" value={time} />
+                <SummaryRow
+                  label="Horário"
+                  value={(() => {
+                    const [h, m] = time.split(":").map(Number);
+                    const endTotal = h * 60 + m + durationMinutes;
+                    const eh = Math.floor(endTotal / 60) % 24;
+                    const em = endTotal % 60;
+                    const endStr = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                    return `${time} – ${endStr} (${durationMinutes} min)`;
+                  })()}
+                />
               </div>
 
               {isAdmin && (
