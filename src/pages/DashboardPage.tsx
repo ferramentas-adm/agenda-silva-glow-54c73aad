@@ -1552,7 +1552,15 @@ function DayView({
                               </div>
                               <div className="flex items-center gap-1 text-[11px] opacity-80">
                                 <Clock className="h-3 w-3 shrink-0" />
-                                <span className={cn("truncate", isCancelled && "line-through")}>{ag.scheduled_time}</span>
+                                <span className={cn("truncate", isCancelled && "line-through")}>{(() => {
+                                  const dur = ag.duration_minutes ?? 60;
+                                  if (dur <= 60) return ag.scheduled_time;
+                                  const [hh, mm] = ag.scheduled_time.split(":").map(Number);
+                                  const endTotal = hh * 60 + mm + dur;
+                                  const eh = String(Math.floor(endTotal / 60) % 24).padStart(2, "0");
+                                  const em = String(endTotal % 60).padStart(2, "0");
+                                  return `${ag.scheduled_time}–${eh}:${em}`;
+                                })()}</span>
                                 {!isCompact && ag.meet_link && (
                                   <a href={ag.meet_link} target="_blank" rel="noopener noreferrer" className="ml-auto shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <Video className="h-2.5 w-2.5" />
