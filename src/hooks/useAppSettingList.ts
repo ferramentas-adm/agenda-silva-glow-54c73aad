@@ -57,8 +57,9 @@ export function useAppSettingList(key: string, defaults: string[] = []) {
       }
       return sorted;
     },
-    onSuccess: () => {
+    onSuccess: (sorted) => {
       queryClient.invalidateQueries({ queryKey: ["app-settings", key] });
+      logAudit("update_settings", "settings", null as any, { key, count: sorted.length });
     },
     onError: (err: any) => {
       toast.error(err.message || "Erro ao salvar configuração");
