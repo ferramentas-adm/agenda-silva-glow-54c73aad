@@ -361,16 +361,16 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
 
       {/* Custom time input */}
       {customMode && (
-        <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-          <div className="flex-1 space-y-1.5">
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              Horário personalizado (ex: 16:20)
+              Horário inicial
             </label>
             <Input
               type="time"
-              value={customInput}
+              value={customStart}
               onChange={(e) => {
-                setCustomInput(e.target.value);
+                setCustomStart(e.target.value);
                 setCustomError(null);
               }}
               onKeyDown={(e) => {
@@ -380,18 +380,35 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
               className="h-9 w-32 font-mono"
               autoFocus
             />
-            {customError && (
-              <p className="text-xs text-destructive">{customError}</p>
-            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              Horário final
+            </label>
+            <Input
+              type="time"
+              value={customEnd}
+              onChange={(e) => {
+                setCustomEnd(e.target.value);
+                setCustomError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCustomConfirm();
+              }}
+              placeholder="HH:MM"
+              className="h-9 w-32 font-mono"
+            />
           </div>
           <Button
             size="sm"
             onClick={handleCustomConfirm}
-            disabled={!customInput}
-            className="mt-5"
+            disabled={!customStart || !customEnd}
           >
             Confirmar
           </Button>
+          {customError && (
+            <p className="w-full text-xs text-destructive">{customError}</p>
+          )}
         </div>
       )}
     </div>
