@@ -465,7 +465,10 @@ export default function AgendarPage() {
                     closerId={closerId}
                     date={date}
                     selectedTime={time}
-                    onSelect={setTime}
+                    onSelect={(t, dur) => {
+                      setTime(t);
+                      setDurationMinutes(dur ?? 60);
+                    }}
                   />
                 )}
 
