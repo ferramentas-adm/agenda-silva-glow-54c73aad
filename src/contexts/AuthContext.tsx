@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logAudit } from "@/services/auditLog";
 import type { User, Session } from "@supabase/supabase-js";
 
 type AppRole = "sdr" | "gestor" | "closer" | "moderador";
@@ -38,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -73,6 +74,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             // Login com email/senha — paraleliza role + profile
             fetchUserData(session.user.id);
+          }
+          if (event === "SIGNED_IN") {
+            const provider = session.user.app_metadata?.provider || "email";
+            logAudit("login", "user", session.user.id, { email: session.user.email, provider });
           }
         } else {
           setRole(null);

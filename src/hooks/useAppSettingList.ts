@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logAudit } from "@/services/auditLog";
 
 /**
  * Hook genérico para gerenciar listas dinâmicas armazenadas em `app_settings`
@@ -56,8 +57,9 @@ export function useAppSettingList(key: string, defaults: string[] = []) {
       }
       return sorted;
     },
-    onSuccess: () => {
+    onSuccess: (sorted) => {
       queryClient.invalidateQueries({ queryKey: ["app-settings", key] });
+      logAudit("update_settings", "settings", null as any, { key, count: sorted.length });
     },
     onError: (err: any) => {
       toast.error(err.message || "Erro ao salvar configuração");

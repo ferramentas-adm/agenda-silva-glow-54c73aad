@@ -26,6 +26,7 @@ import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionRe
 import DynamicListManager from "@/components/DynamicListManager";
 import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
+import { logAudit } from "@/services/auditLog";
 
 /* ─── Listas dinâmicas (Canais / Motivos / Justificativas) ───── */
 function DynamicListsSection() {
@@ -221,6 +222,7 @@ function UsersSection() {
       const data = await invokeEdgeFunction("create-user", { email, full_name: fullName, role });
       
       setGeneratedPassword(data.generated_password);
+      await logAudit("create_user", "user", data?.user_id, { email, full_name: fullName, role });
       toast.success("Usuário criado com sucesso!");
       setFullName(""); setEmail("");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
@@ -266,8 +268,10 @@ function UsersSection() {
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ["closers"] });
         queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+        await logAudit("delete_user", "closer", deleteTarget.userId, { name: deleteTarget.name });
       } else {
         await invokeEdgeFunction("manage-user", { user_id: deleteTarget.userId, action: "delete" });
+        await logAudit("delete_user", "user", deleteTarget.userId, { name: deleteTarget.name });
       }
       toast.success("Usuário excluído!");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
@@ -300,6 +304,7 @@ function UsersSection() {
       }
       queryClient.invalidateQueries({ queryKey: ["closers"] });
       queryClient.invalidateQueries({ queryKey: ["closers-active"] });
+      await logAudit("toggle_active", user.type === "closer" ? "closer" : "user", user.userId || user.id, { name: user.name, new_active: !user.active });
       toast.success(!user.active ? "Usuário ativado" : "Usuário desativado");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
@@ -318,6 +323,7 @@ function UsersSection() {
     setChangingPassword(true);
     try {
       await invokeEdgeFunction("manage-user", { user_id: passwordChangeTarget.userId, action: "change_password", new_password: newPassword });
+      await logAudit("change_password", "user", passwordChangeTarget.userId, { name: (passwordChangeTarget as any).name });
       toast.success("Senha alterada com sucesso! O usuário precisará trocar a senha no próximo login.");
       setPasswordChangeTarget(null);
       setNewPassword("");
@@ -373,6 +379,7 @@ function UsersSection() {
     setChangingRole(true);
     try {
       await invokeEdgeFunction("manage-user", { user_id: roleChangeTarget.userId, action: "change_role", new_role: newRole });
+      await logAudit("change_role", "user", roleChangeTarget.userId, { name: (roleChangeTarget as any).name, new_role: newRole });
       toast.success(`Função alterada para ${roleLabel(newRole)}`);
       setRoleChangeTarget(null);
       setNewRole("");
@@ -1143,6 +1150,7 @@ function DeletionReasonsSection() {
         if (error) throw error;
       }
       queryClient.invalidateQueries({ queryKey: ["app-settings", "deletion_reasons"] });
+      await logAudit("update_settings", "settings", null as any, { key: "deletion_reasons", count: next.length });
       toast.success("Justificativas atualizadas!");
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar justificativas");

@@ -26,23 +26,50 @@ interface AuditLog {
 }
 
 const ACTION_LABELS: Record<string, string> = {
+  // Agendamentos
   create_agendamento: "Criou agendamento",
+  edit_agendamento: "Editou agendamento",
   update_status: "Atualizou status",
   delete_agendamento: "Excluiu agendamento",
+  reschedule_agendamento: "Reagendou agendamento",
+  transfer_lead: "Transferiu lead",
+  read_briefing: "Leu briefing",
+  edit_briefing: "Adicionou/editou briefing",
+  remove_briefing: "Removeu briefing",
+  // Vendas / Follow-ups
+  venda_registrada: "Registrou venda",
+  follow_up_atualizado: "Atualizou follow-up",
+  follow_up_editado: "Editou follow-up",
+  follow_up_removido: "Removeu follow-up",
+  // Pagamentos
+  pagamento_criado: "Criou pagamento",
+  pagamento_atualizado: "Atualizou pagamento",
+  pagamento_excluido: "Excluiu pagamento",
+  pagamento_marcado_quente: "Marcou pagamento como quente",
+  pagamento_desmarcado_quente: "Desmarcou pagamento como quente",
+  // Tarefas
+  tarefa_criada: "Criou tarefa",
+  tarefa_atualizada: "Atualizou tarefa",
+  tarefa_excluida: "Excluiu tarefa",
+  tarefa_pendente: "Tarefa marcada como pendente",
+  tarefa_concluida: "Tarefa concluída",
+  // Usuários / sistema
   create_user: "Criou usuário",
   delete_user: "Excluiu usuário",
   change_password: "Alterou senha",
   change_role: "Alterou função",
   toggle_active: "Ativou/Desativou",
   update_settings: "Atualizou configurações",
+  role_permissions_updated: "Atualizou permissões de função",
   login: "Login",
-  edit_agendamento: "Editou agendamento",
-  edit_briefing: "Adicionou/editou briefing",
-  remove_briefing: "Removeu briefing",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
   agendamento: "Agendamento",
+  venda: "Venda",
+  pagamento: "Pagamento",
+  task: "Tarefa",
+  role_permissions: "Permissões",
   user: "Usuário",
   closer: "Closer",
   settings: "Configurações",
@@ -229,6 +256,10 @@ export default function AuditLogsPage() {
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="agendamento">Agendamentos</SelectItem>
+              <SelectItem value="venda">Vendas</SelectItem>
+              <SelectItem value="pagamento">Pagamentos</SelectItem>
+              <SelectItem value="task">Tarefas</SelectItem>
+              <SelectItem value="role_permissions">Permissões</SelectItem>
               <SelectItem value="user">Usuários</SelectItem>
               <SelectItem value="closer">Closers</SelectItem>
               <SelectItem value="settings">Configurações</SelectItem>
