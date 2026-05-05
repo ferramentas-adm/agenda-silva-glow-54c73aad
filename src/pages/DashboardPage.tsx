@@ -1055,26 +1055,7 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
                         )}
-                        {/* Reagendar leva ao fluxo de novo agendamento (cria nova reunião com status reagendada).
-                            Mutuamente exclusivo com Cancelar/No-show. */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
-                          disabled={updatingStatus}
-                          onClick={() => {
-                            if (!detailAg) return;
-                            const params = new URLSearchParams({
-                              edit: detailAg.id,
-                              lead_name: detailAg.lead_name,
-                              lead_phone: detailAg.lead_phone,
-                            });
-                            setDetailAg(null);
-                            navigate(`/agendar?${params.toString()}`);
-                          }}
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />Reagendar
-                        </Button>
+                        {/* Botão "Reagendar" removido — gerava duplicidade no DataCrazy. */}
                         {/* Cancelar e No-show:
                             - SDR: vê quando é o criador do agendamento (sdr_responsavel_id ou created_by = user.id)
                             - Closer: vê apenas se for o criador (created_by = user.id)
