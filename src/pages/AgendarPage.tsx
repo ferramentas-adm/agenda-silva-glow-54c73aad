@@ -220,6 +220,7 @@ export default function AgendarPage() {
         sdr_name: sdrName,
         scheduled_date: dateStr,
         scheduled_time: time,
+        duration_minutes: durationMinutes,
       });
 
       if (googleResult.success && googleResult.meet_link) {
