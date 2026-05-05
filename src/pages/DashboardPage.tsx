@@ -602,7 +602,6 @@ export function CalendarContent() {
       await queryClient.refetchQueries({ queryKey: ["agendamentos", detailAg.scheduled_date], exact: true });
       if (newStatus === "cancelada" || newStatus === "no_show") {
         setDetailAg(null);
-        setRescheduleOffer(updatedAg);
       }
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar status");
