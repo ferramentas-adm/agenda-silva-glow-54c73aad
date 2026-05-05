@@ -256,6 +256,10 @@ export default function AuditLogsPage() {
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="agendamento">Agendamentos</SelectItem>
+              <SelectItem value="venda">Vendas</SelectItem>
+              <SelectItem value="pagamento">Pagamentos</SelectItem>
+              <SelectItem value="task">Tarefas</SelectItem>
+              <SelectItem value="role_permissions">Permissões</SelectItem>
               <SelectItem value="user">Usuários</SelectItem>
               <SelectItem value="closer">Closers</SelectItem>
               <SelectItem value="settings">Configurações</SelectItem>
