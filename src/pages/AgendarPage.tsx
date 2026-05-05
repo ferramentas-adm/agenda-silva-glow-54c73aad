@@ -74,6 +74,7 @@ export default function AgendarPage() {
     preDateStr ? new Date(preDateStr + "T12:00:00") : undefined
   );
   const [time, setTime] = useState<string | null>(preTime || null);
+  const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [observation, setObservation] = useState("");
   const [meetingReason, setMeetingReason] = useState<string | null>(null);
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
