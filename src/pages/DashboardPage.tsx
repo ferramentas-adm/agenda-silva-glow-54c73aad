@@ -1490,19 +1490,23 @@ function DayView({
                 <span className="text-sm text-muted-foreground font-mono font-medium">{hour}</span>
               </div>
               {closers.map((c) => {
-                const agList = slotMap.get(`${c.id}-${hourPrefix}`) || [];
-                const busy = busyMap.get(`${c.id}-${hourPrefix}`) ?? null;
-                const block = blockMap.get(`${c.id}-${hourPrefix}`) ?? null;
+                const slotKey = `${c.id}-${hourPrefix}`;
+                const isCovered = coveredSet.has(slotKey);
+                const agList = isCovered ? [] : (slotMap.get(slotKey) || []);
+                const busy = busyMap.get(slotKey) ?? null;
+                const block = blockMap.get(slotKey) ?? null;
                 const idx = closerIndexMap.get(c.id) ?? 0;
                 const closerColor = getCloserColor(c.id, idx);
-                const canClickToSchedule = !busy && !block;
+                const span = slotSpanMap.get(slotKey) ?? 1;
+                const canClickToSchedule = !busy && !block && !isCovered;
 
                 return (
                   <div
                     key={`${c.id}-${hour}`}
                     className={cn(
-                      "border-b border-l border-primary/5 px-1.5 py-1.5 min-h-[72px]",
-                      canClickToSchedule && "cursor-pointer hover:bg-primary/5 transition-colors"
+                      "relative border-b border-l border-primary/5 px-1.5 py-1.5 min-h-[72px]",
+                      canClickToSchedule && "cursor-pointer hover:bg-primary/5 transition-colors",
+                      span > 1 && "z-10"
                     )}
                     onClick={() => {
                       if (canClickToSchedule) {
@@ -1512,7 +1516,10 @@ function DayView({
                     title={canClickToSchedule ? `Agendar às ${hour} com ${c.name}` : undefined}
                   >
                     {agList.length > 0 && (
-                      <div className="flex gap-0.5 overflow-hidden">
+                      <div
+                        className="flex gap-0.5 overflow-hidden absolute inset-x-1.5 top-1.5"
+                        style={{ height: `calc(${span * 100}% + ${(span - 1) * 1}px - 12px)` }}
+                      >
                         {agList.map((ag) => {
                           const effStatus = getEffectiveStatus(ag);
                           const isCancelled = CANCELLED_STATUSES.includes(effStatus);
