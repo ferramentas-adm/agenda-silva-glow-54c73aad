@@ -323,6 +323,7 @@ function UsersSection() {
     setChangingPassword(true);
     try {
       await invokeEdgeFunction("manage-user", { user_id: passwordChangeTarget.userId, action: "change_password", new_password: newPassword });
+      await logAudit("change_password", "user", passwordChangeTarget.userId, { name: (passwordChangeTarget as any).name });
       toast.success("Senha alterada com sucesso! O usuário precisará trocar a senha no próximo login.");
       setPasswordChangeTarget(null);
       setNewPassword("");
