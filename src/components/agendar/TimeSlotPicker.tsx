@@ -207,24 +207,35 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const handleCustomConfirm = () => {
     setCustomError(null);
 
-    if (!isCustomTimeValid(customInput, dateStr, isToday, now, ranges)) {
-      setCustomError("Horário inválido ou já passou.");
+    const startMin = timeToMin(customStart);
+    const endMin = timeToMin(customEnd);
+    if (startMin === null || endMin === null) {
+      setCustomError("Informe horário inicial e final válidos (HH:MM).");
+      return;
+    }
+    if (endMin <= startMin) {
+      setCustomError("O horário final deve ser maior que o inicial.");
+      return;
+    }
+    if (!isCustomTimeValid(customStart, dateStr, isToday, now, ranges)) {
+      setCustomError("Horário inicial inválido ou já passou.");
       return;
     }
 
     // Check personal blocks — bloqueio absoluto para TODOS (incl. gestor/moderador).
-    const customH = parseInt(customInput.slice(0, 2), 10);
+    // Verifica qualquer sobreposição entre [startMin, endMin) e os bloqueios.
     const isBlockedByPersonal = closerBlocks.some((b: any) => {
-      const startH = parseInt(b.start_time.slice(0, 2), 10);
-      const endH = parseInt(b.end_time.slice(0, 2), 10);
-      return customH >= startH && customH < endH;
+      const bStart = parseInt(b.start_time.slice(0, 2), 10) * 60 + parseInt(b.start_time.slice(3, 5) || "0", 10);
+      const bEnd = parseInt(b.end_time.slice(0, 2), 10) * 60 + parseInt(b.end_time.slice(3, 5) || "0", 10);
+      return startMin < bEnd && endMin > bStart;
     });
     if (isBlockedByPersonal) {
       setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
       return;
     }
 
-    onSelect(customInput);
+    const duration = endMin - startMin;
+    onSelect(customStart, duration);
     setCustomMode(false);
   };
 
