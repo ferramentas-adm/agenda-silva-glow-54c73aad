@@ -493,7 +493,17 @@ export default function AgendarPage() {
                 <SummaryRow label="Lead" value={`${lead.name} · ${lead.phone}`} />
                 <SummaryRow label="Closer" value={closerName} />
                 <SummaryRow label="Data" value={format(date, "dd/MM/yyyy")} />
-                <SummaryRow label="Horário" value={time} />
+                <SummaryRow
+                  label="Horário"
+                  value={(() => {
+                    const [h, m] = time.split(":").map(Number);
+                    const endTotal = h * 60 + m + durationMinutes;
+                    const eh = Math.floor(endTotal / 60) % 24;
+                    const em = endTotal % 60;
+                    const endStr = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                    return `${time} – ${endStr} (${durationMinutes} min)`;
+                  })()}
+                />
               </div>
 
               {isAdmin && (
