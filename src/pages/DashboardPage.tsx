@@ -162,7 +162,7 @@ export function CalendarContent() {
   const [deleting, setDeleting] = useState(false);
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [rescheduleOffer, setRescheduleOffer] = useState<Agendamento | null>(null);
+  
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -602,7 +602,6 @@ export function CalendarContent() {
       await queryClient.refetchQueries({ queryKey: ["agendamentos", detailAg.scheduled_date], exact: true });
       if (newStatus === "cancelada" || newStatus === "no_show") {
         setDetailAg(null);
-        setRescheduleOffer(updatedAg);
       }
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar status");
@@ -1056,26 +1055,7 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
                         )}
-                        {/* Reagendar leva ao fluxo de novo agendamento (cria nova reunião com status reagendada).
-                            Mutuamente exclusivo com Cancelar/No-show. */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 text-xs border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
-                          disabled={updatingStatus}
-                          onClick={() => {
-                            if (!detailAg) return;
-                            const params = new URLSearchParams({
-                              edit: detailAg.id,
-                              lead_name: detailAg.lead_name,
-                              lead_phone: detailAg.lead_phone,
-                            });
-                            setDetailAg(null);
-                            navigate(`/agendar?${params.toString()}`);
-                          }}
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />Reagendar
-                        </Button>
+                        {/* Botão "Reagendar" removido — gerava duplicidade no DataCrazy. */}
                         {/* Cancelar e No-show:
                             - SDR: vê quando é o criador do agendamento (sdr_responsavel_id ou created_by = user.id)
                             - Closer: vê apenas se for o criador (created_by = user.id)
@@ -1197,42 +1177,7 @@ export function CalendarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule offer dialog */}
-      <AlertDialog open={!!rescheduleOffer} onOpenChange={(open) => { if (!open) setRescheduleOffer(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <RotateCcw className="h-5 w-5 text-blue-400" />
-              Deseja reagendar?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              O agendamento de <strong>{rescheduleOffer?.lead_name}</strong> foi marcado como{" "}
-              <strong>{rescheduleOffer?.status === "no_show" ? "No-show" : "Cancelado"}</strong>.
-              Deseja reagendar uma nova reunião para este lead agora?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Pular</AlertDialogCancel>
-            <AlertDialogAction
-              className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
-              onClick={() => {
-                if (rescheduleOffer) {
-                  const params = new URLSearchParams({
-                    edit: rescheduleOffer.id,
-                    lead_name: rescheduleOffer.lead_name,
-                    lead_phone: rescheduleOffer.lead_phone,
-                  });
-                  navigate(`/agendar?${params.toString()}`);
-                }
-                setRescheduleOffer(null);
-              }}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reagendar agora
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Reschedule offer dialog removido — botão Reagendar foi descontinuado. */}
 
       {/* Justificativa do reagendamento (closer) — janela dedicada similar ao briefing */}
       <Dialog open={viewJustification} onOpenChange={setViewJustification}>
