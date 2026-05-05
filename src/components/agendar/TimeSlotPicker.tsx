@@ -115,7 +115,8 @@ function isCustomTimeConflicting(
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
   useAuth();
   const [customMode, setCustomMode] = useState(false);
-  const [customInput, setCustomInput] = useState("");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
   // Pop-up apenas informativo: nenhum usuário pode forçar agendamento em bloqueio pessoal.
   const [blockedInfo, setBlockedInfo] = useState<string | null>(null);
