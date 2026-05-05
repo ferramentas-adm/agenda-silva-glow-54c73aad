@@ -54,7 +54,8 @@ serve(async (req) => {
       });
     }
 
-    const { closer_id, lead_name, lead_phone, sdr_name, scheduled_date, scheduled_time } = await req.json();
+    const { closer_id, lead_name, lead_phone, sdr_name, scheduled_date, scheduled_time, duration_minutes } = await req.json();
+    const durationMin = Number.isFinite(Number(duration_minutes)) && Number(duration_minutes) > 0 ? Number(duration_minutes) : 60;
 
     if (!closer_id || !lead_name || !scheduled_date || !scheduled_time) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
