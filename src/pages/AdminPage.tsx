@@ -222,6 +222,7 @@ function UsersSection() {
       const data = await invokeEdgeFunction("create-user", { email, full_name: fullName, role });
       
       setGeneratedPassword(data.generated_password);
+      await logAudit("create_user", "user", data?.user_id, { email, full_name: fullName, role });
       toast.success("Usuário criado com sucesso!");
       setFullName(""); setEmail("");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
