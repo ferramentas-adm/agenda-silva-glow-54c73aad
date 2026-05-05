@@ -1439,6 +1439,7 @@ function DayView({
       if (!m.has(key)) m.set(key, b);
     });
     return m;
+  }, [busyBlocks]);
 
   // Map closer blocks by closer+hour
   const blockMap = useMemo(() => {
