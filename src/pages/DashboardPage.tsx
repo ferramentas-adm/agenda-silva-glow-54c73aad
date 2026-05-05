@@ -1389,6 +1389,8 @@ function DayView({
   };
 
   // Group agendamentos by closer+hour — allow MULTIPLE per slot (stacking)
+  // Cards começam no slot do horário inicial e ocupam visualmente todas as
+  // horas cobertas pelo `duration_minutes` (mínimo 60).
   const slotMap = useMemo(() => {
     const m = new Map<string, Agendamento[]>();
     agendamentos.forEach((a) => {
@@ -1401,6 +1403,34 @@ function DayView({
     return m;
   }, [agendamentos]);
 
+  // Slots que estão "cobertos" por um agendamento de duração > 60min
+  // (mas não são o slot inicial). Estes não devem renderizar célula própria.
+  const coveredSet = useMemo(() => {
+    const s = new Set<string>();
+    agendamentos.forEach((a) => {
+      const startHour = parseInt(a.scheduled_time.slice(0, 2), 10);
+      const dur = a.duration_minutes ?? 60;
+      const span = Math.max(1, Math.ceil(dur / 60));
+      for (let i = 1; i < span; i++) {
+        s.add(`${a.closer_id}-${String(startHour + i).padStart(2, "0")}`);
+      }
+    });
+    return s;
+  }, [agendamentos]);
+
+  // Span (em linhas do grid) máximo do slot inicial — usa o maior agendamento
+  const slotSpanMap = useMemo(() => {
+    const m = new Map<string, number>();
+    agendamentos.forEach((a) => {
+      const hourPrefix = a.scheduled_time.slice(0, 2);
+      const key = `${a.closer_id}-${hourPrefix}`;
+      const dur = a.duration_minutes ?? 60;
+      const span = Math.max(1, Math.ceil(dur / 60));
+      m.set(key, Math.max(m.get(key) ?? 1, span));
+    });
+    return m;
+  }, [agendamentos]);
+
   const busyMap = useMemo(() => {
     const m = new Map<string, GoogleBusyBlock>();
     busyBlocks.forEach((b) => {
@@ -1409,7 +1439,6 @@ function DayView({
       if (!m.has(key)) m.set(key, b);
     });
     return m;
-  }, [busyBlocks]);
 
   // Map closer blocks by closer+hour
   const blockMap = useMemo(() => {
