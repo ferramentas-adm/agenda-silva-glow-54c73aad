@@ -327,7 +327,10 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           onClick={() => {
             setCustomMode(!customMode);
             setCustomError(null);
-            if (!customMode) setCustomInput("");
+            if (!customMode) {
+              setCustomStart("");
+              setCustomEnd("");
+            }
           }}
           className={cn(
             "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
