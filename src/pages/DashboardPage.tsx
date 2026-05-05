@@ -1177,42 +1177,7 @@ export function CalendarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule offer dialog */}
-      <AlertDialog open={!!rescheduleOffer} onOpenChange={(open) => { if (!open) setRescheduleOffer(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <RotateCcw className="h-5 w-5 text-blue-400" />
-              Deseja reagendar?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              O agendamento de <strong>{rescheduleOffer?.lead_name}</strong> foi marcado como{" "}
-              <strong>{rescheduleOffer?.status === "no_show" ? "No-show" : "Cancelado"}</strong>.
-              Deseja reagendar uma nova reunião para este lead agora?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Pular</AlertDialogCancel>
-            <AlertDialogAction
-              className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
-              onClick={() => {
-                if (rescheduleOffer) {
-                  const params = new URLSearchParams({
-                    edit: rescheduleOffer.id,
-                    lead_name: rescheduleOffer.lead_name,
-                    lead_phone: rescheduleOffer.lead_phone,
-                  });
-                  navigate(`/agendar?${params.toString()}`);
-                }
-                setRescheduleOffer(null);
-              }}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reagendar agora
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Reschedule offer dialog removido — botão Reagendar foi descontinuado. */}
 
       {/* Justificativa do reagendamento (closer) — janela dedicada similar ao briefing */}
       <Dialog open={viewJustification} onOpenChange={setViewJustification}>
