@@ -172,7 +172,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     // Faturamento do lead é obrigatório em qualquer cenário
     if (!leadRevenue) return false;
     if (!recebimentoValido) return false;
-    if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
+    if (vendeu === "sim") return valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (!explicacaoNaoFechamento.trim()) return false;
@@ -312,6 +312,10 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       // Limpa todos os campos para o próximo preenchimento
       resetAllFields();
       onOpenChange(false);
+
+      if (vendeu === "sim") {
+        window.location.href = "https://sistema.ogruposilva.com.br/vendas";
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao registrar venda");
     }
@@ -372,16 +376,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
           {vendeu === "sim" && (
             <>
-              <div className="space-y-1.5">
-                <Label htmlFor="resumo">Resumo da venda *</Label>
-                <Textarea
-                  id="resumo"
-                  value={resumoVenda}
-                  onChange={(e) => setResumoVenda(e.target.value)}
-                  placeholder="Descreva os detalhes da negociação..."
-                  rows={3}
-                />
-              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="valor">Valor coletado no ato *</Label>
                 <Input
@@ -498,7 +492,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             </>
           )}
 
-          {vendeu && !(vendeu === "nao" && followUp === "nao") && (
+          {vendeu === "nao" && followUp !== "nao" && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
               <div className="space-y-2">
                 <Label>Foi acordado recebimento de valor (sinal/entrada/restante)?</Label>
