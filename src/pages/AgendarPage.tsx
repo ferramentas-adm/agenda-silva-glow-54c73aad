@@ -82,6 +82,7 @@ export default function AgendarPage() {
   const [channelType, setChannelType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
+  const [is5k, setIs5k] = useState(false);
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
