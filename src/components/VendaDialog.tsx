@@ -373,16 +373,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           {vendeu === "sim" && (
             <>
               <div className="space-y-1.5">
-                <Label htmlFor="resumo">Resumo da venda *</Label>
-                <Textarea
-                  id="resumo"
-                  value={resumoVenda}
-                  onChange={(e) => setResumoVenda(e.target.value)}
-                  placeholder="Descreva os detalhes da negociação..."
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-1.5">
                 <Label htmlFor="valor">Valor coletado no ato *</Label>
                 <Input
                   id="valor"
