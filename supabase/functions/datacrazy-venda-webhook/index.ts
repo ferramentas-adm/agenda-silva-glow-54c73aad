@@ -33,7 +33,16 @@ serve(async (req) => {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`DataCrazy venda webhook failed [${response.status}]: ${body}`);
+      console.error(`DataCrazy venda webhook failed [${response.status}]:`, body);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          fallback: true,
+          error: `DataCrazy venda webhook failed [${response.status}]`,
+          details: body,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     return new Response(JSON.stringify({ success: true }), {
@@ -43,9 +52,9 @@ serve(async (req) => {
   } catch (error: unknown) {
     console.error("DataCrazy venda webhook error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ success: false, error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ success: false, fallback: true, error: message }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
