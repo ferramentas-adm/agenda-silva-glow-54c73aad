@@ -312,6 +312,10 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       // Limpa todos os campos para o próximo preenchimento
       resetAllFields();
       onOpenChange(false);
+
+      if (vendeu === "sim") {
+        window.location.href = "https://sistema.ogruposilva.com.br/vendas";
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao registrar venda");
     }
