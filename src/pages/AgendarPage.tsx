@@ -259,6 +259,7 @@ export default function AgendarPage() {
         meeting_reason: resolvedReason,
         // Closer: canal sempre fixado como "Segunda Reunião"
         channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
+        is_5k: is5k,
       } as any).select("id").single();
 
       if (error) throw error;
