@@ -1501,7 +1501,7 @@ function DayView({
                                   5K
                                 </span>
                               )}
-                              <div className={cn("font-semibold truncate pr-5", isCancelled && "line-through", isCompact && "text-[11px]")}>
+                              <div className={cn("font-semibold truncate pr-5", ag.is_5k && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
                                 {ag.lead_name}
                               </div>
                               <div className="flex items-center gap-1 text-[11px] opacity-80">
