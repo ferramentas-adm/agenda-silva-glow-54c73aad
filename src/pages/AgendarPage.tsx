@@ -599,8 +599,8 @@ export default function AgendarPage() {
 
               <div className="flex items-center justify-between rounded-md border border-border p-3">
                 <div className="space-y-0.5">
-                  <label htmlFor="is-5k-toggle" className="text-sm font-medium cursor-pointer">Produto 5K</label>
-                  <p className="text-xs text-muted-foreground">Marque se este agendamento é do Produto 5K.</p>
+                  <label htmlFor="is-5k-toggle" className="text-sm font-medium cursor-pointer">Mentoria 5K</label>
+                  <p className="text-xs text-muted-foreground">Marque se este agendamento é do Mentoria 5K.</p>
                 </div>
                 <Switch id="is-5k-toggle" checked={is5k} onCheckedChange={setIs5k} />
               </div>
