@@ -1,0 +1,1 @@
+ALTER TABLE public.agendamentos ADD COLUMN is_5k boolean NOT NULL DEFAULT false;
