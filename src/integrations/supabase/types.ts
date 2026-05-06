@@ -28,6 +28,7 @@ export type Database = {
           deletion_reason: string | null
           duration_minutes: number
           id: string
+          is_5k: boolean
           lead_name: string
           lead_phone: string
           meet_link: string | null
@@ -53,6 +54,7 @@ export type Database = {
           deletion_reason?: string | null
           duration_minutes?: number
           id?: string
+          is_5k?: boolean
           lead_name: string
           lead_phone: string
           meet_link?: string | null
@@ -78,6 +80,7 @@ export type Database = {
           deletion_reason?: string | null
           duration_minutes?: number
           id?: string
+          is_5k?: boolean
           lead_name?: string
           lead_phone?: string
           meet_link?: string | null

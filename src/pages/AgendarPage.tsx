@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
 
@@ -81,6 +82,7 @@ export default function AgendarPage() {
   const [channelType, setChannelType] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
+  const [is5k, setIs5k] = useState(false);
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
@@ -257,6 +259,7 @@ export default function AgendarPage() {
         meeting_reason: resolvedReason,
         // Closer: canal sempre fixado como "Segunda Reunião"
         channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
+        is_5k: is5k,
       } as any).select("id").single();
 
       if (error) throw error;
@@ -334,6 +337,7 @@ export default function AgendarPage() {
     setChannelType(null);
     setSelectedSdrId(null);
     setBriefingText("");
+    setIs5k(false);
     setSuccess(null);
     setStep("lead");
   };
@@ -591,6 +595,14 @@ export default function AgendarPage() {
                   rows={4}
                 />
                 <p className="text-xs text-muted-foreground">Anotações internas sobre o lead e a reunião.</p>
+              </div>
+
+              <div className="flex items-center justify-between rounded-md border border-border p-3">
+                <div className="space-y-0.5">
+                  <label htmlFor="is-5k-toggle" className="text-sm font-medium cursor-pointer">5K</label>
+                  <p className="text-xs text-muted-foreground">Marque se este agendamento é 5K.</p>
+                </div>
+                <Switch id="is-5k-toggle" checked={is5k} onCheckedChange={setIs5k} />
               </div>
             </>
           )}

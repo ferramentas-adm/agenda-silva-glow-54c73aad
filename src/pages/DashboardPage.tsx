@@ -59,6 +59,7 @@ interface Agendamento {
   briefing_read_by: string | null;
   original_agendamento_id: string | null;
   duration_minutes: number | null;
+  is_5k: boolean | null;
 }
 
 // ─── Status efetivo (apenas visual / contagem) ───────────────────
@@ -200,7 +201,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -962,6 +963,11 @@ export function CalendarContent() {
                       {detailAg.channel_type}
                     </Badge>
                   )}
+                  {detailAg.is_5k && (
+                    <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-500 border-amber-500/40 font-bold">
+                      5K
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -1492,7 +1498,15 @@ function DayView({
                               )}>
                                 B
                               </span>
-                              <div className={cn("font-semibold truncate pr-5", isCancelled && "line-through", isCompact && "text-[11px]")}>
+                              {ag.is_5k && (
+                                <span className={cn(
+                                  "absolute top-0 left-0 rounded-br-md rounded-tl-md px-1.5 py-0.5 font-bold leading-none bg-amber-500/90 text-white",
+                                  isCompact ? "text-[8px]" : "text-[10px]"
+                                )}>
+                                  5K
+                                </span>
+                              )}
+                              <div className={cn("font-semibold truncate pr-5", ag.is_5k && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
                                 {ag.lead_name}
                               </div>
                               <div className="flex items-center gap-1 text-[11px] opacity-80">
