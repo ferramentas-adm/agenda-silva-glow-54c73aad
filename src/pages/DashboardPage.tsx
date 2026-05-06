@@ -1493,6 +1493,14 @@ function DayView({
                               )}>
                                 B
                               </span>
+                              {ag.is_5k && (
+                                <span className={cn(
+                                  "absolute top-0 left-0 rounded-br-md rounded-tl-md px-1.5 py-0.5 font-bold leading-none bg-amber-500/90 text-white",
+                                  isCompact ? "text-[8px]" : "text-[10px]"
+                                )}>
+                                  5K
+                                </span>
+                              )}
                               <div className={cn("font-semibold truncate pr-5", isCancelled && "line-through", isCompact && "text-[11px]")}>
                                 {ag.lead_name}
                               </div>
