@@ -59,6 +59,7 @@ interface Agendamento {
   briefing_read_by: string | null;
   original_agendamento_id: string | null;
   duration_minutes: number | null;
+  is_5k: boolean | null;
 }
 
 // ─── Status efetivo (apenas visual / contagem) ───────────────────
