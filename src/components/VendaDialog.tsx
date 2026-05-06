@@ -172,7 +172,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     // Faturamento do lead é obrigatório em qualquer cenário
     if (!leadRevenue) return false;
     if (!recebimentoValido) return false;
-    if (vendeu === "sim") return resumoVenda.trim().length > 0 && valorValido;
+    if (vendeu === "sim") return valorValido;
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (!explicacaoNaoFechamento.trim()) return false;
