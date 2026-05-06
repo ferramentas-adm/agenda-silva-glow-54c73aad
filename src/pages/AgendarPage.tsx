@@ -337,6 +337,7 @@ export default function AgendarPage() {
     setChannelType(null);
     setSelectedSdrId(null);
     setBriefingText("");
+    setIs5k(false);
     setSuccess(null);
     setStep("lead");
   };
