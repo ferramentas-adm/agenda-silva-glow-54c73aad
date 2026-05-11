@@ -253,6 +253,7 @@ export default function AgendarPage() {
         // Reagendamento (mudou de dia) entra como 'reagendada' (trigger envia "Reagendada").
         status: editId ? "reagendada" : "agendada",
         meet_link: meetLink,
+        google_event_id: googleResult.success ? (googleResult.event_id ?? null) : null,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
