@@ -308,21 +308,29 @@ export default function ReunioesListPage() {
     const oldName = closerMap[ag.closer_id] || "—";
     const newName = closerMap[newCloserId] || "—";
     try {
-      const { data, error } = await supabase
-        .from("agendamentos")
-        .update({ closer_id: newCloserId } as any)
-        .eq("id", ag.id)
-        .select("id");
+      const { data, error } = await supabase.functions.invoke("google-transfer-event", {
+        body: { agendamento_id: ag.id, new_closer_id: newCloserId },
+      });
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Sem permissão para transferir este lead.");
+      if (!data?.success) throw new Error(data?.error || "Falha ao transferir lead");
+      const warnings: string[] = data?.warnings ?? [];
       await logAudit("transfer_lead", "agendamento", ag.id, {
         lead_name: ag.lead_name,
         scheduled_date: ag.scheduled_date,
         scheduled_time: ag.scheduled_time,
         from_closer: oldName,
         to_closer: newName,
+        meet_link_old: ag.meet_link ?? null,
+        meet_link_new: data?.meet_link ?? null,
+        google_warnings: warnings,
       });
-      toast.success(`Lead transferido para ${newName}`);
+      if (warnings.includes("new_closer_not_connected")) {
+        toast.warning(`Lead transferido para ${newName}, mas o novo closer não tem Google Calendar conectado.`);
+      } else if (warnings.includes("create_event_failed")) {
+        toast.warning(`Lead transferido para ${newName}, mas falhou ao criar o evento no Google.`);
+      } else {
+        toast.success(`Lead transferido para ${newName}`);
+      }
       queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao transferir lead");
