@@ -496,7 +496,25 @@ export default function ReunioesListPage() {
                             <Phone className="h-3 w-3" />{ag.lead_phone}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">{closerMap[ag.closer_id] || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {canDelete ? (
+                            <Select
+                              value={ag.closer_id || ""}
+                              onValueChange={(newCloserId) => handleTransferCloser(ag, newCloserId)}
+                            >
+                              <SelectTrigger className="h-8 text-xs glass-input min-w-[140px]">
+                                <SelectValue placeholder="—" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {closers.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            closerMap[ag.closer_id] || "—"
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground">{sdrIdOf(ag) ? (profileMap[sdrIdOf(ag)!] || "—") : "—"}</td>
                         <td className="px-4 py-3">
                           <div>{format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}</div>
