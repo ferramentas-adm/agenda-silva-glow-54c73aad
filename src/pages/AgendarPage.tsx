@@ -361,7 +361,7 @@ export default function AgendarPage() {
     if (result.success && result.meet_link) {
       await supabase
         .from("agendamentos")
-        .update({ meet_link: result.meet_link })
+        .update({ meet_link: result.meet_link, google_event_id: result.event_id ?? null } as any)
         .eq("id", success.agendamentoId);
 
       setSuccess({ ...success, meetLink: result.meet_link, meetError: false });
