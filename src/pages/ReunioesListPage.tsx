@@ -303,6 +303,32 @@ export default function ReunioesListPage() {
     setDeleteReason("");
   };
 
+  const handleTransferCloser = async (ag: any, newCloserId: string) => {
+    if (!newCloserId || newCloserId === ag.closer_id) return;
+    const oldName = closerMap[ag.closer_id] || "—";
+    const newName = closerMap[newCloserId] || "—";
+    try {
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update({ closer_id: newCloserId } as any)
+        .eq("id", ag.id)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Sem permissão para transferir este lead.");
+      await logAudit("transfer_lead", "agendamento", ag.id, {
+        lead_name: ag.lead_name,
+        scheduled_date: ag.scheduled_date,
+        scheduled_time: ag.scheduled_time,
+        from_closer: oldName,
+        to_closer: newName,
+      });
+      toast.success(`Lead transferido para ${newName}`);
+      queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao transferir lead");
+    }
+  };
+
   const paginationPages = useMemo(() => {
     const pages: (number | "ellipsis")[] = [];
     if (totalPages <= 7) {
