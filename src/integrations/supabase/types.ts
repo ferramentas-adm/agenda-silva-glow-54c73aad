@@ -27,6 +27,7 @@ export type Database = {
           deleted_by: string | null
           deletion_reason: string | null
           duration_minutes: number
+          google_event_id: string | null
           id: string
           is_5k: boolean
           lead_name: string
@@ -53,6 +54,7 @@ export type Database = {
           deleted_by?: string | null
           deletion_reason?: string | null
           duration_minutes?: number
+          google_event_id?: string | null
           id?: string
           is_5k?: boolean
           lead_name: string
@@ -79,6 +81,7 @@ export type Database = {
           deleted_by?: string | null
           deletion_reason?: string | null
           duration_minutes?: number
+          google_event_id?: string | null
           id?: string
           is_5k?: boolean
           lead_name?: string

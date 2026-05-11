@@ -253,6 +253,7 @@ export default function AgendarPage() {
         // Reagendamento (mudou de dia) entra como 'reagendada' (trigger envia "Reagendada").
         status: editId ? "reagendada" : "agendada",
         meet_link: meetLink,
+        google_event_id: googleResult.success ? (googleResult.event_id ?? null) : null,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
@@ -360,7 +361,7 @@ export default function AgendarPage() {
     if (result.success && result.meet_link) {
       await supabase
         .from("agendamentos")
-        .update({ meet_link: result.meet_link })
+        .update({ meet_link: result.meet_link, google_event_id: result.event_id ?? null } as any)
         .eq("id", success.agendamentoId);
 
       setSuccess({ ...success, meetLink: result.meet_link, meetError: false });

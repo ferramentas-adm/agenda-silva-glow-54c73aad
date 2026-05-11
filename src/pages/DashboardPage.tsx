@@ -428,27 +428,36 @@ export function CalendarContent() {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
     setTransferring(true);
     try {
-      const { data, error } = await supabase
-        .from("agendamentos")
-        .update({ closer_id: transferTarget } as any)
-        .eq("id", detailAg.id)
-        .select("id");
+      const { data, error } = await supabase.functions.invoke("google-transfer-event", {
+        body: { agendamento_id: detailAg.id, new_closer_id: transferTarget },
+      });
       if (error) throw error;
-      if (!data || data.length === 0) {
-        throw new Error("Você não tem permissão para transferir este lead.");
+      if (!data?.success) {
+        throw new Error(data?.error || "Falha ao transferir lead");
       }
       const oldName = closerMap.get(detailAg.closer_id) || "—";
       const newName = closerMap.get(transferTarget) || "—";
+      const newMeetLink = (data?.meet_link as string | null) ?? null;
+      const warnings: string[] = data?.warnings ?? [];
       await logAudit("transfer_lead", "agendamento", detailAg.id, {
         lead_name: detailAg.lead_name,
         scheduled_date: detailAg.scheduled_date,
         scheduled_time: detailAg.scheduled_time,
         from_closer: oldName,
         to_closer: newName,
+        meet_link_old: detailAg.meet_link ?? null,
+        meet_link_new: newMeetLink,
+        google_warnings: warnings,
       });
-      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: transferTarget }));
-      setDetailAg({ ...detailAg, closer_id: transferTarget });
-      toast.success(`Lead transferido para ${newName}`);
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: transferTarget, meet_link: newMeetLink }));
+      setDetailAg({ ...detailAg, closer_id: transferTarget, meet_link: newMeetLink });
+      if (warnings.includes("new_closer_not_connected")) {
+        toast.warning(`Lead transferido para ${newName}, mas o novo closer não tem Google Calendar conectado.`);
+      } else if (warnings.includes("create_event_failed")) {
+        toast.warning(`Lead transferido para ${newName}, mas falhou ao criar o evento no Google.`);
+      } else {
+        toast.success(`Lead transferido para ${newName}`);
+      }
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
       setTransferOpen(false);
       setTransferTarget("");

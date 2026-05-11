@@ -1,47 +1,49 @@
-## Contexto
+## Objetivo
 
-Hoje, no painel de agendamento:
+Quando gestor/moderador transferir um lead para outro closer (no detalhe do calendário ou na coluna "Closer" da Lista de Reuniões), também mover o evento no Google Calendar:
 
-- **Editar horário** (botão no detalhe do agendamento) só altera o horário **no mesmo dia** — moderador e gestor já têm essa permissão.
-- **Transferir lead para outro closer** já existe e funciona para moderador e gestor.
-- **Mudar a DATA** (reagendar para outro dia) só é possível abrindo `/agendar?edit=<id>`, mas **não há botão na UI** que dispare esse fluxo (o antigo "Reagendar" foi removido para evitar duplicidade no DataCrazy).
-- **Agendar em nome de qualquer closer pelo `/agendar`** já funciona para gestor/moderador (o `CloserSelector` lista todos os closers ativos).
-
-Falta apenas devolver à interface uma forma controlada de **reagendar (mudar de dia)** para moderador e gestor, reaproveitando o fluxo `/agendar?edit=` que já trata corretamente:
-- marca o original como `reagendada`,
-- cria novo registro com `original_agendamento_id` apontando para o original,
-- envia ao DataCrazy o status correto (sem duplicar).
+1. **Apagar** o evento na agenda Google do closer antigo.
+2. **Criar** um novo evento na agenda Google do closer novo (com novo link do Meet).
+3. **Atualizar** `meet_link` e o ID do evento Google no agendamento.
 
 ## Mudanças
 
-### 1. Botão "Reagendar (outro dia)" no detalhe do agendamento
-Arquivo: `src/pages/DashboardPage.tsx`
+### 1. Banco — guardar o ID do evento Google (migration)
+- Adicionar coluna `google_event_id text` em `public.agendamentos` (nullable).
+- Necessária para conseguir deletar o evento na agenda do closer antigo.
+- Sem mudança em RLS.
 
-- Adicionar, abaixo de "Editar horário", um botão **"Reagendar para outro dia"** visível apenas quando `role === 'gestor' || role === 'moderador'`.
-- Ao clicar: navegar para `/agendar?edit=<detailAg.id>&lead_name=<encoded>&lead_phone=<encoded>` (mesmo padrão de URL já consumido pelo AgendarPage).
-- Não duplicar para closers/SDRs — eles continuam com seu fluxo atual (closer reagenda pelo próprio botão "Justificar reagendamento", SDR não reagenda).
+### 2. Persistir o `event_id` ao criar reunião
+- `src/pages/AgendarPage.tsx`: após `createGoogleCalendarEvent` retornar `event_id`, salvar em `agendamentos.google_event_id` junto com o `meet_link` (já é salvo). Vale para fluxo novo e reagendamento.
 
-### 2. Garantir que `AgendarPage` em modo edit funciona para moderador/admin
-Arquivo: `src/pages/AgendarPage.tsx`
+### 3. Nova edge function `google-transfer-event`
+Arquivo: `supabase/functions/google-transfer-event/index.ts`
 
-- Verificação rápida: confirmar que o fluxo de edit (que já existe) preserva `closer_id` selecionável (qualquer closer) e respeita as RLS atuais (moderador/gestor já têm UPDATE em `agendamentos`).
-- Sem mudanças funcionais previstas — só validação.
+Entrada: `{ agendamento_id, new_closer_id }`. 
 
-### 3. Permissão (matriz)
-- A nova ação reutiliza a permissão existente `edit_appointment_time` apenas como gate visual? **Não.** Como o reagendamento de dia é uma ação distinta e mais ampla, vou limitar a visibilidade do botão **diretamente por role** (`gestor`/`moderador`), sem nova chave na matriz, para manter o escopo enxuto. Se quiser controle fino na matriz futuramente, adicionamos depois.
+Fluxo:
+1. Validar JWT do chamador (mesmo padrão das outras functions).
+2. Buscar agendamento (closer antigo, data/hora, lead, `google_event_id`).
+3. Buscar token Google do **novo closer**:
+   - Se conectado: criar evento na agenda dele (reaproveita lógica de `google-create-event`, gerando novo Meet) → guardar `new_event_id` e `new_meet_link`.
+   - Se não conectado: prosseguir sem criar (retorna aviso `new_closer_not_connected`).
+4. Buscar token do **closer antigo** e tentar deletar o evento antigo (`DELETE /calendars/.../events/{event_id}`). Falhas são logadas mas não bloqueiam.
+5. Atualizar `agendamentos`: `closer_id = new`, `meet_link = new_meet_link || null`, `google_event_id = new_event_id || null`. Operação feita com service role para garantir consistência.
+6. Retornar `{ success, meet_link, warnings: [...] }`.
 
-### 4. Auditoria
-- O fluxo de `/agendar?edit=` já registra log de reagendamento (insere novo registro + atualiza original). Sem mudança extra.
+### 4. Frontend — usar a edge function nos dois pontos de transferência
+- `src/pages/DashboardPage.tsx` (`handleTransferLead`): substituir o `update` direto pela chamada `supabase.functions.invoke("google-transfer-event", ...)`. Atualizar cache local com o novo `meet_link`. Manter `logAudit("transfer_lead", ...)`.
+- `src/pages/ReunioesListPage.tsx` (`handleTransferCloser`): mesma substituição. Mostrar `toast.warning` quando vier `new_closer_not_connected`.
+
+### 5. Tratamento de bordas
+- Agendamentos antigos sem `google_event_id`: a function pula o delete (apenas cria o novo se possível).
+- Status já finalizados (`realizada`, `cancelada`, `no_show`, `reagendada`): continuam transferíveis no banco, mas a function pula a parte do Google (não faz sentido criar/deletar evento de algo já encerrado). Retorna aviso.
+- Erros do Google são logados via `console.error` e não revertem a transferência no banco — toast informa o usuário.
+
+### 6. Auditoria
+Adicionar nos detalhes do `transfer_lead` os campos `meet_link_old`, `meet_link_new` e `google_warnings` (se houver), para rastreio.
 
 ## Não está no escopo
-
-- Mudar comportamento de "Editar horário" (continua mesmo-dia).
-- Alterar o fluxo do closer (justificativa de reagendamento).
-- Criar nova permissão na matriz.
-
-## Resultado esperado
-
-Moderador e gestor abrem o detalhe de qualquer agendamento e veem três ações principais:
-1. **Editar horário** (mesmo dia)
-2. **Reagendar para outro dia** (novo botão → abre `/agendar?edit=`)
-3. **Transferir lead para outro closer** (já existente)
+- Notificar o lead sobre o novo link.
+- Atualizar evento no DataCrazy (já sincronizado por triggers existentes).
+- Mexer em transferências feitas por closers (regra atual mantida).
