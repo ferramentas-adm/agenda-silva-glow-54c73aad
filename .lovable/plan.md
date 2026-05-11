@@ -1,35 +1,47 @@
+## Contexto
 
+Hoje, no painel de agendamento:
 
-## Correção do erro "duplicate key" no pop-up Resultado da Reunião
+- **Editar horário** (botão no detalhe do agendamento) só altera o horário **no mesmo dia** — moderador e gestor já têm essa permissão.
+- **Transferir lead para outro closer** já existe e funciona para moderador e gestor.
+- **Mudar a DATA** (reagendar para outro dia) só é possível abrindo `/agendar?edit=<id>`, mas **não há botão na UI** que dispare esse fluxo (o antigo "Reagendar" foi removido para evitar duplicidade no DataCrazy).
+- **Agendar em nome de qualquer closer pelo `/agendar`** já funciona para gestor/moderador (o `CloserSelector` lista todos os closers ativos).
 
-**Problema:** Ao confirmar o pop-up de Vendas, o sistema tenta inserir um novo registro na tabela `vendas`, mas já existe uma venda registrada para aquele agendamento (constraint `UNIQUE` em `agendamento_id`). Isso acontece quando:
-1. O Closer reabre o pop-up de uma reunião já marcada como "Realizada".
-2. Houve duplo-clique no botão Confirmar.
-3. Outro usuário já registrou o resultado.
+Falta apenas devolver à interface uma forma controlada de **reagendar (mudar de dia)** para moderador e gestor, reaproveitando o fluxo `/agendar?edit=` que já trata corretamente:
+- marca o original como `reagendada`,
+- cria novo registro com `original_agendamento_id` apontando para o original,
+- envia ao DataCrazy o status correto (sem duplicar).
 
-## Solução
+## Mudanças
 
-### 1. Trocar `INSERT` por `UPSERT` em `VendaDialog.tsx`
-Substituir `supabase.from("vendas").insert({...})` por `.upsert({...}, { onConflict: "agendamento_id" })`. Assim, se já existir registro para o agendamento, ele será atualizado em vez de gerar erro.
+### 1. Botão "Reagendar (outro dia)" no detalhe do agendamento
+Arquivo: `src/pages/DashboardPage.tsx`
 
-### 2. Pré-carregar dados existentes ao abrir o diálogo
-Quando o pop-up abrir, fazer um `SELECT` em `vendas` filtrando por `agendamento_id`. Se já existir registro, preencher o formulário com os valores atuais (Vendeu, Valor, Motivo, Follow-up, Observações) — permitindo edição em vez de bloquear o usuário.
+- Adicionar, abaixo de "Editar horário", um botão **"Reagendar para outro dia"** visível apenas quando `role === 'gestor' || role === 'moderador'`.
+- Ao clicar: navegar para `/agendar?edit=<detailAg.id>&lead_name=<encoded>&lead_phone=<encoded>` (mesmo padrão de URL já consumido pelo AgendarPage).
+- Não duplicar para closers/SDRs — eles continuam com seu fluxo atual (closer reagenda pelo próprio botão "Justificar reagendamento", SDR não reagenda).
 
-### 3. Indicação visual de edição
-- Se houver venda pré-existente: trocar título do pop-up para "Editar Resultado da Reunião" e exibir um pequeno texto "Atualizando registro existente".
-- Caso contrário: manter "Resultado da Reunião" (criação nova).
+### 2. Garantir que `AgendarPage` em modo edit funciona para moderador/admin
+Arquivo: `src/pages/AgendarPage.tsx`
 
-### 4. Proteção contra duplo-clique
-Manter o `submitting` desabilitando o botão Confirmar (já existe), garantindo que cliques rápidos não gerem chamadas duplicadas.
+- Verificação rápida: confirmar que o fluxo de edit (que já existe) preserva `closer_id` selecionável (qualquer closer) e respeita as RLS atuais (moderador/gestor já têm UPDATE em `agendamentos`).
+- Sem mudanças funcionais previstas — só validação.
 
-### 5. Tratamento de erro amigável
-Caso ainda ocorra qualquer erro de duplicidade (corrida entre abas), exibir toast: "Já existe um resultado registrado para esta reunião. Atualize a página para visualizar."
+### 3. Permissão (matriz)
+- A nova ação reutiliza a permissão existente `edit_appointment_time` apenas como gate visual? **Não.** Como o reagendamento de dia é uma ação distinta e mais ampla, vou limitar a visibilidade do botão **diretamente por role** (`gestor`/`moderador`), sem nova chave na matriz, para manter o escopo enxuto. Se quiser controle fino na matriz futuramente, adicionamos depois.
 
-## Arquivos a serem alterados
-- `src/components/VendaDialog.tsx` — adicionar fetch inicial, trocar insert por upsert, ajustar título dinâmico e mensagem de erro.
+### 4. Auditoria
+- O fluxo de `/agendar?edit=` já registra log de reagendamento (insere novo registro + atualiza original). Sem mudança extra.
+
+## Não está no escopo
+
+- Mudar comportamento de "Editar horário" (continua mesmo-dia).
+- Alterar o fluxo do closer (justificativa de reagendamento).
+- Criar nova permissão na matriz.
 
 ## Resultado esperado
-- Closer pode registrar o resultado uma vez sem erro.
-- Closer pode reabrir e **editar** o resultado de uma reunião já realizada.
-- Nenhum erro técnico aparece para o usuário final.
 
+Moderador e gestor abrem o detalhe de qualquer agendamento e veem três ações principais:
+1. **Editar horário** (mesmo dia)
+2. **Reagendar para outro dia** (novo botão → abre `/agendar?edit=`)
+3. **Transferir lead para outro closer** (já existente)
