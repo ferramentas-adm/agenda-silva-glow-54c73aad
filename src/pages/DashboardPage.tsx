@@ -1009,6 +1009,27 @@ export function CalendarContent() {
                 </Button>
               )}
 
+              {/* Reagendar para outro dia — apenas gestor/moderador.
+                  Reaproveita o fluxo /agendar?edit=, que marca o original como
+                  'reagendada' e cria novo registro vinculado (sem duplicar no DataCrazy). */}
+              {(role === "gestor" || role === "moderador") && detailAg.status !== "reagendada" && detailAg.status !== "realizada" && detailAg.status !== "cancelada" && detailAg.status !== "no_show" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                  onClick={() => {
+                    const params = new URLSearchParams({
+                      edit: detailAg.id,
+                      lead_name: detailAg.lead_name,
+                      lead_phone: detailAg.lead_phone,
+                    });
+                    navigate(`/agendar?${params.toString()}`);
+                  }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />Reagendar para outro dia
+                </Button>
+              )}
+
               {/* Transfer lead — apenas dono atual (closer) ou gestor/moderador */}
               {canTransfer && (
                 <Button
