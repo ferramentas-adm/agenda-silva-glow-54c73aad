@@ -303,6 +303,32 @@ export default function ReunioesListPage() {
     setDeleteReason("");
   };
 
+  const handleTransferCloser = async (ag: any, newCloserId: string) => {
+    if (!newCloserId || newCloserId === ag.closer_id) return;
+    const oldName = closerMap[ag.closer_id] || "—";
+    const newName = closerMap[newCloserId] || "—";
+    try {
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update({ closer_id: newCloserId } as any)
+        .eq("id", ag.id)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Sem permissão para transferir este lead.");
+      await logAudit("transfer_lead", "agendamento", ag.id, {
+        lead_name: ag.lead_name,
+        scheduled_date: ag.scheduled_date,
+        scheduled_time: ag.scheduled_time,
+        from_closer: oldName,
+        to_closer: newName,
+      });
+      toast.success(`Lead transferido para ${newName}`);
+      queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao transferir lead");
+    }
+  };
+
   const paginationPages = useMemo(() => {
     const pages: (number | "ellipsis")[] = [];
     if (totalPages <= 7) {
@@ -496,7 +522,25 @@ export default function ReunioesListPage() {
                             <Phone className="h-3 w-3" />{ag.lead_phone}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">{closerMap[ag.closer_id] || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {canDelete ? (
+                            <Select
+                              value={ag.closer_id || ""}
+                              onValueChange={(newCloserId) => handleTransferCloser(ag, newCloserId)}
+                            >
+                              <SelectTrigger className="h-8 text-xs glass-input min-w-[140px]">
+                                <SelectValue placeholder="—" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {closers.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            closerMap[ag.closer_id] || "—"
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground">{sdrIdOf(ag) ? (profileMap[sdrIdOf(ag)!] || "—") : "—"}</td>
                         <td className="px-4 py-3">
                           <div>{format(new Date(ag.scheduled_date + "T12:00:00"), "dd/MM/yyyy")}</div>
