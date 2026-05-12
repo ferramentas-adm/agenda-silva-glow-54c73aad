@@ -535,10 +535,21 @@ function FollowUpItem({
         <div className="text-xs text-muted-foreground mt-0.5">
           {format(date, "EEEE, dd/MM/yyyy", { locale: ptBR })}
           {row.follow_up_time && ` · ${row.follow_up_time}`}
-          {row.motivo_nao_fechamento && ` · ${row.motivo_nao_fechamento}`}
         </div>
-        {row.observacoes && (
+        {row.motivo_nao_fechamento && (
           <p className="text-xs text-foreground/80 mt-1.5 whitespace-pre-wrap">
+            <span className="font-semibold text-muted-foreground">Motivo: </span>
+            {row.motivo_nao_fechamento}
+          </p>
+        )}
+        {row.explicacao_nao_fechamento && (
+          <p className="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">
+            <span className="font-semibold text-muted-foreground">Explicação: </span>
+            {row.explicacao_nao_fechamento}
+          </p>
+        )}
+        {row.observacoes && (
+          <p className="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">
             <span className="font-semibold text-muted-foreground">Resumo: </span>
             {row.observacoes}
           </p>
