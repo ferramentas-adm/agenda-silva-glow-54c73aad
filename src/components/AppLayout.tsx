@@ -251,6 +251,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <GoogleCalendarBanner />
         </div>
 
+        {/* Reuniões pendentes de fechamento (dias passados) */}
+        <div className="px-4 pt-3">
+          <PendingMeetingsBanner />
+        </div>
+
         <main className="flex-1 px-4 py-6 max-w-7xl mx-auto w-full">
           {children}
         </main>
