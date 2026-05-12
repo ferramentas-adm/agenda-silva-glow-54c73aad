@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, RotateCcw, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Ban, RotateCcw, Loader2, Send, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/services/auditLog";
 import { formatBRDate } from "@/lib/timezone";
-import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
+import { useOverdueMeetings, type OverdueMeeting, addDismissed } from "@/hooks/useOverdueMeetings";
 import { useAuth } from "@/contexts/AuthContext";
 import VendaDialog from "@/components/VendaDialog";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,29 @@ export default function OverdueMeetingsLockOverlay() {
     navigate(`/agendar?edit=${m.id}`);
   };
 
+  const handleDismiss = async (m: OverdueMeeting, side: "sdr" | "closer") => {
+    if (!user?.id) return;
+    addDismissed(side, user.id, m.id);
+    await logAudit(
+      side === "sdr" ? "sdr_dismiss_overdue" : "closer_dismiss_overdue",
+      "agendamento",
+      m.id,
+      {
+        lead_name: m.lead_name,
+        closer_name: m.closer_name ?? "",
+        scheduled_date: m.scheduled_date,
+        scheduled_time: m.scheduled_time,
+      },
+    );
+    toast.success(
+      side === "sdr"
+        ? "Reunião enviada para o Closer atualizar"
+        : "Aguardando atualização do SDR",
+    );
+    await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+    refetch();
+  };
+
   return (
     <>
       <div
@@ -126,16 +149,28 @@ export default function OverdueMeetingsLockOverlay() {
 
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   {isCloserOfThis && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={updatingId === m.id}
-                      onClick={() => setVendaAg(m)}
-                      className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Realizada
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => setVendaAg(m)}
+                        className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Realizada
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => handleDismiss(m, "closer")}
+                        className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
+                      >
+                        <UserCheck className="h-3.5 w-3.5" />
+                        SDR vai atualizar
+                      </Button>
+                    </>
                   )}
                   {isSdrOfThis && (
                     <>
@@ -176,6 +211,16 @@ export default function OverdueMeetingsLockOverlay() {
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         Reagendar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => handleDismiss(m, "sdr")}
+                        className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        Enviar para o Closer
                       </Button>
                     </>
                   )}

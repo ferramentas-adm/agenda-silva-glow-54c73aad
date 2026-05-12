@@ -19,6 +19,34 @@ export interface OverdueMeeting {
 
 const OVERDUE_GRACE_MINUTES = 65;
 
+export const overdueDismissKey = (side: "sdr" | "closer", userId: string) =>
+  `overdue-dismissed-${side}:${userId}`;
+
+export function readDismissed(side: "sdr" | "closer", userId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(overdueDismissKey(side, userId));
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function writeDismissed(side: "sdr" | "closer", userId: string, set: Set<string>) {
+  try {
+    localStorage.setItem(overdueDismissKey(side, userId), JSON.stringify([...set]));
+  } catch {
+    /* noop */
+  }
+}
+
+export function addDismissed(side: "sdr" | "closer", userId: string, id: string) {
+  const s = readDismissed(side, userId);
+  s.add(id);
+  writeDismissed(side, userId, s);
+}
+
 /**
  * "Agora" em minutos desde 1970, considerando o instante real (independe de fuso).
  * Usamos para comparar com o instante BRT da reunião reconstruído via brPartsOf.
@@ -104,9 +132,30 @@ export function useOverdueMeetings() {
 
       // Filtra só as vencidas (>= horário + 1h05)
       const nowMin = nowEpochMin();
-      const overdue = list.filter(
+      let overdue = list.filter(
         (m) => meetingEpochMin(m.scheduled_date, m.scheduled_time) + OVERDUE_GRACE_MINUTES <= nowMin,
       );
+
+      // Aplica dispensa local por lado (SDR/Closer) e auto-limpa ids antigos
+      if (user?.id) {
+        const overdueIds = new Set(overdue.map((m) => m.id));
+        const sdrSet = readDismissed("sdr", user.id);
+        const closerSet = readDismissed("closer", user.id);
+        // Auto-limpeza: mantém só ids que ainda estão vencidos
+        const cleanedSdr = new Set([...sdrSet].filter((id) => overdueIds.has(id)));
+        const cleanedCloser = new Set([...closerSet].filter((id) => overdueIds.has(id)));
+        if (cleanedSdr.size !== sdrSet.size) writeDismissed("sdr", user.id, cleanedSdr);
+        if (cleanedCloser.size !== closerSet.size) writeDismissed("closer", user.id, cleanedCloser);
+
+        overdue = overdue.filter((m) => {
+          const isSdr = m.created_by === user.id;
+          const isCloser = !!myCloserId && m.closer_id === myCloserId;
+          if (isSdr && cleanedSdr.has(m.id)) return false;
+          if (isCloser && cleanedCloser.has(m.id)) return false;
+          return true;
+        });
+      }
+
       if (overdue.length === 0) return [];
 
       // Busca nomes em lote
