@@ -16,6 +16,7 @@ import VendasTab from "@/components/dashboard/VendasTab";
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import CargaClosersTab from "@/components/dashboard/CargaClosersTab";
+import ErrosSDRTab from "@/components/dashboard/ErrosSDRTab";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads" | "carga";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads" | "carga" | "erros_sdr";
 
 const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
@@ -34,6 +35,7 @@ const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "leads", label: "Formulário Bio" },
   { key: "carga", label: "Carga Closers", gestorOnly: true },
+  { key: "erros_sdr", label: "Erros SDR", gestorOnly: true },
 ];
 const ROTATION_INTERVAL = 30000;
 
@@ -575,6 +577,9 @@ export default function DashboardComercialPage() {
         )}
         {activeTabKey === "leads" && <LeadsDashboardContent />}
         {activeTabKey === "carga" && isGestor && <CargaClosersTab />}
+        {activeTabKey === "erros_sdr" && isGestor && (
+          <ErrosSDRTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
+        )}
       </div>
     </AppLayout>
   );
