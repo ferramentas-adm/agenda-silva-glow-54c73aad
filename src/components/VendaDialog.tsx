@@ -58,7 +58,7 @@ const digitsToNumber = (digits: string) => {
   return parseInt(cleaned, 10) / 100;
 };
 
-export default function VendaDialog({ open, onOpenChange, agendamentoId, leadName, onSuccess }: VendaDialogProps) {
+export default function VendaDialog({ open, onOpenChange, agendamentoId, leadName, onSuccess, contentClassName }: VendaDialogProps) {
   const { user } = useAuth();
   const { items: motivosNaoFechamento } = useAppSettingList(
     APP_SETTING_KEYS.motivos_nao_fechamento,
