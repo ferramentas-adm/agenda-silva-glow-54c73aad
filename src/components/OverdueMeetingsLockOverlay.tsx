@@ -149,16 +149,28 @@ export default function OverdueMeetingsLockOverlay() {
 
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   {isCloserOfThis && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={updatingId === m.id}
-                      onClick={() => setVendaAg(m)}
-                      className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Realizada
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => setVendaAg(m)}
+                        className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Realizada
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => handleDismiss(m, "closer")}
+                        className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
+                      >
+                        <UserCheck className="h-3.5 w-3.5" />
+                        SDR vai atualizar
+                      </Button>
+                    </>
                   )}
                   {isSdrOfThis && (
                     <>
@@ -199,6 +211,16 @@ export default function OverdueMeetingsLockOverlay() {
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         Reagendar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => handleDismiss(m, "sdr")}
+                        className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        Enviar para o Closer
                       </Button>
                     </>
                   )}
