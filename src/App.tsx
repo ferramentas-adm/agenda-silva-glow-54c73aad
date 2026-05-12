@@ -19,6 +19,7 @@ const DashboardLeadsPage = lazy(() => import("@/pages/DashboardLeadsPage"));
 const FollowUpsPage = lazy(() => import("@/pages/FollowUpsPage"));
 const PagamentosPage = lazy(() => import("@/pages/PagamentosPage"));
 const VendaPage = lazy(() => import("@/pages/VendaPage"));
+const LeadDetalhesPage = lazy(() => import("@/pages/LeadDetalhesPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -61,6 +62,8 @@ const App = () => (
               <Route path="/follow-ups" element={<ProtectedRoute><FollowUpsPage /></ProtectedRoute>} />
               <Route path="/pagamentos" element={<ProtectedRoute><PagamentosPage /></ProtectedRoute>} />
               <Route path="/venda/:id" element={<ProtectedRoute><VendaPage /></ProtectedRoute>} />
+              <Route path="/lead-detalhes" element={<ProtectedRoute><LeadDetalhesPage /></ProtectedRoute>} />
+              <Route path="/lead-detalhes/:id" element={<ProtectedRoute><LeadDetalhesPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
