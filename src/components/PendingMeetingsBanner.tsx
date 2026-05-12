@@ -47,9 +47,9 @@ export default function PendingMeetingsBanner() {
 
   const bannerText = useMemo(() => {
     if (isManager) {
-      return `${count} reunião${count === 1 ? "" : "ões"} de dias passados ainda em aberto na empresa`;
+      return `${count} reuni${count === 1 ? "ão" : "ões"} de dias passados ainda em aberto na empresa`;
     }
-    return `Você tem ${count} reunião${count === 1 ? "" : "ões"} de dias passados ainda em aberto`;
+    return `Você tem ${count} reuni${count === 1 ? "ão" : "ões"} de dias passados ainda em aberto`;
   }, [count, isManager]);
 
   const handleResolve = async (m: PendingWithMeta, newStatus: ResolveStatus) => {
