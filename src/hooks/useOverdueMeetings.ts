@@ -88,7 +88,7 @@ export function useOverdueMeetings() {
     queryFn: async () => {
       let q = supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at")
         .is("deleted_at", null)
         .in("status", ["agendada", "confirmada"])
         .gte("scheduled_date", yesterday)
@@ -110,22 +110,14 @@ export function useOverdueMeetings() {
         (m) => meetingEpochMin(m.scheduled_date, m.scheduled_time) + OVERDUE_GRACE_MINUTES <= nowMin,
       );
 
-      // Aplica dispensa local por lado (SDR/Closer) e auto-limpa ids antigos
+      // Filtra repasses por lado: se meu lado já foi marcado,
+      // a reunião some do MEU overlay. O outro lado continua travado.
       if (user?.id) {
-        const overdueIds = new Set(overdue.map((m) => m.id));
-        const sdrSet = readDismissed("sdr", user.id);
-        const closerSet = readDismissed("closer", user.id);
-        // Auto-limpeza: mantém só ids que ainda estão vencidos
-        const cleanedSdr = new Set([...sdrSet].filter((id) => overdueIds.has(id)));
-        const cleanedCloser = new Set([...closerSet].filter((id) => overdueIds.has(id)));
-        if (cleanedSdr.size !== sdrSet.size) writeDismissed("sdr", user.id, cleanedSdr);
-        if (cleanedCloser.size !== closerSet.size) writeDismissed("closer", user.id, cleanedCloser);
-
         overdue = overdue.filter((m) => {
           const isSdr = m.created_by === user.id;
           const isCloser = !!myCloserId && m.closer_id === myCloserId;
-          if (isSdr && cleanedSdr.has(m.id)) return false;
-          if (isCloser && cleanedCloser.has(m.id)) return false;
+          if (isSdr && m.sdr_handoff_at) return false;
+          if (isCloser && m.closer_handoff_at) return false;
           return true;
         });
       }
