@@ -1,58 +1,62 @@
-## Faixa de pendências de status — reuniões em aberto de dias passados
+## Trava de tela para reuniões não atualizadas
 
-Lembrete persistente para que ninguém termine o dia (ou comece o seguinte) com reuniões antigas ainda em `agendada` ou `confirmada`.
+### Regra
+Uma reunião está **vencida e exige ação** quando, **agora (BRT) ≥ scheduled_date + scheduled_time + 1h05**, e o status ainda é `agendada` ou `confirmada`, e `deleted_at IS NULL`.
 
-### Regra de pendência
+Status que liberam: `realizada`, `no_show`, `cancelada`, **`reagendada`**.
 
-Reunião está **pendente** quando:
-- `scheduled_date < hoje` (no fuso America/Sao_Paulo), e
-- `status` ∈ (`agendada`, `confirmada`), e
-- `deleted_at IS NULL`.
+### Quem trava
+Apenas as duas pessoas envolvidas naquela reunião:
+- **SDR criador** (`created_by = auth.uid()`)
+- **Closer** (`closer_id` casa com `closers.email = auth.email()`)
 
-### Quem vê o quê
+Gestor, Moderador e demais usuários **não** são travados (continuam vendo só o banner já existente).
 
-| Papel | Escopo |
-|---|---|
-| **SDR** | Pendências cujo `created_by = SDR logado` |
-| **Closer** | Pendências cujo `closer_id` corresponde ao closer do usuário (via `closers.email = auth.email()`) |
-| **Gestor / Moderador** | **Todas** as pendências (visão agregada da empresa) |
+Quando qualquer um dos dois (SDR ou Closer) atualizar o status, a trava cai para ambos automaticamente.
 
-### UX da faixa
-
-- Componente novo `PendingMeetingsBanner` exibido no topo do `AppLayout` (aparece em todas as páginas internas).
-- Cor vermelha/destrutiva, não dispensável (sem botão "fechar"), some sozinha quando zera.
-- Texto:
-  - SDR/Closer: *"Você tem N reunião(ões) de dias passados ainda em aberto. Resolva agora."*
-  - Gestor/Moderador: *"N reuniões de dias passados ainda em aberto na empresa. Ver lista."*
-- Clique abre um **diálogo (`Dialog`)** com lista das pendências:
-  - Colunas: data, hora, lead, closer, SDR criador, status atual, ação rápida.
-  - Para SDR/Closer: ação rápida com botões para mudar status (`Realizada` / `No-show` / `Cancelada`) inline (closer já tem permissão; SDR usa as mesmas regras de RLS atuais).
-  - Para Gestor/Moderador: lista agrupada por closer, mostrando contagem por pessoa, com link "Ver no calendário do dia X" que navega para `/dashboard?date=...`.
+### UX
+Novo componente `OverdueMeetingsLockOverlay` montado no `AppLayout`, acima de tudo:
+- Se houver ≥1 reunião vencida no escopo do usuário, renderiza um **overlay full-screen bloqueante** (`fixed inset-0 z-[100]`, `bg-background/95 backdrop-blur`), **sem botão fechar, sem ESC, sem clique fora**.
+- Conteúdo:
+  - Título destrutivo: *"Atualize as reuniões vencidas para continuar"*.
+  - Texto explicativo curto com a regra (1h05 após o horário agendado).
+  - Lista das reuniões pendentes (data, hora, lead, papel do outro lado).
+  - Botões inline por reunião: **Realizada**, **No-show**, **Cancelada**, **Reagendar**.
+    - "Realizada" abre o `VendaDialog` já existente.
+    - "Cancelada" pede justificativa (mesmo padrão de `DashboardPage`).
+    - "No-show" atualiza direto.
+    - "Reagendar" leva para o fluxo de reagendamento existente (mesma rota usada hoje).
+  - Cada ação registra `logAudit("update_status", ...)`.
+- Overlay desaparece sozinho quando `count === 0`.
 
 ### Detalhes técnicos
 
-**Novo hook** `src/hooks/usePendingMeetings.ts`:
-- `useQuery` que busca `agendamentos` com filtro acima.
-- Aplica escopo conforme `role` do `useAuth` + `myCloserId` (mesmo padrão usado em `DashboardPage`).
-- `refetchInterval: 5 min`, `staleTime: 2 min`.
-- Retorna `{ pendings: Agendamento[], count, byCloser: Map<closerId, count> }` (último só usado pelo gestor).
+**Novo hook** `src/hooks/useOverdueMeetings.ts`:
+- `useQuery` em `agendamentos`, filtros: `deleted_at IS NULL`, `status IN ('agendada','confirmada')`, `scheduled_date >= ontem` (cobre virada de dia em BRT).
+- Escopo por papel:
+  - `sdr` → `created_by = user.id`
+  - `closer` → `closer_id = myCloserId`
+  - Usuário com SDR+Closer (caso Vick) → `or(created_by.eq.<id>, closer_id.eq.<myCloserId>)`
+  - Gestor / Moderador → lista vazia (não trava)
+- Filtra no client mantendo só as cuja `scheduled_date + scheduled_time + 1h05` (em BRT) já passou — usa helpers de `src/lib/timezone.ts`.
+- `refetchInterval: 60_000` + revalida em `visibilitychange`.
+- Realtime opcional: subscribe em `postgres_changes` na tabela `agendamentos`.
 
-**Novo componente** `src/components/PendingMeetingsBanner.tsx`:
-- Usa o hook acima.
-- Não renderiza nada se `count === 0`.
-- Renderiza faixa + dialog com a lista.
+**Cálculo do "vencida"**:
+- Monta string `${scheduled_date}T${scheduled_time}:00` interpretada em BRT, soma 65 min, compara com `brPartsOf(new Date())`. Sem `Date.parse` direto.
+
+**Novo componente** `src/components/OverdueMeetingsLockOverlay.tsx`:
+- Usa o hook + `VendaDialog` + diálogo de justificativa para cancelamento.
+- `Dialog` shadcn com `onOpenChange` no-op, sem `DialogClose`, mantém aberto enquanto `count > 0`.
 
 **Integração** em `src/components/AppLayout.tsx`:
-- Importa e renderiza `<PendingMeetingsBanner />` logo abaixo do header e acima do `<Outlet />` / `children`.
+- Renderiza `<OverdueMeetingsLockOverlay />` no topo do JSX, irmão do `<aside>`, cobrindo sidebar e conteúdo.
+- Login / reset / force-change-password não usam `AppLayout`, então já estão fora.
 
-**Fuso**: usar `formatBRDate(new Date())` de `src/lib/timezone.ts` para obter "hoje" em `America/Sao_Paulo` e comparar com `scheduled_date` (`YYYY-MM-DD`). Sem `new Date().toISOString().slice(0,10)`.
+**Sem mudanças de banco**: RLS atual já permite SDR criador e Closer atualizarem status. Sem migração.
 
-**Permissões**: as RLS atuais já permitem que cada papel veja/atualize o que precisa. Sem mudança no banco.
-
-**Auditoria**: ações de mudança de status pelo dialog usam o mesmo `logAudit("update_status", ...)` já usado em `DashboardPage`, para registrar quem resolveu a pendência.
-
-### Não inclui (escopo fechado)
-
-- Sem cron / e-mail / push (pode ser fase 2).
-- Sem auto-marcar como `no_show`.
-- Sem modal bloqueante no login (apenas faixa persistente, suficiente para o que o usuário pediu).
+### Fora de escopo
+- Notificação push / email.
+- Auto-marcar como no-show.
+- Travar gestor/moderador.
+- Reuniões de dias anteriores ao de ontem (continuam só no banner `PendingMeetingsBanner`).
