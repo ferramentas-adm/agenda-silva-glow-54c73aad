@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/services/auditLog";
 import { formatBRDate } from "@/lib/timezone";
-import { useOverdueMeetings, type OverdueMeeting, addDismissed } from "@/hooks/useOverdueMeetings";
+import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
 import { useAuth } from "@/contexts/AuthContext";
 import VendaDialog from "@/components/VendaDialog";
 import { Button } from "@/components/ui/button";
