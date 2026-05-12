@@ -38,7 +38,7 @@ export default function PendingMeetingsBanner() {
   const { role } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { count, pendings, byCloser, refetch } = usePendingMeetings();
+  const { count, pendings, byCloser, bySdr, refetch } = usePendingMeetings();
   const [open, setOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -136,6 +136,26 @@ export default function PendingMeetingsBanner() {
                     className="text-xs border-destructive/30"
                   >
                     {c.name}: <span className="ml-1 font-bold text-destructive">{c.count}</span>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Resumo por SDR (apenas gestor/moderador) */}
+          {isManager && bySdr.length > 0 && (
+            <div className="border border-primary/10 rounded-lg p-3 bg-card">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">
+                Pendências por SDR
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {bySdr.map((s) => (
+                  <Badge
+                    key={s.sdr_id}
+                    variant="outline"
+                    className="text-xs border-destructive/30"
+                  >
+                    {s.name}: <span className="ml-1 font-bold text-destructive">{s.count}</span>
                   </Badge>
                 ))}
               </div>
