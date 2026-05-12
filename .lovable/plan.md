@@ -1,43 +1,54 @@
-## Mudanças (aditivas, sem risco para produção)
+## Objetivo
 
-### 1. Botão "Enviar para o Closer" no overlay (lado SDR)
+Quando um lado clica em "Enviar para o Closer" ou "SDR vai atualizar", a tela do outro lado precisa travar **na hora**. E cada reunião só pode ser repassada **uma única vez** — quem recebeu não pode devolver.
 
-Em `src/components/OverdueMeetingsLockOverlay.tsx`, no bloco visível quando `isSdrOfThis`, adicionar botão **"Enviar para o Closer"** (ícone `Send`) ao lado de No-show / Cancelada / Reagendar.
+## Por que hoje não funciona
 
-Comportamento:
-- Não chama API. Adiciona `m.id` num `Set` salvo em `localStorage` na chave `overdue-dismissed-sdr:{user.id}`.
-- Dispara `refetch()` do hook → reunião some do overlay para esse SDR.
-- Toast: "Reunião enviada para o Closer atualizar".
-- `logAudit("sdr_dismiss_overdue", "agendamento", m.id, { lead_name, closer_name })`.
+Os botões salvam só em `localStorage` do próprio usuário. O outro lado só descobre via polling de 60s (e em alguns casos nunca trava se a aba está em background). Solução: mover a dispensa para o banco, com realtime.
 
-### 2. Botão "SDR vai atualizar" no overlay (lado Closer)
+## Mudanças
 
-No bloco visível quando `isCloserOfThis`, adicionar botão **"SDR vai atualizar"** (ícone `UserCheck`) ao lado de Realizada.
+### 1. Banco — duas colunas em `agendamentos` (aditivo, nullable)
 
-Comportamento simétrico:
-- Adiciona `m.id` em `localStorage` chave `overdue-dismissed-closer:{user.id}`.
-- `refetch()` → some do overlay para esse Closer.
-- Toast: "Aguardando atualização do SDR".
-- `logAudit("closer_dismiss_overdue", ...)`.
+```sql
+ALTER TABLE public.agendamentos
+  ADD COLUMN sdr_handoff_at    timestamptz,
+  ADD COLUMN closer_handoff_at timestamptz;
+```
 
-### 3. Filtro local no `useOverdueMeetings`
+Sem default, sem trigger, sem alteração de RLS. Realtime já está ativo na tabela.
 
-Em `src/hooks/useOverdueMeetings.ts`, depois de calcular `overdue`:
-- Ler os dois sets do `localStorage`.
-- Remover ids que estejam no set correspondente ao papel do usuário atual.
-- Após filtrar, regravar o set mantendo só ids que ainda existem em `overdue` (auto-limpeza — quando o outro lado finalmente atualiza o status no banco, o id some daqui também).
+### 2. Regra de envio único
 
-### 4. Aba "Em acompanhamento" — mostrar Motivo e Explicação
+- SDR só vê "Enviar para o Closer" se `sdr_handoff_at IS NULL` **e** `closer_handoff_at IS NULL`.
+- Closer só vê "SDR vai atualizar" se `closer_handoff_at IS NULL` **e** `sdr_handoff_at IS NULL`.
+- Quem recebeu o handoff continua com os botões reais (Realizada / No-show / Cancelada / Reagendar) e só destrava mudando o status no banco.
 
-Em `src/pages/FollowUpsPage.tsx`, na lista de follow-ups (`vendeu = false` AND `follow_up = true`), além do "Resumo:" já existente, exibir quando preenchidos:
-- **Motivo:** `motivo_nao_fechamento`
-- **Explicação:** `explicacao_nao_fechamento`
+### 3. Filtro no `useOverdueMeetings`
 
-Mesmo padrão visual do `NaoAcompanhadosPanel` (label `font-semibold text-muted-foreground`, `whitespace-pre-wrap`).
+- Incluir `sdr_handoff_at` e `closer_handoff_at` no select.
+- Substituir o filtro local por `localStorage` por:
+  - Sou SDR (`m.created_by === user.id`) e `sdr_handoff_at` setado → some do meu overlay.
+  - Sou Closer (`m.closer_id === myCloserId`) e `closer_handoff_at` setado → some do meu overlay.
+- Remover helpers `addDismissed/readDismissed/writeDismissed/overdueDismissKey` e seus usos.
 
-## Impacto em produção
+### 4. `OverdueMeetingsLockOverlay`
 
-- Sem migração de banco, sem RLS, sem edge function, sem webhook.
-- Nenhum botão ou fluxo existente é alterado — só somam dois botões novos.
-- Quem não clicar neles vê o sistema exatamente como hoje.
-- Pior caso: localStorage não funciona → botões viram no-op visual, nada quebra.
+- `handleDismiss` passa a fazer `UPDATE agendamentos SET sdr_handoff_at = now()` (ou `closer_handoff_at = now()`). RLS atual já permite SDR criador e Closer responsável.
+- Mantém `logAudit` e toast atuais.
+- Renderização condicional dos botões de envio conforme as duas colunas.
+- Realtime existente (`overdue-meetings-realtime` escutando UPDATE em `agendamentos`) já invalida o cache do outro lado em <1s.
+
+## Por que não quebra nada em produção
+
+- Migração apenas adiciona duas colunas nullable. Nenhum INSERT existente precisa ser alterado.
+- Nenhuma trigger existente lê essas colunas. As triggers `notify_status_change`, `notify_crm_sync`, `notify_status_change_webhook` só disparam em mudança de `status` ou `deleted_at` — UPDATEs de handoff não vão acionar webhook nem CRM sync.
+- RLS de UPDATE em `agendamentos` não muda.
+- Botões existentes (Realizada / No-show / Cancelada / Reagendar) ficam intactos.
+- Pior caso (banco lento): o botão demora alguns ms para responder; nada quebra.
+
+## Arquivos
+
+- **Migração**: `agendamentos.sdr_handoff_at`, `agendamentos.closer_handoff_at`.
+- `src/hooks/useOverdueMeetings.ts`: incluir colunas no select; trocar filtro localStorage por filtro nas colunas; remover helpers.
+- `src/components/OverdueMeetingsLockOverlay.tsx`: `handleDismiss` faz UPDATE no banco; renderização condicional dos botões.
