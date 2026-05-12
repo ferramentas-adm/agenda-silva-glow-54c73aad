@@ -241,6 +241,20 @@ export default function FollowUpsPage() {
           </div>
         </header>
 
+        {isGestor && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList>
+              <TabsTrigger value="em-acompanhamento">Em acompanhamento</TabsTrigger>
+              <TabsTrigger value="nao-acompanhados">Não acompanhados</TabsTrigger>
+            </TabsList>
+            <TabsContent value="nao-acompanhados" className="mt-4">
+              <NaoAcompanhadosPanel />
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {(!isGestor || activeTab === "em-acompanhamento") && (
+          <>
         {/* Tarefas avulsas */}
         <TasksSection />
 
