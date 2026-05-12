@@ -330,10 +330,14 @@ export function CalendarContent() {
   // Status válidos para o "Total" da barra superior
   const TOTAL_STATUSES = ["agendada", "confirmada", "realizada", "cancelada", "no_show", "reagendada"];
 
-  // Métricas para Admin / Moderador / SDR — baseadas em todos os agendamentos do dia (filtrados por closer)
+  // Total SDRs (Admin/Mod/SDR view): agendamentos do dia criados por usuários com role 'sdr'
   const totalSdrCount = useMemo(
-    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status)).length,
-    [filtered]
+    () => filtered.filter((a) => {
+      if (!TOTAL_STATUSES.includes(a.status)) return false;
+      if (!a.created_by) return false;
+      return userRolesMap.get(a.created_by) === "sdr";
+    }).length,
+    [filtered, userRolesMap]
   );
 
   // Status counts gerais (admin/mod/sdr)
@@ -347,13 +351,22 @@ export function CalendarContent() {
     [filtered]
   );
 
-  // Total Closers (Admin/Mod/SDR view): reuniões REALIZADAS cujo created_by tem role 'closer'
+  // Total Closers (Admin/Mod/SDR view): TODAS as reuniões do dia cujo created_by tem role 'closer'
   const closerCreatedCount = useMemo(
+    () => filtered.filter((a) => {
+      if (!TOTAL_STATUSES.includes(a.status)) return false;
+      if (!a.created_by) return false;
+      return userRolesMap.get(a.created_by) === "closer";
+    }).length,
+    [filtered, userRolesMap]
+  );
+
+  // Closer Realizada: somente reuniões realizadas criadas por closer
+  const closerRealizadaCount = useMemo(
     () => filtered.filter((a) => {
       if (a.status !== "realizada") return false;
       if (!a.created_by) return false;
-      const creatorRole = userRolesMap.get(a.created_by);
-      return creatorRole === "closer";
+      return userRolesMap.get(a.created_by) === "closer";
     }).length,
     [filtered, userRolesMap]
   );
