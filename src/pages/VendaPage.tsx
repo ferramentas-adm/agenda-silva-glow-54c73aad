@@ -1,7 +1,6 @@
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import VendaDialog from "@/components/VendaDialog";
-import AppLayout from "@/components/AppLayout";
 
 export default function VendaPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,10 +22,10 @@ export default function VendaPage() {
   }
 
   return (
-    <AppLayout>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-2">Registrar resultado</h1>
-        <p className="text-muted-foreground mb-6">Lead: {leadName}</p>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-2xl font-bold mb-2">Registrar resultado da reunião</h1>
+        <p className="text-muted-foreground mb-6">Lead: <strong>{leadName}</strong></p>
         <VendaDialog
           open={true}
           onOpenChange={(o) => { if (!o) goBack(); }}
@@ -35,6 +34,6 @@ export default function VendaPage() {
           onSuccess={goBack}
         />
       </div>
-    </AppLayout>
+    </div>
   );
 }
