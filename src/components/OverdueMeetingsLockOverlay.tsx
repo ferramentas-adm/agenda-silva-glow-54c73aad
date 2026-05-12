@@ -266,6 +266,7 @@ export default function OverdueMeetingsLockOverlay() {
 
       {vendaAg && (
         <VendaDialog
+          contentClassName="z-[110]"
           open={!!vendaAg}
           onOpenChange={(o) => !o && setVendaAg(null)}
           agendamentoId={vendaAg.id}

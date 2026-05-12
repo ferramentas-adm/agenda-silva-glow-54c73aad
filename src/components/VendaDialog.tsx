@@ -29,6 +29,7 @@ interface VendaDialogProps {
   agendamentoId: string;
   leadName: string;
   onSuccess: () => void;
+  contentClassName?: string;
 }
 
 const LEAD_REVENUE_OPTIONS = [
@@ -57,7 +58,7 @@ const digitsToNumber = (digits: string) => {
   return parseInt(cleaned, 10) / 100;
 };
 
-export default function VendaDialog({ open, onOpenChange, agendamentoId, leadName, onSuccess }: VendaDialogProps) {
+export default function VendaDialog({ open, onOpenChange, agendamentoId, leadName, onSuccess, contentClassName }: VendaDialogProps) {
   const { user } = useAuth();
   const { items: motivosNaoFechamento } = useAppSettingList(
     APP_SETTING_KEYS.motivos_nao_fechamento,
@@ -324,7 +325,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`sm:max-w-md max-h-[90vh] overflow-y-auto ${contentClassName ?? ""}`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-emerald-500" />
