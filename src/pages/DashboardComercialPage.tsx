@@ -82,7 +82,12 @@ function saveVisibleTabs(userId: string | null | undefined, tabs: Set<TabKey>) {
 // ─── Main Page ───────────────────────────────────────────────────
 export default function DashboardComercialPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isGestor = role === "gestor";
+  const allowedTabs = useMemo(
+    () => TABS.filter((t) => !t.gestorOnly || isGestor),
+    [isGestor],
+  );
 
   const [visibleTabs, setVisibleTabs] = useState<Set<TabKey>>(() => loadVisibleTabs(user?.id));
   const [activeTabKey, setActiveTabKey] = useState<TabKey>("metricas");
