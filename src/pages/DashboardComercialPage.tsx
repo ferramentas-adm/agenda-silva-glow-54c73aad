@@ -15,6 +15,7 @@ import { LeadsDashboardContent } from "@/pages/DashboardLeadsPage";
 import VendasTab from "@/components/dashboard/VendasTab";
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
+import CargaClosersTab from "@/components/dashboard/CargaClosersTab";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
