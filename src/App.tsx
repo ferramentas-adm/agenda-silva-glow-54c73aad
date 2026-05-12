@@ -18,6 +18,7 @@ const DashboardComercialPage = lazy(() => import("@/pages/DashboardComercialPage
 const DashboardLeadsPage = lazy(() => import("@/pages/DashboardLeadsPage"));
 const FollowUpsPage = lazy(() => import("@/pages/FollowUpsPage"));
 const PagamentosPage = lazy(() => import("@/pages/PagamentosPage"));
+const VendaPage = lazy(() => import("@/pages/VendaPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/reunioes" element={<ProtectedRoute><ReunioesListPage /></ProtectedRoute>} />
               <Route path="/follow-ups" element={<ProtectedRoute><FollowUpsPage /></ProtectedRoute>} />
               <Route path="/pagamentos" element={<ProtectedRoute><PagamentosPage /></ProtectedRoute>} />
+              <Route path="/venda/:id" element={<ProtectedRoute><VendaPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

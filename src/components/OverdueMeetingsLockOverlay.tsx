@@ -9,7 +9,7 @@ import { logAudit } from "@/services/auditLog";
 import { formatBRDate } from "@/lib/timezone";
 import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
 import { useAuth } from "@/contexts/AuthContext";
-import VendaDialog from "@/components/VendaDialog";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ export default function OverdueMeetingsLockOverlay() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [vendaAg, setVendaAg] = useState<OverdueMeeting | null>(null);
+  
 
   if (count === 0) return null;
 
@@ -173,7 +173,7 @@ export default function OverdueMeetingsLockOverlay() {
                         size="sm"
                         variant="outline"
                         disabled={updatingId === m.id}
-                        onClick={() => setVendaAg(m)}
+                        onClick={() => navigate(`/venda/${m.id}?lead=${encodeURIComponent(m.lead_name)}`)}
                         className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -264,22 +264,6 @@ export default function OverdueMeetingsLockOverlay() {
         </div>
       </div>
 
-      {vendaAg && (
-        <VendaDialog
-          contentClassName="z-[110]"
-          open={!!vendaAg}
-          onOpenChange={(o) => !o && setVendaAg(null)}
-          agendamentoId={vendaAg.id}
-          leadName={vendaAg.lead_name}
-          onSuccess={async () => {
-            setVendaAg(null);
-            await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-            await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-            await queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });
-            refetch();
-          }}
-        />
-      )}
     </>
   );
 }
