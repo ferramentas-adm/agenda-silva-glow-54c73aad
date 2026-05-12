@@ -9,6 +9,7 @@ import logo from "@/assets/logo.png";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 import CloserBlockDialog from "@/components/CloserBlockDialog";
 import NotificationBell from "@/components/NotificationBell";
+import PendingMeetingsBanner from "@/components/PendingMeetingsBanner";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/useTheme";
