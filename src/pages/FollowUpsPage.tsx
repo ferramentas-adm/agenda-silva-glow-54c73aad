@@ -36,6 +36,8 @@ import { logAudit } from "@/services/auditLog";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import TasksSection from "@/components/tasks/TasksSection";
 import { useCan } from "@/hooks/usePermissions";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import NaoAcompanhadosPanel from "@/components/NaoAcompanhadosPanel";
 
 interface FollowUpRow {
   id: string;
