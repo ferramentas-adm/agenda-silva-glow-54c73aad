@@ -574,6 +574,7 @@ export default function DashboardComercialPage() {
           />
         )}
         {activeTabKey === "leads" && <LeadsDashboardContent />}
+        {activeTabKey === "carga" && isGestor && <CargaClosersTab />}
       </div>
     </AppLayout>
   );
