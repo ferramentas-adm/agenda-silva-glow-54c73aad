@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, RotateCcw, Loader2, Send, UserCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Ban, RotateCcw, Loader2, Send, UserCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -129,6 +129,17 @@ export default function OverdueMeetingsLockOverlay() {
                   Defina o desfecho de cada uma abaixo — a tela libera assim que todas estiverem resolvidas.
                 </p>
               </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate("/lead-detalhes")}
+                className="h-8 text-xs gap-1"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Ver detalhes do cliente
+              </Button>
             </div>
           </div>
 
