@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/services/auditLog";
 import { formatBRDate } from "@/lib/timezone";
 import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
+import { useAuth } from "@/contexts/AuthContext";
 import VendaDialog from "@/components/VendaDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,8 @@ const STATUS_LABEL: Record<string, string> = {
 type DirectStatus = "no_show" | "cancelada";
 
 export default function OverdueMeetingsLockOverlay() {
-  const { overdue, count, refetch } = useOverdueMeetings();
+  const { overdue, count, myCloserId, refetch } = useOverdueMeetings();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -90,7 +92,10 @@ export default function OverdueMeetingsLockOverlay() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {overdue.map((m) => (
+            {overdue.map((m) => {
+              const isSdrOfThis = !!user && m.created_by === user.id;
+              const isCloserOfThis = !!myCloserId && m.closer_id === myCloserId;
+              return (
               <div
                 key={m.id}
                 className="rounded-lg border border-destructive/20 bg-background p-4"
@@ -120,57 +125,69 @@ export default function OverdueMeetingsLockOverlay() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={updatingId === m.id}
-                    onClick={() => setVendaAg(m)}
-                    className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Realizada
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={updatingId === m.id}
-                    onClick={() => handleDirect(m, "no_show")}
-                    className="h-8 text-xs gap-1 text-orange-500 hover:bg-orange-500/10 border-orange-500/30"
-                  >
-                    {updatingId === m.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Ban className="h-3.5 w-3.5" />
-                    )}
-                    No-show
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={updatingId === m.id}
-                    onClick={() => handleDirect(m, "cancelada")}
-                    className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
-                  >
-                    {updatingId === m.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <XCircle className="h-3.5 w-3.5" />
-                    )}
-                    Cancelada
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={updatingId === m.id}
-                    onClick={() => handleReagendar(m)}
-                    className="h-8 text-xs gap-1 text-blue-400 hover:bg-blue-400/10 border-blue-400/30"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Reagendar
-                  </Button>
+                  {isCloserOfThis && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={updatingId === m.id}
+                      onClick={() => setVendaAg(m)}
+                      className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Realizada
+                    </Button>
+                  )}
+                  {isSdrOfThis && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => handleDirect(m, "no_show")}
+                        className="h-8 text-xs gap-1 text-orange-500 hover:bg-orange-500/10 border-orange-500/30"
+                      >
+                        {updatingId === m.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Ban className="h-3.5 w-3.5" />
+                        )}
+                        No-show
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => handleDirect(m, "cancelada")}
+                        className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
+                      >
+                        {updatingId === m.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5" />
+                        )}
+                        Cancelada
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updatingId === m.id}
+                        onClick={() => handleReagendar(m)}
+                        className="h-8 text-xs gap-1 text-blue-400 hover:bg-blue-400/10 border-blue-400/30"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Reagendar
+                      </Button>
+                    </>
+                  )}
+                  {!isSdrOfThis && !isCloserOfThis && (
+                    <p className="text-xs text-muted-foreground italic">
+                      Aguardando ação do SDR ou Closer responsável.
+                    </p>
+                  )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="px-4 py-3 border-t border-destructive/20 text-xs text-muted-foreground">
