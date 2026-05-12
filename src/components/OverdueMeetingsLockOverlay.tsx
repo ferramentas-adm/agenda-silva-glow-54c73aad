@@ -233,16 +233,18 @@ export default function OverdueMeetingsLockOverlay() {
                         <RotateCcw className="h-3.5 w-3.5" />
                         Reagendar
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={updatingId === m.id}
-                        onClick={() => handleDismiss(m, "sdr")}
-                        className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                        Enviar para o Closer
-                      </Button>
+                      {canHandoff && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={updatingId === m.id}
+                          onClick={() => handleDismiss(m, "sdr")}
+                          className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                          Enviar para o Closer
+                        </Button>
+                      )}
                     </>
                   )}
                   {!isSdrOfThis && !isCloserOfThis && (
