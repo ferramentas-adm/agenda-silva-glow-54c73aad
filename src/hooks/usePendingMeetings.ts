@@ -128,10 +128,25 @@ export function usePendingMeetings() {
       .sort((a, b) => b.count - a.count);
   }, [query.data]);
 
+  const bySdr = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>();
+    (query.data ?? []).forEach((m) => {
+      const key = m.created_by ?? "_sem_sdr";
+      const name = m.creator_name ?? "Sem SDR";
+      const cur = map.get(key);
+      if (cur) cur.count += 1;
+      else map.set(key, { name, count: 1 });
+    });
+    return Array.from(map.entries())
+      .map(([id, v]) => ({ sdr_id: id, name: v.name, count: v.count }))
+      .sort((a, b) => b.count - a.count);
+  }, [query.data]);
+
   return {
     pendings: query.data ?? [],
     count: query.data?.length ?? 0,
     byCloser,
+    bySdr,
     isLoading: query.isLoading,
     refetch: query.refetch,
   };
