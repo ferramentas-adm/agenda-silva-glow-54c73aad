@@ -38,7 +38,7 @@ export default function PendingMeetingsBanner() {
   const { role } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { count, pendings, byCloser, refetch } = usePendingMeetings();
+  const { count, pendings, byCloser, bySdr, refetch } = usePendingMeetings();
   const [open, setOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
