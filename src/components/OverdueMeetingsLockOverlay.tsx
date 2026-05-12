@@ -68,6 +68,29 @@ export default function OverdueMeetingsLockOverlay() {
     navigate(`/agendar?edit=${m.id}`);
   };
 
+  const handleDismiss = async (m: OverdueMeeting, side: "sdr" | "closer") => {
+    if (!user?.id) return;
+    addDismissed(side, user.id, m.id);
+    await logAudit(
+      side === "sdr" ? "sdr_dismiss_overdue" : "closer_dismiss_overdue",
+      "agendamento",
+      m.id,
+      {
+        lead_name: m.lead_name,
+        closer_name: m.closer_name ?? "",
+        scheduled_date: m.scheduled_date,
+        scheduled_time: m.scheduled_time,
+      },
+    );
+    toast.success(
+      side === "sdr"
+        ? "Reunião enviada para o Closer atualizar"
+        : "Aguardando atualização do SDR",
+    );
+    await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+    refetch();
+  };
+
   return (
     <>
       <div
