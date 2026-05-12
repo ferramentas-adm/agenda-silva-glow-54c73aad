@@ -45,6 +45,7 @@ interface FollowUpRow {
   follow_up_date: string;
   follow_up_time: string | null;
   motivo_nao_fechamento: string | null;
+  explicacao_nao_fechamento: string | null;
   observacoes: string | null;
   valor: number | null;
   agendamentos: {
