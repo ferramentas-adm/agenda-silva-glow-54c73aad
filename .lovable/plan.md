@@ -1,49 +1,43 @@
-## Mudanças
+## Mudanças (aditivas, sem risco para produção)
 
-### 1. Renomear label "Follow-up?" → "Vai acompanhar esse lead?"
+### 1. Botão "Enviar para o Closer" no overlay (lado SDR)
 
-Em `src/components/VendaDialog.tsx` (linha 422), trocar o `<Label>Follow-up? *</Label>` por `<Label>Vai acompanhar esse lead? *</Label>`. Manter as opções "Sim" / "Não (venda perdida)".
+Em `src/components/OverdueMeetingsLockOverlay.tsx`, no bloco visível quando `isSdrOfThis`, adicionar botão **"Enviar para o Closer"** (ícone `Send`) ao lado de No-show / Cancelada / Reagendar.
 
-Como hoje a pergunta só aparece no fluxo "vendeu = não", a mudança fica restrita a esse ponto. Se no futuro a pergunta passar a aparecer também quando vendeu=sim, o label já estará correto.
+Comportamento:
+- Não chama API. Adiciona `m.id` num `Set` salvo em `localStorage` na chave `overdue-dismissed-sdr:{user.id}`.
+- Dispara `refetch()` do hook → reunião some do overlay para esse SDR.
+- Toast: "Reunião enviada para o Closer atualizar".
+- `logAudit("sdr_dismiss_overdue", "agendamento", m.id, { lead_name, closer_name })`.
 
-### 2. Aba "Não acompanhados" em /follow-ups (só Gestor)
+### 2. Botão "SDR vai atualizar" no overlay (lado Closer)
 
-Em `src/pages/FollowUpsPage.tsx`:
+No bloco visível quando `isCloserOfThis`, adicionar botão **"SDR vai atualizar"** (ícone `UserCheck`) ao lado de Realizada.
 
-- Envolver o conteúdo atual numa `<Tabs>` com duas abas, **visível apenas para `isGestor`**:
-  - **"Em acompanhamento"** — conteúdo atual (lista `vendas` com `follow_up = true`).
-  - **"Não acompanhados"** — lista de `vendas` onde `vendeu = false` AND `follow_up = false` (Closer decidiu não acompanhar).
-- Para Moderador/Closer/SDR: render só o conteúdo atual, sem tabs (mantém comportamento).
-- A nova aba mostra: lead, telefone, closer responsável (via `agendamentos.closer_id` → `closers.name`), data da reunião, motivo (`motivo_nao_fechamento`) e explicação (`explicacao_nao_fechamento`). Filtros: closer, busca por nome, intervalo de data da reunião. Sem ações de edição — é visualização.
+Comportamento simétrico:
+- Adiciona `m.id` em `localStorage` chave `overdue-dismissed-closer:{user.id}`.
+- `refetch()` → some do overlay para esse Closer.
+- Toast: "Aguardando atualização do SDR".
+- `logAudit("closer_dismiss_overdue", ...)`.
 
-Query: `vendas` join `agendamentos` (igual à query atual), filtrando `vendeu = false` e `follow_up = false`, exclui agendamentos com `deleted_at IS NOT NULL`.
+### 3. Filtro local no `useOverdueMeetings`
 
-### 3. Painel "Carga por Closer" no Dashboard Comercial (só Gestor)
+Em `src/hooks/useOverdueMeetings.ts`, depois de calcular `overdue`:
+- Ler os dois sets do `localStorage`.
+- Remover ids que estejam no set correspondente ao papel do usuário atual.
+- Após filtrar, regravar o set mantendo só ids que ainda existem em `overdue` (auto-limpeza — quando o outro lado finalmente atualiza o status no banco, o id some daqui também).
 
-Em `src/pages/DashboardComercialPage.tsx`, adicionar uma seção/card **visível apenas para Gestor** com uma tabela: uma linha por Closer ativo, colunas:
+### 4. Aba "Em acompanhamento" — mostrar Motivo e Explicação
 
-| Closer | Tarefas atrasadas | Tarefas pendentes (futuras) | Follow-ups atrasados | Follow-ups futuros | Em acompanhamento |
-|---|---|---|---|---|---|
+Em `src/pages/FollowUpsPage.tsx`, na lista de follow-ups (`vendeu = false` AND `follow_up = true`), além do "Resumo:" já existente, exibir quando preenchidos:
+- **Motivo:** `motivo_nao_fechamento`
+- **Explicação:** `explicacao_nao_fechamento`
 
-Definições (timezone America/Sao_Paulo via `src/lib/timezone.ts`):
+Mesmo padrão visual do `NaoAcompanhadosPanel` (label `font-semibold text-muted-foreground`, `whitespace-pre-wrap`).
 
-- **Tarefas atrasadas**: `tasks` com `assigned_closer_id = closer.id`, `status = 'pendente'`, `due_date < hoje` (ou `due_date = hoje` AND `due_time < agora` se houver due_time).
-- **Tarefas pendentes (futuras)**: `tasks` `status = 'pendente'`, `due_date >= hoje` (descontando as atrasadas) + sem due_date.
-- **Follow-ups atrasados**: `vendas` com `follow_up = true`, `agendamentos.closer_id = closer.id`, `follow_up_date < hoje` (ou hoje + horário passado).
-- **Follow-ups futuros**: `vendas` `follow_up = true`, `follow_up_date >= hoje`, descontando atrasados.
-- **Em acompanhamento**: total de `vendas` `follow_up = true` para aquele closer.
+## Impacto em produção
 
-Ordenação default: maior número de atrasados primeiro. Linhas com atrasados destacadas (texto em `text-destructive`). Sem drilldown nesta etapa.
-
-Fica num `<Card>` próprio com título "Carga por Closer", logo após as métricas existentes.
-
-## Permissões
-
-- Aba "Não acompanhados" e seção "Carga por Closer" só renderizam se `role === 'gestor'`.
-- RLS atual já permite Gestor ler `vendas`, `agendamentos`, `tasks`, `closers` — sem mudanças de RLS.
-
-## Fora de escopo
-
-- Sem mudanças em schema, edge functions, webhooks ou na lógica de criação de venda.
-- Sem drilldown clicável nas células do painel (pode vir depois).
-- Sem mudança no fluxo do `OverdueMeetingsLockOverlay`.
+- Sem migração de banco, sem RLS, sem edge function, sem webhook.
+- Nenhum botão ou fluxo existente é alterado — só somam dois botões novos.
+- Quem não clicar neles vê o sistema exatamente como hoje.
+- Pior caso: localStorage não funciona → botões viram no-op visual, nada quebra.
