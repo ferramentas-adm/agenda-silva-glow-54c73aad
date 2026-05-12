@@ -264,22 +264,6 @@ export default function OverdueMeetingsLockOverlay() {
         </div>
       </div>
 
-      {vendaAg && (
-        <VendaDialog
-          contentClassName="z-[110]"
-          open={!!vendaAg}
-          onOpenChange={(o) => !o && setVendaAg(null)}
-          agendamentoId={vendaAg.id}
-          leadName={vendaAg.lead_name}
-          onSuccess={async () => {
-            setVendaAg(null);
-            await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-            await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-            await queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });
-            refetch();
-          }}
-        />
-      )}
     </>
   );
 }
