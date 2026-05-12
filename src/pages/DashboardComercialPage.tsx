@@ -24,15 +24,16 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads" | "carga";
 
-const TABS: { key: TabKey; label: string }[] = [
+const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
   { key: "agenda", label: "Agenda Closers" },
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "leads", label: "Formulário Bio" },
+  { key: "carga", label: "Carga Closers", gestorOnly: true },
 ];
 const ROTATION_INTERVAL = 30000;
 
