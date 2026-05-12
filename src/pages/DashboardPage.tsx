@@ -719,7 +719,7 @@ export function CalendarContent() {
           return (
             <div className={cn(
               "grid grid-cols-2 sm:grid-cols-4 gap-3",
-              isCloserView ? "xl:grid-cols-8" : "xl:grid-cols-9"
+              isCloserView ? "xl:grid-cols-8" : "xl:grid-cols-10"
             )}>
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
@@ -742,15 +742,24 @@ export function CalendarContent() {
                   </div>
                 );
               })}
-              {/* Total Closers — apenas para Admin / Moderador / SDR */}
+              {/* Total Closers + Closer Realizada — apenas para Admin / Moderador / SDR */}
               {!isCloserView && (
-                <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-purple-500/10")}>
-                  <Users className={cn("h-5 w-5 shrink-0 text-purple-400")} />
-                  <div>
-                    <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Total Closers</p>
+                <>
+                  <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-purple-500/10")}>
+                    <Users className={cn("h-5 w-5 shrink-0 text-purple-400")} />
+                    <div>
+                      <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Total Closers</p>
+                    </div>
                   </div>
-                </div>
+                  <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-emerald-500/10")}>
+                    <CheckCircle2 className={cn("h-5 w-5 shrink-0 text-emerald-400")} />
+                    <div>
+                      <p className="text-lg font-bold leading-none">{closerRealizadaCount}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Closer Realizada</p>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           );
