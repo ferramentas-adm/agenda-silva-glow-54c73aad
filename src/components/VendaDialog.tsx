@@ -325,7 +325,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`sm:max-w-md max-h-[90vh] overflow-y-auto ${contentClassName ?? ""}`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-emerald-500" />
