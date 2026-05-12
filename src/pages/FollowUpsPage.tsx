@@ -440,6 +440,8 @@ export default function FollowUpsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+          </>
+        )}
       </div>
     </AppLayout>
   );
