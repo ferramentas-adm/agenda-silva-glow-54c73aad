@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -74,6 +75,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [motivo, setMotivo] = useState("");
   const [explicacaoNaoFechamento, setExplicacaoNaoFechamento] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [sdrError, setSdrError] = useState(false);
   const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -108,6 +110,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setMotivo("");
     setExplicacaoNaoFechamento("");
     setObservacoes("");
+    setSdrError(false);
     setLeadRevenue("");
     setIsEditing(false);
     setHasRecebimento(false);
@@ -153,6 +156,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setMotivo(data.motivo_nao_fechamento ?? "");
         setExplicacaoNaoFechamento((data as { explicacao_nao_fechamento?: string | null }).explicacao_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
+        setSdrError(((data as { sdr_error?: boolean | null }).sdr_error) ?? false);
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
       }
       setLoadingExisting(false);
@@ -211,6 +215,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
           observacoes: observacoes.trim() || null,
           lead_revenue: leadRevenue || null,
+          sdr_error: vendeu === "nao" ? sdrError : false,
           created_by: user.id,
         } as any,
         { onConflict: "agendamento_id" },
