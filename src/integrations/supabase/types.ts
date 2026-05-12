@@ -645,6 +645,7 @@ export type Database = {
           motivo_nao_fechamento: string | null
           observacoes: string | null
           resumo_venda: string | null
+          sdr_error: boolean
           updated_at: string
           valor: number | null
           vendeu: boolean
@@ -662,6 +663,7 @@ export type Database = {
           motivo_nao_fechamento?: string | null
           observacoes?: string | null
           resumo_venda?: string | null
+          sdr_error?: boolean
           updated_at?: string
           valor?: number | null
           vendeu: boolean
@@ -679,6 +681,7 @@ export type Database = {
           motivo_nao_fechamento?: string | null
           observacoes?: string | null
           resumo_venda?: string | null
+          sdr_error?: boolean
           updated_at?: string
           valor?: number | null
           vendeu?: boolean

@@ -1,0 +1,1 @@
+ALTER TABLE public.vendas ADD COLUMN IF NOT EXISTS sdr_error boolean NOT NULL DEFAULT false;
