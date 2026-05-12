@@ -179,16 +179,18 @@ export default function OverdueMeetingsLockOverlay() {
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Realizada
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={updatingId === m.id}
-                        onClick={() => handleDismiss(m, "closer")}
-                        className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
-                      >
-                        <UserCheck className="h-3.5 w-3.5" />
-                        SDR vai atualizar
-                      </Button>
+                      {canHandoff && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={updatingId === m.id}
+                          onClick={() => handleDismiss(m, "closer")}
+                          className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
+                        >
+                          <UserCheck className="h-3.5 w-3.5" />
+                          SDR vai atualizar
+                        </Button>
+                      )}
                     </>
                   )}
                   {isSdrOfThis && (
