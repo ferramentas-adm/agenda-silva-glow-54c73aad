@@ -73,6 +73,8 @@ export default function FollowUpsPage() {
   const queryClient = useQueryClient();
   const isCloser = role === "closer";
   const isManager = role === "gestor" || role === "moderador";
+  const isGestor = role === "gestor";
+  const [activeTab, setActiveTab] = useState<"em-acompanhamento" | "nao-acompanhados">("em-acompanhamento");
 
   // Descobre o closer_id do usuário (se for closer)
   const { data: myCloserId } = useQuery({
