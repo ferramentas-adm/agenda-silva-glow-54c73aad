@@ -142,6 +142,26 @@ export default function PendingMeetingsBanner() {
             </div>
           )}
 
+          {/* Resumo por SDR (apenas gestor/moderador) */}
+          {isManager && bySdr.length > 0 && (
+            <div className="border border-primary/10 rounded-lg p-3 bg-card">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">
+                Pendências por SDR
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {bySdr.map((s) => (
+                  <Badge
+                    key={s.sdr_id}
+                    variant="outline"
+                    className="text-xs border-destructive/30"
+                  >
+                    {s.name}: <span className="ml-1 font-bold text-destructive">{s.count}</span>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
             {pendings.map((m) => (
               <div
