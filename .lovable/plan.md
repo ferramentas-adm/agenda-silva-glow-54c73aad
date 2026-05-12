@@ -1,30 +1,58 @@
-## Ajuste dos cards do Calendário (`/dashboard`)
+## Faixa de pendências de status — reuniões em aberto de dias passados
 
-Hoje os cards "Total SDRs" e "Total Closers" não refletem o que o nome diz. Vamos alinhar com o painel comercial.
+Lembrete persistente para que ninguém termine o dia (ou comece o seguinte) com reuniões antigas ainda em `agendada` ou `confirmada`.
 
-### Mudanças
+### Regra de pendência
 
-1. **Card "Total SDRs"** — passa a contar **somente** agendas do dia criadas por usuários com role `sdr` (mesma regra do painel Métricas SDRs). Hoje conta tudo, por isso aparecia 42 em vez de 37.
+Reunião está **pendente** quando:
+- `scheduled_date < hoje` (no fuso America/Sao_Paulo), e
+- `status` ∈ (`agendada`, `confirmada`), e
+- `deleted_at IS NULL`.
 
-2. **Card "Total Closers"** — passa a contar **todas** as agendas do dia criadas por usuários com role `closer` (qualquer status: agendada, confirmada, realizada, etc.). Hoje só contava as `realizada`.
+### Quem vê o quê
 
-3. **Novo card "Closer Realizada"** — adicionado ao lado do "Total Closers". Conta só as agendas do dia criadas por closers e com status `realizada` (regra antiga do "Total Closers").
+| Papel | Escopo |
+|---|---|
+| **SDR** | Pendências cujo `created_by = SDR logado` |
+| **Closer** | Pendências cujo `closer_id` corresponde ao closer do usuário (via `closers.email = auth.email()`) |
+| **Gestor / Moderador** | **Todas** as pendências (visão agregada da empresa) |
+
+### UX da faixa
+
+- Componente novo `PendingMeetingsBanner` exibido no topo do `AppLayout` (aparece em todas as páginas internas).
+- Cor vermelha/destrutiva, não dispensável (sem botão "fechar"), some sozinha quando zera.
+- Texto:
+  - SDR/Closer: *"Você tem N reunião(ões) de dias passados ainda em aberto. Resolva agora."*
+  - Gestor/Moderador: *"N reuniões de dias passados ainda em aberto na empresa. Ver lista."*
+- Clique abre um **diálogo (`Dialog`)** com lista das pendências:
+  - Colunas: data, hora, lead, closer, SDR criador, status atual, ação rápida.
+  - Para SDR/Closer: ação rápida com botões para mudar status (`Realizada` / `No-show` / `Cancelada`) inline (closer já tem permissão; SDR usa as mesmas regras de RLS atuais).
+  - Para Gestor/Moderador: lista agrupada por closer, mostrando contagem por pessoa, com link "Ver no calendário do dia X" que navega para `/dashboard?date=...`.
 
 ### Detalhes técnicos
 
-Arquivo único: `src/pages/DashboardPage.tsx`
+**Novo hook** `src/hooks/usePendingMeetings.ts`:
+- `useQuery` que busca `agendamentos` com filtro acima.
+- Aplica escopo conforme `role` do `useAuth` + `myCloserId` (mesmo padrão usado em `DashboardPage`).
+- `refetchInterval: 5 min`, `staleTime: 2 min`.
+- Retorna `{ pendings: Agendamento[], count, byCloser: Map<closerId, count> }` (último só usado pelo gestor).
 
-- `totalSdrCount` (linha ~334): adicionar filtro `creatorRole === 'sdr'` usando o `userRolesMap` já existente.
-- `closerCreatedCount` (linha ~351): remover o filtro `status === 'realizada'`, manter só `creatorRole === 'closer'` + `TOTAL_STATUSES`.
-- Criar `closerRealizadaCount`: closers + `status === 'realizada'`.
-- Adicionar novo card "Closer Realizada" na grid (linha ~707), ajustar `xl:grid-cols-9` → `xl:grid-cols-10` para Admin/Mod/SDR.
-- Ícone sugerido para o novo card: `CheckCircle2` em verde (mesmo padrão das Realizadas).
+**Novo componente** `src/components/PendingMeetingsBanner.tsx`:
+- Usa o hook acima.
+- Não renderiza nada se `count === 0`.
+- Renderiza faixa + dialog com a lista.
 
-Não muda nada na visão de Closer (`isCloserView`) — só afeta Admin/Moderador/SDR.
+**Integração** em `src/components/AppLayout.tsx`:
+- Importa e renderiza `<PendingMeetingsBanner />` logo abaixo do header e acima do `<Outlet />` / `children`.
 
-### Resultado esperado para hoje
+**Fuso**: usar `formatBRDate(new Date())` de `src/lib/timezone.ts` para obter "hoje" em `America/Sao_Paulo` e comparar com `scheduled_date` (`YYYY-MM-DD`). Sem `new Date().toISOString().slice(0,10)`.
 
-- Total SDRs: **37** (igual ao painel comercial)
-- Total Closers: **5** (André + Neto)
-- Closer Realizada: 0 (nenhuma marcada como realizada ainda)
-- Realizadas (geral): inalterado
+**Permissões**: as RLS atuais já permitem que cada papel veja/atualize o que precisa. Sem mudança no banco.
+
+**Auditoria**: ações de mudança de status pelo dialog usam o mesmo `logAudit("update_status", ...)` já usado em `DashboardPage`, para registrar quem resolveu a pendência.
+
+### Não inclui (escopo fechado)
+
+- Sem cron / e-mail / push (pode ser fase 2).
+- Sem auto-marcar como `no_show`.
+- Sem modal bloqueante no login (apenas faixa persistente, suficiente para o que o usuário pediu).
