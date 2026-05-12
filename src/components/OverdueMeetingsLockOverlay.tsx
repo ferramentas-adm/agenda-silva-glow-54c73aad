@@ -22,7 +22,8 @@ const STATUS_LABEL: Record<string, string> = {
 type DirectStatus = "no_show" | "cancelada";
 
 export default function OverdueMeetingsLockOverlay() {
-  const { overdue, count, refetch } = useOverdueMeetings();
+  const { overdue, count, myCloserId, refetch } = useOverdueMeetings();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
