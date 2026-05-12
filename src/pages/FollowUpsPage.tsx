@@ -36,6 +36,8 @@ import { logAudit } from "@/services/auditLog";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import TasksSection from "@/components/tasks/TasksSection";
 import { useCan } from "@/hooks/usePermissions";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import NaoAcompanhadosPanel from "@/components/NaoAcompanhadosPanel";
 
 interface FollowUpRow {
   id: string;
@@ -73,6 +75,8 @@ export default function FollowUpsPage() {
   const queryClient = useQueryClient();
   const isCloser = role === "closer";
   const isManager = role === "gestor" || role === "moderador";
+  const isGestor = role === "gestor";
+  const [activeTab, setActiveTab] = useState<"em-acompanhamento" | "nao-acompanhados">("em-acompanhamento");
 
   // Descobre o closer_id do usuário (se for closer)
   const { data: myCloserId } = useQuery({
@@ -237,6 +241,20 @@ export default function FollowUpsPage() {
           </div>
         </header>
 
+        {isGestor && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList>
+              <TabsTrigger value="em-acompanhamento">Em acompanhamento</TabsTrigger>
+              <TabsTrigger value="nao-acompanhados">Não acompanhados</TabsTrigger>
+            </TabsList>
+            <TabsContent value="nao-acompanhados" className="mt-4">
+              <NaoAcompanhadosPanel />
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {(!isGestor || activeTab === "em-acompanhamento") && (
+          <>
         {/* Tarefas avulsas */}
         <TasksSection />
 
@@ -422,6 +440,8 @@ export default function FollowUpsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+          </>
+        )}
       </div>
     </AppLayout>
   );

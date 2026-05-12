@@ -419,7 +419,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
               <>
 
                   <div className="space-y-2">
-                    <Label>Follow-up? *</Label>
+                    <Label>Vai acompanhar esse lead? *</Label>
                     <RadioGroup value={followUp ?? ""} onValueChange={(v) => setFollowUp(v as "sim" | "nao")}>
                       <div className="flex gap-4">
                         <div className="flex items-center gap-2">

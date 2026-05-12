@@ -15,6 +15,7 @@ import { LeadsDashboardContent } from "@/pages/DashboardLeadsPage";
 import VendasTab from "@/components/dashboard/VendasTab";
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
+import CargaClosersTab from "@/components/dashboard/CargaClosersTab";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,15 +24,16 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads" | "carga";
 
-const TABS: { key: TabKey; label: string }[] = [
+const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
   { key: "agenda", label: "Agenda Closers" },
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "leads", label: "Formulário Bio" },
+  { key: "carga", label: "Carga Closers", gestorOnly: true },
 ];
 const ROTATION_INTERVAL = 30000;
 
@@ -80,7 +82,12 @@ function saveVisibleTabs(userId: string | null | undefined, tabs: Set<TabKey>) {
 // ─── Main Page ───────────────────────────────────────────────────
 export default function DashboardComercialPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isGestor = role === "gestor";
+  const allowedTabs = useMemo(
+    () => TABS.filter((t) => !t.gestorOnly || isGestor),
+    [isGestor],
+  );
 
   const [visibleTabs, setVisibleTabs] = useState<Set<TabKey>>(() => loadVisibleTabs(user?.id));
   const [activeTabKey, setActiveTabKey] = useState<TabKey>("metricas");
@@ -101,10 +108,10 @@ export default function DashboardComercialPage() {
     saveVisibleTabs(user?.id, visibleTabs);
   }, [user?.id, visibleTabs]);
 
-  // Lista ordenada das abas atualmente visíveis
+  // Lista ordenada das abas atualmente visíveis (respeitando permissão de role)
   const visibleTabList = useMemo(
-    () => TABS.filter((t) => visibleTabs.has(t.key)),
-    [visibleTabs],
+    () => allowedTabs.filter((t) => visibleTabs.has(t.key)),
+    [visibleTabs, allowedTabs],
   );
 
   // Garante que activeTabKey continue sendo uma aba visível
@@ -424,7 +431,7 @@ export default function DashboardComercialPage() {
                   Abas visíveis
                 </p>
                 <div className="space-y-1.5">
-                  {TABS.map((tab) => {
+                  {allowedTabs.map((tab) => {
                     const checked = visibleTabs.has(tab.key);
                     const onlyOne = visibleTabs.size === 1 && checked;
                     return (
@@ -465,7 +472,7 @@ export default function DashboardComercialPage() {
         </div>
 
         {/* ─── Date nav (oculta na aba Agenda Closers) ──── */}
-        {activeTabKey !== "agenda" && activeTabKey !== "leads" && (
+        {activeTabKey !== "agenda" && activeTabKey !== "leads" && activeTabKey !== "carga" && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
@@ -567,6 +574,7 @@ export default function DashboardComercialPage() {
           />
         )}
         {activeTabKey === "leads" && <LeadsDashboardContent />}
+        {activeTabKey === "carga" && isGestor && <CargaClosersTab />}
       </div>
     </AppLayout>
   );
