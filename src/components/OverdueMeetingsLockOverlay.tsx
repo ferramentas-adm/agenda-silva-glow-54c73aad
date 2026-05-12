@@ -173,7 +173,7 @@ export default function OverdueMeetingsLockOverlay() {
                         size="sm"
                         variant="outline"
                         disabled={updatingId === m.id}
-                        onClick={() => setVendaAg(m)}
+                        onClick={() => navigate(`/venda/${m.id}?lead=${encodeURIComponent(m.lead_name)}`)}
                         className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
