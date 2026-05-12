@@ -29,6 +29,7 @@ interface VendaDialogProps {
   agendamentoId: string;
   leadName: string;
   onSuccess: () => void;
+  contentClassName?: string;
 }
 
 const LEAD_REVENUE_OPTIONS = [
