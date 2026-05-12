@@ -431,7 +431,7 @@ export default function DashboardComercialPage() {
                   Abas visíveis
                 </p>
                 <div className="space-y-1.5">
-                  {TABS.map((tab) => {
+                  {allowedTabs.map((tab) => {
                     const checked = visibleTabs.has(tab.key);
                     const onlyOne = visibleTabs.size === 1 && checked;
                     return (
