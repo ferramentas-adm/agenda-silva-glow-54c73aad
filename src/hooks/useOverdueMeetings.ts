@@ -170,6 +170,7 @@ export function useOverdueMeetings() {
   return {
     overdue: query.data ?? [],
     count: query.data?.length ?? 0,
+    myCloserId: myCloserId ?? null,
     isLoading: query.isLoading,
     refetch: query.refetch,
   };
