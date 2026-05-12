@@ -108,10 +108,10 @@ export default function DashboardComercialPage() {
     saveVisibleTabs(user?.id, visibleTabs);
   }, [user?.id, visibleTabs]);
 
-  // Lista ordenada das abas atualmente visíveis
+  // Lista ordenada das abas atualmente visíveis (respeitando permissão de role)
   const visibleTabList = useMemo(
-    () => TABS.filter((t) => visibleTabs.has(t.key)),
-    [visibleTabs],
+    () => allowedTabs.filter((t) => visibleTabs.has(t.key)),
+    [visibleTabs, allowedTabs],
   );
 
   // Garante que activeTabKey continue sendo uma aba visível
