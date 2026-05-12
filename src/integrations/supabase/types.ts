@@ -20,6 +20,7 @@ export type Database = {
           briefing_read_at: string | null
           briefing_read_by: string | null
           channel_type: string | null
+          closer_handoff_at: string | null
           closer_id: string | null
           created_at: string
           created_by: string | null
@@ -38,6 +39,7 @@ export type Database = {
           original_agendamento_id: string | null
           scheduled_date: string
           scheduled_time: string
+          sdr_handoff_at: string | null
           sdr_responsavel_id: string | null
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
@@ -47,6 +49,7 @@ export type Database = {
           briefing_read_at?: string | null
           briefing_read_by?: string | null
           channel_type?: string | null
+          closer_handoff_at?: string | null
           closer_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -65,6 +68,7 @@ export type Database = {
           original_agendamento_id?: string | null
           scheduled_date: string
           scheduled_time: string
+          sdr_handoff_at?: string | null
           sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -74,6 +78,7 @@ export type Database = {
           briefing_read_at?: string | null
           briefing_read_by?: string | null
           channel_type?: string | null
+          closer_handoff_at?: string | null
           closer_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -92,6 +97,7 @@ export type Database = {
           original_agendamento_id?: string | null
           scheduled_date?: string
           scheduled_time?: string
+          sdr_handoff_at?: string | null
           sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string

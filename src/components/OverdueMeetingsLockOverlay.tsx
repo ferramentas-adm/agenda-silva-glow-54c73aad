@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/services/auditLog";
 import { formatBRDate } from "@/lib/timezone";
-import { useOverdueMeetings, type OverdueMeeting, addDismissed } from "@/hooks/useOverdueMeetings";
+import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
 import { useAuth } from "@/contexts/AuthContext";
 import VendaDialog from "@/components/VendaDialog";
 import { Button } from "@/components/ui/button";
@@ -70,25 +70,43 @@ export default function OverdueMeetingsLockOverlay() {
 
   const handleDismiss = async (m: OverdueMeeting, side: "sdr" | "closer") => {
     if (!user?.id) return;
-    addDismissed(side, user.id, m.id);
-    await logAudit(
-      side === "sdr" ? "sdr_dismiss_overdue" : "closer_dismiss_overdue",
-      "agendamento",
-      m.id,
-      {
-        lead_name: m.lead_name,
-        closer_name: m.closer_name ?? "",
-        scheduled_date: m.scheduled_date,
-        scheduled_time: m.scheduled_time,
-      },
-    );
-    toast.success(
-      side === "sdr"
-        ? "Reunião enviada para o Closer atualizar"
-        : "Aguardando atualização do SDR",
-    );
-    await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-    refetch();
+    setUpdatingId(m.id);
+    try {
+      const patch = side === "sdr"
+        ? { sdr_handoff_at: new Date().toISOString() }
+        : { closer_handoff_at: new Date().toISOString() };
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update(patch as any)
+        .eq("id", m.id)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Sem permissão para repassar este agendamento.");
+      }
+      await logAudit(
+        side === "sdr" ? "sdr_dismiss_overdue" : "closer_dismiss_overdue",
+        "agendamento",
+        m.id,
+        {
+          lead_name: m.lead_name,
+          closer_name: m.closer_name ?? "",
+          scheduled_date: m.scheduled_date,
+          scheduled_time: m.scheduled_time,
+        },
+      );
+      toast.success(
+        side === "sdr"
+          ? "Reunião enviada para o Closer atualizar"
+          : "Aguardando atualização do SDR",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao repassar reunião");
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   return (
@@ -118,6 +136,7 @@ export default function OverdueMeetingsLockOverlay() {
             {overdue.map((m) => {
               const isSdrOfThis = !!user && m.created_by === user.id;
               const isCloserOfThis = !!myCloserId && m.closer_id === myCloserId;
+              const canHandoff = !m.sdr_handoff_at && !m.closer_handoff_at;
               return (
               <div
                 key={m.id}
@@ -160,16 +179,18 @@ export default function OverdueMeetingsLockOverlay() {
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Realizada
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={updatingId === m.id}
-                        onClick={() => handleDismiss(m, "closer")}
-                        className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
-                      >
-                        <UserCheck className="h-3.5 w-3.5" />
-                        SDR vai atualizar
-                      </Button>
+                      {canHandoff && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={updatingId === m.id}
+                          onClick={() => handleDismiss(m, "closer")}
+                          className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
+                        >
+                          <UserCheck className="h-3.5 w-3.5" />
+                          SDR vai atualizar
+                        </Button>
+                      )}
                     </>
                   )}
                   {isSdrOfThis && (
@@ -212,16 +233,18 @@ export default function OverdueMeetingsLockOverlay() {
                         <RotateCcw className="h-3.5 w-3.5" />
                         Reagendar
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={updatingId === m.id}
-                        onClick={() => handleDismiss(m, "sdr")}
-                        className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                        Enviar para o Closer
-                      </Button>
+                      {canHandoff && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={updatingId === m.id}
+                          onClick={() => handleDismiss(m, "sdr")}
+                          className="h-8 text-xs gap-1 text-muted-foreground hover:bg-muted/40 border-muted-foreground/30"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                          Enviar para o Closer
+                        </Button>
+                      )}
                     </>
                   )}
                   {!isSdrOfThis && !isCloserOfThis && (
