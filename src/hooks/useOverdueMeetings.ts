@@ -13,39 +13,13 @@ export interface OverdueMeeting {
   status: string;
   closer_id: string | null;
   created_by: string | null;
+  sdr_handoff_at: string | null;
+  closer_handoff_at: string | null;
   closer_name: string | null;
   creator_name: string | null;
 }
 
 const OVERDUE_GRACE_MINUTES = 65;
-
-export const overdueDismissKey = (side: "sdr" | "closer", userId: string) =>
-  `overdue-dismissed-${side}:${userId}`;
-
-export function readDismissed(side: "sdr" | "closer", userId: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(overdueDismissKey(side, userId));
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch {
-    return new Set();
-  }
-}
-
-export function writeDismissed(side: "sdr" | "closer", userId: string, set: Set<string>) {
-  try {
-    localStorage.setItem(overdueDismissKey(side, userId), JSON.stringify([...set]));
-  } catch {
-    /* noop */
-  }
-}
-
-export function addDismissed(side: "sdr" | "closer", userId: string, id: string) {
-  const s = readDismissed(side, userId);
-  s.add(id);
-  writeDismissed(side, userId, s);
-}
 
 /**
  * "Agora" em minutos desde 1970, considerando o instante real (independe de fuso).
