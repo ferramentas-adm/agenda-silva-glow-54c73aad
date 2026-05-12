@@ -97,7 +97,7 @@ export default function FollowUpsPage() {
         .from("vendas")
         .select(`
           id, agendamento_id, follow_up_date, follow_up_time,
-          motivo_nao_fechamento, observacoes, valor,
+          motivo_nao_fechamento, explicacao_nao_fechamento, observacoes, valor,
           agendamentos!inner ( lead_name, lead_phone, closer_id, closers ( name ) )
         `)
         .eq("follow_up", true)
