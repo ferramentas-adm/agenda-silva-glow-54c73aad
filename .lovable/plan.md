@@ -1,49 +1,30 @@
-## Objetivo
+## Ajuste dos cards do Calendário (`/dashboard`)
 
-Quando gestor/moderador transferir um lead para outro closer (no detalhe do calendário ou na coluna "Closer" da Lista de Reuniões), também mover o evento no Google Calendar:
+Hoje os cards "Total SDRs" e "Total Closers" não refletem o que o nome diz. Vamos alinhar com o painel comercial.
 
-1. **Apagar** o evento na agenda Google do closer antigo.
-2. **Criar** um novo evento na agenda Google do closer novo (com novo link do Meet).
-3. **Atualizar** `meet_link` e o ID do evento Google no agendamento.
+### Mudanças
 
-## Mudanças
+1. **Card "Total SDRs"** — passa a contar **somente** agendas do dia criadas por usuários com role `sdr` (mesma regra do painel Métricas SDRs). Hoje conta tudo, por isso aparecia 42 em vez de 37.
 
-### 1. Banco — guardar o ID do evento Google (migration)
-- Adicionar coluna `google_event_id text` em `public.agendamentos` (nullable).
-- Necessária para conseguir deletar o evento na agenda do closer antigo.
-- Sem mudança em RLS.
+2. **Card "Total Closers"** — passa a contar **todas** as agendas do dia criadas por usuários com role `closer` (qualquer status: agendada, confirmada, realizada, etc.). Hoje só contava as `realizada`.
 
-### 2. Persistir o `event_id` ao criar reunião
-- `src/pages/AgendarPage.tsx`: após `createGoogleCalendarEvent` retornar `event_id`, salvar em `agendamentos.google_event_id` junto com o `meet_link` (já é salvo). Vale para fluxo novo e reagendamento.
+3. **Novo card "Closer Realizada"** — adicionado ao lado do "Total Closers". Conta só as agendas do dia criadas por closers e com status `realizada` (regra antiga do "Total Closers").
 
-### 3. Nova edge function `google-transfer-event`
-Arquivo: `supabase/functions/google-transfer-event/index.ts`
+### Detalhes técnicos
 
-Entrada: `{ agendamento_id, new_closer_id }`. 
+Arquivo único: `src/pages/DashboardPage.tsx`
 
-Fluxo:
-1. Validar JWT do chamador (mesmo padrão das outras functions).
-2. Buscar agendamento (closer antigo, data/hora, lead, `google_event_id`).
-3. Buscar token Google do **novo closer**:
-   - Se conectado: criar evento na agenda dele (reaproveita lógica de `google-create-event`, gerando novo Meet) → guardar `new_event_id` e `new_meet_link`.
-   - Se não conectado: prosseguir sem criar (retorna aviso `new_closer_not_connected`).
-4. Buscar token do **closer antigo** e tentar deletar o evento antigo (`DELETE /calendars/.../events/{event_id}`). Falhas são logadas mas não bloqueiam.
-5. Atualizar `agendamentos`: `closer_id = new`, `meet_link = new_meet_link || null`, `google_event_id = new_event_id || null`. Operação feita com service role para garantir consistência.
-6. Retornar `{ success, meet_link, warnings: [...] }`.
+- `totalSdrCount` (linha ~334): adicionar filtro `creatorRole === 'sdr'` usando o `userRolesMap` já existente.
+- `closerCreatedCount` (linha ~351): remover o filtro `status === 'realizada'`, manter só `creatorRole === 'closer'` + `TOTAL_STATUSES`.
+- Criar `closerRealizadaCount`: closers + `status === 'realizada'`.
+- Adicionar novo card "Closer Realizada" na grid (linha ~707), ajustar `xl:grid-cols-9` → `xl:grid-cols-10` para Admin/Mod/SDR.
+- Ícone sugerido para o novo card: `CheckCircle2` em verde (mesmo padrão das Realizadas).
 
-### 4. Frontend — usar a edge function nos dois pontos de transferência
-- `src/pages/DashboardPage.tsx` (`handleTransferLead`): substituir o `update` direto pela chamada `supabase.functions.invoke("google-transfer-event", ...)`. Atualizar cache local com o novo `meet_link`. Manter `logAudit("transfer_lead", ...)`.
-- `src/pages/ReunioesListPage.tsx` (`handleTransferCloser`): mesma substituição. Mostrar `toast.warning` quando vier `new_closer_not_connected`.
+Não muda nada na visão de Closer (`isCloserView`) — só afeta Admin/Moderador/SDR.
 
-### 5. Tratamento de bordas
-- Agendamentos antigos sem `google_event_id`: a function pula o delete (apenas cria o novo se possível).
-- Status já finalizados (`realizada`, `cancelada`, `no_show`, `reagendada`): continuam transferíveis no banco, mas a function pula a parte do Google (não faz sentido criar/deletar evento de algo já encerrado). Retorna aviso.
-- Erros do Google são logados via `console.error` e não revertem a transferência no banco — toast informa o usuário.
+### Resultado esperado para hoje
 
-### 6. Auditoria
-Adicionar nos detalhes do `transfer_lead` os campos `meet_link_old`, `meet_link_new` e `google_warnings` (se houver), para rastreio.
-
-## Não está no escopo
-- Notificar o lead sobre o novo link.
-- Atualizar evento no DataCrazy (já sincronizado por triggers existentes).
-- Mexer em transferências feitas por closers (regra atual mantida).
+- Total SDRs: **37** (igual ao painel comercial)
+- Total Closers: **5** (André + Neto)
+- Closer Realizada: 0 (nenhuma marcada como realizada ainda)
+- Realizadas (geral): inalterado
