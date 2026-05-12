@@ -212,14 +212,16 @@ export default function NaoAcompanhadosPanel() {
                     <> · Closer: <strong>{r.agendamentos.closers.name}</strong></>
                   )}
                 </p>
-                {r.explicacao_nao_fechamento && (
+                {r.observacoes && (
                   <p className="text-sm text-foreground/90 whitespace-pre-wrap">
-                    {r.explicacao_nao_fechamento}
+                    <span className="font-semibold text-muted-foreground">Resumo: </span>
+                    {r.observacoes}
                   </p>
                 )}
-                {r.observacoes && (
-                  <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">
-                    Obs: {r.observacoes}
+                {r.explicacao_nao_fechamento && (
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                    <span className="font-semibold">Motivo: </span>
+                    {r.explicacao_nao_fechamento}
                   </p>
                 )}
               </div>
