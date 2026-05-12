@@ -537,7 +537,10 @@ function FollowUpItem({
           {row.motivo_nao_fechamento && ` · ${row.motivo_nao_fechamento}`}
         </div>
         {row.observacoes && (
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{row.observacoes}</p>
+          <p className="text-xs text-foreground/80 mt-1.5 whitespace-pre-wrap">
+            <span className="font-semibold text-muted-foreground">Resumo: </span>
+            {row.observacoes}
+          </p>
         )}
       </div>
       <div className="flex gap-1.5 shrink-0">
