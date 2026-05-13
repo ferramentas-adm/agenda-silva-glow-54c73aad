@@ -187,7 +187,8 @@ export default function DashboardComercialPage() {
         .is("deleted_at", null)
         .gte("scheduled_date", minDate)
         .lte("scheduled_date", maxDate)
-        .order("scheduled_date");
+        .order("scheduled_date")
+        .range(0, 49999);
       return (data ?? []) as AgendamentoMetric[];
     },
     refetchInterval: 2 * 60 * 1000,
@@ -202,7 +203,8 @@ export default function DashboardComercialPage() {
         .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
         .is("deleted_at", null)
         .gte("scheduled_date", prevMonthStart)
-        .lte("scheduled_date", prevMonthEnd);
+        .lte("scheduled_date", prevMonthEnd)
+        .range(0, 49999);
       return (data ?? []) as AgendamentoMetric[];
     },
     staleTime: 10 * 60 * 1000,
@@ -225,7 +227,9 @@ export default function DashboardComercialPage() {
         // virada de dia em BRT (UTC-3) não sejam cortados pelo filtro UTC.
         // O filtro fino por dia BRT é aplicado no cliente via localDateOf.
         .gte("created_at", format(subDays(parseISO(broadStart), 1), "yyyy-MM-dd") + "T00:00:00")
-        .lte("created_at", format(addDays(parseISO(broadEnd), 1), "yyyy-MM-dd") + "T23:59:59");
+        .lte("created_at", format(addDays(parseISO(broadEnd), 1), "yyyy-MM-dd") + "T23:59:59")
+        .order("created_at", { ascending: false })
+        .range(0, 49999);
       return (data ?? []) as AgendamentoMetric[];
     },
     refetchInterval: 2 * 60 * 1000,
