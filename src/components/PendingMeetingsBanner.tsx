@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import CancelReasonDialog from "@/components/CancelReasonDialog";
 
 const STATUS_LABEL: Record<string, string> = {
   agendada: "Agendada",
@@ -41,6 +42,7 @@ export default function PendingMeetingsBanner() {
   const { count, pendings, byCloser, bySdr, refetch } = usePendingMeetings();
   const [open, setOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<PendingWithMeta | null>(null);
 
   const isManager = role === "gestor" || role === "moderador";
   const canResolveInline = role === "sdr" || role === "closer";
@@ -52,12 +54,14 @@ export default function PendingMeetingsBanner() {
     return `Você tem ${count} reuni${count === 1 ? "ão" : "ões"} de dias passados ainda em aberto`;
   }, [count, isManager]);
 
-  const handleResolve = async (m: PendingWithMeta, newStatus: ResolveStatus) => {
+  const handleResolve = async (m: PendingWithMeta, newStatus: ResolveStatus, cancellationReason?: string) => {
     setUpdatingId(m.id);
     try {
+      const patch: any = { status: newStatus };
+      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ status: newStatus } as any)
+        .update(patch)
         .eq("id", m.id)
         .select("id");
       if (error) throw error;
@@ -198,7 +202,7 @@ export default function PendingMeetingsBanner() {
                         size="sm"
                         variant="outline"
                         disabled={updatingId === m.id}
-                        onClick={() => handleResolve(m, key)}
+                        onClick={() => key === "cancelada" ? setCancelTarget(m) : handleResolve(m, key)}
                         className={cn("h-8 text-xs gap-1", cls)}
                       >
                         {updatingId === m.id ? (
@@ -230,6 +234,18 @@ export default function PendingMeetingsBanner() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CancelReasonDialog
+        open={!!cancelTarget}
+        onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
+        leadName={cancelTarget?.lead_name}
+        loading={updatingId === cancelTarget?.id}
+        onConfirm={async (reason) => {
+          if (!cancelTarget) return;
+          await handleResolve(cancelTarget, "cancelada", reason);
+          setCancelTarget(null);
+        }}
+      />
     </>
   );
 }

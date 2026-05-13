@@ -36,6 +36,7 @@ import { resendAgendamentoWebhook } from "@/services/datacrazyAgendamento";
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
+import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
 
 interface Agendamento {
@@ -163,6 +164,7 @@ export function CalendarContent() {
   const [deleting, setDeleting] = useState(false);
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
   
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
@@ -599,18 +601,25 @@ export function CalendarContent() {
   };
 
   // Status update handler
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string, cancellationReason?: string) => {
     if (!detailAg) return;
     // Realizada → abre pop-up de Vendeu? (bloqueia submit até preencher)
     if (newStatus === "realizada") {
       setVendaDialogAg(detailAg);
       return;
     }
+    // Cancelada → exige motivo (1 linha)
+    if (newStatus === "cancelada" && !cancellationReason) {
+      setCancelReasonOpen(true);
+      return;
+    }
     setUpdatingStatus(true);
     try {
+      const patch: any = { status: newStatus };
+      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ status: newStatus as any })
+        .update(patch)
         .eq("id", detailAg.id)
         .select("id");
       if (error) throw error;
@@ -1351,6 +1360,17 @@ export function CalendarContent() {
           }}
         />
       )}
+
+      <CancelReasonDialog
+        open={cancelReasonOpen}
+        onOpenChange={setCancelReasonOpen}
+        leadName={detailAg?.lead_name}
+        loading={updatingStatus}
+        onConfirm={async (reason) => {
+          setCancelReasonOpen(false);
+          await handleStatusChange("cancelada", reason);
+        }}
+      />
     </>
   );
 }

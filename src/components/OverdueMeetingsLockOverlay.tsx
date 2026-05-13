@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import CancelReasonDialog from "@/components/CancelReasonDialog";
 
 const STATUS_LABEL: Record<string, string> = {
   agendada: "Agendada",
@@ -27,16 +28,19 @@ export default function OverdueMeetingsLockOverlay() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<OverdueMeeting | null>(null);
   
 
   if (count === 0) return null;
 
-  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus) => {
+  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus, cancellationReason?: string) => {
     setUpdatingId(m.id);
     try {
+      const patch: any = { status: newStatus };
+      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ status: newStatus } as any)
+        .update(patch)
         .eq("id", m.id)
         .select("id");
       if (error) throw error;
@@ -224,7 +228,7 @@ export default function OverdueMeetingsLockOverlay() {
                         size="sm"
                         variant="outline"
                         disabled={updatingId === m.id}
-                        onClick={() => handleDirect(m, "cancelada")}
+                        onClick={() => setCancelTarget(m)}
                         className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
                       >
                         {updatingId === m.id ? (
@@ -275,6 +279,17 @@ export default function OverdueMeetingsLockOverlay() {
         </div>
       </div>
 
+      <CancelReasonDialog
+        open={!!cancelTarget}
+        onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
+        leadName={cancelTarget?.lead_name}
+        loading={updatingId === cancelTarget?.id}
+        onConfirm={async (reason) => {
+          if (!cancelTarget) return;
+          await handleDirect(cancelTarget, "cancelada", reason);
+          setCancelTarget(null);
+        }}
+      />
     </>
   );
 }

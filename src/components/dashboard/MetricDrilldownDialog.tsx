@@ -31,6 +31,7 @@ interface AgendamentoDetail {
   status: string;
   channel_type: string | null;
   meeting_reason: string | null;
+  cancellation_reason: string | null;
   closer_id: string | null;
   created_by: string | null;
   sdr_responsavel_id: string | null;
@@ -69,7 +70,7 @@ export default function MetricDrilldownDialog({
       const { data } = await supabase
         .from("agendamentos")
         .select(
-          "id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, meeting_reason, closer_id, created_by, sdr_responsavel_id, created_at",
+          "id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, meeting_reason, cancellation_reason, closer_id, created_by, sdr_responsavel_id, created_at",
         )
         .in("id", agendamentoIds)
         .order("scheduled_time", { ascending: true });
@@ -187,6 +188,16 @@ export default function MetricDrilldownDialog({
                             Motivo: {d.meeting_reason}
                           </Badge>
                         )}
+                      </div>
+                    )}
+                    {d.status === "cancelada" && d.cancellation_reason && (
+                      <div className="col-span-2 mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
+                          Motivo do cancelamento
+                        </p>
+                        <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                          {d.cancellation_reason}
+                        </p>
                       </div>
                     )}
                     {(() => {
