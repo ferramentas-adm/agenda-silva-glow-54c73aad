@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, XCircle, Ban, RotateCcw, Loader2, Send, UserCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import CancelReasonDialog from "@/components/CancelReasonDialog";
+const HIDE_ON_PREFIXES = ["/agendar", "/cancelar-reuniao", "/venda/", "/lead-detalhes"];
 
 const STATUS_LABEL: Record<string, string> = {
   agendada: "Agendada",
@@ -27,11 +27,11 @@ export default function OverdueMeetingsLockOverlay() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<OverdueMeeting | null>(null);
-  
 
   if (count === 0) return null;
+  if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
 
   const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus, cancellationReason?: string) => {
     setUpdatingId(m.id);
@@ -228,7 +228,7 @@ export default function OverdueMeetingsLockOverlay() {
                         size="sm"
                         variant="outline"
                         disabled={updatingId === m.id}
-                        onClick={() => setCancelTarget(m)}
+                        onClick={() => navigate(`/cancelar-reuniao/${m.id}?lead=${encodeURIComponent(m.lead_name)}`)}
                         className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
                       >
                         {updatingId === m.id ? (
@@ -279,17 +279,6 @@ export default function OverdueMeetingsLockOverlay() {
         </div>
       </div>
 
-      <CancelReasonDialog
-        open={!!cancelTarget}
-        onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
-        leadName={cancelTarget?.lead_name}
-        loading={updatingId === cancelTarget?.id}
-        onConfirm={async (reason) => {
-          if (!cancelTarget) return;
-          await handleDirect(cancelTarget, "cancelada", reason);
-          setCancelTarget(null);
-        }}
-      />
     </>
   );
 }
