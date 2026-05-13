@@ -43,15 +43,6 @@ export default function OverdueMeetingsLockOverlay() {
         .update(patch)
         .eq("id", m.id)
         .select("id");
-
-  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus) => {
-    setUpdatingId(m.id);
-    try {
-      const { data, error } = await supabase
-        .from("agendamentos")
-        .update({ status: newStatus } as any)
-        .eq("id", m.id)
-        .select("id");
       if (error) throw error;
       if (!data || data.length === 0) {
         throw new Error("Sem permissão para alterar este agendamento.");
