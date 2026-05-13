@@ -115,7 +115,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       const { data } = await supabase
         .from("agendamentos")
         .select("id, closer_id, scheduled_date, lead_name")
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .range(0, 9999);
       return (data ?? []) as AgendamentoRow[];
     },
     staleTime: 30_000,
