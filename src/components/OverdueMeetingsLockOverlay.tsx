@@ -279,6 +279,17 @@ export default function OverdueMeetingsLockOverlay() {
         </div>
       </div>
 
+      <CancelReasonDialog
+        open={!!cancelTarget}
+        onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
+        leadName={cancelTarget?.lead_name}
+        loading={updatingId === cancelTarget?.id}
+        onConfirm={async (reason) => {
+          if (!cancelTarget) return;
+          await handleDirect(cancelTarget, "cancelada", reason);
+          setCancelTarget(null);
+        }}
+      />
     </>
   );
 }
