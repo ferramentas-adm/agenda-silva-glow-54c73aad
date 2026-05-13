@@ -187,7 +187,8 @@ export default function DashboardComercialPage() {
         .is("deleted_at", null)
         .gte("scheduled_date", minDate)
         .lte("scheduled_date", maxDate)
-        .order("scheduled_date");
+        .order("scheduled_date")
+        .range(0, 49999);
       return (data ?? []) as AgendamentoMetric[];
     },
     refetchInterval: 2 * 60 * 1000,
