@@ -600,18 +600,25 @@ export function CalendarContent() {
   };
 
   // Status update handler
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string, cancellationReason?: string) => {
     if (!detailAg) return;
     // Realizada → abre pop-up de Vendeu? (bloqueia submit até preencher)
     if (newStatus === "realizada") {
       setVendaDialogAg(detailAg);
       return;
     }
+    // Cancelada → exige motivo (1 linha)
+    if (newStatus === "cancelada" && !cancellationReason) {
+      setCancelReasonOpen(true);
+      return;
+    }
     setUpdatingStatus(true);
     try {
+      const patch: any = { status: newStatus };
+      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ status: newStatus as any })
+        .update(patch)
         .eq("id", detailAg.id)
         .select("id");
       if (error) throw error;
