@@ -28,9 +28,21 @@ export default function OverdueMeetingsLockOverlay() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<OverdueMeeting | null>(null);
   
 
   if (count === 0) return null;
+
+  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus, cancellationReason?: string) => {
+    setUpdatingId(m.id);
+    try {
+      const patch: any = { status: newStatus };
+      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update(patch)
+        .eq("id", m.id)
+        .select("id");
 
   const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus) => {
     setUpdatingId(m.id);
