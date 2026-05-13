@@ -190,6 +190,16 @@ export default function MetricDrilldownDialog({
                         )}
                       </div>
                     )}
+                    {d.status === "cancelada" && d.cancellation_reason && (
+                      <div className="col-span-2 mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
+                          Motivo do cancelamento
+                        </p>
+                        <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                          {d.cancellation_reason}
+                        </p>
+                      </div>
+                    )}
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
                       // Quando o drill é por "Motivo de não fechamento", mostramos a
