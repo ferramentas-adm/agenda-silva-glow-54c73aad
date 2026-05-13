@@ -39,6 +39,7 @@ interface VendaRow {
   motivo_nao_fechamento: string | null;
   observacoes: string | null;
   created_at: string;
+  agendamentos: AgendamentoRow | null;
 }
 
 interface AgendamentoRow {
@@ -103,24 +104,16 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, observacoes, created_at")
+        .select(`
+          id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time,
+          motivo_nao_fechamento, observacoes, created_at,
+          agendamentos!inner(id, closer_id, scheduled_date, lead_name)
+        `)
+        .is("agendamentos.deleted_at", null)
         .range(0, 9999);
-      return (data ?? []) as VendaRow[];
+      return (data ?? []) as unknown as VendaRow[];
     },
     refetchInterval: 60_000,
-  });
-
-  const { data: agendamentos = [] } = useQuery<AgendamentoRow[]>({
-    queryKey: ["vendas-tab-agendamentos"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("agendamentos")
-        .select("id, closer_id, scheduled_date, lead_name")
-        .is("deleted_at", null)
-        .range(0, 9999);
-      return (data ?? []) as AgendamentoRow[];
-    },
-    staleTime: 30_000,
   });
 
   const { data: closers = [] } = useQuery<CloserRow[]>({
@@ -133,9 +126,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   const agMap = useMemo(() => {
     const m = new Map<string, AgendamentoRow>();
-    agendamentos.forEach((a) => m.set(a.id, a));
+    vendas.forEach((v) => {
+      if (v.agendamentos) m.set(v.agendamentos.id, v.agendamentos);
+    });
     return m;
-  }, [agendamentos]);
+  }, [vendas]);
 
   const closerMap = useMemo(() => {
     const m = new Map<string, string>();
