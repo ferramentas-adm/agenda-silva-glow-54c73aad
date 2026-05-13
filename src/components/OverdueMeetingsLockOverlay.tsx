@@ -228,7 +228,7 @@ export default function OverdueMeetingsLockOverlay() {
                         size="sm"
                         variant="outline"
                         disabled={updatingId === m.id}
-                        onClick={() => handleDirect(m, "cancelada")}
+                        onClick={() => setCancelTarget(m)}
                         className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
                       >
                         {updatingId === m.id ? (
