@@ -202,7 +202,7 @@ export default function PendingMeetingsBanner() {
                         size="sm"
                         variant="outline"
                         disabled={updatingId === m.id}
-                        onClick={() => handleResolve(m, key)}
+                        onClick={() => key === "cancelada" ? setCancelTarget(m) : handleResolve(m, key)}
                         className={cn("h-8 text-xs gap-1", cls)}
                       >
                         {updatingId === m.id ? (
