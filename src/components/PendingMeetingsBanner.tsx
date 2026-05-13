@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import CancelReasonDialog from "@/components/CancelReasonDialog";
 
 const STATUS_LABEL: Record<string, string> = {
   agendada: "Agendada",
