@@ -153,15 +153,20 @@ export default function ProdutividadeSDRTab({
     return { from: fmt(currentDate), to: fmt(currentDate) };
   }, [isIntervalMode, customRange, currentDate]);
 
-  // ─── Pool de agendamentos a considerar (apenas SDRs via /agendar) ─
-  // Regra de negócio: somente reuniões cujo criador seja um SDR.
-  // Quem criou via Calendário (closer/gestor/moderador) é descartado.
+  // ─── Pool de agendamentos a considerar ───────────────────────
+  // Regra de negócio: contamos para o SDR EFETIVO de cada agendamento, que é
+  // sdr_responsavel_id (se transferido) OU created_by. Se esse usuário não
+  // for SDR (ex.: criado via Calendário por closer/gestor), descartamos.
+  const effectiveSdrId = (a: AgendamentoMetric): string | null => {
+    const id = a.sdr_responsavel_id || a.created_by;
+    return id && sdrIds.has(id) ? id : null;
+  };
   const pool = useMemo(() => {
     if (!range) return [];
     if (filter === "criadas") {
       // Filtramos por created_at convertido para a data LOCAL do navegador.
       return createdAgs.filter((a) => {
-        if (!a.created_by || !sdrIds.has(a.created_by)) return false;
+        if (!effectiveSdrId(a)) return false;
         const localDay = localDateOf(a.created_at);
         return localDay >= range.from && localDay <= range.to;
       });
@@ -169,8 +174,7 @@ export default function ProdutividadeSDRTab({
     // Para / Compareceu / Não compareceu → usamos scheduled_date como referência
     const byDate = agendamentos.filter(
       (a) =>
-        a.created_by &&
-        sdrIds.has(a.created_by) &&
+        effectiveSdrId(a) &&
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to,
     );
@@ -216,7 +220,8 @@ export default function ProdutividadeSDRTab({
     }
     const counts = new Map<string, number>();
     pool.forEach((a) => {
-      const key = a.created_by!;
+      const key = effectiveSdrId(a);
+      if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
     });
     return sdrProfiles
@@ -239,14 +244,13 @@ export default function ProdutividadeSDRTab({
   const kpis = useMemo(() => {
     if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0 };
     const criadas = createdAgs.filter((a) => {
-      if (!a.created_by || !sdrIds.has(a.created_by)) return false;
+      if (!effectiveSdrId(a)) return false;
       const localDay = localDateOf(a.created_at);
       return localDay >= range.from && localDay <= range.to;
     }).length;
     const dia = agendamentos.filter(
       (a) =>
-        a.created_by &&
-        sdrIds.has(a.created_by) &&
+        effectiveSdrId(a) &&
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to,
     );
