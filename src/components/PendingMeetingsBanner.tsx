@@ -42,6 +42,7 @@ export default function PendingMeetingsBanner() {
   const { count, pendings, byCloser, bySdr, refetch } = usePendingMeetings();
   const [open, setOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<PendingWithMeta | null>(null);
 
   const isManager = role === "gestor" || role === "moderador";
   const canResolveInline = role === "sdr" || role === "closer";
