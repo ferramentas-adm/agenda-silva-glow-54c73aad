@@ -220,7 +220,8 @@ export default function ProdutividadeSDRTab({
     }
     const counts = new Map<string, number>();
     pool.forEach((a) => {
-      const key = a.created_by!;
+      const key = effectiveSdrId(a);
+      if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
     });
     return sdrProfiles
