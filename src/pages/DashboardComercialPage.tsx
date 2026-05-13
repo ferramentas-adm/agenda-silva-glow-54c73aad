@@ -227,7 +227,9 @@ export default function DashboardComercialPage() {
         // virada de dia em BRT (UTC-3) não sejam cortados pelo filtro UTC.
         // O filtro fino por dia BRT é aplicado no cliente via localDateOf.
         .gte("created_at", format(subDays(parseISO(broadStart), 1), "yyyy-MM-dd") + "T00:00:00")
-        .lte("created_at", format(addDays(parseISO(broadEnd), 1), "yyyy-MM-dd") + "T23:59:59");
+        .lte("created_at", format(addDays(parseISO(broadEnd), 1), "yyyy-MM-dd") + "T23:59:59")
+        .order("created_at", { ascending: false })
+        .range(0, 49999);
       return (data ?? []) as AgendamentoMetric[];
     },
     refetchInterval: 2 * 60 * 1000,
