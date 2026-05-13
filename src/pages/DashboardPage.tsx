@@ -1360,6 +1360,17 @@ export function CalendarContent() {
           }}
         />
       )}
+
+      <CancelReasonDialog
+        open={cancelReasonOpen}
+        onOpenChange={setCancelReasonOpen}
+        leadName={detailAg?.lead_name}
+        loading={updatingStatus}
+        onConfirm={async (reason) => {
+          setCancelReasonOpen(false);
+          await handleStatusChange("cancelada", reason);
+        }}
+      />
     </>
   );
 }
