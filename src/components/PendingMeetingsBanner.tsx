@@ -54,12 +54,14 @@ export default function PendingMeetingsBanner() {
     return `Você tem ${count} reuni${count === 1 ? "ão" : "ões"} de dias passados ainda em aberto`;
   }, [count, isManager]);
 
-  const handleResolve = async (m: PendingWithMeta, newStatus: ResolveStatus) => {
+  const handleResolve = async (m: PendingWithMeta, newStatus: ResolveStatus, cancellationReason?: string) => {
     setUpdatingId(m.id);
     try {
+      const patch: any = { status: newStatus };
+      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ status: newStatus } as any)
+        .update(patch)
         .eq("id", m.id)
         .select("id");
       if (error) throw error;
