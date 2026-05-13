@@ -31,6 +31,7 @@ interface AgendamentoDetail {
   status: string;
   channel_type: string | null;
   meeting_reason: string | null;
+  cancellation_reason: string | null;
   closer_id: string | null;
   created_by: string | null;
   sdr_responsavel_id: string | null;
