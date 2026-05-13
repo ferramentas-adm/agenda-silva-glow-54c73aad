@@ -13,8 +13,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import CancelReasonDialog from "@/components/CancelReasonDialog";
-
 const HIDE_ON_PREFIXES = ["/agendar", "/cancelar-reuniao", "/venda/", "/lead-detalhes"];
 
 const STATUS_LABEL: Record<string, string> = {
