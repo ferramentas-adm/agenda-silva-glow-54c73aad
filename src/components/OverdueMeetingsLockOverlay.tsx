@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import CancelReasonDialog from "@/components/CancelReasonDialog";
 
 const STATUS_LABEL: Record<string, string> = {
   agendada: "Agendada",
