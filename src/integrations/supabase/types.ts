@@ -19,6 +19,7 @@ export type Database = {
           briefing: string | null
           briefing_read_at: string | null
           briefing_read_by: string | null
+          cancellation_reason: string | null
           channel_type: string | null
           closer_handoff_at: string | null
           closer_id: string | null
@@ -48,6 +49,7 @@ export type Database = {
           briefing?: string | null
           briefing_read_at?: string | null
           briefing_read_by?: string | null
+          cancellation_reason?: string | null
           channel_type?: string | null
           closer_handoff_at?: string | null
           closer_id?: string | null
@@ -77,6 +79,7 @@ export type Database = {
           briefing?: string | null
           briefing_read_at?: string | null
           briefing_read_by?: string | null
+          cancellation_reason?: string | null
           channel_type?: string | null
           closer_handoff_at?: string | null
           closer_id?: string | null
