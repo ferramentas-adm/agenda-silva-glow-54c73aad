@@ -234,6 +234,18 @@ export default function PendingMeetingsBanner() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CancelReasonDialog
+        open={!!cancelTarget}
+        onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
+        leadName={cancelTarget?.lead_name}
+        loading={updatingId === cancelTarget?.id}
+        onConfirm={async (reason) => {
+          if (!cancelTarget) return;
+          await handleResolve(cancelTarget, "cancelada", reason);
+          setCancelTarget(null);
+        }}
+      />
     </>
   );
 }
