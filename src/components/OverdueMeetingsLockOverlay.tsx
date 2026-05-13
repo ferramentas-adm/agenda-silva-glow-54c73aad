@@ -29,11 +29,12 @@ export default function OverdueMeetingsLockOverlay() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<OverdueMeeting | null>(null);
-  
 
   if (count === 0) return null;
+  if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
 
   const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus, cancellationReason?: string) => {
     setUpdatingId(m.id);
