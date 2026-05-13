@@ -20,6 +20,7 @@ const FollowUpsPage = lazy(() => import("@/pages/FollowUpsPage"));
 const PagamentosPage = lazy(() => import("@/pages/PagamentosPage"));
 const VendaPage = lazy(() => import("@/pages/VendaPage"));
 const LeadDetalhesPage = lazy(() => import("@/pages/LeadDetalhesPage"));
+const CancelarReuniaoPage = lazy(() => import("@/pages/CancelarReuniaoPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient({
