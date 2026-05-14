@@ -1,14 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRDateTime } from "@/lib/timezone";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Phone, User, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2 } from "lucide-react";
 
 interface AgendamentoRef {
   id: string;
@@ -117,6 +122,45 @@ export default function MetricDrilldownDialog({
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
   const vendaMap = new Map(vendas.map((v: any) => [v.agendamento_id, v]));
 
+  const { role } = useAuth();
+  const canEditValor = role === "gestor" || role === "moderador";
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (agId: string, current: number | null) => {
+    setEditingId(agId);
+    setEditValue(current != null ? String(current).replace(".", ",") : "");
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditValue("");
+  };
+  const saveEdit = async (agId: string) => {
+    const normalized = editValue.replace(/\./g, "").replace(",", ".").trim();
+    const num = Number(normalized);
+    if (!normalized || Number.isNaN(num) || num < 0) {
+      toast.error("Valor inválido");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("vendas")
+      .update({ valor: num })
+      .eq("agendamento_id", agId);
+    setSaving(false);
+    if (error) {
+      toast.error("Erro ao atualizar valor: " + error.message);
+      return;
+    }
+    toast.success("Valor atualizado");
+    cancelEdit();
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -215,13 +259,48 @@ export default function MetricDrilldownDialog({
                       return (
                         <>
                           {showValor && (
-                            <div className="col-span-2 mt-2 flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
+                            <div className="col-span-2 mt-2 flex items-center justify-between gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
                               <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
                                 Valor coletado
                               </span>
-                              <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
-                                {valorNum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                              </span>
+                              {editingId === d.id ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    autoFocus
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    placeholder="0,00"
+                                    className="h-7 w-28 text-sm"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveEdit(d.id);
+                                      if (e.key === "Escape") cancelEdit();
+                                    }}
+                                  />
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={saving} onClick={() => saveEdit(d.id)}>
+                                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={saving} onClick={cancelEdit}>
+                                    <XIcon className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                                    {valorNum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                  </span>
+                                  {canEditValor && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      onClick={() => startEdit(d.id, valorNum)}
+                                      title="Editar valor"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                           {text && (
