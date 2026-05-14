@@ -259,6 +259,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <PendingMeetingsBanner />
         </div>
 
+        {/* Follow-ups atrasados (closer) */}
+        <div className="px-4 pt-3">
+          <OverdueFollowUpsBanner />
+        </div>
+
         <main className="flex-1 px-4 py-6 max-w-7xl mx-auto w-full">
           {children}
         </main>
