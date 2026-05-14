@@ -201,7 +201,7 @@ export async function removeFollowUp(
     if (!updatedVenda) throw new Error("O follow-up não foi removido. Tente novamente.");
 
     await logAudit("follow_up_removido", "venda", agendamentoId, { lead_name: leadName });
-    toast.success("Follow-up removido");
+    toast.success("Lead movido para Não acompanhados");
     return true;
   } catch (err: any) {
     toast.error(err.message || "Erro ao remover follow-up");
