@@ -107,7 +107,7 @@ export default function MetricDrilldownDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -202,9 +202,7 @@ export default function MetricDrilldownDialog({
                     )}
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
-                      // Quando o drill é por "Motivo de não fechamento", mostramos a
-                      // explicação textual do porquê não fechou. Em outros contextos
-                      // (sem motivo), caímos no resumo/observações da venda.
+                      if (!v) return null;
                       const isMotivoDrill = !!v?.motivo_nao_fechamento;
                       const text = isMotivoDrill
                         ? (v?.explicacao_nao_fechamento ?? null)
@@ -212,16 +210,31 @@ export default function MetricDrilldownDialog({
                       const label = isMotivoDrill
                         ? "Explicação do porquê não fechou"
                         : "Resumo do cliente / observações";
-                      if (!text) return null;
+                      const valorNum = typeof v?.valor === "number" ? v.valor : v?.valor ? Number(v.valor) : null;
+                      const showValor = v?.vendeu && valorNum != null && !Number.isNaN(valorNum);
                       return (
-                        <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
-                            {label}
-                          </p>
-                          <p className="text-xs text-foreground whitespace-pre-wrap break-words">
-                            {text}
-                          </p>
-                        </div>
+                        <>
+                          {showValor && (
+                            <div className="col-span-2 mt-2 flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                                Valor coletado
+                              </span>
+                              <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                                {valorNum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </span>
+                            </div>
+                          )}
+                          {text && (
+                            <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                                {label}
+                              </p>
+                              <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                                {text}
+                              </p>
+                            </div>
+                          )}
+                        </>
                       );
                     })()}
                   </div>
