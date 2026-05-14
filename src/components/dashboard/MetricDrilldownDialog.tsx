@@ -10,10 +10,14 @@ import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2 } from "lucide-react";
+import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2 } from "lucide-react";
 
 interface AgendamentoRef {
   id: string;
@@ -124,10 +128,13 @@ export default function MetricDrilldownDialog({
 
   const { role } = useAuth();
   const canEditValor = role === "gestor" || role === "moderador";
+  const canDeleteVenda = role === "gestor" || role === "moderador";
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const startEdit = (agId: string, current: number | null) => {
     setEditingId(agId);
@@ -161,7 +168,26 @@ export default function MetricDrilldownDialog({
     await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
   };
 
+  const handleDelete = async (agId: string) => {
+    setDeleting(true);
+    const { error } = await supabase
+      .from("vendas")
+      .delete()
+      .eq("agendamento_id", agId);
+    setDeleting(false);
+    setDeleteConfirmId(null);
+    if (error) {
+      toast.error("Erro ao excluir venda: " + error.message);
+      return;
+    }
+    toast.success("Venda excluída");
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
@@ -299,6 +325,17 @@ export default function MetricDrilldownDialog({
                                       <Pencil className="h-3 w-3" />
                                     </Button>
                                   )}
+                                  {canDeleteVenda && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 text-destructive hover:text-destructive"
+                                      onClick={() => setDeleteConfirmId(d.id)}
+                                      title="Excluir venda"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -324,5 +361,30 @@ export default function MetricDrilldownDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={!!deleteConfirmId} onOpenChange={(o) => !o && setDeleteConfirmId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir venda?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Essa ação não pode ser desfeita. A venda será removida permanentemente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setDeleteConfirmId(null)} disabled={deleting}>
+            Cancelar
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+            disabled={deleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
