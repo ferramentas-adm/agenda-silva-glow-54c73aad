@@ -385,5 +385,6 @@ export default function MetricDrilldownDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    </>
   );
 }
