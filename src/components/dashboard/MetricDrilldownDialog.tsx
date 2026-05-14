@@ -128,10 +128,13 @@ export default function MetricDrilldownDialog({
 
   const { role } = useAuth();
   const canEditValor = role === "gestor" || role === "moderador";
+  const canDeleteVenda = role === "gestor" || role === "moderador";
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const startEdit = (agId: string, current: number | null) => {
     setEditingId(agId);
@@ -160,6 +163,24 @@ export default function MetricDrilldownDialog({
     }
     toast.success("Valor atualizado");
     cancelEdit();
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+  };
+
+  const handleDelete = async (agId: string) => {
+    setDeleting(true);
+    const { error } = await supabase
+      .from("vendas")
+      .delete()
+      .eq("agendamento_id", agId);
+    setDeleting(false);
+    setDeleteConfirmId(null);
+    if (error) {
+      toast.error("Erro ao excluir venda: " + error.message);
+      return;
+    }
+    toast.success("Venda excluída");
     await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
     await queryClient.invalidateQueries({ queryKey: ["vendas"] });
     await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
