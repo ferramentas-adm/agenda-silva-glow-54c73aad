@@ -324,6 +324,17 @@ export default function MetricDrilldownDialog({
                                       <Pencil className="h-3 w-3" />
                                     </Button>
                                   )}
+                                  {canDeleteVenda && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 text-destructive hover:text-destructive"
+                                      onClick={() => setDeleteConfirmId(d.id)}
+                                      title="Excluir venda"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
                                 </div>
                               )}
                             </div>
