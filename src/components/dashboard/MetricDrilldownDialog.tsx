@@ -1,14 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRDateTime } from "@/lib/timezone";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Phone, User, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2 } from "lucide-react";
 
 interface AgendamentoRef {
   id: string;
