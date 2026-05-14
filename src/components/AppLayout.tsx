@@ -10,6 +10,7 @@ import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 import CloserBlockDialog from "@/components/CloserBlockDialog";
 import NotificationBell from "@/components/NotificationBell";
 import PendingMeetingsBanner from "@/components/PendingMeetingsBanner";
+import OverdueFollowUpsBanner from "@/components/OverdueFollowUpsBanner";
 import OverdueMeetingsLockOverlay from "@/components/OverdueMeetingsLockOverlay";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -256,6 +257,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Reuniões pendentes de fechamento (dias passados) */}
         <div className="px-4 pt-3">
           <PendingMeetingsBanner />
+        </div>
+
+        {/* Follow-ups atrasados (closer) */}
+        <div className="px-4 pt-3">
+          <OverdueFollowUpsBanner />
         </div>
 
         <main className="flex-1 px-4 py-6 max-w-7xl mx-auto w-full">

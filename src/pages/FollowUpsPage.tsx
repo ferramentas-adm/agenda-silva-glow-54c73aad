@@ -242,7 +242,7 @@ export default function FollowUpsPage() {
           </div>
         </header>
 
-        {isGestor && (
+        {isManager && (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
             <TabsList>
               <TabsTrigger value="em-acompanhamento">Em acompanhamento</TabsTrigger>
@@ -254,7 +254,7 @@ export default function FollowUpsPage() {
           </Tabs>
         )}
 
-        {(!isGestor || activeTab === "em-acompanhamento") && (
+        {(!isManager || activeTab === "em-acompanhamento") && (
           <>
         {/* Tarefas avulsas */}
         <TasksSection />
@@ -422,10 +422,10 @@ export default function FollowUpsPage() {
         <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && !removing && setRemoveTarget(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Remover follow-up?</AlertDialogTitle>
+              <AlertDialogTitle>Descartar follow-up?</AlertDialogTitle>
               <AlertDialogDescription>
-                O follow-up de <strong>{removeTarget?.agendamentos?.lead_name}</strong> será removido da lista.
-                Você pode registrar um novo follow-up depois pelo botão "Próximo passo".
+                O lead <strong>{removeTarget?.agendamentos?.lead_name}</strong> será movido para a lista de
+                <strong> Leads não acompanhados</strong>. Você pode registrar um novo follow-up depois pelo botão "Próximo passo".
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
