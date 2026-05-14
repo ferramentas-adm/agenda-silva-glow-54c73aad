@@ -360,5 +360,29 @@ export default function MetricDrilldownDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={!!deleteConfirmId} onOpenChange={(o) => !o && setDeleteConfirmId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir venda?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Essa ação não pode ser desfeita. A venda será removida permanentemente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setDeleteConfirmId(null)} disabled={deleting}>
+            Cancelar
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+            disabled={deleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
