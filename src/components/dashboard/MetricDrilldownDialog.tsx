@@ -122,6 +122,45 @@ export default function MetricDrilldownDialog({
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
   const vendaMap = new Map(vendas.map((v: any) => [v.agendamento_id, v]));
 
+  const { role } = useAuth();
+  const canEditValor = role === "gestor" || role === "moderador";
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (agId: string, current: number | null) => {
+    setEditingId(agId);
+    setEditValue(current != null ? String(current).replace(".", ",") : "");
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditValue("");
+  };
+  const saveEdit = async (agId: string) => {
+    const normalized = editValue.replace(/\./g, "").replace(",", ".").trim();
+    const num = Number(normalized);
+    if (!normalized || Number.isNaN(num) || num < 0) {
+      toast.error("Valor inválido");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("vendas")
+      .update({ valor: num })
+      .eq("agendamento_id", agId);
+    setSaving(false);
+    if (error) {
+      toast.error("Erro ao atualizar valor: " + error.message);
+      return;
+    }
+    toast.success("Valor atualizado");
+    cancelEdit();
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
