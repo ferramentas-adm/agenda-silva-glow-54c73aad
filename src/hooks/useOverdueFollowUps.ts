@@ -34,7 +34,7 @@ export function useOverdueFollowUps() {
 
   const today = (() => {
     try {
-      return todayBR();
+      return brTodayYMD();
     } catch {
       return format(new Date(), "yyyy-MM-dd");
     }
