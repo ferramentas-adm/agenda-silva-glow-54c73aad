@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { todayBR } from "@/lib/timezone";
+import { brTodayYMD } from "@/lib/timezone";
 
 export interface OverdueFollowUp {
   id: string;
