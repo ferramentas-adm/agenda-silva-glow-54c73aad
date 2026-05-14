@@ -259,13 +259,48 @@ export default function MetricDrilldownDialog({
                       return (
                         <>
                           {showValor && (
-                            <div className="col-span-2 mt-2 flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
+                            <div className="col-span-2 mt-2 flex items-center justify-between gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
                               <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
                                 Valor coletado
                               </span>
-                              <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
-                                {valorNum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                              </span>
+                              {editingId === d.id ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    autoFocus
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    placeholder="0,00"
+                                    className="h-7 w-28 text-sm"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveEdit(d.id);
+                                      if (e.key === "Escape") cancelEdit();
+                                    }}
+                                  />
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={saving} onClick={() => saveEdit(d.id)}>
+                                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={saving} onClick={cancelEdit}>
+                                    <XIcon className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                                    {valorNum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                  </span>
+                                  {canEditValor && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      onClick={() => startEdit(d.id, valorNum)}
+                                      title="Editar valor"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                           {text && (
