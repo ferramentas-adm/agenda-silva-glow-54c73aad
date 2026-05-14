@@ -242,7 +242,7 @@ export default function FollowUpsPage() {
           </div>
         </header>
 
-        {isGestor && (
+        {isManager && (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
             <TabsList>
               <TabsTrigger value="em-acompanhamento">Em acompanhamento</TabsTrigger>
@@ -254,7 +254,7 @@ export default function FollowUpsPage() {
           </Tabs>
         )}
 
-        {(!isGestor || activeTab === "em-acompanhamento") && (
+        {(!isManager || activeTab === "em-acompanhamento") && (
           <>
         {/* Tarefas avulsas */}
         <TasksSection />
