@@ -10,10 +10,14 @@ import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2 } from "lucide-react";
+import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2 } from "lucide-react";
 
 interface AgendamentoRef {
   id: string;
