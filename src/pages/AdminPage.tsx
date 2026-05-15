@@ -560,7 +560,7 @@ function UsersSection() {
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
                         </span>
-                        {isGestor && u.type === "profile" && u.role !== "closer" && (
+                        {canActOn(u.role) && u.type === "profile" && u.role !== "closer" && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -575,14 +575,14 @@ function UsersSection() {
                             }
                           </Button>
                         )}
-                        {isGestor && (
+                        {canActOn(u.role) && (
                           <Switch
                             checked={u.active}
                             onCheckedChange={() => handleToggleActive(u)}
                             disabled={togglingId === u.userId}
                           />
                         )}
-                        {isGestor && u.type === "profile" && (
+                        {canActOn(u.role) && u.type === "profile" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
                             onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
                             <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -594,7 +594,7 @@ function UsersSection() {
                             <Clock className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        {isGestor && (
+                        {canActOn(u.role) && (
                           <>
                             <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
                               onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
