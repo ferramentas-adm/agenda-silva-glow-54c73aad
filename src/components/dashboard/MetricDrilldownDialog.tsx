@@ -288,10 +288,9 @@ export default function MetricDrilldownDialog({
                     )}
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
-                      if (!v) return null;
                       const valorNum = typeof v?.valor === "number" ? v.valor : v?.valor ? Number(v.valor) : null;
                       const showValor = v?.vendeu && valorNum != null && !Number.isNaN(valorNum);
-                      const resumo = v?.resumo_venda?.trim() || null;
+                      const resumo = (d as any).briefing?.trim() || v?.resumo_venda?.trim() || null;
                       const explicacao = v?.explicacao_nao_fechamento?.trim() || null;
                       const obs = v?.observacoes?.trim() || null;
                       const obsDistinct = obs && obs !== resumo && obs !== explicacao ? obs : null;
