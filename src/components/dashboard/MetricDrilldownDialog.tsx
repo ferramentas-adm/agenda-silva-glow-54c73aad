@@ -288,15 +288,12 @@ export default function MetricDrilldownDialog({
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
                       if (!v) return null;
-                      const isMotivoDrill = !!v?.motivo_nao_fechamento;
-                      const text = isMotivoDrill
-                        ? (v?.explicacao_nao_fechamento ?? null)
-                        : (v?.observacoes ?? null);
-                      const label = isMotivoDrill
-                        ? "Explicação do porquê não fechou"
-                        : "Resumo do cliente / observações";
                       const valorNum = typeof v?.valor === "number" ? v.valor : v?.valor ? Number(v.valor) : null;
                       const showValor = v?.vendeu && valorNum != null && !Number.isNaN(valorNum);
+                      const resumo = v?.resumo_venda?.trim() || null;
+                      const explicacao = v?.explicacao_nao_fechamento?.trim() || null;
+                      const obs = v?.observacoes?.trim() || null;
+                      const obsDistinct = obs && obs !== resumo && obs !== explicacao ? obs : null;
                       return (
                         <>
                           {showValor && (
@@ -355,13 +352,33 @@ export default function MetricDrilldownDialog({
                               )}
                             </div>
                           )}
-                          {text && (
+                          {resumo && (
                             <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
                               <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
-                                {label}
+                                Resumo do cliente
                               </p>
                               <p className="text-xs text-foreground whitespace-pre-wrap break-words">
-                                {text}
+                                {resumo}
+                              </p>
+                            </div>
+                          )}
+                          {explicacao && (
+                            <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                                Explicação do porquê não fechou
+                              </p>
+                              <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                                {explicacao}
+                              </p>
+                            </div>
+                          )}
+                          {obsDistinct && (
+                            <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                                Observações
+                              </p>
+                              <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                                {obs}
                               </p>
                             </div>
                           )}
