@@ -138,7 +138,9 @@ export default function AgendarPage() {
     },
   });
 
-  // Pre-fill from edit data — lead, channel_type e meeting_reason herdados do agendamento original
+  // Pre-fill from edit data — em reagendamentos, herda TODOS os dados do agendamento
+  // original (lead, briefing, observação, canal, duração, SDR responsável, flag 5k)
+  // para que o SDR não precise redigitar nada.
   useEffect(() => {
     if (!editData) return;
     if (!lead) {
@@ -150,8 +152,21 @@ export default function AgendarPage() {
     } else if (editData.channel_type && !channelType) {
       setChannelType(editData.channel_type);
     }
-    // Campo "Motivo da reunião" foi removido — não herdamos mais meeting_reason
-    // do agendamento original em reagendamentos para nenhuma função.
+    if (editData.briefing && !briefingText) {
+      setBriefingText(editData.briefing);
+    }
+    if (editData.observation && !observation) {
+      setObservation(editData.observation);
+    }
+    if (typeof editData.duration_minutes === "number" && editData.duration_minutes !== 60) {
+      setDurationMinutes(editData.duration_minutes);
+    }
+    if (editData.is_5k && !is5k) {
+      setIs5k(true);
+    }
+    if (editData.sdr_responsavel_id && !selectedSdrId) {
+      setSelectedSdrId(editData.sdr_responsavel_id);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editData, role]);
 
