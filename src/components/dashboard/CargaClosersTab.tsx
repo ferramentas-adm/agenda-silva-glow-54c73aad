@@ -42,6 +42,7 @@ interface FollowUpVendaRow {
     lead_phone: string;
     closer_id: string | null;
     deleted_at: string | null;
+    briefing: string | null;
   } | null;
 }
 
