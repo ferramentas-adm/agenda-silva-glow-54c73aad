@@ -80,7 +80,7 @@ export default function MetricDrilldownDialog({
       const { data } = await supabase
         .from("agendamentos")
         .select(
-          "id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, meeting_reason, cancellation_reason, closer_id, created_by, sdr_responsavel_id, created_at",
+          "id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, meeting_reason, cancellation_reason, closer_id, created_by, sdr_responsavel_id, created_at, briefing",
         )
         .in("id", agendamentoIds)
         .order("scheduled_time", { ascending: true });
