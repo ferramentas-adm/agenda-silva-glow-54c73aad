@@ -42,6 +42,7 @@ interface FollowUpVendaRow {
     lead_phone: string;
     closer_id: string | null;
     deleted_at: string | null;
+    briefing: string | null;
   } | null;
 }
 
@@ -112,7 +113,7 @@ export default function CargaClosersTab() {
         .from("vendas")
         .select(`
           id, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento,
-          agendamentos!inner ( id, lead_name, lead_phone, closer_id, deleted_at )
+          agendamentos!inner ( id, lead_name, lead_phone, closer_id, deleted_at, briefing )
         `)
         .eq("follow_up", true)
         .eq("vendeu", false);
@@ -134,47 +135,31 @@ export default function CargaClosersTab() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone")
+        .select("id, lead_name, lead_phone, briefing")
         .in("id", taskAgendamentoIds);
       return data ?? [];
     },
   });
   const taskLeadMap = useMemo(() => {
-    const m = new Map<string, { lead_name: string; lead_phone: string }>();
-    (taskLeads as any[]).forEach((a) => m.set(a.id, { lead_name: a.lead_name, lead_phone: a.lead_phone }));
+    const m = new Map<string, { lead_name: string; lead_phone: string; briefing: string | null }>();
+    (taskLeads as any[]).forEach((a) => m.set(a.id, { lead_name: a.lead_name, lead_phone: a.lead_phone, briefing: a.briefing ?? null }));
     return m;
   }, [taskLeads]);
 
-  // Resumos de venda (o que o cliente vende) por agendamento
-  const allAgendamentoIds = useMemo(() => {
-    const ids = new Set<string>();
-    tasks.forEach((t) => t.agendamento_id && ids.add(t.agendamento_id));
-    followUps.forEach((f) => f.agendamentos?.id && ids.add(f.agendamentos.id));
-    return Array.from(ids);
-  }, [tasks, followUps]);
-
-  const { data: vendaResumos = [] } = useQuery({
-    queryKey: ["carga-venda-resumos", allAgendamentoIds.join(",")],
-    enabled: allAgendamentoIds.length > 0,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("vendas")
-        .select("agendamento_id, resumo_venda, updated_at")
-        .in("agendamento_id", allAgendamentoIds)
-        .not("resumo_venda", "is", null);
-      return data ?? [];
-    },
-  });
+  // Resumo do cliente = briefing do agendamento
   const resumoMap = useMemo(() => {
     const m = new Map<string, string>();
-    (vendaResumos as any[]).forEach((v) => {
-      const r = v.resumo_venda?.trim();
-      if (!r) return;
-      const cur = m.get(v.agendamento_id);
-      if (!cur) m.set(v.agendamento_id, r);
+    followUps.forEach((f) => {
+      const id = f.agendamentos?.id;
+      const b = f.agendamentos?.briefing?.trim();
+      if (id && b) m.set(id, b);
+    });
+    (taskLeads as any[]).forEach((a) => {
+      const b = a.briefing?.trim();
+      if (a.id && b && !m.has(a.id)) m.set(a.id, b);
     });
     return m;
-  }, [vendaResumos]);
+  }, [followUps, taskLeads]);
 
   const today = brTodayYMD();
 

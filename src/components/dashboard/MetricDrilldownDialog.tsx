@@ -45,6 +45,7 @@ interface AgendamentoDetail {
   created_by: string | null;
   sdr_responsavel_id: string | null;
   created_at: string;
+  briefing: string | null;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -79,7 +80,7 @@ export default function MetricDrilldownDialog({
       const { data } = await supabase
         .from("agendamentos")
         .select(
-          "id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, meeting_reason, cancellation_reason, closer_id, created_by, sdr_responsavel_id, created_at",
+          "id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, meeting_reason, cancellation_reason, closer_id, created_by, sdr_responsavel_id, created_at, briefing",
         )
         .in("id", agendamentoIds)
         .order("scheduled_time", { ascending: true });
@@ -287,10 +288,9 @@ export default function MetricDrilldownDialog({
                     )}
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
-                      if (!v) return null;
                       const valorNum = typeof v?.valor === "number" ? v.valor : v?.valor ? Number(v.valor) : null;
                       const showValor = v?.vendeu && valorNum != null && !Number.isNaN(valorNum);
-                      const resumo = v?.resumo_venda?.trim() || null;
+                      const resumo = (d as any).briefing?.trim() || v?.resumo_venda?.trim() || null;
                       const explicacao = v?.explicacao_nao_fechamento?.trim() || null;
                       const obs = v?.observacoes?.trim() || null;
                       const obsDistinct = obs && obs !== resumo && obs !== explicacao ? obs : null;
