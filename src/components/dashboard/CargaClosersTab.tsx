@@ -135,14 +135,14 @@ export default function CargaClosersTab() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone")
+        .select("id, lead_name, lead_phone, briefing")
         .in("id", taskAgendamentoIds);
       return data ?? [];
     },
   });
   const taskLeadMap = useMemo(() => {
-    const m = new Map<string, { lead_name: string; lead_phone: string }>();
-    (taskLeads as any[]).forEach((a) => m.set(a.id, { lead_name: a.lead_name, lead_phone: a.lead_phone }));
+    const m = new Map<string, { lead_name: string; lead_phone: string; briefing: string | null }>();
+    (taskLeads as any[]).forEach((a) => m.set(a.id, { lead_name: a.lead_name, lead_phone: a.lead_phone, briefing: a.briefing ?? null }));
     return m;
   }, [taskLeads]);
 
