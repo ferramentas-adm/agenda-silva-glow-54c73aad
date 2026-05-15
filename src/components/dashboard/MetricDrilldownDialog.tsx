@@ -116,7 +116,7 @@ export default function MetricDrilldownDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -214,9 +214,24 @@ export default function MetricDrilldownDialog({
                       <User className="h-4 w-4 text-primary shrink-0" />
                       <span className="font-semibold truncate">{d.lead_name}</span>
                     </div>
-                    <Badge className={STATUS_COLOR[d.status] || "bg-muted"}>
-                      {STATUS_LABEL[d.status] || d.status}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {(() => {
+                        const v = vendaMap.get(d.id) as any;
+                        if (!v) return null;
+                        return v.follow_up ? (
+                          <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/15">
+                            Follow ativo
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Sem follow
+                          </Badge>
+                        );
+                      })()}
+                      <Badge className={STATUS_COLOR[d.status] || "bg-muted"}>
+                        {STATUS_LABEL[d.status] || d.status}
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -273,15 +288,12 @@ export default function MetricDrilldownDialog({
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
                       if (!v) return null;
-                      const isMotivoDrill = !!v?.motivo_nao_fechamento;
-                      const text = isMotivoDrill
-                        ? (v?.explicacao_nao_fechamento ?? null)
-                        : (v?.observacoes ?? null);
-                      const label = isMotivoDrill
-                        ? "Explicação do porquê não fechou"
-                        : "Resumo do cliente / observações";
                       const valorNum = typeof v?.valor === "number" ? v.valor : v?.valor ? Number(v.valor) : null;
                       const showValor = v?.vendeu && valorNum != null && !Number.isNaN(valorNum);
+                      const resumo = v?.resumo_venda?.trim() || null;
+                      const explicacao = v?.explicacao_nao_fechamento?.trim() || null;
+                      const obs = v?.observacoes?.trim() || null;
+                      const obsDistinct = obs && obs !== resumo && obs !== explicacao ? obs : null;
                       return (
                         <>
                           {showValor && (
@@ -340,13 +352,33 @@ export default function MetricDrilldownDialog({
                               )}
                             </div>
                           )}
-                          {text && (
+                          {resumo && (
                             <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
                               <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
-                                {label}
+                                Resumo do cliente
                               </p>
                               <p className="text-xs text-foreground whitespace-pre-wrap break-words">
-                                {text}
+                                {resumo}
+                              </p>
+                            </div>
+                          )}
+                          {explicacao && (
+                            <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                                Explicação do porquê não fechou
+                              </p>
+                              <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                                {explicacao}
+                              </p>
+                            </div>
+                          )}
+                          {obsDistinct && (
+                            <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                                Observações
+                              </p>
+                              <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                                {obs}
                               </p>
                             </div>
                           )}
