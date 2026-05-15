@@ -113,7 +113,7 @@ export default function CargaClosersTab() {
         .from("vendas")
         .select(`
           id, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento,
-          agendamentos!inner ( id, lead_name, lead_phone, closer_id, deleted_at )
+          agendamentos!inner ( id, lead_name, lead_phone, closer_id, deleted_at, briefing )
         `)
         .eq("follow_up", true)
         .eq("vendeu", false);
