@@ -427,6 +427,16 @@ export default function CargaClosersTab() {
                         </p>
                       </div>
                     )}
+                    {item.resumo && (
+                      <div className="col-span-2 mt-1 rounded-md border border-border/60 bg-muted/40 p-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                          Resumo do cliente
+                        </p>
+                        <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                          {item.resumo}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
