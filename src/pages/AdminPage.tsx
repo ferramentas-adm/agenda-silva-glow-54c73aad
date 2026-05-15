@@ -60,7 +60,10 @@ function DynamicListsSection() {
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
 function UsersSection() {
-  const { isGestor } = useAuth();
+  const { isGestor, isModerador } = useAuth();
+  const canManageUsers = isGestor || isModerador;
+  // Moderador não pode mexer em Gestores nem promover/criar Gestores
+  const canActOn = (targetRole: string) => isGestor || (isModerador && targetRole !== "gestor");
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
@@ -418,7 +421,7 @@ function UsersSection() {
   return (
     <div className="space-y-6">
       {/* Create user form — gestor only */}
-      {isGestor && (
+      {canManageUsers && (
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <UserPlus className="h-4 w-4 text-primary" />
