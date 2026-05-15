@@ -45,6 +45,7 @@ interface AgendamentoDetail {
   created_by: string | null;
   sdr_responsavel_id: string | null;
   created_at: string;
+  briefing: string | null;
 }
 
 const STATUS_LABEL: Record<string, string> = {
