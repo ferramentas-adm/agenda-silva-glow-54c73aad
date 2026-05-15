@@ -268,7 +268,7 @@ export default function CargaClosersTab() {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Users className="h-4 w-4 text-primary" />
-          Carga por Closer
+          Follows por Closer
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Tarefas e follow-ups pendentes por Closer ativo. Clique nos números para ver os leads.

@@ -34,7 +34,7 @@ const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "leads", label: "Formulário Bio" },
-  { key: "carga", label: "Carga Closers", gestorOnly: true },
+  { key: "carga", label: "Follows Closer", gestorOnly: true },
   { key: "erros_sdr", label: "Erros SDR", gestorOnly: true },
 ];
 const ROTATION_INTERVAL = 30000;
@@ -86,9 +86,10 @@ export default function DashboardComercialPage() {
   const queryClient = useQueryClient();
   const { user, role } = useAuth();
   const isGestor = role === "gestor";
+  const isAdmin = role === "gestor" || role === "moderador";
   const allowedTabs = useMemo(
-    () => TABS.filter((t) => !t.gestorOnly || isGestor),
-    [isGestor],
+    () => TABS.filter((t) => !t.gestorOnly || isAdmin),
+    [isAdmin],
   );
 
   const [visibleTabs, setVisibleTabs] = useState<Set<TabKey>>(() => loadVisibleTabs(user?.id));
@@ -580,8 +581,8 @@ export default function DashboardComercialPage() {
           />
         )}
         {activeTabKey === "leads" && <LeadsDashboardContent />}
-        {activeTabKey === "carga" && isGestor && <CargaClosersTab />}
-        {activeTabKey === "erros_sdr" && isGestor && (
+        {activeTabKey === "carga" && isAdmin && <CargaClosersTab />}
+        {activeTabKey === "erros_sdr" && isAdmin && (
           <ErrosSDRTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
         )}
       </div>
