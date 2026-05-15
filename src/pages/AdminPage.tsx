@@ -437,7 +437,7 @@ function UsersSection() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="sdr">SDR</SelectItem>
-                <SelectItem value="gestor">Administrador</SelectItem>
+                {isGestor && <SelectItem value="gestor">Administrador</SelectItem>}
                 <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="moderador">Moderador</SelectItem>
               </SelectContent>
@@ -790,7 +790,7 @@ function UsersSection() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="sdr">SDR</SelectItem>
-                <SelectItem value="gestor">Administrador</SelectItem>
+                {isGestor && <SelectItem value="gestor">Administrador</SelectItem>}
                 <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="moderador">Moderador</SelectItem>
               </SelectContent>
