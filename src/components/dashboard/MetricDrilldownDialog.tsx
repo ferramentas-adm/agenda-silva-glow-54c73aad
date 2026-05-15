@@ -214,9 +214,24 @@ export default function MetricDrilldownDialog({
                       <User className="h-4 w-4 text-primary shrink-0" />
                       <span className="font-semibold truncate">{d.lead_name}</span>
                     </div>
-                    <Badge className={STATUS_COLOR[d.status] || "bg-muted"}>
-                      {STATUS_LABEL[d.status] || d.status}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {(() => {
+                        const v = vendaMap.get(d.id) as any;
+                        if (!v) return null;
+                        return v.follow_up ? (
+                          <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/15">
+                            Follow ativo
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Sem follow
+                          </Badge>
+                        );
+                      })()}
+                      <Badge className={STATUS_COLOR[d.status] || "bg-muted"}>
+                        {STATUS_LABEL[d.status] || d.status}
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
