@@ -245,6 +245,7 @@ export default function CargaClosersTab() {
           date: t.due_date,
           time: t.due_time,
           lead: t.agendamento_id ? taskLeadMap.get(t.agendamento_id) ?? null : null,
+          resumo: t.agendamento_id ? resumoMap.get(t.agendamento_id) ?? null : null,
         }));
     }
 
@@ -271,8 +272,9 @@ export default function CargaClosersTab() {
         lead: f.agendamentos
           ? { lead_name: f.agendamentos.lead_name, lead_phone: f.agendamentos.lead_phone }
           : null,
+        resumo: f.agendamentos?.id ? resumoMap.get(f.agendamentos.id) ?? null : null,
       }));
-  }, [drill, tasks, followUps, today, taskLeadMap]);
+  }, [drill, tasks, followUps, today, taskLeadMap, resumoMap]);
 
   const renderClickable = (
     closer: Closer,
