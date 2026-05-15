@@ -48,6 +48,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    const callerIsGestor = roles.some((r) => r.role === "gestor");
+    const callerIsModeradorOnly = !callerIsGestor;
+
     const body = await req.json();
     const { user_id, action } = body;
 
@@ -56,6 +59,28 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Moderador não pode mexer em Gestores
+    if (callerIsModeradorOnly) {
+      const { data: targetRoleRow } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user_id)
+        .maybeSingle();
+      if (targetRoleRow?.role === "gestor") {
+        return new Response(JSON.stringify({ error: "Moderadores não podem alterar usuários Administradores." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Tampouco promover alguém a Gestor
+      if (action === "change_role" && body.new_role === "gestor") {
+        return new Response(JSON.stringify({ error: "Moderadores não podem promover a Administrador." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Delete user

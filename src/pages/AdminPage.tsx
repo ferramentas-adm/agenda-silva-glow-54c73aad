@@ -60,7 +60,10 @@ function DynamicListsSection() {
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
 function UsersSection() {
-  const { isGestor } = useAuth();
+  const { isGestor, isModerador } = useAuth();
+  const canManageUsers = isGestor || isModerador;
+  // Moderador não pode mexer em Gestores nem promover/criar Gestores
+  const canActOn = (targetRole: string) => isGestor || (isModerador && targetRole !== "gestor");
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
@@ -418,7 +421,7 @@ function UsersSection() {
   return (
     <div className="space-y-6">
       {/* Create user form — gestor only */}
-      {isGestor && (
+      {canManageUsers && (
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <UserPlus className="h-4 w-4 text-primary" />
@@ -434,7 +437,7 @@ function UsersSection() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="sdr">SDR</SelectItem>
-                <SelectItem value="gestor">Administrador</SelectItem>
+                {isGestor && <SelectItem value="gestor">Administrador</SelectItem>}
                 <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="moderador">Moderador</SelectItem>
               </SelectContent>
@@ -557,7 +560,7 @@ function UsersSection() {
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
                         </span>
-                        {isGestor && u.type === "profile" && u.role !== "closer" && (
+                        {canActOn(u.role) && u.type === "profile" && u.role !== "closer" && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -572,14 +575,14 @@ function UsersSection() {
                             }
                           </Button>
                         )}
-                        {isGestor && (
+                        {canActOn(u.role) && (
                           <Switch
                             checked={u.active}
                             onCheckedChange={() => handleToggleActive(u)}
                             disabled={togglingId === u.userId}
                           />
                         )}
-                        {isGestor && u.type === "profile" && (
+                        {canActOn(u.role) && u.type === "profile" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
                             onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
                             <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -591,7 +594,7 @@ function UsersSection() {
                             <Clock className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        {isGestor && (
+                        {canActOn(u.role) && (
                           <>
                             <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
                               onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
@@ -787,7 +790,7 @@ function UsersSection() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="sdr">SDR</SelectItem>
-                <SelectItem value="gestor">Administrador</SelectItem>
+                {isGestor && <SelectItem value="gestor">Administrador</SelectItem>}
                 <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="moderador">Moderador</SelectItem>
               </SelectContent>

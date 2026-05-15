@@ -96,6 +96,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Moderador não pode criar Gestor
+    const callerIsGestor = roles.some((r: { role: string }) => r.role === "gestor");
+    if (!callerIsGestor && role === "gestor") {
+      return new Response(JSON.stringify({ error: "Moderadores não podem criar usuários Administradores." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Generate random password
     const generatedPassword = generateRandomPassword();
 
