@@ -145,6 +145,37 @@ export default function CargaClosersTab() {
     return m;
   }, [taskLeads]);
 
+  // Resumos de venda (o que o cliente vende) por agendamento
+  const allAgendamentoIds = useMemo(() => {
+    const ids = new Set<string>();
+    tasks.forEach((t) => t.agendamento_id && ids.add(t.agendamento_id));
+    followUps.forEach((f) => f.agendamentos?.id && ids.add(f.agendamentos.id));
+    return Array.from(ids);
+  }, [tasks, followUps]);
+
+  const { data: vendaResumos = [] } = useQuery({
+    queryKey: ["carga-venda-resumos", allAgendamentoIds.join(",")],
+    enabled: allAgendamentoIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendas")
+        .select("agendamento_id, resumo_venda, updated_at")
+        .in("agendamento_id", allAgendamentoIds)
+        .not("resumo_venda", "is", null);
+      return data ?? [];
+    },
+  });
+  const resumoMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (vendaResumos as any[]).forEach((v) => {
+      const r = v.resumo_venda?.trim();
+      if (!r) return;
+      const cur = m.get(v.agendamento_id);
+      if (!cur) m.set(v.agendamento_id, r);
+    });
+    return m;
+  }, [vendaResumos]);
+
   const today = brTodayYMD();
 
   const rows = closers.map((c) => {
