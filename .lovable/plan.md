@@ -1,34 +1,29 @@
-## O que vai mudar
+## O que será alterado
 
-### 1. Renomear "Carga Closers" → "Follows Closer"
-- `src/pages/DashboardComercialPage.tsx` linha 37: trocar label da aba (mantém key `carga` e arquivo `CargaClosersTab.tsx`).
-- `src/components/dashboard/CargaClosersTab.tsx` linha ~271: trocar título "Carga por Closer" → "Follows por Closer".
+Adicionar o **resumo do cliente** (campo `resumo_venda` — o que o cliente faz/vende) e o **status de follow-up** em dois lugares onde hoje só aparece a explicação do não-fechamento.
 
-### 2. Liberar Dashboard Comercial completo para Moderador
-A rota `/dashboard-comercial` já aceita Moderador (`requireAdmin`). Falta só liberar as abas internas:
-- `DashboardComercialPage.tsx`:
-  - Linha 88: `const isAdmin = role === "gestor" || role === "moderador";`
-  - Linha 90: filtrar tabs por `isAdmin` em vez de `isGestor`.
-  - Linhas 583-584: renderizar `CargaClosersTab` e `ErrosSDRTab` com `isAdmin`.
+### 1. Drilldown de "Compareceu" (e demais cards do Dashboard Comercial)
+Arquivo: `src/components/dashboard/MetricDrilldownDialog.tsx`
 
-### 3. Liberar gestão de usuários para Moderador (exceto mexer em Gestores)
-**Frontend (`AdminPage.tsx`):**
-- Trocar todas as `{isGestor && ...}` da seção de usuários por `{canManageUsers && ...}`, onde `canManageUsers = isGestor || isModerador`.
-- Para cada ação destrutiva/sensível em uma linha de usuário (ativar/desativar, alterar função, alterar senha, redefinir senha, editar, excluir, DataCrazy ID), adicionar guarda extra: **esconder se Moderador E `u.role === "gestor"`**.
-- No formulário "Novo Usuário" liberar para Moderador, mas remover a opção `"gestor"` do `<Select>` quando o caller for Moderador.
-- No diálogo de troca de função, remover opção `"gestor"` quando caller for Moderador.
+Hoje a lógica mostra **ou** a explicação do não-fechamento **ou** o resumo/observações — nunca os dois. Mudar para mostrar:
 
-**Backend (`supabase/functions/manage-user/index.ts`):**
-- Função já aceita `gestor` ou `moderador`. Adicionar verificação: se `caller` for Moderador, buscar role do `user_id` alvo; se for `gestor`, retornar 403. Aplicar para todas as actions (`delete`, `toggle_active`, `change_password`, `change_role`, `toggle_scheduling`).
-- Em `change_role`, bloquear `new_role === "gestor"` para Moderador.
-- Em `create-user/index.ts` (criar novo): mesma regra — Moderador não pode criar `gestor`.
+- **Sempre** que houver `resumo_venda` → bloco "Resumo do cliente" (o que ele vende).
+- **Sempre** que houver `explicacao_nao_fechamento` → bloco "Explicação do porquê não fechou".
+- **Sempre** que houver `observacoes` (e for diferente do resumo) → bloco "Observações".
+- Adicionar **badge "Follow ativo" / "Sem follow"** ao lado do badge de status (puxando `follow_up` da venda; verde quando ativo, cinza quando não).
 
-### 4. Atualizar memória do projeto
-Atualizar `mem://auth/roles-and-users` refletindo: Moderador agora cria/edita/exclui usuários (exceto Gestores) e enxerga Dashboard Comercial completo.
+Incluir `follow_up` no `select` da query `drilldown-vendas`.
 
-## Detalhes técnicos
+### 2. Drilldown de "Follows por Closer" (tarefas e follow-ups)
+Arquivo: `src/components/dashboard/CargaClosersTab.tsx`
 
-- Sem mudança de schema, sem migração.
-- RLS atual já cobre: `user_roles` permite Moderador SELECT, manage-user roda com service role.
-- Enforcement de "não mexer em Gestor" fica em **dois lugares** (UI esconde + edge function bloqueia) — defesa em profundidade.
-- Não renomeio arquivos (`CargaClosersTab.tsx`, key `"carga"`, queryKeys) — só labels visíveis, conforme escolhido.
+Hoje cada item mostra apenas título, data, telefone e descrição (motivo). Adicionar:
+
+- Buscar `resumo_venda` da última venda de cada `agendamento_id` listado no drill (uma query nova `vendas` filtrada por `agendamento_id IN (...)`, indexada por agendamento).
+- Renderizar bloco "**Resumo do cliente**" abaixo da descrição/motivo, em todos os buckets (tarefas e follow-ups), quando houver resumo.
+
+### Notas técnicas
+
+- Nenhuma migration. `resumo_venda` e `follow_up` já existem em `vendas`.
+- Drilldown do Closer: tarefas têm `agendamento_id` opcional; follow-ups sempre têm. Buscar resumo só onde houver `agendamento_id`.
+- Manter padrão visual existente (mesmos `rounded-md border bg-muted/40 p-2`).

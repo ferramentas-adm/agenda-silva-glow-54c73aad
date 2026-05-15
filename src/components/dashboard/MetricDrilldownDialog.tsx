@@ -116,7 +116,7 @@ export default function MetricDrilldownDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
