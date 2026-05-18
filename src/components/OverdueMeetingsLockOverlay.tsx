@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, RotateCcw, Loader2, Send, UserCheck, Eye } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2, Send, UserCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
