@@ -170,6 +170,43 @@ export default function AgendarPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editData, role]);
 
+  // Autopreenchimento: ao selecionar um lead (fluxo novo, sem editId),
+  // buscar a agenda mais recente do mesmo telefone (normalizado) e
+  // preencher automaticamente briefing, observação, canal e flag 5k.
+  useEffect(() => {
+    if (editId) return;
+    if (!lead?.phone) return;
+    const normalized = lead.phone.replace(/\D/g, "");
+    if (!normalized) return;
+
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("briefing, observation, channel_type, is_5k, duration_minutes, lead_name, lead_phone")
+        .ilike("lead_phone", `%${normalized.slice(-8)}%`)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (cancelled || !data) return;
+      // Filtra por telefone normalizado exato
+      const prior = data.find((a: any) =>
+        (a.lead_phone || "").replace(/\D/g, "") === normalized
+      ) || data[0];
+      if (!prior) return;
+      if (prior.briefing) setBriefingText((cur) => cur || prior.briefing);
+      if (prior.observation) setObservation((cur) => cur || prior.observation);
+      if (prior.channel_type && role !== "closer") setChannelType((cur) => cur || prior.channel_type);
+      if (prior.is_5k) setIs5k((cur) => cur || true);
+      if (typeof prior.duration_minutes === "number" && prior.duration_minutes !== 60) {
+        setDurationMinutes((cur) => (cur === 60 ? prior.duration_minutes : cur));
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead?.phone, editId]);
+
   const closerName = useMemo(
     () => closers.find((c) => c.id === closerId)?.name ?? "",
     [closers, closerId]
