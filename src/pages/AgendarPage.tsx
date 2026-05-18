@@ -183,7 +183,7 @@ export default function AgendarPage() {
     (async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("briefing, observation, channel_type, is_5k, duration_minutes, lead_name")
+        .select("briefing, observation, channel_type, is_5k, duration_minutes, lead_name, lead_phone")
         .ilike("lead_phone", `%${normalized.slice(-8)}%`)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
