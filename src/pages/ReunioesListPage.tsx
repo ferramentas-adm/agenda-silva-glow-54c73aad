@@ -699,6 +699,48 @@ export default function ReunioesListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Detalhes do lead */}
+      <Dialog open={!!detailTarget} onOpenChange={(open) => { if (!open) setDetailTarget(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{detailTarget?.lead_name}</DialogTitle>
+            <DialogDescription>
+              {detailTarget && (
+                <>
+                  {format(new Date(detailTarget.scheduled_date + "T12:00:00"), "dd/MM/yyyy")} às {detailTarget.scheduled_time}
+                  {detailTarget.closer_id && <> · Closer: <strong>{closerMap[detailTarget.closer_id] || "—"}</strong></>}
+                  {sdrIdOf(detailTarget) && <> · SDR: <strong>{profileMap[sdrIdOf(detailTarget)!] || "—"}</strong></>}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Briefing (SDR)</h4>
+              <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
+                {detailTarget?.briefing?.trim() || <span className="text-muted-foreground italic">Sem briefing registrado.</span>}
+              </p>
+            </section>
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Por que não fechou (Closer)</h4>
+              <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
+                {detailVenda?.explicacao_nao_fechamento?.trim()
+                  || <span className="text-muted-foreground italic">
+                       {detailVenda?.vendeu === "sim" ? "Venda fechada." : "Ainda não preenchido."}
+                     </span>}
+              </p>
+            </section>
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Resumo do cliente (Closer)</h4>
+              <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
+                {detailVenda?.resumo_venda?.trim()
+                  || <span className="text-muted-foreground italic">Ainda não preenchido.</span>}
+              </p>
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
