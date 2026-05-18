@@ -68,9 +68,6 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
-  const handleReagendar = (m: OverdueMeeting) => {
-    navigate(`/agendar?edit=${m.id}`);
-  };
 
   const handleDismiss = async (m: OverdueMeeting, side: "sdr" | "closer") => {
     if (!user?.id) return;
