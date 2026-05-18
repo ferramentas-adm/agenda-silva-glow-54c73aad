@@ -527,19 +527,13 @@ export default function ReunioesListPage() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
                       {Array.from({ length: 10 }).map((_, j) => (
-              </thead>
-              <tbody className="divide-y divide-border">
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      {Array.from({ length: canDelete ? 10 : 9 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 w-20 bg-muted/30 rounded animate-pulse" /></td>
                       ))}
                     </tr>
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={canDelete ? 10 : 9} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
                       Nenhuma reunião encontrada
                     </td>
                   </tr>
