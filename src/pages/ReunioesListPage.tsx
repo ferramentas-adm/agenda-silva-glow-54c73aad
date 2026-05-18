@@ -97,6 +97,21 @@ export default function ReunioesListPage() {
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  // Detail dialog state
+  const [detailTarget, setDetailTarget] = useState<any | null>(null);
+  const { data: detailVenda } = useQuery({
+    queryKey: ["reuniao-venda", detailTarget?.id],
+    enabled: !!detailTarget?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendas")
+        .select("resumo_venda, explicacao_nao_fechamento, vendeu")
+        .eq("agendamento_id", detailTarget!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   const { data: closers = [] } = useQuery({
     queryKey: ["closers-list"],
     queryFn: async () => {
