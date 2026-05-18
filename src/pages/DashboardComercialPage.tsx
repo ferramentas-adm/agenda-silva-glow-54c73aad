@@ -312,14 +312,16 @@ export default function DashboardComercialPage() {
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
     const byChannel = (list: AgendamentoMetric[]) => {
-      const map = new Map<string, number>();
+      const map = new Map<string, string[]>();
       list.forEach(a => {
         const ch = a.channel_type || "Sem canal";
-        map.set(ch, (map.get(ch) || 0) + 1);
+        const arr = map.get(ch) || [];
+        arr.push(a.id);
+        map.set(ch, arr);
       });
       return Array.from(map.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([canal, qtd], i) => ({ num: i + 1, canal, qtd }));
+        .sort((a, b) => b[1].length - a[1].length)
+        .map(([canal, ids], i) => ({ num: i + 1, canal, qtd: ids.length, ids }));
     };
 
     const noShowCount = sc(todayAgs, "no_show");
@@ -633,9 +635,11 @@ function MetricCard({
 function ChannelTable({
   title,
   data,
+  onRowClick,
 }: {
   title: string;
-  data: { num: number; canal: string; qtd: number }[];
+  data: { num: number; canal: string; qtd: number; ids: string[] }[];
+  onRowClick?: (row: { canal: string; ids: string[] }) => void;
 }) {
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
@@ -662,7 +666,14 @@ function ChannelTable({
               </tr>
             )}
             {data.map((row) => (
-              <tr key={row.canal} className="border-b border-primary/5">
+              <tr
+                key={row.canal}
+                className={cn(
+                  "border-b border-primary/5",
+                  onRowClick && "cursor-pointer hover:bg-primary/5 transition-colors"
+                )}
+                onClick={onRowClick ? () => onRowClick({ canal: row.canal, ids: row.ids }) : undefined}
+              >
                 <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
                 <td className="py-2 px-2 font-medium">{row.canal}</td>
                 <td className="py-2 px-2 text-right font-bold">{row.qtd}</td>
@@ -834,8 +845,16 @@ function MetricasSDRsTab({
 
       {/* Channel tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChannelTable title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")} data={metrics.channelsToday} />
-        <ChannelTable title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")} data={metrics.channelsCreatedToday} />
+        <ChannelTable
+          title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")}
+          data={metrics.channelsToday}
+          onRowClick={({ canal, ids }) => openDrill(`${isRange ? `Agendas Para ${rangeLabel}` : getChannelTableLabel(currentDate, "para").replace(" — por Canal", "")} — ${canal}`, ids)}
+        />
+        <ChannelTable
+          title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")}
+          data={metrics.channelsCreatedToday}
+          onRowClick={({ canal, ids }) => openDrill(`${isRange ? `Agendas Criadas ${rangeLabel}` : getChannelTableLabel(currentDate, "criadas").replace(" — por Canal", "")} — ${canal}`, ids)}
+        />
       </div>
 
       <MetricDrilldownDialog
