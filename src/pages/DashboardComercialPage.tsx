@@ -635,9 +635,11 @@ function MetricCard({
 function ChannelTable({
   title,
   data,
+  onRowClick,
 }: {
   title: string;
-  data: { num: number; canal: string; qtd: number }[];
+  data: { num: number; canal: string; qtd: number; ids: string[] }[];
+  onRowClick?: (row: { canal: string; ids: string[] }) => void;
 }) {
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
@@ -664,7 +666,14 @@ function ChannelTable({
               </tr>
             )}
             {data.map((row) => (
-              <tr key={row.canal} className="border-b border-primary/5">
+              <tr
+                key={row.canal}
+                className={cn(
+                  "border-b border-primary/5",
+                  onRowClick && "cursor-pointer hover:bg-primary/5 transition-colors"
+                )}
+                onClick={onRowClick ? () => onRowClick({ canal: row.canal, ids: row.ids }) : undefined}
+              >
                 <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
                 <td className="py-2 px-2 font-medium">{row.canal}</td>
                 <td className="py-2 px-2 text-right font-bold">{row.qtd}</td>
