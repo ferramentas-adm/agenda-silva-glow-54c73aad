@@ -845,8 +845,16 @@ function MetricasSDRsTab({
 
       {/* Channel tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChannelTable title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")} data={metrics.channelsToday} />
-        <ChannelTable title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")} data={metrics.channelsCreatedToday} />
+        <ChannelTable
+          title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")}
+          data={metrics.channelsToday}
+          onRowClick={({ canal, ids }) => openDrill(`${isRange ? `Agendas Para ${rangeLabel}` : getChannelTableLabel(currentDate, "para").replace(" — por Canal", "")} — ${canal}`, ids)}
+        />
+        <ChannelTable
+          title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")}
+          data={metrics.channelsCreatedToday}
+          onRowClick={({ canal, ids }) => openDrill(`${isRange ? `Agendas Criadas ${rangeLabel}` : getChannelTableLabel(currentDate, "criadas").replace(" — por Canal", "")} — ${canal}`, ids)}
+        />
       </div>
 
       <MetricDrilldownDialog
