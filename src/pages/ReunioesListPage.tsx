@@ -519,8 +519,14 @@ export default function ReunioesListPage() {
                     </th>
                   ))}
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Observação</th>
-                  {canDelete && <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">Ações</th>}
+                  <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">Ações</th>
                 </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      {Array.from({ length: 10 }).map((_, j) => (
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
