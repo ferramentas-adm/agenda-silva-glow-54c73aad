@@ -238,16 +238,9 @@ export default function OverdueMeetingsLockOverlay() {
                         )}
                         Cancelada
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={updatingId === m.id}
-                        onClick={() => handleReagendar(m)}
-                        className="h-8 text-xs gap-1 text-blue-400 hover:bg-blue-400/10 border-blue-400/30"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Reagendar
-                      </Button>
+                      {/* Botão "Reagendar" removido para SDR — agora o sistema
+                          detecta reagendamento automaticamente quando o SDR
+                          cria uma nova agenda do mesmo lead em até 7 dias. */}
                       {canHandoff && (
                         <Button
                           size="sm"
