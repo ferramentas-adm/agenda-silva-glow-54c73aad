@@ -592,18 +592,30 @@ export default function ReunioesListPage() {
                             return "—";
                           })()}
                         </td>
-                        {canDelete && (
-                          <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center">
+                          <div className="inline-flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => setDeleteTarget(ag)}
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={() => setDetailTarget(ag)}
+                              title="Ver detalhes"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             </Button>
-                          </td>
-                        )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => setDeleteTarget(ag)}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     );
                   })
