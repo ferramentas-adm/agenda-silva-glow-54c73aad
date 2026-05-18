@@ -2,7 +2,10 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Search, X, CalendarDays, Filter, Download, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Phone, Search, X, CalendarDays, Filter, Download, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Eye } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 
 import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,6 +96,21 @@ export default function ReunioesListPage() {
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
+
+  // Detail dialog state
+  const [detailTarget, setDetailTarget] = useState<any | null>(null);
+  const { data: detailVenda } = useQuery({
+    queryKey: ["reuniao-venda", detailTarget?.id],
+    enabled: !!detailTarget?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendas")
+        .select("resumo_venda, explicacao_nao_fechamento, vendeu")
+        .eq("agendamento_id", detailTarget!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
 
   const { data: closers = [] } = useQuery({
     queryKey: ["closers-list"],
@@ -501,21 +519,21 @@ export default function ReunioesListPage() {
                     </th>
                   ))}
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Observação</th>
-                  {canDelete && <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">Ações</th>}
+                  <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: canDelete ? 10 : 9 }).map((_, j) => (
+                      {Array.from({ length: 10 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 w-20 bg-muted/30 rounded animate-pulse" /></td>
                       ))}
                     </tr>
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={canDelete ? 10 : 9} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
                       Nenhuma reunião encontrada
                     </td>
                   </tr>
@@ -574,18 +592,30 @@ export default function ReunioesListPage() {
                             return "—";
                           })()}
                         </td>
-                        {canDelete && (
-                          <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center">
+                          <div className="inline-flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => setDeleteTarget(ag)}
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={() => setDetailTarget(ag)}
+                              title="Ver detalhes"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             </Button>
-                          </td>
-                        )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => setDeleteTarget(ag)}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     );
                   })
@@ -669,6 +699,48 @@ export default function ReunioesListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Detalhes do lead */}
+      <Dialog open={!!detailTarget} onOpenChange={(open) => { if (!open) setDetailTarget(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{detailTarget?.lead_name}</DialogTitle>
+            <DialogDescription>
+              {detailTarget && (
+                <>
+                  {format(new Date(detailTarget.scheduled_date + "T12:00:00"), "dd/MM/yyyy")} às {detailTarget.scheduled_time}
+                  {detailTarget.closer_id && <> · Closer: <strong>{closerMap[detailTarget.closer_id] || "—"}</strong></>}
+                  {sdrIdOf(detailTarget) && <> · SDR: <strong>{profileMap[sdrIdOf(detailTarget)!] || "—"}</strong></>}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Briefing (SDR)</h4>
+              <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
+                {detailTarget?.briefing?.trim() || <span className="text-muted-foreground italic">Sem briefing registrado.</span>}
+              </p>
+            </section>
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Por que não fechou (Closer)</h4>
+              <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
+                {detailVenda?.explicacao_nao_fechamento?.trim()
+                  || <span className="text-muted-foreground italic">
+                       {detailVenda?.vendeu === true ? "Venda fechada." : "Ainda não preenchido."}
+                     </span>}
+              </p>
+            </section>
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Resumo do cliente (Closer)</h4>
+              <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
+                {detailVenda?.resumo_venda?.trim()
+                  || <span className="text-muted-foreground italic">Ainda não preenchido.</span>}
+              </p>
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
