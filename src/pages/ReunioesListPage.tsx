@@ -727,7 +727,7 @@ export default function ReunioesListPage() {
               <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
                 {detailVenda?.explicacao_nao_fechamento?.trim()
                   || <span className="text-muted-foreground italic">
-                       {detailVenda?.vendeu === "sim" ? "Venda fechada." : "Ainda não preenchido."}
+                       {detailVenda?.vendeu === true ? "Venda fechada." : "Ainda não preenchido."}
                      </span>}
               </p>
             </section>
