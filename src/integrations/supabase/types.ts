@@ -637,6 +637,7 @@ export type Database = {
       vendas: {
         Row: {
           agendamento_id: string
+          closed_at: string | null
           created_at: string
           created_by: string
           explicacao_nao_fechamento: string | null
@@ -656,6 +657,7 @@ export type Database = {
         }
         Insert: {
           agendamento_id: string
+          closed_at?: string | null
           created_at?: string
           created_by: string
           explicacao_nao_fechamento?: string | null
@@ -675,6 +677,7 @@ export type Database = {
         }
         Update: {
           agendamento_id?: string
+          closed_at?: string | null
           created_at?: string
           created_by?: string
           explicacao_nao_fechamento?: string | null
