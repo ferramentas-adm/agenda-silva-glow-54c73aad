@@ -173,19 +173,21 @@ export default function MetricDrilldownDialog({
     }
     setSavingDate(true);
     const { error } = await supabase
-      .from("agendamentos")
-      .update({ scheduled_date: editDateValue })
-      .eq("id", agId);
+      .from("vendas")
+      .update({ closed_at: editDateValue })
+      .eq("agendamento_id", agId);
     setSavingDate(false);
     if (error) {
       toast.error("Erro ao atualizar data: " + error.message);
       return;
     }
-    toast.success("Data atualizada");
+    toast.success("Data da venda atualizada");
     cancelEditDate();
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
     await queryClient.invalidateQueries({ queryKey: ["metric-drilldown"] });
-    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
     await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
   };
 
   const startEdit = (agId: string, current: number | null) => {
