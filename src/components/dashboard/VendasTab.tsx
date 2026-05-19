@@ -11,6 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { brDateOf } from "@/lib/timezone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ interface VendaRow {
   motivo_nao_fechamento: string | null;
   observacoes: string | null;
   created_at: string;
+  updated_at: string;
   agendamentos: AgendamentoRow | null;
 }
 
@@ -106,12 +108,29 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         .from("vendas")
         .select(`
           id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time,
-          motivo_nao_fechamento, observacoes, created_at,
+          motivo_nao_fechamento, observacoes, created_at, updated_at,
           agendamentos!inner(id, closer_id, scheduled_date, lead_name)
         `)
         .is("agendamentos.deleted_at", null)
         .range(0, 9999);
       return (data ?? []) as unknown as VendaRow[];
+    },
+    refetchInterval: 60_000,
+  });
+
+  // IDs de agendamentos que já tiveram interação de follow-up registrada
+  // (usado para identificar vendas fechadas via conversão de follow-up).
+  const { data: followUpAgIds = new Set<string>() } = useQuery<Set<string>>({
+    queryKey: ["vendas-tab-followup-audit"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("audit_logs")
+        .select("entity_id")
+        .eq("entity_type", "venda")
+        .in("action", ["follow_up_atualizado", "follow_up_editado"])
+        .range(0, 9999);
+      return new Set(((data ?? []) as { entity_id: string | null }[])
+        .map((r) => r.entity_id).filter((x): x is string => !!x));
     },
     refetchInterval: 60_000,
   });
@@ -138,17 +157,30 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return m;
   }, [closers]);
 
+  // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd):
+  // - Se for venda fechada (vendeu=true) e o agendamento já teve registros
+  //   de follow-up (logo, foi convertida via follow-up): usa updated_at.
+  // - Caso contrário: usa scheduled_date da reunião.
+  const closingDateOf = (v: VendaRow): string | null => {
+    const ag = agMap.get(v.agendamento_id);
+    if (!ag) return null;
+    if (v.vendeu && followUpAgIds.has(v.agendamento_id)) {
+      return brDateOf(v.updated_at);
+    }
+    return ag.scheduled_date;
+  };
+
   // Vendas do período selecionado (dia único OU intervalo)
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
-      const ag = agMap.get(v.agendamento_id);
-      if (!ag) return false;
+      const cd = closingDateOf(v);
+      if (!cd) return false;
       if (isRange && rangeFromStr && rangeToStr) {
-        return ag.scheduled_date >= rangeFromStr && ag.scheduled_date <= rangeToStr;
+        return cd >= rangeFromStr && cd <= rangeToStr;
       }
-      return ag.scheduled_date === dateStr;
+      return cd === dateStr;
     });
-  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr]);
+  }, [vendas, agMap, followUpAgIds, dateStr, isRange, rangeFromStr, rangeToStr]);
 
   // KPIs
   const totalReunioesComResultado = vendasDia.length;
