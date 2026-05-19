@@ -118,19 +118,27 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     refetchInterval: 60_000,
   });
 
-  // IDs de agendamentos que já tiveram interação de follow-up registrada
-  // (usado para identificar vendas fechadas via conversão de follow-up).
-  const { data: followUpAgIds = new Set<string>() } = useQuery<Set<string>>({
-    queryKey: ["vendas-tab-followup-audit"],
+  // Mapa agendamento_id -> data (BRT yyyy-MM-dd) em que a venda foi marcada
+  // como fechada via follow-up. Usa o audit log com outcome='fechou'.
+  const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["vendas-tab-followup-closes"],
     queryFn: async () => {
       const { data } = await supabase
         .from("audit_logs")
-        .select("entity_id")
+        .select("entity_id, details, created_at")
         .eq("entity_type", "venda")
-        .in("action", ["follow_up_atualizado", "follow_up_editado"])
+        .eq("action", "follow_up_atualizado")
         .range(0, 9999);
-      return new Set(((data ?? []) as { entity_id: string | null }[])
-        .map((r) => r.entity_id).filter((x): x is string => !!x));
+      const m = new Map<string, string>();
+      ((data ?? []) as { entity_id: string | null; details: any; created_at: string }[])
+        .forEach((r) => {
+          if (!r.entity_id) return;
+          if ((r.details?.outcome ?? "") !== "fechou") return;
+          // Mantém o mais recente, caso haja múltiplos
+          const cur = m.get(r.entity_id);
+          if (!cur || cur < r.created_at) m.set(r.entity_id, brDateOf(r.created_at));
+        });
+      return m;
     },
     refetchInterval: 60_000,
   });
