@@ -139,6 +139,29 @@ export default function MetricDrilldownDialog({
     },
   });
 
+  const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["drilldown-fu-closes", agendamentoIds.join(",")],
+    enabled: open && agendamentoIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("audit_logs")
+        .select("entity_id, details, created_at")
+        .eq("entity_type", "venda")
+        .eq("action", "follow_up_atualizado")
+        .in("entity_id", agendamentoIds)
+        .range(0, 9999);
+      const m = new Map<string, string>();
+      ((data ?? []) as { entity_id: string | null; details: any; created_at: string }[])
+        .forEach((r) => {
+          if (!r.entity_id) return;
+          if ((r.details?.outcome ?? "") !== "fechou") return;
+          const cur = m.get(r.entity_id);
+          if (!cur || cur < r.created_at) m.set(r.entity_id, brDateOf(r.created_at));
+        });
+      return m;
+    },
+  });
+
   const closerMap = new Map(closers.map((c: any) => [c.id, c.name]));
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
   const vendaMap = new Map(vendas.map((v: any) => [v.agendamento_id, v]));
