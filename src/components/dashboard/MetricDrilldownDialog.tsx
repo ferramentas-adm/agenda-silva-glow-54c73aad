@@ -147,12 +147,46 @@ export default function MetricDrilldownDialog({
   const { role } = useAuth();
   const canEditValor = role === "gestor" || role === "moderador";
   const canDeleteVenda = role === "gestor" || role === "moderador";
+  const canEditDate = role === "gestor" || role === "moderador";
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editDateValue, setEditDateValue] = useState<string>("");
+  const [savingDate, setSavingDate] = useState(false);
+
+  const startEditDate = (agId: string, current: string) => {
+    setEditingDateId(agId);
+    setEditDateValue(current);
+  };
+  const cancelEditDate = () => {
+    setEditingDateId(null);
+    setEditDateValue("");
+  };
+  const saveEditDate = async (agId: string) => {
+    if (!editDateValue || !/^\d{4}-\d{2}-\d{2}$/.test(editDateValue)) {
+      toast.error("Data inválida");
+      return;
+    }
+    setSavingDate(true);
+    const { error } = await supabase
+      .from("agendamentos")
+      .update({ scheduled_date: editDateValue })
+      .eq("id", agId);
+    setSavingDate(false);
+    if (error) {
+      toast.error("Erro ao atualizar data: " + error.message);
+      return;
+    }
+    toast.success("Data atualizada");
+    cancelEditDate();
+    await queryClient.invalidateQueries({ queryKey: ["metric-drilldown"] });
+    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+  };
 
   const startEdit = (agId: string, current: number | null) => {
     setEditingId(agId);
