@@ -3,7 +3,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { formatBRDateTime } from "@/lib/timezone";
+import { formatBRDateTime, brDateOf } from "@/lib/timezone";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
