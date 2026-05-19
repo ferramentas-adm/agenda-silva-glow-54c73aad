@@ -124,9 +124,25 @@ export default function MetricDrilldownDialog({
     },
   });
 
+  const originalIds = Array.from(
+    new Set(details.map((d) => d.original_agendamento_id).filter(Boolean) as string[]),
+  );
+  const { data: originals = [] } = useQuery({
+    queryKey: ["drilldown-originals", originalIds.join(",")],
+    enabled: open && originalIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, scheduled_date, scheduled_time")
+        .in("id", originalIds);
+      return data ?? [];
+    },
+  });
+
   const closerMap = new Map(closers.map((c: any) => [c.id, c.name]));
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
   const vendaMap = new Map(vendas.map((v: any) => [v.agendamento_id, v]));
+  const originalMap = new Map(originals.map((o: any) => [o.id, o]));
 
   const { role } = useAuth();
   const canEditValor = role === "gestor" || role === "moderador";
