@@ -346,6 +346,55 @@ export default function MetricDrilldownDialog({
                         </div>
                       );
                     })()}
+                    {(() => {
+                      const v = vendaMap.get(d.id) as any;
+                      if (!v || v.vendeu !== true) return null;
+                      const effectiveDate: string = v.closed_at
+                        ? v.closed_at
+                        : (v.created_at ? v.created_at.slice(0, 10) : d.scheduled_date);
+                      return (
+                        <div className="col-span-2 flex items-center gap-1.5">
+                          <CalendarDays className="h-3 w-3 text-emerald-600" />
+                          <span className="font-medium text-foreground/80">Data da venda:</span>
+                          {editingDateId === d.id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="date"
+                                autoFocus
+                                value={editDateValue}
+                                onChange={(e) => setEditDateValue(e.target.value)}
+                                className="h-6 w-36 text-xs px-1"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveEditDate(d.id);
+                                  if (e.key === "Escape") cancelEditDate();
+                                }}
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={savingDate} onClick={() => saveEditDate(d.id)}>
+                                {savingDate ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 text-emerald-600" />}
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={savingDate} onClick={cancelEditDate}>
+                                <XIcon className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span>{format(new Date(effectiveDate + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>
+                              {canEditDate && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5"
+                                  onClick={() => startEditDate(d.id, effectiveDate)}
+                                  title="Corrigir data da venda"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {(d.channel_type || d.meeting_reason) && (
                       <div className="col-span-2 flex flex-wrap gap-1.5 pt-1">
                         {d.channel_type && (
