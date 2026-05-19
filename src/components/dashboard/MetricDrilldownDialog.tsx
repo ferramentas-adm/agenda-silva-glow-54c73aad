@@ -3,7 +3,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { formatBRDateTime } from "@/lib/timezone";
+import { formatBRDateTime, brDateOf } from "@/lib/timezone";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -136,6 +136,29 @@ export default function MetricDrilldownDialog({
         .select("id, scheduled_date, scheduled_time")
         .in("id", originalIds);
       return data ?? [];
+    },
+  });
+
+  const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["drilldown-fu-closes", agendamentoIds.join(",")],
+    enabled: open && agendamentoIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("audit_logs")
+        .select("entity_id, details, created_at")
+        .eq("entity_type", "venda")
+        .eq("action", "follow_up_atualizado")
+        .in("entity_id", agendamentoIds)
+        .range(0, 9999);
+      const m = new Map<string, string>();
+      ((data ?? []) as { entity_id: string | null; details: any; created_at: string }[])
+        .forEach((r) => {
+          if (!r.entity_id) return;
+          if ((r.details?.outcome ?? "") !== "fechou") return;
+          const cur = m.get(r.entity_id);
+          if (!cur || cur < r.created_at) m.set(r.entity_id, brDateOf(r.created_at));
+        });
+      return m;
     },
   });
 
@@ -349,9 +372,10 @@ export default function MetricDrilldownDialog({
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
                       if (!v || v.vendeu !== true) return null;
+                      const fuClose = followUpCloseDateMap.get(d.id);
                       const effectiveDate: string = v.closed_at
                         ? v.closed_at
-                        : (v.created_at ? v.created_at.slice(0, 10) : d.scheduled_date);
+                        : (fuClose ?? (v.created_at ? brDateOf(v.created_at) : d.scheduled_date));
                       return (
                         <div className="col-span-2 flex items-center gap-1.5">
                           <CalendarDays className="h-3 w-3 text-emerald-600" />
