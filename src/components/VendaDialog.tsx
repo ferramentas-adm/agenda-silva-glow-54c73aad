@@ -183,16 +183,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (!explicacaoNaoFechamento.trim()) return false;
-      if (followUp === null) return false;
-      if (followUp === "sim" && (!followUpDate || !followUpTime)) return false;
+      if (acompanhamento === null) return false;
+      if ((acompanhamento === "follow_up" || acompanhamento === "segunda_reuniao") && (!followUpDate || !followUpTime)) return false;
       return true;
     }
     return false;
   })();
 
-  const computeOutcome = (): "fechou" | "perdeu" | "follow_up" | "em_andamento" => {
+  const computeOutcome = (): "fechou" | "perdeu" | "follow_up" | "em_andamento" | "segunda_reuniao" => {
     if (vendeu === "sim") return "fechou";
-    if (followUp === "sim") return "follow_up";
+    if (acompanhamento === "follow_up") return "follow_up";
+    if (acompanhamento === "segunda_reuniao") return "segunda_reuniao";
     if (motivoIsPending) return "em_andamento";
     return "perdeu";
   };
@@ -202,7 +203,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setSubmitting(true);
     try {
       const valorNum = valorValido ? valorNumParsed : null;
-      const fuActive = vendeu === "nao" && followUp === "sim";
+      const fuActive = vendeu === "nao" && acompanhamento === "follow_up";
+      const segundaAtiva = vendeu === "nao" && acompanhamento === "segunda_reuniao";
 
       const { error: vendaError } = await supabase.from("vendas").upsert(
         {
@@ -213,6 +215,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           follow_up: fuActive,
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
+          segunda_reuniao: segundaAtiva,
           motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
           explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
           observacoes: observacoes.trim() || null,
