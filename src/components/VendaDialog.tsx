@@ -422,6 +422,31 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         </DialogHeader>
 
         <div className="space-y-4">
+          {duplicateWarning.filter((d) => !d.segunda).length > 0 && (
+            <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs space-y-1">
+              <p className="font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                ⚠️ Possível duplicata
+              </p>
+              <p className="text-muted-foreground">
+                Já existe {duplicateWarning.length === 1 ? "uma venda registrada" : `${duplicateWarning.length} vendas registradas`} para este lead com o mesmo closer em ±14 dias:
+              </p>
+              <ul className="list-disc pl-5 space-y-0.5">
+                {duplicateWarning.filter((d) => !d.segunda).map((d, i) => (
+                  <li key={i}>
+                    Reunião {format(new Date(d.date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
+                    {" — "}
+                    {d.vendeu
+                      ? `vendeu${d.valor ? ` (R$ ${Number(d.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})` : ""}`
+                      : "não fechou"}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-muted-foreground">
+                Se for o mesmo negócio, considere usar <strong>Segunda reunião</strong> em vez de registrar nova venda.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Faturamento do lead *</Label>
             <Select value={leadRevenue} onValueChange={setLeadRevenue}>
