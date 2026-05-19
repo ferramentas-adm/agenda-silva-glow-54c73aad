@@ -87,6 +87,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [valorPrevisto, setValorPrevisto] = useState(""); // dígitos (centavos)
   const [dataPrevista, setDataPrevista] = useState<Date | undefined>(undefined);
 
+  // Aviso de possível duplicata (mesmo lead + mesmo closer em ±14 dias)
+  const [duplicateWarning, setDuplicateWarning] = useState<
+    { date: string; vendeu: boolean; valor: number | null; segunda: boolean }[]
+  >([]);
+
   const motivoIsPending = isPendingStageReason(motivo);
 
   // Venda perdida (não vendeu + sem acompanhamento) → não faz sentido registrar recebimento
@@ -129,6 +134,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
     // Limpa antes de qualquer fetch para evitar flash com dados antigos
     resetAllFields();
+    setDuplicateWarning([]);
 
     (async () => {
       setLoadingExisting(true);
@@ -162,6 +168,42 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
       }
       setLoadingExisting(false);
+
+      // Detecta possível duplicata: outras vendas do mesmo lead + closer em ±14 dias
+      const { data: ag } = await supabase
+        .from("agendamentos")
+        .select("lead_name, closer_id, scheduled_date")
+        .eq("id", agendamentoId)
+        .maybeSingle();
+      if (!ag) return;
+      const normalize = (s: string) =>
+        s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .split("|")[0].replace(/[^a-z0-9]+/g, " ").trim();
+      const key = normalize(ag.lead_name);
+      if (!key) return;
+      const refDate = new Date(ag.scheduled_date + "T12:00:00").getTime();
+      const lowerDate = new Date(refDate - 14 * 86400000).toISOString().slice(0, 10);
+      const upperDate = new Date(refDate + 14 * 86400000).toISOString().slice(0, 10);
+      let q = supabase
+        .from("agendamentos")
+        .select("id, lead_name, scheduled_date, closer_id, vendas!inner(id, vendeu, valor, segunda_reuniao)")
+        .neq("id", agendamentoId)
+        .is("deleted_at", null)
+        .gte("scheduled_date", lowerDate)
+        .lte("scheduled_date", upperDate);
+      if (ag.closer_id) q = q.eq("closer_id", ag.closer_id);
+      const { data: others } = await q;
+      const matches = ((others ?? []) as any[])
+        .filter((o) => normalize(o.lead_name) === key)
+        .flatMap((o) =>
+          (o.vendas ?? []).map((v: any) => ({
+            date: o.scheduled_date,
+            vendeu: !!v.vendeu,
+            valor: v.valor ?? null,
+            segunda: !!v.segunda_reuniao,
+          })),
+        );
+      setDuplicateWarning(matches);
     })();
   }, [open, agendamentoId]);
 
