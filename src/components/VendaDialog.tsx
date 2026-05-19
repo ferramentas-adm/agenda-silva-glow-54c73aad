@@ -245,7 +245,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       // Busca dados complementares para o webhook
       const { data: agData } = await supabase
         .from("agendamentos")
-        .select("lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by")
+        .select("lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by, scheduled_date, channel_type")
         .eq("id", agendamentoId)
         .maybeSingle();
 
@@ -259,6 +259,29 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       if (sdrLookup) {
         const { data: p } = await supabase.from("profiles").select("full_name").eq("user_id", sdrLookup).maybeSingle();
         sdrName = p?.full_name ?? null;
+      }
+
+      // Se for "Segunda reunião", cria um novo agendamento na data/horário escolhidos
+      if (segundaAtiva && followUpDate && followUpTime && agData) {
+        const originLabel = agData.scheduled_date
+          ? format(new Date(agData.scheduled_date + "T12:00:00"), "dd/MM/yyyy")
+          : "—";
+        const { error: novoAgError } = await supabase.from("agendamentos").insert({
+          lead_name: agData.lead_name,
+          lead_phone: agData.lead_phone,
+          closer_id: agData.closer_id,
+          sdr_responsavel_id: agData.sdr_responsavel_id ?? null,
+          scheduled_date: format(followUpDate, "yyyy-MM-dd"),
+          scheduled_time: followUpTime,
+          status: "agendada",
+          channel_type: agData.channel_type ?? null,
+          observation: `Segunda reunião — origem: reunião do ${originLabel}`,
+          created_by: user.id,
+        } as any);
+        if (novoAgError) {
+          console.warn("[agendamentos] falha ao criar segunda reunião:", novoAgError);
+          toast.warning("Resultado registrado, mas falhou ao criar a segunda reunião.");
+        }
       }
 
       // Dispara webhook (não bloqueante)
@@ -276,6 +299,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         follow_up: fuActive,
         follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
         follow_up_time: fuActive && followUpTime ? followUpTime : null,
+        segunda_reuniao: segundaAtiva,
+        segunda_reuniao_date: segundaAtiva && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
+        segunda_reuniao_time: segundaAtiva && followUpTime ? followUpTime : null,
         observacoes: observacoes.trim() || null,
         outcome,
         registered_at: new Date().toISOString(),
@@ -315,9 +341,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           ? "Venda registrada!"
           : motivoIsPending
             ? "Resultado registrado (em andamento no CRM)"
-            : followUp === "sim"
+            : acompanhamento === "follow_up"
               ? "Follow-up agendado"
-              : "Venda perdida registrada",
+              : acompanhamento === "segunda_reuniao"
+                ? "Segunda reunião agendada"
+                : "Venda perdida registrada",
       );
       onSuccess();
       // Limpa todos os campos para o próximo preenchimento
