@@ -279,6 +279,22 @@ export default function MetricDrilldownDialog({
                         {formatBRDateTime(d.created_at).replace(" ", " às ")}
                       </span>
                     </div>
+                    {d.original_agendamento_id && (() => {
+                      const orig = originalMap.get(d.original_agendamento_id) as
+                        | { scheduled_date: string; scheduled_time: string }
+                        | undefined;
+                      if (!orig) return null;
+                      return (
+                        <div className="flex items-center gap-1.5 col-span-2 text-blue-500">
+                          <CalendarDays className="h-3 w-3" />
+                          <span>
+                            Reagendado de{" "}
+                            {format(new Date(orig.scheduled_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}{" "}
+                            às {orig.scheduled_time}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     {(d.channel_type || d.meeting_reason) && (
                       <div className="col-span-2 flex flex-wrap gap-1.5 pt-1">
                         {d.channel_type && (
