@@ -1,7 +1,14 @@
-Remover o botão "Reagendar para outro dia" do diálogo de detalhes do agendamento em `src/pages/DashboardPage.tsx`, para qualquer role.
+## Ajuste de rótulos no drilldown (reagendamentos)
 
-Motivo: o sistema agora marca reagendamento automaticamente quando o SDR cria uma nova agenda do mesmo lead em até 7 dias. Manter o botão duplica o fluxo e gera inconsistência.
+Em `src/components/dashboard/MetricDrilldownDialog.tsx`, no card de cada agendamento:
 
-Mantém: "Editar horário" (ajustes pequenos no mesmo dia), "Transferir lead para outro closer", Cancelar, No-show, Confirmar, Realizada.
+Quando o agendamento tem `original_agendamento_id` (foi reagendado), mostrar apenas duas linhas de data no lugar das atuais "Agendado em …" e "Reagendado de …":
 
-Não inclui mudanças de backend nem de outras telas.
+- **Agendado primeira vez em: DD/MM às HH:MM** — usa `scheduled_date` + `scheduled_time` do agendamento **original** (via `originalMap`).
+- **Reagendado para: DD/MM às HH:MM** — usa `scheduled_date` + `scheduled_time` do agendamento atual.
+
+Quando NÃO há reagendamento (sem `original_agendamento_id`), manter o comportamento atual: linha única "Criado em DD/MM/AAAA às HH:MM" usando `created_at` (renomear de "Agendado em" para "Criado em" para não confundir com horário da reunião).
+
+A linha do topo (ícone de relógio com `scheduled_date` + `scheduled_time`) continua igual.
+
+Sem mudanças de backend.
