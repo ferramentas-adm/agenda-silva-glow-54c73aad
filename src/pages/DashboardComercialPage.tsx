@@ -289,8 +289,9 @@ export default function DashboardComercialPage() {
     // — assim incluímos reuniões criadas hoje mesmo que agendadas para fora
     // do range mensal (o pool `agendamentos` é filtrado por scheduled_date).
     // Isto garante paridade exata com o painel "Produtividade SDR".
+    // Exclui reagendamentos (que têm original_agendamento_id) — só conta agendas novas.
     const sdrCreatedAgs = createdAgs.filter(
-      a => a.created_by && sdrUserIds.has(a.created_by),
+      a => a.created_by && sdrUserIds.has(a.created_by) && !a.original_agendamento_id,
     );
 
     // Quando há intervalo ativo, "todayAgs"/"todayCreated" passam a ser
