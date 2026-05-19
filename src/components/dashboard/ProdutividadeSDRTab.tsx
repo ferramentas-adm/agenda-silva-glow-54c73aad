@@ -165,8 +165,12 @@ export default function ProdutividadeSDRTab({
     if (!range) return [];
     if (filter === "criadas") {
       // Filtramos por created_at convertido para a data LOCAL do navegador.
+      // Excluímos reagendamentos (original_agendamento_id != null): eles
+      // contam para "Para" (total do dia do SDR), mas não como agenda nova
+      // gerada no dia.
       return createdAgs.filter((a) => {
         if (!effectiveSdrId(a)) return false;
+        if (a.original_agendamento_id) return false;
         const localDay = localDateOf(a.created_at);
         return localDay >= range.from && localDay <= range.to;
       });
