@@ -118,19 +118,27 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     refetchInterval: 60_000,
   });
 
-  // IDs de agendamentos que já tiveram interação de follow-up registrada
-  // (usado para identificar vendas fechadas via conversão de follow-up).
-  const { data: followUpAgIds = new Set<string>() } = useQuery<Set<string>>({
-    queryKey: ["vendas-tab-followup-audit"],
+  // Mapa agendamento_id -> data (BRT yyyy-MM-dd) em que a venda foi marcada
+  // como fechada via follow-up. Usa o audit log com outcome='fechou'.
+  const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["vendas-tab-followup-closes"],
     queryFn: async () => {
       const { data } = await supabase
         .from("audit_logs")
-        .select("entity_id")
+        .select("entity_id, details, created_at")
         .eq("entity_type", "venda")
-        .in("action", ["follow_up_atualizado", "follow_up_editado"])
+        .eq("action", "follow_up_atualizado")
         .range(0, 9999);
-      return new Set(((data ?? []) as { entity_id: string | null }[])
-        .map((r) => r.entity_id).filter((x): x is string => !!x));
+      const m = new Map<string, string>();
+      ((data ?? []) as { entity_id: string | null; details: any; created_at: string }[])
+        .forEach((r) => {
+          if (!r.entity_id) return;
+          if ((r.details?.outcome ?? "") !== "fechou") return;
+          // Mantém o mais recente, caso haja múltiplos
+          const cur = m.get(r.entity_id);
+          if (!cur || cur < r.created_at) m.set(r.entity_id, brDateOf(r.created_at));
+        });
+      return m;
     },
     refetchInterval: 60_000,
   });
@@ -158,14 +166,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [closers]);
 
   // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd):
-  // - Se for venda fechada (vendeu=true) e o agendamento já teve registros
-  //   de follow-up (logo, foi convertida via follow-up): usa updated_at.
-  // - Caso contrário: usa scheduled_date da reunião.
+  // - Se houver audit log de follow-up com outcome='fechou' para esse
+  //   agendamento, usa essa data (data real do fechamento via follow-up).
+  // - Caso contrário, usa scheduled_date da reunião.
   const closingDateOf = (v: VendaRow): string | null => {
     const ag = agMap.get(v.agendamento_id);
     if (!ag) return null;
-    if (v.vendeu && followUpAgIds.has(v.agendamento_id)) {
-      return brDateOf(v.updated_at);
+    if (v.vendeu) {
+      const fuClose = followUpCloseDateMap.get(v.agendamento_id);
+      if (fuClose) return fuClose;
     }
     return ag.scheduled_date;
   };
@@ -180,7 +189,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }
       return cd === dateStr;
     });
-  }, [vendas, agMap, followUpAgIds, dateStr, isRange, rangeFromStr, rangeToStr]);
+  }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr]);
 
   // KPIs
   const totalReunioesComResultado = vendasDia.length;
