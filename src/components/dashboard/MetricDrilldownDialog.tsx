@@ -272,25 +272,40 @@ export default function MetricDrilldownDialog({
                       <span className="font-medium text-foreground/70">SDR:</span>
                       <span className="truncate">{sdrName}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 col-span-2">
-                      <CalendarDays className="h-3 w-3" />
-                      <span>
-                        Agendado em{" "}
-                        {formatBRDateTime(d.created_at).replace(" ", " às ")}
-                      </span>
-                    </div>
-                    {d.original_agendamento_id && (() => {
-                      const orig = originalMap.get(d.original_agendamento_id) as
-                        | { scheduled_date: string; scheduled_time: string }
-                        | undefined;
-                      if (!orig) return null;
+                    {(() => {
+                      const orig = d.original_agendamento_id
+                        ? (originalMap.get(d.original_agendamento_id) as
+                            | { scheduled_date: string; scheduled_time: string }
+                            | undefined)
+                        : undefined;
+                      if (orig) {
+                        return (
+                          <>
+                            <div className="flex items-center gap-1.5 col-span-2">
+                              <CalendarDays className="h-3 w-3" />
+                              <span>
+                                Agendado primeira vez em:{" "}
+                                {format(new Date(orig.scheduled_date + "T12:00:00"), "dd/MM", { locale: ptBR })}{" "}
+                                às {orig.scheduled_time}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 col-span-2 text-blue-500">
+                              <CalendarDays className="h-3 w-3" />
+                              <span>
+                                Reagendado para:{" "}
+                                {format(new Date(d.scheduled_date + "T12:00:00"), "dd/MM", { locale: ptBR })}{" "}
+                                às {d.scheduled_time}
+                              </span>
+                            </div>
+                          </>
+                        );
+                      }
                       return (
-                        <div className="flex items-center gap-1.5 col-span-2 text-blue-500">
+                        <div className="flex items-center gap-1.5 col-span-2">
                           <CalendarDays className="h-3 w-3" />
                           <span>
-                            Reagendado de{" "}
-                            {format(new Date(orig.scheduled_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}{" "}
-                            às {orig.scheduled_time}
+                            Criado em{" "}
+                            {formatBRDateTime(d.created_at).replace(" ", " às ")}
                           </span>
                         </div>
                       );
