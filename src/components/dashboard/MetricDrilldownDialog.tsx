@@ -372,9 +372,10 @@ export default function MetricDrilldownDialog({
                     {(() => {
                       const v = vendaMap.get(d.id) as any;
                       if (!v || v.vendeu !== true) return null;
+                      const fuClose = followUpCloseDateMap.get(d.id);
                       const effectiveDate: string = v.closed_at
                         ? v.closed_at
-                        : (v.created_at ? v.created_at.slice(0, 10) : d.scheduled_date);
+                        : (fuClose ?? (v.created_at ? brDateOf(v.created_at) : d.scheduled_date));
                       return (
                         <div className="col-span-2 flex items-center gap-1.5">
                           <CalendarDays className="h-3 w-3 text-emerald-600" />
