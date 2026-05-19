@@ -69,7 +69,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [vendeu, setVendeu] = useState<"sim" | "nao" | null>(null);
   const [resumoVenda, setResumoVenda] = useState("");
   const [valor, setValor] = useState("");
-  const [followUp, setFollowUp] = useState<"sim" | "nao" | null>(null);
+  // Tipo de acompanhamento quando NÃO vendeu: follow_up, segunda_reuniao ou perdeu (sem acompanhamento)
+  const [acompanhamento, setAcompanhamento] = useState<"follow_up" | "segunda_reuniao" | "perdeu" | null>(null);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>(undefined);
   const [followUpTime, setFollowUpTime] = useState<string>("");
   const [motivo, setMotivo] = useState("");
@@ -88,8 +89,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const motivoIsPending = isPendingStageReason(motivo);
 
-  // Venda perdida (não vendeu + sem follow-up) → não faz sentido registrar recebimento
-  const isVendaPerdida = vendeu === "nao" && followUp === "nao";
+  // Venda perdida (não vendeu + sem acompanhamento) → não faz sentido registrar recebimento
+  const isVendaPerdida = vendeu === "nao" && acompanhamento === "perdeu";
   useEffect(() => {
     if (isVendaPerdida) {
       setHasRecebimento(false);
@@ -104,7 +105,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setVendeu(null);
     setResumoVenda("");
     setValor("");
-    setFollowUp(null);
+    setAcompanhamento(null);
     setFollowUpDate(undefined);
     setFollowUpTime("");
     setMotivo("");
@@ -146,7 +147,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         }
         const reasonIsPending = isPendingStageReason(data.motivo_nao_fechamento);
         if (!data.vendeu && !reasonIsPending) {
-          setFollowUp(data.follow_up ? "sim" : "nao");
+          const segunda = (data as { segunda_reuniao?: boolean | null }).segunda_reuniao === true;
+          setAcompanhamento(segunda ? "segunda_reuniao" : data.follow_up ? "follow_up" : "perdeu");
         }
         if (data.follow_up_date) {
           const [y, m, d] = data.follow_up_date.split("-").map(Number);
