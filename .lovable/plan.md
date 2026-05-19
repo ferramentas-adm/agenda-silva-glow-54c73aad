@@ -1,59 +1,50 @@
-## Objetivo
+## Plano
 
-Vendas fechadas via follow-up devem aparecer na aba "Vendas" do dashboard no **dia em que o closer marcou Vendeu = sim**, e não mais no dia da reunião original.
+### 1. Deletar duplicatas
 
-## Diagnóstico
+**Kauane / Anderson** — manter a venda de ontem (agendamento `707e62b1…`, scheduled_date 18/05). Deletar a venda do agendamento `4af7cbe1…` (15/05, fechada hoje via follow-up).
 
-Hoje `src/components/dashboard/VendasTab.tsx` filtra cada venda usando `agendamentos.scheduled_date === dateStr`. Como follow-ups convertidos mantêm a `scheduled_date` da reunião original (08/05, 11/05, etc.), eles somem do dia em que foram efetivamente fechados.
+**Caio Devecchi** — não deletar agora. Pedir ao André (closer) qual manter:
+- `666b13f6…` (reunião 14/05, fechada hoje via follow-up)
+- `fb787165…` (reunião 19/05, fechada direto)
 
-Como distinguir uma venda "normal" de uma venda vinda de follow-up:
-- **Venda normal:** `vendas.created_at` ≈ dia da reunião e `follow_up = false` desde sempre.
-- **Venda de follow-up:** linha de `vendas` existe há dias com `follow_up = true, vendeu = false`; quando fecha, vira `follow_up = false, vendeu = true` e `updated_at` salta para o momento do fechamento. Existe pelo menos um registro em `audit_logs` com `entity_type = 'venda'`, `entity_id = agendamento_id` e `action in ('follow_up_atualizado','follow_up_editado')` anterior ao `updated_at` atual.
+→ Vou perguntar logo abaixo qual manter antes de executar.
 
-## Mudanças
+A deleção: `DELETE FROM vendas WHERE id = …` (sem mexer no agendamento — fica como "realizada" sem venda associada, ou também removo o agendamento duplicado se for o caso).
 
-### 1. Data efetiva de fechamento por venda
+### 2. Alerta de possível duplicata na aba Vendas
 
-Em `VendasTab.tsx`, computar para cada venda uma `closing_date` (YYYY-MM-DD em America/Sao_Paulo, usando `src/lib/timezone.ts`):
+Em `src/components/dashboard/VendasTab.tsx`:
+- Detectar vendas com **mesmo `lead_name` (normalizado) + mesmo `closer_id`** com `scheduled_date` ou data de fechamento dentro de uma janela curta (ex.: ±7 dias).
+- Marcar visualmente cada linha duplicada com um badge âmbar "Possível duplicata" + tooltip listando a(s) outra(s) venda(s) (data + valor).
+- Não esconde registros — só sinaliza para revisão manual.
 
-- Buscar os `audit_logs` de follow-up daquela venda (uma query agregada por `agendamento_id`).
-- Se a venda tem `vendeu = true` **e** existe algum log de `follow_up_atualizado`/`follow_up_editado` com `created_at < vendas.updated_at`: `closing_date = updated_at` convertido para BRT.
-- Caso contrário: `closing_date = scheduled_date` (mantém comportamento atual para vendas normais).
+### 3. Terceira opção "Segunda reunião" no VendaDialog
 
-### 2. Trocar o filtro do dia
+Hoje, quando o closer marca **Vendeu = Não**, aparece apenas:
+- [ ] Sim (follow-up)
+- [ ] Não (venda perdida)
 
-Substituir o filtro atual:
+Trocar por três opções exclusivas:
+- [ ] Sim — agendar follow-up
+- [ ] Sim — marcar segunda reunião
+- [ ] Não — venda perdida
 
-```
-ag.scheduled_date === dateStr
-```
+Quando o closer escolher **"Segunda reunião"**:
+- Não cria follow-up (`follow_up = false`).
+- Mostra data + horário da segunda reunião.
+- Cria um **novo `agendamento`** na data escolhida com o mesmo lead/closer/SDR, status `agendada`, observação automática "Segunda reunião — origem: reunião do dd/mm".
+- Guarda no banco que a venda atual gerou uma segunda reunião (para evitar contagem dupla no dashboard).
 
-por:
+Isso resolve o caso do closer marcar follow-up **e** depois agendar outra reunião manualmente (cenário do Caio e da Kauane).
 
-```
-v.closing_date === dateStr   // ou between rangeFromStr/rangeToStr
-```
+### Detalhes técnicos
 
-Isso afeta:
-- `vendasDia` (e por consequência `totalVendas`, `totalNaoFechou`, `coletadoTotal`, `taxaConversao`, motivos de não fechamento, performance por closer, drilldowns `fechadasIds` / `naoFechouIds`).
-- `vendasDiaParaMotivos` segue a mesma regra.
-- Follow-ups ativos/atrasados/hoje continuam usando `follow_up_date` como hoje (não mexer).
+- **Migration:** adicionar coluna `segunda_reuniao boolean NOT NULL DEFAULT false` em `vendas`. Constraint lógica garantida no app: `follow_up` e `segunda_reuniao` nunca verdadeiros ao mesmo tempo.
+- **VendaDialog:** trocar `followUp: "sim" | "nao"` por `acompanhamento: "follow_up" | "segunda_reuniao" | "perdeu"`. Reaproveitar os campos de data/horário (rotulando conforme escolha). No submit, se `segunda_reuniao`, inserir novo agendamento e setar `vendas.segunda_reuniao = true`.
+- **VendasTab:** ao detectar duplicata visual, ignorar pares onde a venda mais antiga tem `segunda_reuniao = true` (porque a 2ª reunião foi explicitamente esperada).
+- **Drilldown / contagem:** vendas com `segunda_reuniao = true` não contam como "não fechou" nem como follow-up; aparecem em separado (ou ficam fora dos cards de fechamento, a definir).
 
-Importante: vendas com `vendeu = false` continuam sendo contabilizadas pelo `scheduled_date` da reunião (ou seja, "não fechou" segue ligado ao dia da reunião). Apenas as vendas fechadas via follow-up migram para o dia do fechamento.
+### Fora de escopo
 
-### 3. Refletir no MetricDrilldownDialog
-
-`MetricDrilldownDialog` recebe `ids` de `agendamento_id`. Como uma venda de follow-up agora aparece num dia diferente da reunião original, o card de drilldown deve continuar mostrando a data/hora da reunião original (já é o comportamento atual via `scheduled_date` + `scheduled_time`). Nada a alterar aqui.
-
-### 4. Validação manual
-
-Após aplicar, conferir que:
-- Hoje (19/05) aparece a venda do **Samuel Freitas** (R$ 40.000 — André Lucchesi) junto com o CAIO DEVECCHI.
-- Ontem (18/05) aparece a venda da **Alexsandra Machado** (R$ 10.000 — Igor Occon).
-- Vendas normais não duplicam nem somem.
-
-## Fora de escopo
-
-- Não mexer no banco (sem novas colunas/migrations).
-- Não alterar a aba de Follow-ups, métricas de SDR, ou webhooks DataCrazy.
-- Não mexer no comportamento de "não fechou" / motivos para vendas que continuam em follow-up.
+- Não mexer em webhooks DataCrazy, métricas de SDR ou Follow-ups page (a não ser excluir `segunda_reuniao` da lista de follow-ups ativos, o que já acontece naturalmente por `follow_up = false`).
