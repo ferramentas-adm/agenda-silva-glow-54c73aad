@@ -804,7 +804,7 @@ function FollowUpActionDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="valor-fu">Valor da venda *</Label>
+                <Label htmlFor="valor-fu">Valor coletado *</Label>
                 <Input
                   id="valor-fu"
                   inputMode="numeric"
