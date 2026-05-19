@@ -37,6 +37,7 @@ interface VendaRow {
   follow_up: boolean;
   follow_up_date: string | null;
   follow_up_time: string | null;
+  segunda_reuniao: boolean;
   motivo_nao_fechamento: string | null;
   observacoes: string | null;
   created_at: string;
@@ -107,7 +108,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       const { data } = await supabase
         .from("vendas")
         .select(`
-          id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time,
+          id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
           motivo_nao_fechamento, observacoes, created_at, updated_at,
           agendamentos!inner(id, closer_id, scheduled_date, lead_name)
         `)
