@@ -118,7 +118,7 @@ export default function MetricDrilldownDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up, closed_at, created_at")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -173,19 +173,21 @@ export default function MetricDrilldownDialog({
     }
     setSavingDate(true);
     const { error } = await supabase
-      .from("agendamentos")
-      .update({ scheduled_date: editDateValue })
-      .eq("id", agId);
+      .from("vendas")
+      .update({ closed_at: editDateValue })
+      .eq("agendamento_id", agId);
     setSavingDate(false);
     if (error) {
       toast.error("Erro ao atualizar data: " + error.message);
       return;
     }
-    toast.success("Data atualizada");
+    toast.success("Data da venda atualizada");
     cancelEditDate();
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
     await queryClient.invalidateQueries({ queryKey: ["metric-drilldown"] });
-    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
     await queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
   };
 
   const startEdit = (agId: string, current: number | null) => {
@@ -289,45 +291,10 @@ export default function MetricDrilldownDialog({
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3 w-3" />
-                      {editingDateId === d.id ? (
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="date"
-                            autoFocus
-                            value={editDateValue}
-                            onChange={(e) => setEditDateValue(e.target.value)}
-                            className="h-6 w-36 text-xs px-1"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveEditDate(d.id);
-                              if (e.key === "Escape") cancelEditDate();
-                            }}
-                          />
-                          <Button size="icon" variant="ghost" className="h-6 w-6" disabled={savingDate} onClick={() => saveEditDate(d.id)}>
-                            {savingDate ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 text-emerald-600" />}
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" disabled={savingDate} onClick={cancelEditDate}>
-                            <XIcon className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <span>
-                            {format(new Date(d.scheduled_date + "T12:00:00"), "dd/MM", { locale: ptBR })} às{" "}
-                            {d.scheduled_time}
-                          </span>
-                          {canEditDate && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-5 w-5"
-                              onClick={() => startEditDate(d.id, d.scheduled_date)}
-                              title="Corrigir data"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </>
-                      )}
+                      <span>
+                        {format(new Date(d.scheduled_date + "T12:00:00"), "dd/MM", { locale: ptBR })} às{" "}
+                        {d.scheduled_time}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Phone className="h-3 w-3" />
@@ -376,6 +343,55 @@ export default function MetricDrilldownDialog({
                             Criado em{" "}
                             {formatBRDateTime(d.created_at).replace(" ", " às ")}
                           </span>
+                        </div>
+                      );
+                    })()}
+                    {(() => {
+                      const v = vendaMap.get(d.id) as any;
+                      if (!v || v.vendeu !== true) return null;
+                      const effectiveDate: string = v.closed_at
+                        ? v.closed_at
+                        : (v.created_at ? v.created_at.slice(0, 10) : d.scheduled_date);
+                      return (
+                        <div className="col-span-2 flex items-center gap-1.5">
+                          <CalendarDays className="h-3 w-3 text-emerald-600" />
+                          <span className="font-medium text-foreground/80">Data da venda:</span>
+                          {editingDateId === d.id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="date"
+                                autoFocus
+                                value={editDateValue}
+                                onChange={(e) => setEditDateValue(e.target.value)}
+                                className="h-6 w-36 text-xs px-1"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveEditDate(d.id);
+                                  if (e.key === "Escape") cancelEditDate();
+                                }}
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={savingDate} onClick={() => saveEditDate(d.id)}>
+                                {savingDate ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 text-emerald-600" />}
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={savingDate} onClick={cancelEditDate}>
+                                <XIcon className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span>{format(new Date(effectiveDate + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>
+                              {canEditDate && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5"
+                                  onClick={() => startEditDate(d.id, effectiveDate)}
+                                  title="Corrigir data da venda"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </>
+                          )}
                         </div>
                       );
                     })()}

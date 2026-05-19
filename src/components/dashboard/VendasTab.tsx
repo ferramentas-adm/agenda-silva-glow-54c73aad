@@ -40,6 +40,7 @@ interface VendaRow {
   segunda_reuniao: boolean;
   motivo_nao_fechamento: string | null;
   observacoes: string | null;
+  closed_at: string | null;
   created_at: string;
   updated_at: string;
   agendamentos: AgendamentoRow | null;
@@ -109,7 +110,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         .from("vendas")
         .select(`
           id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
-          motivo_nao_fechamento, observacoes, created_at, updated_at,
+          motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
           agendamentos!inner(id, closer_id, scheduled_date, lead_name)
         `)
         .is("agendamentos.deleted_at", null)
@@ -167,10 +168,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [closers]);
 
   // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd):
+  // - Se houver override manual (vendas.closed_at), usa esse.
   // - Se houver audit log de follow-up com outcome='fechou' para esse
   //   agendamento, usa essa data (data real do fechamento via follow-up).
   // - Caso contrário, usa scheduled_date da reunião.
   const closingDateOf = (v: VendaRow): string | null => {
+    if (v.closed_at) return v.closed_at;
     const ag = agMap.get(v.agendamento_id);
     if (!ag) return null;
     if (v.vendeu) {
