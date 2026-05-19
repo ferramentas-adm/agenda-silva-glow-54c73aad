@@ -447,8 +447,39 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         </p>
       </div>
 
+      {possibleDuplicates.length > 0 && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              Possíveis duplicatas detectadas ({possibleDuplicates.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Mesmo lead + mesmo closer com reuniões em ≤14 dias. Revise se deve manter as duas vendas.
+            </p>
+            {possibleDuplicates.map((d) => (
+              <div key={d.id} className="text-xs rounded-md border border-amber-500/30 bg-background/50 p-2">
+                <p className="font-medium">
+                  {d.leadName} <span className="text-muted-foreground font-normal">· {d.closerName}</span>
+                </p>
+                <p className="text-muted-foreground mt-0.5">
+                  Esta venda: reunião {format(parseISO(d.currentDate), "dd/MM/yyyy")} ·{" "}
+                  {d.others.length === 1 ? "outra venda em" : "outras vendas em"}{" "}
+                  {d.others
+                    .map((o) => `${format(parseISO(o.date), "dd/MM")}${o.vendeu && o.valor ? ` (${fmtBRL(o.valor)})` : ""}`)
+                    .join(", ")}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* KPIs principais (5 cards, todos clicáveis) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+
         <KpiCard
           icon={Target}
           label="Taxa de Conversão"
