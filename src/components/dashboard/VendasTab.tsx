@@ -192,6 +192,67 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     });
   }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr]);
 
+  // Possíveis duplicatas: vendas no período que têm outra venda do MESMO closer
+  // para o MESMO lead (nome normalizado) com data de reunião próxima (±14 dias).
+  // Ignora pares onde a venda mais antiga tem segunda_reuniao=true (foi prevista).
+  const normalizeName = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .split("|")[0]
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+
+  const possibleDuplicates = useMemo(() => {
+    type Dup = {
+      id: string;
+      leadName: string;
+      closerName: string;
+      currentDate: string;
+      others: { id: string; date: string; valor: number | null; vendeu: boolean }[];
+    };
+    const result: Dup[] = [];
+    const seenPairs = new Set<string>();
+
+    vendasDia.forEach((v) => {
+      const ag = agMap.get(v.agendamento_id);
+      if (!ag) return;
+      const key = normalizeName(ag.lead_name);
+      if (!key) return;
+      const others = vendas.filter((o) => {
+        if (o.id === v.id) return false;
+        const oAg = agMap.get(o.agendamento_id);
+        if (!oAg) return false;
+        if (oAg.closer_id !== ag.closer_id) return false;
+        if (normalizeName(oAg.lead_name) !== key) return false;
+        // Janela de proximidade: ±14 dias entre as datas de reunião
+        const d1 = new Date(ag.scheduled_date).getTime();
+        const d2 = new Date(oAg.scheduled_date).getTime();
+        if (Math.abs(d1 - d2) > 14 * 86400000) return false;
+        // Se a venda mais antiga foi explicitamente "segunda reunião", não é duplicata
+        const older = d1 < d2 ? v : o;
+        if (older.segunda_reuniao) return false;
+        return true;
+      });
+      if (others.length === 0) return;
+      const pairKey = [v.id, ...others.map((o) => o.id)].sort().join("|");
+      if (seenPairs.has(pairKey)) return;
+      seenPairs.add(pairKey);
+      result.push({
+        id: v.id,
+        leadName: ag.lead_name,
+        closerName: (ag.closer_id && closerMap.get(ag.closer_id)) || "—",
+        currentDate: ag.scheduled_date,
+        others: others.map((o) => {
+          const oAg = agMap.get(o.agendamento_id)!;
+          return { id: o.agendamento_id, date: oAg.scheduled_date, valor: o.valor, vendeu: o.vendeu };
+        }),
+      });
+    });
+    return result;
+  }, [vendasDia, vendas, agMap, closerMap]);
+
   // KPIs
   const totalReunioesComResultado = vendasDia.length;
   const totalVendas = vendasDia.filter((v) => v.vendeu).length;
