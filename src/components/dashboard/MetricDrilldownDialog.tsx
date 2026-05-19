@@ -46,6 +46,7 @@ interface AgendamentoDetail {
   sdr_responsavel_id: string | null;
   created_at: string;
   briefing: string | null;
+  original_agendamento_id: string | null;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -80,7 +81,7 @@ export default function MetricDrilldownDialog({
       const { data } = await supabase
         .from("agendamentos")
         .select(
-          "id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, meeting_reason, cancellation_reason, closer_id, created_by, sdr_responsavel_id, created_at, briefing",
+          "id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, meeting_reason, cancellation_reason, closer_id, created_by, sdr_responsavel_id, created_at, briefing, original_agendamento_id",
         )
         .in("id", agendamentoIds)
         .order("scheduled_time", { ascending: true });
@@ -123,9 +124,25 @@ export default function MetricDrilldownDialog({
     },
   });
 
+  const originalIds = Array.from(
+    new Set(details.map((d) => d.original_agendamento_id).filter(Boolean) as string[]),
+  );
+  const { data: originals = [] } = useQuery({
+    queryKey: ["drilldown-originals", originalIds.join(",")],
+    enabled: open && originalIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, scheduled_date, scheduled_time")
+        .in("id", originalIds);
+      return data ?? [];
+    },
+  });
+
   const closerMap = new Map(closers.map((c: any) => [c.id, c.name]));
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
   const vendaMap = new Map(vendas.map((v: any) => [v.agendamento_id, v]));
+  const originalMap = new Map(originals.map((o: any) => [o.id, o]));
 
   const { role } = useAuth();
   const canEditValor = role === "gestor" || role === "moderador";
@@ -262,6 +279,22 @@ export default function MetricDrilldownDialog({
                         {formatBRDateTime(d.created_at).replace(" ", " às ")}
                       </span>
                     </div>
+                    {d.original_agendamento_id && (() => {
+                      const orig = originalMap.get(d.original_agendamento_id) as
+                        | { scheduled_date: string; scheduled_time: string }
+                        | undefined;
+                      if (!orig) return null;
+                      return (
+                        <div className="flex items-center gap-1.5 col-span-2 text-blue-500">
+                          <CalendarDays className="h-3 w-3" />
+                          <span>
+                            Reagendado de{" "}
+                            {format(new Date(orig.scheduled_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}{" "}
+                            às {orig.scheduled_time}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     {(d.channel_type || d.meeting_reason) && (
                       <div className="col-span-2 flex flex-wrap gap-1.5 pt-1">
                         {d.channel_type && (
