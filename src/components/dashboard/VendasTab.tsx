@@ -40,6 +40,7 @@ interface VendaRow {
   segunda_reuniao: boolean;
   motivo_nao_fechamento: string | null;
   observacoes: string | null;
+  closed_at: string | null;
   created_at: string;
   updated_at: string;
   agendamentos: AgendamentoRow | null;
