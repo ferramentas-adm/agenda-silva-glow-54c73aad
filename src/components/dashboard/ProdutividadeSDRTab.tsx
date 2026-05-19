@@ -249,6 +249,7 @@ export default function ProdutividadeSDRTab({
     if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0 };
     const criadas = createdAgs.filter((a) => {
       if (!effectiveSdrId(a)) return false;
+      if (a.original_agendamento_id) return false; // reagendamentos não contam como nova
       const localDay = localDateOf(a.created_at);
       return localDay >= range.from && localDay <= range.to;
     }).length;
