@@ -37,6 +37,7 @@ interface VendaRow {
   follow_up: boolean;
   follow_up_date: string | null;
   follow_up_time: string | null;
+  segunda_reuniao: boolean;
   motivo_nao_fechamento: string | null;
   observacoes: string | null;
   created_at: string;
@@ -107,7 +108,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       const { data } = await supabase
         .from("vendas")
         .select(`
-          id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time,
+          id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
           motivo_nao_fechamento, observacoes, created_at, updated_at,
           agendamentos!inner(id, closer_id, scheduled_date, lead_name)
         `)
@@ -190,6 +191,67 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       return cd === dateStr;
     });
   }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr]);
+
+  // Possíveis duplicatas: vendas no período que têm outra venda do MESMO closer
+  // para o MESMO lead (nome normalizado) com data de reunião próxima (±14 dias).
+  // Ignora pares onde a venda mais antiga tem segunda_reuniao=true (foi prevista).
+  const normalizeName = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .split("|")[0]
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+
+  const possibleDuplicates = useMemo(() => {
+    type Dup = {
+      id: string;
+      leadName: string;
+      closerName: string;
+      currentDate: string;
+      others: { id: string; date: string; valor: number | null; vendeu: boolean }[];
+    };
+    const result: Dup[] = [];
+    const seenPairs = new Set<string>();
+
+    vendasDia.forEach((v) => {
+      const ag = agMap.get(v.agendamento_id);
+      if (!ag) return;
+      const key = normalizeName(ag.lead_name);
+      if (!key) return;
+      const others = vendas.filter((o) => {
+        if (o.id === v.id) return false;
+        const oAg = agMap.get(o.agendamento_id);
+        if (!oAg) return false;
+        if (oAg.closer_id !== ag.closer_id) return false;
+        if (normalizeName(oAg.lead_name) !== key) return false;
+        // Janela de proximidade: ±14 dias entre as datas de reunião
+        const d1 = new Date(ag.scheduled_date).getTime();
+        const d2 = new Date(oAg.scheduled_date).getTime();
+        if (Math.abs(d1 - d2) > 14 * 86400000) return false;
+        // Se a venda mais antiga foi explicitamente "segunda reunião", não é duplicata
+        const older = d1 < d2 ? v : o;
+        if (older.segunda_reuniao) return false;
+        return true;
+      });
+      if (others.length === 0) return;
+      const pairKey = [v.id, ...others.map((o) => o.id)].sort().join("|");
+      if (seenPairs.has(pairKey)) return;
+      seenPairs.add(pairKey);
+      result.push({
+        id: v.id,
+        leadName: ag.lead_name,
+        closerName: (ag.closer_id && closerMap.get(ag.closer_id)) || "—",
+        currentDate: ag.scheduled_date,
+        others: others.map((o) => {
+          const oAg = agMap.get(o.agendamento_id)!;
+          return { id: o.agendamento_id, date: oAg.scheduled_date, valor: o.valor, vendeu: o.vendeu };
+        }),
+      });
+    });
+    return result;
+  }, [vendasDia, vendas, agMap, closerMap]);
 
   // KPIs
   const totalReunioesComResultado = vendasDia.length;
@@ -385,8 +447,39 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         </p>
       </div>
 
+      {possibleDuplicates.length > 0 && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              Possíveis duplicatas detectadas ({possibleDuplicates.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Mesmo lead + mesmo closer com reuniões em ≤14 dias. Revise se deve manter as duas vendas.
+            </p>
+            {possibleDuplicates.map((d) => (
+              <div key={d.id} className="text-xs rounded-md border border-amber-500/30 bg-background/50 p-2">
+                <p className="font-medium">
+                  {d.leadName} <span className="text-muted-foreground font-normal">· {d.closerName}</span>
+                </p>
+                <p className="text-muted-foreground mt-0.5">
+                  Esta venda: reunião {format(parseISO(d.currentDate), "dd/MM/yyyy")} ·{" "}
+                  {d.others.length === 1 ? "outra venda em" : "outras vendas em"}{" "}
+                  {d.others
+                    .map((o) => `${format(parseISO(o.date), "dd/MM")}${o.vendeu && o.valor ? ` (${fmtBRL(o.valor)})` : ""}`)
+                    .join(", ")}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* KPIs principais (5 cards, todos clicáveis) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+
         <KpiCard
           icon={Target}
           label="Taxa de Conversão"

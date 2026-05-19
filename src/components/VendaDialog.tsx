@@ -69,7 +69,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [vendeu, setVendeu] = useState<"sim" | "nao" | null>(null);
   const [resumoVenda, setResumoVenda] = useState("");
   const [valor, setValor] = useState("");
-  const [followUp, setFollowUp] = useState<"sim" | "nao" | null>(null);
+  // Tipo de acompanhamento quando NÃO vendeu: follow_up, segunda_reuniao ou perdeu (sem acompanhamento)
+  const [acompanhamento, setAcompanhamento] = useState<"follow_up" | "segunda_reuniao" | "perdeu" | null>(null);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>(undefined);
   const [followUpTime, setFollowUpTime] = useState<string>("");
   const [motivo, setMotivo] = useState("");
@@ -88,8 +89,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const motivoIsPending = isPendingStageReason(motivo);
 
-  // Venda perdida (não vendeu + sem follow-up) → não faz sentido registrar recebimento
-  const isVendaPerdida = vendeu === "nao" && followUp === "nao";
+  // Venda perdida (não vendeu + sem acompanhamento) → não faz sentido registrar recebimento
+  const isVendaPerdida = vendeu === "nao" && acompanhamento === "perdeu";
   useEffect(() => {
     if (isVendaPerdida) {
       setHasRecebimento(false);
@@ -104,7 +105,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setVendeu(null);
     setResumoVenda("");
     setValor("");
-    setFollowUp(null);
+    setAcompanhamento(null);
     setFollowUpDate(undefined);
     setFollowUpTime("");
     setMotivo("");
@@ -146,7 +147,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         }
         const reasonIsPending = isPendingStageReason(data.motivo_nao_fechamento);
         if (!data.vendeu && !reasonIsPending) {
-          setFollowUp(data.follow_up ? "sim" : "nao");
+          const segunda = (data as { segunda_reuniao?: boolean | null }).segunda_reuniao === true;
+          setAcompanhamento(segunda ? "segunda_reuniao" : data.follow_up ? "follow_up" : "perdeu");
         }
         if (data.follow_up_date) {
           const [y, m, d] = data.follow_up_date.split("-").map(Number);
@@ -181,16 +183,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (!explicacaoNaoFechamento.trim()) return false;
-      if (followUp === null) return false;
-      if (followUp === "sim" && (!followUpDate || !followUpTime)) return false;
+      if (acompanhamento === null) return false;
+      if ((acompanhamento === "follow_up" || acompanhamento === "segunda_reuniao") && (!followUpDate || !followUpTime)) return false;
       return true;
     }
     return false;
   })();
 
-  const computeOutcome = (): "fechou" | "perdeu" | "follow_up" | "em_andamento" => {
+  const computeOutcome = (): "fechou" | "perdeu" | "follow_up" | "em_andamento" | "segunda_reuniao" => {
     if (vendeu === "sim") return "fechou";
-    if (followUp === "sim") return "follow_up";
+    if (acompanhamento === "follow_up") return "follow_up";
+    if (acompanhamento === "segunda_reuniao") return "segunda_reuniao";
     if (motivoIsPending) return "em_andamento";
     return "perdeu";
   };
@@ -200,7 +203,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setSubmitting(true);
     try {
       const valorNum = valorValido ? valorNumParsed : null;
-      const fuActive = vendeu === "nao" && followUp === "sim";
+      const fuActive = vendeu === "nao" && acompanhamento === "follow_up";
+      const segundaAtiva = vendeu === "nao" && acompanhamento === "segunda_reuniao";
 
       const { error: vendaError } = await supabase.from("vendas").upsert(
         {
@@ -211,6 +215,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           follow_up: fuActive,
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
+          segunda_reuniao: segundaAtiva,
           motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
           explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
           observacoes: observacoes.trim() || null,
@@ -240,7 +245,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       // Busca dados complementares para o webhook
       const { data: agData } = await supabase
         .from("agendamentos")
-        .select("lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by")
+        .select("lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by, scheduled_date, channel_type")
         .eq("id", agendamentoId)
         .maybeSingle();
 
@@ -254,6 +259,29 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       if (sdrLookup) {
         const { data: p } = await supabase.from("profiles").select("full_name").eq("user_id", sdrLookup).maybeSingle();
         sdrName = p?.full_name ?? null;
+      }
+
+      // Se for "Segunda reunião", cria um novo agendamento na data/horário escolhidos
+      if (segundaAtiva && followUpDate && followUpTime && agData) {
+        const originLabel = agData.scheduled_date
+          ? format(new Date(agData.scheduled_date + "T12:00:00"), "dd/MM/yyyy")
+          : "—";
+        const { error: novoAgError } = await supabase.from("agendamentos").insert({
+          lead_name: agData.lead_name,
+          lead_phone: agData.lead_phone,
+          closer_id: agData.closer_id,
+          sdr_responsavel_id: agData.sdr_responsavel_id ?? null,
+          scheduled_date: format(followUpDate, "yyyy-MM-dd"),
+          scheduled_time: followUpTime,
+          status: "agendada",
+          channel_type: agData.channel_type ?? null,
+          observation: `Segunda reunião — origem: reunião do ${originLabel}`,
+          created_by: user.id,
+        } as any);
+        if (novoAgError) {
+          console.warn("[agendamentos] falha ao criar segunda reunião:", novoAgError);
+          toast.warning("Resultado registrado, mas falhou ao criar a segunda reunião.");
+        }
       }
 
       // Dispara webhook (não bloqueante)
@@ -271,6 +299,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         follow_up: fuActive,
         follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
         follow_up_time: fuActive && followUpTime ? followUpTime : null,
+        segunda_reuniao: segundaAtiva,
+        segunda_reuniao_date: segundaAtiva && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
+        segunda_reuniao_time: segundaAtiva && followUpTime ? followUpTime : null,
         observacoes: observacoes.trim() || null,
         outcome,
         registered_at: new Date().toISOString(),
@@ -310,9 +341,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           ? "Venda registrada!"
           : motivoIsPending
             ? "Resultado registrado (em andamento no CRM)"
-            : followUp === "sim"
+            : acompanhamento === "follow_up"
               ? "Follow-up agendado"
-              : "Venda perdida registrada",
+              : acompanhamento === "segunda_reuniao"
+                ? "Segunda reunião agendada"
+                : "Venda perdida registrada",
       );
       onSuccess();
       // Limpa todos os campos para o próximo preenchimento
@@ -443,21 +476,33 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
                   <div className="space-y-2">
                     <Label>Vai acompanhar esse lead? *</Label>
-                    <RadioGroup value={followUp ?? ""} onValueChange={(v) => setFollowUp(v as "sim" | "nao")}>
-                      <div className="flex gap-4">
+                    <RadioGroup
+                      value={acompanhamento ?? ""}
+                      onValueChange={(v) => setAcompanhamento(v as "follow_up" | "segunda_reuniao" | "perdeu")}
+                    >
+                      <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
-                          <RadioGroupItem value="sim" id="fu-sim" />
-                          <Label htmlFor="fu-sim" className="cursor-pointer font-normal">Sim</Label>
+                          <RadioGroupItem value="follow_up" id="ac-fu" />
+                          <Label htmlFor="ac-fu" className="cursor-pointer font-normal">Sim — agendar follow-up</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                          <RadioGroupItem value="nao" id="fu-nao" />
-                          <Label htmlFor="fu-nao" className="cursor-pointer font-normal">Não (venda perdida)</Label>
+                          <RadioGroupItem value="segunda_reuniao" id="ac-2nd" />
+                          <Label htmlFor="ac-2nd" className="cursor-pointer font-normal">Sim — marcar segunda reunião</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="perdeu" id="ac-perdeu" />
+                          <Label htmlFor="ac-perdeu" className="cursor-pointer font-normal">Não (venda perdida)</Label>
                         </div>
                       </div>
                     </RadioGroup>
+                    {acompanhamento === "segunda_reuniao" && (
+                      <p className="text-xs text-muted-foreground">
+                        Uma nova reunião será criada na agenda do mesmo closer. Não conta como follow-up.
+                      </p>
+                    )}
                   </div>
 
-                  {followUp === "sim" && (
+                  {(acompanhamento === "follow_up" || acompanhamento === "segunda_reuniao") && (
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
                         <Label>Data *</Label>
@@ -515,7 +560,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             </>
           )}
 
-          {vendeu === "nao" && followUp !== "nao" && (
+          {vendeu === "nao" && acompanhamento && acompanhamento !== "perdeu" && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
               <div className="space-y-2">
                 <Label>Foi acordado recebimento de valor (sinal/entrada/restante)?</Label>

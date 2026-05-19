@@ -649,6 +649,7 @@ export type Database = {
           observacoes: string | null
           resumo_venda: string | null
           sdr_error: boolean
+          segunda_reuniao: boolean
           updated_at: string
           valor: number | null
           vendeu: boolean
@@ -667,6 +668,7 @@ export type Database = {
           observacoes?: string | null
           resumo_venda?: string | null
           sdr_error?: boolean
+          segunda_reuniao?: boolean
           updated_at?: string
           valor?: number | null
           vendeu: boolean
@@ -685,6 +687,7 @@ export type Database = {
           observacoes?: string | null
           resumo_venda?: string | null
           sdr_error?: boolean
+          segunda_reuniao?: boolean
           updated_at?: string
           valor?: number | null
           vendeu?: boolean

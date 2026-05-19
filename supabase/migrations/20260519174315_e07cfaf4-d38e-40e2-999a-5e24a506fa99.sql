@@ -1,0 +1,1 @@
+ALTER TABLE public.vendas ADD COLUMN IF NOT EXISTS segunda_reuniao boolean NOT NULL DEFAULT false;
