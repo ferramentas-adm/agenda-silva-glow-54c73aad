@@ -168,10 +168,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [closers]);
 
   // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd):
+  // - Se houver override manual (vendas.closed_at), usa esse.
   // - Se houver audit log de follow-up com outcome='fechou' para esse
   //   agendamento, usa essa data (data real do fechamento via follow-up).
   // - Caso contrário, usa scheduled_date da reunião.
   const closingDateOf = (v: VendaRow): string | null => {
+    if (v.closed_at) return v.closed_at;
     const ag = agMap.get(v.agendamento_id);
     if (!ag) return null;
     if (v.vendeu) {
