@@ -439,12 +439,46 @@ export default function CargaClosersTab({ restrictToCloserId }: { restrictToClos
                       </div>
                     )}
                   </div>
+                  {item.kind === "followup" && (
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() =>
+                          setEditTarget({
+                            id: item.id,
+                            agendamento_id: item.agendamentoId,
+                            follow_up_date: item.date ?? "",
+                            follow_up_time: item.time ?? null,
+                            motivo_nao_fechamento: item.motivo,
+                            observacoes: item.observacoes,
+                            lead_name: item.lead?.lead_name,
+                          })
+                        }
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                        Atualizar follow-up
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <FollowUpEditDialog
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onDone={() => {
+          queryClient.invalidateQueries({ queryKey: ["carga-closers-followups"] });
+          queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+          queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+        }}
+      />
     </Card>
   );
 }
+
