@@ -348,6 +348,7 @@ export default function AgendarPage() {
 
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
+      queryClient.invalidateQueries({ queryKey: ["slot-counts"] });
 
 
       setSuccess({
