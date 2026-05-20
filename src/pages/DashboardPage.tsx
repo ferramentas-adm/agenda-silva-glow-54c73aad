@@ -38,6 +38,9 @@ import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
 import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
+import { useSlotCounts } from "@/hooks/useSlotCounts";
+import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { AlertTriangle } from "lucide-react";
 
 interface Agendamento {
   id: string;
