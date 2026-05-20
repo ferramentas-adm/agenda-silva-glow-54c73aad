@@ -188,6 +188,12 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const calendarExpired = calendarData?.expired ?? false;
   const calendarConnected = calendarData?.connected ?? false;
 
+  // Slot fill counts (todos os closers somados) + limite global
+  const { data: slotCounts } = useSlotCounts(dateStr);
+  const { limit: slotLimit } = useSlotLimit();
+  const countFor = (slot: string) => slotCounts?.get(slot) ?? 0;
+  const isSlotFull = (slot: string) => countFor(slot) >= slotLimit;
+
   // Use São Paulo timezone for "today" checks
   const spNow = useMemo(() => {
     const now = new Date();
