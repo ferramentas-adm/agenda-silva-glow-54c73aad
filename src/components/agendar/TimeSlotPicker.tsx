@@ -410,6 +410,49 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!fullSlotInfo} onOpenChange={(open) => !open && setFullSlotInfo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-red-500" />
+              Horário lotado
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {fullSlotInfo && (
+                <>
+                  O horário <strong>{fullSlotInfo.time}</strong> já tem <strong>{fullSlotInfo.count}</strong> agendas
+                  marcadas (limite: {slotLimit}). Todos os closers já estão ocupados nesse horário.
+                  {canForceFullSlot
+                    ? " Você pode forçar o agendamento, mas confirme se realmente é necessário."
+                    : " Por favor, escolha outro horário."}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {canForceFullSlot ? (
+              <>
+                <AlertDialogCancel onClick={() => setFullSlotInfo(null)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (fullSlotInfo) {
+                      onSelect(fullSlotInfo.time, fullSlotInfo.duration);
+                      setCustomMode(false);
+                      setCustomError(null);
+                    }
+                    setFullSlotInfo(null);
+                  }}
+                >
+                  Forçar mesmo assim
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction onClick={() => setFullSlotInfo(null)}>Entendi</AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Custom time input */}
       {customMode && (
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
