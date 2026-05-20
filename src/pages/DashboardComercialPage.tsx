@@ -24,6 +24,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSlotCounts } from "@/hooks/useSlotCounts";
+import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { brTodayYMD } from "@/lib/timezone";
 
 type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads" | "carga" | "erros_sdr";
 
