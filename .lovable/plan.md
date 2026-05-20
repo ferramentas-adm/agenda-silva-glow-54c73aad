@@ -1,50 +1,64 @@
-## Plano
+## O que vai ser feito
 
-### 1. Deletar duplicatas
+Quando um horário (ex.: 14:00 de 22/05) já tiver atingido o limite de agendas ativas considerando **todos os closers**, o SDR não consegue mais marcar nesse slot. Gestor/moderador continuam podendo forçar. O aviso é visível **direto no calendário de horários**, sem precisar clicar.
 
-**Kauane / Anderson** — manter a venda de ontem (agendamento `707e62b1…`, scheduled_date 18/05). Deletar a venda do agendamento `4af7cbe1…` (15/05, fechada hoje via follow-up).
+## Configuração
 
-**Caio Devecchi** — não deletar agora. Pedir ao André (closer) qual manter:
-- `666b13f6…` (reunião 14/05, fechada hoje via follow-up)
-- `fb787165…` (reunião 19/05, fechada direto)
+Nova entrada em `app_settings`:
+- `agenda_slot_limit` (default `9`) — quantas agendas ativas cabem por horário no total.
 
-→ Vou perguntar logo abaixo qual manter antes de executar.
+Editável pela tela de Admin (gestor), seguindo o mesmo padrão das outras settings existentes (`useAppSettingList` / `APP_SETTING_KEYS`).
 
-A deleção: `DELETE FROM vendas WHERE id = …` (sem mexer no agendamento — fica como "realizada" sem venda associada, ou também removo o agendamento duplicado se for o caso).
+## Regra de contagem
 
-### 2. Alerta de possível duplicata na aba Vendas
+Para um `scheduled_date` + `scheduled_time`, conta todos os `agendamentos` onde:
+- `deleted_at IS NULL`
+- `status NOT IN ('cancelada')` — inclui agendada, confirmada, realizada, no_show, reagendada (ou seja: tudo exceto canceladas/deletadas, conforme você escolheu).
 
-Em `src/components/dashboard/VendasTab.tsx`:
-- Detectar vendas com **mesmo `lead_name` (normalizado) + mesmo `closer_id`** com `scheduled_date` ou data de fechamento dentro de uma janela curta (ex.: ±7 dias).
-- Marcar visualmente cada linha duplicada com um badge âmbar "Possível duplicata" + tooltip listando a(s) outra(s) venda(s) (data + valor).
-- Não esconde registros — só sinaliza para revisão manual.
+## TimeSlotPicker (tela de Agendar)
 
-### 3. Terceira opção "Segunda reunião" no VendaDialog
+Novo query: busca a **contagem por horário do dia inteiro** para o `dateStr` selecionado, agrupada por `scheduled_time`, sem filtrar por closer. Reaproveita o mesmo cache para todos os slots.
 
-Hoje, quando o closer marca **Vendeu = Não**, aparece apenas:
-- [ ] Sim (follow-up)
-- [ ] Não (venda perdida)
+Cada botão de slot ganha um indicador visual baseado na contagem `n`:
 
-Trocar por três opções exclusivas:
-- [ ] Sim — agendar follow-up
-- [ ] Sim — marcar segunda reunião
-- [ ] Não — venda perdida
+```text
+n < limite-2     → normal
+n = limite-2/-1  → badge âmbar com "n/9" (quase lotado)
+n >= limite      → fundo vermelho, ícone de cadeado, texto "Lotado n/9"
+```
 
-Quando o closer escolher **"Segunda reunião"**:
-- Não cria follow-up (`follow_up = false`).
-- Mostra data + horário da segunda reunião.
-- Cria um **novo `agendamento`** na data escolhida com o mesmo lead/closer/SDR, status `agendada`, observação automática "Segunda reunião — origem: reunião do dd/mm".
-- Guarda no banco que a venda atual gerou uma segunda reunião (para evitar contagem dupla no dashboard).
+Para **SDR**: slot lotado fica `disabled` e clicar abre AlertDialog "Horário lotado — todos os closers já estão ocupados nesse horário. Escolha outro horário."
 
-Isso resolve o caso do closer marcar follow-up **e** depois agendar outra reunião manualmente (cenário do Caio e da Kauane).
+Para **gestor/moderador**: slot lotado fica visualmente vermelho mas **clicável**, com tooltip "Lotado — forçar agendamento" e um AlertDialog de confirmação antes de prosseguir.
 
-### Detalhes técnicos
+A legenda no topo ganha mais um item: 🔒 vermelho = "Lotado (limite atingido)".
 
-- **Migration:** adicionar coluna `segunda_reuniao boolean NOT NULL DEFAULT false` em `vendas`. Constraint lógica garantida no app: `follow_up` e `segunda_reuniao` nunca verdadeiros ao mesmo tempo.
-- **VendaDialog:** trocar `followUp: "sim" | "nao"` por `acompanhamento: "follow_up" | "segunda_reuniao" | "perdeu"`. Reaproveitar os campos de data/horário (rotulando conforme escolha). No submit, se `segunda_reuniao`, inserir novo agendamento e setar `vendas.segunda_reuniao = true`.
-- **VendasTab:** ao detectar duplicata visual, ignorar pares onde a venda mais antiga tem `segunda_reuniao = true` (porque a 2ª reunião foi explicitamente esperada).
-- **Drilldown / contagem:** vendas com `segunda_reuniao = true` não contam como "não fechou" nem como follow-up; aparecem em separado (ou ficam fora dos cards de fechamento, a definir).
+O botão "Outro" (horário customizado) também valida contra o limite na confirmação, com o mesmo bloqueio para SDR.
 
-### Fora de escopo
+## Dashboard Comercial
 
-- Não mexer em webhooks DataCrazy, métricas de SDR ou Follow-ups page (a não ser excluir `segunda_reuniao` da lista de follow-ups ativos, o que já acontece naturalmente por `follow_up = false`).
+Novo card "Horários lotados hoje" (visível para gestor/moderador/SDR), listando os horários do dia atual que atingiram o limite, com a contagem. Posicionado próximo aos cards de produtividade já existentes em `DashboardComercialPage`.
+
+## Detalhes técnicos
+
+**Migração**: 
+```sql
+INSERT INTO app_settings (key, value) 
+VALUES ('agenda_slot_limit', '9')
+ON CONFLICT (key) DO NOTHING;
+```
+
+**Hook novo** `useSlotCounts(dateStr)` em `src/hooks/useSlotCounts.ts`:
+- Query agrupada por `scheduled_time` para o dia inteiro
+- Retorna `Map<string, number>` (chave = "HH:MM")
+- `staleTime: 30s`, invalidada após criar agendamento
+
+**Arquivos a alterar**:
+- `supabase/migrations/...` — seed da setting
+- `src/components/admin/...` (tela de settings, se existir lista — adicionar `agenda_slot_limit` em `APP_SETTING_KEYS`)
+- `src/hooks/useSlotCounts.ts` — novo
+- `src/components/agendar/TimeSlotPicker.tsx` — consome contagem, aplica estilo/bloqueio, AlertDialogs (lotado vs forçar)
+- `src/pages/AgendarPage.tsx` — invalidar `useSlotCounts` no submit
+- `src/pages/DashboardComercialPage.tsx` — card de horários lotados hoje
+
+**Permissões**: o bloqueio é client-side por role; não criamos constraint no banco (gestor precisa poder forçar). Mantém comportamento atual de RLS.
