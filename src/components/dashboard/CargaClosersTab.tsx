@@ -84,8 +84,11 @@ function classifyByDateTime(date: string | null, time: string | null, today: str
   return isTimeBeforeNow(time) ? "overdue" : "future";
 }
 
-export default function CargaClosersTab() {
+export default function CargaClosersTab({ restrictToCloserId }: { restrictToCloserId?: string | null } = {}) {
+  const queryClient = useQueryClient();
   const [drill, setDrill] = useState<{ closer: Closer; bucket: Bucket } | null>(null);
+  const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
+
 
   const { data: closers = [], isLoading: loadingClosers } = useQuery({
     queryKey: ["carga-closers-list"],
