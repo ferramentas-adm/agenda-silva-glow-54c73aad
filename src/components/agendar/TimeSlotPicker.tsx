@@ -246,6 +246,18 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return;
     }
 
+    // Slot lotado globalmente (todos closers somados)
+    const startSlot = customStart.slice(0, 5);
+    const cnt = countFor(startSlot);
+    if (cnt >= slotLimit) {
+      if (canForceFullSlot) {
+        setFullSlotInfo({ time: startSlot, count: cnt, duration: endMin - startMin });
+        return;
+      }
+      setCustomError(`Horário lotado (${cnt}/${slotLimit}). Todos os closers já estão ocupados nesse horário.`);
+      return;
+    }
+
     const duration = endMin - startMin;
     onSelect(customStart, duration);
     setCustomMode(false);
