@@ -262,6 +262,9 @@ export default function CargaClosersTab({ restrictToCloserId }: { restrictToClos
       .map((f) => ({
         kind: "followup" as const,
         id: f.id,
+        agendamentoId: f.agendamento_id,
+        observacoes: f.observacoes ?? null,
+        motivo: f.motivo_nao_fechamento ?? null,
         title: f.agendamentos?.lead_name ?? "—",
         description: f.motivo_nao_fechamento,
         date: f.follow_up_date,
@@ -271,6 +274,7 @@ export default function CargaClosersTab({ restrictToCloserId }: { restrictToClos
           : null,
         resumo: f.agendamentos?.id ? resumoMap.get(f.agendamentos.id) ?? null : null,
       }));
+
   }, [drill, tasks, followUps, today, taskLeadMap, resumoMap]);
 
   const renderClickable = (
