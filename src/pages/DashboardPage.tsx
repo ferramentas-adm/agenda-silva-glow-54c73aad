@@ -38,6 +38,9 @@ import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
 import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
+import { useSlotCounts } from "@/hooks/useSlotCounts";
+import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { AlertTriangle } from "lucide-react";
 
 interface Agendamento {
   id: string;
@@ -179,6 +182,21 @@ export function CalendarContent() {
   const [transferring, setTransferring] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
+
+  // Slot lotação global (todos closers somados) — para faixa de aviso no calendário
+  const { data: slotCounts } = useSlotCounts(dateStr);
+  const { limit: slotLimit } = useSlotLimit();
+  const slotAlerts = useMemo(() => {
+    const full: { time: string; count: number }[] = [];
+    const nearly: { time: string; count: number }[] = [];
+    const threshold = Math.max(1, slotLimit - 2);
+    const entries = Array.from(slotCounts?.entries() ?? []).sort((a, b) => a[0].localeCompare(b[0]));
+    for (const [time, count] of entries) {
+      if (count >= slotLimit) full.push({ time, count });
+      else if (count >= threshold) nearly.push({ time, count });
+    }
+    return { full, nearly };
+  }, [slotCounts, slotLimit]);
 
   // Build closer index map for consistent coloring
   const closerIndexMap = useMemo(() => {
@@ -773,6 +791,44 @@ export function CalendarContent() {
             </div>
           );
         })()}
+
+        {/* Faixa de aviso: horários lotados / quase lotados (todos closers somados) */}
+        {(slotAlerts.full.length > 0 || slotAlerts.nearly.length > 0) && (
+          <div className="space-y-2">
+            {slotAlerts.full.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border-2 border-red-500/60 bg-red-500/15 px-3 py-2.5 text-sm">
+                <Users className="h-4 w-4 shrink-0 text-red-500" />
+                <span className="font-semibold text-red-600 dark:text-red-400">
+                  Não ofereça ao lead — lotado:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {slotAlerts.full.map((s) => (
+                    <span key={s.time} className="rounded-md bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                      {s.time} ({s.count}/{slotLimit})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {slotAlerts.nearly.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                <span className="font-medium text-amber-700 dark:text-amber-400">
+                  Quase lotado — evite oferecer:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {slotAlerts.nearly.map((s) => (
+                    <span key={s.time} className="rounded-md bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                      {s.time} ({s.count}/{slotLimit})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+
 
         <div className="flex items-center justify-between gap-4">
           <div>
