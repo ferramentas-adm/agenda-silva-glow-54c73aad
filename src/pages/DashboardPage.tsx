@@ -804,7 +804,7 @@ export function CalendarContent() {
                 <div className="flex flex-wrap gap-1.5">
                   {slotAlerts.full.map((s) => (
                     <span key={s.time} className="rounded-md bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
-                      {s.time} ({s.count}/{slotLimit})
+                      {s.time}
                     </span>
                   ))}
                 </div>
@@ -819,7 +819,7 @@ export function CalendarContent() {
                 <div className="flex flex-wrap gap-1.5">
                   {slotAlerts.nearly.map((s) => (
                     <span key={s.time} className="rounded-md bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
-                      {s.time} ({s.count}/{slotLimit})
+                      {s.time}
                     </span>
                   ))}
                 </div>
