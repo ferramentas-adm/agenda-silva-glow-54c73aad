@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Users, AlertTriangle, Clock, Phone, User as UserIcon } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Users, AlertTriangle, Clock, Phone, User as UserIcon, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -13,8 +14,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import FollowUpEditDialog, { type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import { brTodayYMD, brNowHour, brNowMinute } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
+
 
 interface Closer {
   id: string;
