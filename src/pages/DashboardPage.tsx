@@ -183,6 +183,21 @@ export function CalendarContent() {
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
+  // Slot lotação global (todos closers somados) — para faixa de aviso no calendário
+  const { data: slotCounts } = useSlotCounts(dateStr);
+  const { limit: slotLimit } = useSlotLimit();
+  const slotAlerts = useMemo(() => {
+    const full: { time: string; count: number }[] = [];
+    const nearly: { time: string; count: number }[] = [];
+    const threshold = Math.max(1, slotLimit - 2);
+    const entries = Array.from(slotCounts?.entries() ?? []).sort((a, b) => a[0].localeCompare(b[0]));
+    for (const [time, count] of entries) {
+      if (count >= slotLimit) full.push({ time, count });
+      else if (count >= threshold) nearly.push({ time, count });
+    }
+    return { full, nearly };
+  }, [slotCounts, slotLimit]);
+
   // Build closer index map for consistent coloring
   const closerIndexMap = useMemo(() => {
     const map = new Map<string, number>();
