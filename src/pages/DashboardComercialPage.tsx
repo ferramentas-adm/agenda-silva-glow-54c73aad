@@ -24,6 +24,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSlotCounts } from "@/hooks/useSlotCounts";
+import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { brTodayYMD } from "@/lib/timezone";
 
 type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads" | "carga" | "erros_sdr";
 
@@ -632,6 +635,64 @@ function MetricCard({
   );
 }
 
+// ─── Horários Lotados Hoje ──────────────────────────────────────
+function FullSlotsTodayCard() {
+  const today = brTodayYMD();
+  const { data: counts } = useSlotCounts(today);
+  const { limit } = useSlotLimit();
+
+  const fullSlots = useMemo(() => {
+    if (!counts) return [] as { time: string; count: number }[];
+    return Array.from(counts.entries())
+      .filter(([, n]) => n >= limit)
+      .map(([time, count]) => ({ time, count }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }, [counts, limit]);
+
+  const nearlyFull = useMemo(() => {
+    if (!counts) return [] as { time: string; count: number }[];
+    return Array.from(counts.entries())
+      .filter(([, n]) => n >= Math.max(1, limit - 2) && n < limit)
+      .map(([time, count]) => ({ time, count }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }, [counts, limit]);
+
+  if (fullSlots.length === 0 && nearlyFull.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="text-sm font-semibold text-red-500">
+          Horários cheios hoje (limite {limit}/horário)
+        </div>
+        <div className="text-xs text-muted-foreground">
+          SDR não consegue mais agendar nos horários lotados.
+        </div>
+      </div>
+      {fullSlots.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {fullSlots.map((s) => (
+            <span key={s.time} className="inline-flex items-center gap-1 rounded-full bg-red-500 text-white px-2.5 py-0.5 text-xs font-bold">
+              {s.time} · {s.count}/{limit}
+            </span>
+          ))}
+        </div>
+      )}
+      {nearlyFull.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Quase lotados:</span>
+          {nearlyFull.map((s) => (
+            <span key={s.time} className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-white px-2 py-0.5 text-xs font-semibold">
+              {s.time} · {s.count}/{limit}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ─── Channel Table ───────────────────────────────────────────────
 function ChannelTable({
   title,
@@ -843,6 +904,9 @@ function MetricasSDRsTab({
           onClick={() => openDrill(`Compareceu — ${selectedLabel}`, metrics.compareceuIds)}
         />
       </div>
+
+      {/* Horários lotados hoje */}
+      <FullSlotsTodayCard />
 
       {/* Channel tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
 import DynamicListManager from "@/components/DynamicListManager";
 import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { useSlotLimit } from "@/hooks/useSlotLimit";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 
@@ -32,6 +33,7 @@ import { logAudit } from "@/services/auditLog";
 function DynamicListsSection() {
   return (
     <div className="space-y-4">
+      <SlotLimitSetting />
       <div className="grid gap-4 md:grid-cols-2">
         <DynamicListManager
           settingKey={APP_SETTING_KEYS.channel_types}
@@ -53,6 +55,38 @@ function DynamicListsSection() {
         />
       </div>
       <DeletionReasonsSection />
+    </div>
+  );
+}
+
+/* ─── Limite global de agendas por horário ───── */
+function SlotLimitSetting() {
+  const { limit, isLoading, save, isSaving } = useSlotLimit();
+  const [value, setValue] = useState<string>("");
+  useEffect(() => { if (!isLoading) setValue(String(limit)); }, [limit, isLoading]);
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-1 text-sm font-semibold">Limite de agendas por horário</div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Quando esse limite for atingido, SDRs não podem mais marcar nesse horário. Gestores/moderadores podem forçar.
+      </p>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={1}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="w-28"
+        />
+        <Button
+          size="sm"
+          disabled={isSaving || !value || parseInt(value, 10) === limit || parseInt(value, 10) < 1}
+          onClick={() => save(parseInt(value, 10))}
+        >
+          Salvar
+        </Button>
+      </div>
     </div>
   );
 }
