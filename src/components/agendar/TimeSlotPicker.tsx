@@ -11,6 +11,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useSlotCounts } from "@/hooks/useSlotCounts";
+import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { Users } from "lucide-react";
 
 interface TimeSlotPickerProps {
   closerId: string;
