@@ -91,46 +91,49 @@ export default function CargaClosersTab({ restrictToCloserId }: { restrictToClos
 
 
   const { data: closers = [], isLoading: loadingClosers } = useQuery({
-    queryKey: ["carga-closers-list"],
+    queryKey: ["carga-closers-list", restrictToCloserId ?? "all"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id, name")
-        .eq("active", true)
-        .order("name");
+      let q = supabase.from("closers").select("id, name").eq("active", true).order("name");
+      if (restrictToCloserId) q = q.eq("id", restrictToCloserId);
+      const { data } = await q;
       return (data ?? []) as Closer[];
     },
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ["carga-closers-tasks"],
+    queryKey: ["carga-closers-tasks", restrictToCloserId ?? "all"],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("tasks")
         .select("id, title, description, assigned_closer_id, status, due_date, due_time, agendamento_id")
         .eq("status", "pendente");
+      if (restrictToCloserId) q = q.eq("assigned_closer_id", restrictToCloserId);
+      const { data } = await q;
       return (data ?? []) as TaskRow[];
     },
     refetchInterval: 2 * 60 * 1000,
   });
 
   const { data: followUps = [] } = useQuery({
-    queryKey: ["carga-closers-followups"],
+    queryKey: ["carga-closers-followups", restrictToCloserId ?? "all"],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("vendas")
         .select(`
-          id, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento,
+          id, agendamento_id, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, observacoes,
           agendamentos!inner ( id, lead_name, lead_phone, closer_id, deleted_at, briefing )
         `)
         .eq("follow_up", true)
         .eq("vendeu", false);
+      if (restrictToCloserId) q = q.eq("agendamentos.closer_id", restrictToCloserId);
+      const { data } = await q;
       const rows = (data ?? []) as unknown as FollowUpVendaRow[];
       return rows.filter((r) => !r.agendamentos?.deleted_at);
     },
     refetchInterval: 2 * 60 * 1000,
   });
+
 
   // Lead names for tasks (via agendamento_id)
   const taskAgendamentoIds = useMemo(
