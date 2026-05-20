@@ -116,13 +116,16 @@ function isCustomTimeConflicting(
 }
 
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
-  useAuth();
+  const { role } = useAuth();
+  const canForceFullSlot = role === "gestor" || role === "moderador";
   const [customMode, setCustomMode] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
   // Pop-up apenas informativo: nenhum usuário pode forçar agendamento em bloqueio pessoal.
   const [blockedInfo, setBlockedInfo] = useState<string | null>(null);
+  // Pop-up de slot lotado (SDR) ou confirmação para forçar (gestor/moderador).
+  const [fullSlotInfo, setFullSlotInfo] = useState<{ time: string; count: number; duration?: number } | null>(null);
 
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
