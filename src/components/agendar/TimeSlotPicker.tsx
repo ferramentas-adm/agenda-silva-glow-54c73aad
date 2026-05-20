@@ -301,7 +301,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                     key={s.time}
                     className="rounded-md bg-red-500 px-2 py-0.5 text-xs font-bold text-white"
                   >
-                    {s.time} ({s.count}/{slotLimit})
+                    {s.time}
                   </span>
                 ))}
               </div>
@@ -319,7 +319,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                     key={s.time}
                     className="rounded-md bg-amber-500 px-2 py-0.5 text-xs font-bold text-white"
                   >
-                    {s.time} ({s.count}/{slotLimit})
+                    {s.time}
                   </span>
                 ))}
               </div>
