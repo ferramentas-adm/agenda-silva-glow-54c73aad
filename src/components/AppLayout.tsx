@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet } from "lucide-react";
+import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useState, useRef, useCallback, useEffect } from "react";
 import logo from "@/assets/logo.png";
@@ -61,6 +61,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ...(can("view_calendar") ? [{ to: "/", label: "Calendário", icon: CalendarDays }] : []),
     ...(can("view_meetings") ? [{ to: "/reunioes", label: "Reuniões", icon: List }] : []),
     ...(can("view_follow_ups") ? [{ to: "/follow-ups", label: "Follow-ups", icon: CalendarClock }] : []),
+    ...(isCloser ? [{ to: "/meus-follows", label: "Meus Follows", icon: Users }] : []),
     ...(can("view_payments") ? [{ to: "/pagamentos", label: "Pagamentos", icon: Wallet }] : []),
     ...(can("view_dashboard_comercial") ? [{ to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3 }] : []),
     ...(can("view_dashboard_leads") && !can("view_dashboard_comercial") ? [{ to: "/dashboard-leads", label: "Dashboard de Formulário", icon: BarChart3 }] : []),

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Users, AlertTriangle, Clock, Phone, User as UserIcon } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Users, AlertTriangle, Clock, Phone, User as UserIcon, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -13,8 +14,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import FollowUpEditDialog, { type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import { brTodayYMD, brNowHour, brNowMinute } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
+
 
 interface Closer {
   id: string;
@@ -32,10 +35,12 @@ interface TaskRow {
 }
 interface FollowUpVendaRow {
   id: string;
+  agendamento_id: string;
   follow_up: boolean;
   follow_up_date: string | null;
   follow_up_time: string | null;
   motivo_nao_fechamento: string | null;
+  observacoes: string | null;
   agendamentos: {
     id: string;
     lead_name: string;
@@ -45,6 +50,7 @@ interface FollowUpVendaRow {
     briefing: string | null;
   } | null;
 }
+
 
 type Bucket =
   | "tasksOverdue"
@@ -78,50 +84,56 @@ function classifyByDateTime(date: string | null, time: string | null, today: str
   return isTimeBeforeNow(time) ? "overdue" : "future";
 }
 
-export default function CargaClosersTab() {
+export default function CargaClosersTab({ restrictToCloserId }: { restrictToCloserId?: string | null } = {}) {
+  const queryClient = useQueryClient();
   const [drill, setDrill] = useState<{ closer: Closer; bucket: Bucket } | null>(null);
+  const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
+
 
   const { data: closers = [], isLoading: loadingClosers } = useQuery({
-    queryKey: ["carga-closers-list"],
+    queryKey: ["carga-closers-list", restrictToCloserId ?? "all"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id, name")
-        .eq("active", true)
-        .order("name");
+      let q = supabase.from("closers").select("id, name").eq("active", true).order("name");
+      if (restrictToCloserId) q = q.eq("id", restrictToCloserId);
+      const { data } = await q;
       return (data ?? []) as Closer[];
     },
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ["carga-closers-tasks"],
+    queryKey: ["carga-closers-tasks", restrictToCloserId ?? "all"],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("tasks")
         .select("id, title, description, assigned_closer_id, status, due_date, due_time, agendamento_id")
         .eq("status", "pendente");
+      if (restrictToCloserId) q = q.eq("assigned_closer_id", restrictToCloserId);
+      const { data } = await q;
       return (data ?? []) as TaskRow[];
     },
     refetchInterval: 2 * 60 * 1000,
   });
 
   const { data: followUps = [] } = useQuery({
-    queryKey: ["carga-closers-followups"],
+    queryKey: ["carga-closers-followups", restrictToCloserId ?? "all"],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("vendas")
         .select(`
-          id, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento,
+          id, agendamento_id, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, observacoes,
           agendamentos!inner ( id, lead_name, lead_phone, closer_id, deleted_at, briefing )
         `)
         .eq("follow_up", true)
         .eq("vendeu", false);
+      if (restrictToCloserId) q = q.eq("agendamentos.closer_id", restrictToCloserId);
+      const { data } = await q;
       const rows = (data ?? []) as unknown as FollowUpVendaRow[];
       return rows.filter((r) => !r.agendamentos?.deleted_at);
     },
     refetchInterval: 2 * 60 * 1000,
   });
+
 
   // Lead names for tasks (via agendamento_id)
   const taskAgendamentoIds = useMemo(
@@ -250,6 +262,9 @@ export default function CargaClosersTab() {
       .map((f) => ({
         kind: "followup" as const,
         id: f.id,
+        agendamentoId: f.agendamento_id,
+        observacoes: f.observacoes ?? null,
+        motivo: f.motivo_nao_fechamento ?? null,
         title: f.agendamentos?.lead_name ?? "—",
         description: f.motivo_nao_fechamento,
         date: f.follow_up_date,
@@ -259,6 +274,7 @@ export default function CargaClosersTab() {
           : null,
         resumo: f.agendamentos?.id ? resumoMap.get(f.agendamentos.id) ?? null : null,
       }));
+
   }, [drill, tasks, followUps, today, taskLeadMap, resumoMap]);
 
   const renderClickable = (
@@ -423,12 +439,46 @@ export default function CargaClosersTab() {
                       </div>
                     )}
                   </div>
+                  {item.kind === "followup" && (
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() =>
+                          setEditTarget({
+                            id: item.id,
+                            agendamento_id: item.agendamentoId,
+                            follow_up_date: item.date ?? "",
+                            follow_up_time: item.time ?? null,
+                            motivo_nao_fechamento: item.motivo,
+                            observacoes: item.observacoes,
+                            lead_name: item.lead?.lead_name,
+                          })
+                        }
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                        Atualizar follow-up
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <FollowUpEditDialog
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onDone={() => {
+          queryClient.invalidateQueries({ queryKey: ["carga-closers-followups"] });
+          queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+          queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+        }}
+      />
     </Card>
   );
 }
+
