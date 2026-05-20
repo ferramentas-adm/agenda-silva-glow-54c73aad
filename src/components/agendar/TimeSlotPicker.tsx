@@ -263,12 +263,68 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     setCustomMode(false);
   };
 
+  // Resumo de slots lotados / quase lotados (para faixa de aviso no topo)
+  const { fullSlots, nearlyFullSlots } = useMemo(() => {
+    const full: { time: string; count: number }[] = [];
+    const nearly: { time: string; count: number }[] = [];
+    const threshold = Math.max(1, slotLimit - 2);
+    for (const slot of ALL_SLOTS) {
+      if (isToday && slot <= spNow.timeStr) continue; // ignora passados
+      const c = countFor(slot);
+      if (c >= slotLimit) full.push({ time: slot, count: c });
+      else if (c >= threshold) nearly.push({ time: slot, count: c });
+    }
+    return { fullSlots: full, nearlyFullSlots: nearly };
+  }, [ALL_SLOTS, slotCounts, slotLimit, isToday, spNow.timeStr]);
+
   return (
     <div className="space-y-3">
       {calendarExpired && calendarConnected && (
         <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Agenda do Google temporariamente indisponível. Mostrando apenas slots do painel.
+        </div>
+      )}
+
+      {/* Faixa de aviso: horários lotados / quase lotados */}
+      {(fullSlots.length > 0 || nearlyFullSlots.length > 0) && (
+        <div className="space-y-2">
+          {fullSlots.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border-2 border-red-500/60 bg-red-500/15 px-3 py-2.5 text-sm">
+              <Users className="h-4 w-4 shrink-0 text-red-500" />
+              <span className="font-semibold text-red-600 dark:text-red-400">
+                Não ofereça ao lead — lotado:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {fullSlots.map((s) => (
+                  <span
+                    key={s.time}
+                    className="rounded-md bg-red-500 px-2 py-0.5 text-xs font-bold text-white"
+                  >
+                    {s.time} ({s.count}/{slotLimit})
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {nearlyFullSlots.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+              <span className="font-medium text-amber-700 dark:text-amber-400">
+                Quase lotado — evite oferecer:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {nearlyFullSlots.map((s) => (
+                  <span
+                    key={s.time}
+                    className="rounded-md bg-amber-500 px-2 py-0.5 text-xs font-bold text-white"
+                  >
+                    {s.time} ({s.count}/{slotLimit})
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
