@@ -35,10 +35,12 @@ interface TaskRow {
 }
 interface FollowUpVendaRow {
   id: string;
+  agendamento_id: string;
   follow_up: boolean;
   follow_up_date: string | null;
   follow_up_time: string | null;
   motivo_nao_fechamento: string | null;
+  observacoes: string | null;
   agendamentos: {
     id: string;
     lead_name: string;
@@ -48,6 +50,7 @@ interface FollowUpVendaRow {
     briefing: string | null;
   } | null;
 }
+
 
 type Bucket =
   | "tasksOverdue"
