@@ -278,6 +278,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3 text-amber-500" /> Agendado (interno)</span>
         <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-blue-500" /> Google Calendar</span>
         <span className="flex items-center gap-1"><Lock className="h-3 w-3 text-rose-400" /> Bloqueio pessoal</span>
+        <span className="flex items-center gap-1"><Users className="h-3 w-3 text-red-500" /> Lotado ({slotLimit}/{slotLimit})</span>
       </div>
 
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
@@ -287,10 +288,13 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           const isPersonalBlock = isSlotBlockedByPersonal(slot);
           const isPast = isToday && slot <= spNow.timeStr;
           const isSelected = selectedTime === slot;
+          const slotCount = countFor(slot);
+          const isFull = slotCount >= slotLimit;
+          const isNearlyFull = !isFull && slotCount >= Math.max(1, slotLimit - 2);
 
-          // Priority: personal block > google > internal booking
+          // Priority: personal block > FULL > google > internal booking
           let slotStyle = "border-input bg-card hover:border-primary/50 active:scale-[0.97]";
-          let SlotIcon = Clock;
+          let SlotIcon: any = Clock;
           let iconClass = "h-3.5 w-3.5";
           let title: string | undefined;
 
@@ -299,6 +303,15 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             SlotIcon = Lock;
             iconClass = "h-3.5 w-3.5 text-rose-400";
             title = "Bloqueio pessoal — não disponível";
+          } else if (isFull) {
+            slotStyle = canForceFullSlot
+              ? "border-red-500/60 bg-red-500/15 hover:border-red-500 active:scale-[0.97]"
+              : "border-red-500/60 bg-red-500/15 cursor-not-allowed opacity-80";
+            SlotIcon = Users;
+            iconClass = "h-3.5 w-3.5 text-red-500";
+            title = canForceFullSlot
+              ? `Lotado (${slotCount}/${slotLimit}) — clique para forçar`
+              : `Lotado (${slotCount}/${slotLimit}) — todos os closers ocupados`;
           } else if (isGoogleBlocked) {
             slotStyle = "border-blue-400/50 bg-blue-500/10 hover:border-primary/50 active:scale-[0.97]";
             SlotIcon = CalendarDays;
@@ -320,13 +333,17 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                   setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
                   return;
                 }
+                if (isFull) {
+                  setFullSlotInfo({ time: slot, count: slotCount });
+                  return;
+                }
                 onSelect(slot);
                 setCustomMode(false);
                 setCustomError(null);
               }}
               title={title}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
+                "relative flex items-center justify-center gap-1.5 rounded-lg border py-3 text-sm font-medium transition-all",
                 isSelected
                   ? "border-primary bg-primary text-primary-foreground"
                   : isPast
@@ -342,6 +359,16 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                 <SlotIcon className={iconClass} />
               )}
               {slot}
+              {!isPast && !isSelected && (isFull || isNearlyFull) && (
+                <span
+                  className={cn(
+                    "absolute -top-1.5 -right-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none shadow-sm",
+                    isFull ? "bg-red-500 text-white" : "bg-amber-500 text-white"
+                  )}
+                >
+                  {slotCount}/{slotLimit}
+                </span>
+              )}
             </button>
           );
         })}
