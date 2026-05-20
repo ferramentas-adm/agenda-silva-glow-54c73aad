@@ -792,6 +792,44 @@ export function CalendarContent() {
           );
         })()}
 
+        {/* Faixa de aviso: horários lotados / quase lotados (todos closers somados) */}
+        {(slotAlerts.full.length > 0 || slotAlerts.nearly.length > 0) && (
+          <div className="space-y-2">
+            {slotAlerts.full.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border-2 border-red-500/60 bg-red-500/15 px-3 py-2.5 text-sm">
+                <Users className="h-4 w-4 shrink-0 text-red-500" />
+                <span className="font-semibold text-red-600 dark:text-red-400">
+                  Não ofereça ao lead — lotado:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {slotAlerts.full.map((s) => (
+                    <span key={s.time} className="rounded-md bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                      {s.time} ({s.count}/{slotLimit})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {slotAlerts.nearly.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                <span className="font-medium text-amber-700 dark:text-amber-400">
+                  Quase lotado — evite oferecer:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {slotAlerts.nearly.map((s) => (
+                    <span key={s.time} className="rounded-md bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                      {s.time} ({s.count}/{slotLimit})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+
+
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Calendário</h1>
