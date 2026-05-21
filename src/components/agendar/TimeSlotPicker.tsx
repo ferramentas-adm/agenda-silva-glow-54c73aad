@@ -287,7 +287,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       )}
 
       {/* Faixa de aviso: horários lotados / quase lotados */}
-      {(fullSlots.length > 0 || nearlyFullSlots.length > 0) && (
+      {role !== "closer" && (fullSlots.length > 0 || nearlyFullSlots.length > 0) && (
         <div className="space-y-2">
           {fullSlots.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border-2 border-red-500/60 bg-red-500/15 px-3 py-2.5 text-sm">
