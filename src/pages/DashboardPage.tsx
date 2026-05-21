@@ -793,7 +793,7 @@ export function CalendarContent() {
         })()}
 
         {/* Faixa de aviso: horários lotados / quase lotados (todos closers somados) */}
-        {(slotAlerts.full.length > 0 || slotAlerts.nearly.length > 0) && (
+        {role !== "closer" && (slotAlerts.full.length > 0 || slotAlerts.nearly.length > 0) && (
           <div className="space-y-2">
             {slotAlerts.full.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 rounded-lg border-2 border-red-500/60 bg-red-500/15 px-3 py-2.5 text-sm">
