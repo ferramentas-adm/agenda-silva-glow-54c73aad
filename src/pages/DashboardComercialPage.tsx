@@ -177,6 +177,27 @@ export default function DashboardComercialPage() {
   const rangeFromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : null;
   const rangeToStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : null;
 
+  // Helper: pagina em blocos de 1000 (limite default do PostgREST).
+  async function fetchAllAgendamentos(build: (q: any) => any): Promise<AgendamentoMetric[]> {
+    const all: AgendamentoMetric[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    // hard cap defensivo
+    for (let i = 0; i < 50; i++) {
+      const { data, error } = await build(
+        supabase
+          .from("agendamentos")
+          .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
+          .is("deleted_at", null)
+      ).range(from, from + pageSize - 1);
+      if (error || !data || data.length === 0) break;
+      all.push(...(data as AgendamentoMetric[]));
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    return all;
+  }
+
   // Broad fetch: all agendamentos for current month + adjacent days (+ range, se ativo)
   const { data: agendamentos = [], dataUpdatedAt } = useQuery<AgendamentoMetric[]>({
     queryKey: ["dashboard-comercial-metrics", monthStart, monthEnd, yesterdayStr, tomorrowStr, rangeFromStr, rangeToStr],
@@ -185,15 +206,9 @@ export default function DashboardComercialPage() {
       let maxDate = tomorrowStr > monthEnd ? tomorrowStr : monthEnd;
       if (rangeFromStr && rangeFromStr < minDate) minDate = rangeFromStr;
       if (rangeToStr && rangeToStr > maxDate) maxDate = rangeToStr;
-      const { data } = await supabase
-        .from("agendamentos")
-        .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
-        .is("deleted_at", null)
-        .gte("scheduled_date", minDate)
-        .lte("scheduled_date", maxDate)
-        .order("scheduled_date")
-        .range(0, 49999);
-      return (data ?? []) as AgendamentoMetric[];
+      return fetchAllAgendamentos((q) =>
+        q.gte("scheduled_date", minDate).lte("scheduled_date", maxDate).order("scheduled_date")
+      );
     },
     refetchInterval: 2 * 60 * 1000,
   });
@@ -202,14 +217,9 @@ export default function DashboardComercialPage() {
   const { data: prevMonthAgs = [] } = useQuery<AgendamentoMetric[]>({
     queryKey: ["dashboard-comercial-prev", prevMonthStart, prevMonthEnd],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("agendamentos")
-        .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
-        .is("deleted_at", null)
-        .gte("scheduled_date", prevMonthStart)
-        .lte("scheduled_date", prevMonthEnd)
-        .range(0, 49999);
-      return (data ?? []) as AgendamentoMetric[];
+      return fetchAllAgendamentos((q) =>
+        q.gte("scheduled_date", prevMonthStart).lte("scheduled_date", prevMonthEnd)
+      );
     },
     staleTime: 10 * 60 * 1000,
   });
@@ -218,26 +228,20 @@ export default function DashboardComercialPage() {
   const { data: createdAgs = [] } = useQuery<AgendamentoMetric[]>({
     queryKey: ["dashboard-comercial-created", monthStart, monthEnd, rangeFromStr, rangeToStr],
     queryFn: async () => {
-      // Fetch a broader range to support custom date filters
       let broadStart = format(subMonths(startOfMonth(currentDate), 2), "yyyy-MM-dd");
       let broadEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
       if (rangeFromStr && rangeFromStr < broadStart) broadStart = rangeFromStr;
       if (rangeToStr && rangeToStr > broadEnd) broadEnd = rangeToStr;
-      const { data } = await supabase
-        .from("agendamentos")
-        .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id")
-        .is("deleted_at", null)
-        // Janela ampliada em ±1 dia para garantir que registros próximos da
-        // virada de dia em BRT (UTC-3) não sejam cortados pelo filtro UTC.
-        // O filtro fino por dia BRT é aplicado no cliente via localDateOf.
-        .gte("created_at", format(subDays(parseISO(broadStart), 1), "yyyy-MM-dd") + "T00:00:00")
-        .lte("created_at", format(addDays(parseISO(broadEnd), 1), "yyyy-MM-dd") + "T23:59:59")
-        .order("created_at", { ascending: false })
-        .range(0, 49999);
-      return (data ?? []) as AgendamentoMetric[];
+      return fetchAllAgendamentos((q) =>
+        q
+          .gte("created_at", format(subDays(parseISO(broadStart), 1), "yyyy-MM-dd") + "T00:00:00")
+          .lte("created_at", format(addDays(parseISO(broadEnd), 1), "yyyy-MM-dd") + "T23:59:59")
+          .order("created_at", { ascending: false })
+      );
     },
     refetchInterval: 2 * 60 * 1000,
   });
+
 
   // SDR profiles
   const { data: sdrProfiles = [] } = useQuery<SDRProfile[]>({
