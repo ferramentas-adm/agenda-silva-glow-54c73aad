@@ -138,6 +138,51 @@ export default function PermissionsMatrix() {
             </AlertDescription>
           </Alert>
 
+          <Card className="mb-4 border-primary/30 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Diferenças fixas entre Administrador e Moderador
+              </CardTitle>
+              <CardDescription className="text-xs">
+                O Moderador atua como administrador operacional: tem o mesmo acesso ao dia a dia
+                (agendamentos, pagamentos, follow-ups, dashboards e auditoria), mas{" "}
+                <strong>não altera a estrutura do sistema</strong>. As capacidades abaixo são
+                exclusivas do Administrador e não podem ser concedidas pela matriz.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Capacidade</TableHead>
+                      <TableHead className="text-xs text-center w-32">Administrador</TableHead>
+                      <TableHead className="text-xs text-center w-32">Moderador</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[
+                      { cap: "Criar / editar / excluir usuários Administradores", a: "✅", m: "❌" },
+                      { cap: "Atribuir a função \"Administrador\" a um usuário", a: "✅", m: "❌" },
+                      { cap: "Editar esta Matriz de Permissões", a: "✅", m: "❌ (somente leitura)" },
+                      { cap: "Gerenciar Closers (criar, editar, excluir, conectar Google Calendar de terceiros)", a: "✅", m: "❌" },
+                      { cap: "Editar Configurações globais do sistema (limites de slot, listas dinâmicas)", a: "✅", m: "❌ (somente leitura)" },
+                      { cap: "Gerenciar motivos de exclusão / cancelamento", a: "✅ CRUD completo", m: "⚠️ Uso restrito" },
+                      { cap: "Cadastrar / editar perfis de qualquer usuário e atribuir/remover funções", a: "✅", m: "❌" },
+                    ].map((row) => (
+                      <TableRow key={row.cap}>
+                        <TableCell className="text-xs py-2">{row.cap}</TableCell>
+                        <TableCell className="text-xs py-2 text-center">{row.a}</TableCell>
+                        <TableCell className="text-xs py-2 text-center">{row.m}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
