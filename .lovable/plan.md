@@ -1,34 +1,12 @@
-## Objetivo
+## Mudanças
 
-Deixar claro na tela de **Configurações → Matriz de Permissões** quais diferenças existem entre **Administrador (Gestor)** e **Moderador** que **não são controláveis pela matriz** (são fixas no código e nas regras de segurança do banco).
+### 1. Remover toggle "Mentoria 5K" do agendamento
+- `src/pages/AgendarPage.tsx` (linhas 654-660): remover o bloco do `<Switch id="is-5k-toggle">` e label.
+- Manter o estado `is5k` como `false` fixo (ou remover usos) para não quebrar o submit. Verificar referências a `is5k` no arquivo e simplificar (passar sempre `false`).
 
-## Mudança
+### 2. Ocultar faixas vermelha/âmbar de slot lotado para Closers
+- `src/pages/DashboardPage.tsx` (linhas 795-829): envolver o bloco `{(slotAlerts.full.length > 0 || slotAlerts.nearly.length > 0) && ...}` em condição `role !== "closer"`.
+- `src/components/agendar/TimeSlotPicker.tsx` (bloco "Faixa de aviso"): envolver o bloco das faixas (`fullSlots`/`nearlyFullSlots`) em condição `role !== "closer"`.
+- Manter os badges nos próprios botões de horário (indicador `slotCount/slotLimit`) — usuário pediu apenas para tirar **as faixas**.
 
-Arquivo: `src/components/admin/PermissionsMatrix.tsx`
-
-Adicionar, abaixo do Alert informativo já existente (linha 132), um novo card/alert intitulado **"Diferenças fixas entre Administrador e Moderador"** com uma tabela compacta listando os pontos abaixo. Essas capacidades não aparecem como switches porque são reservadas estruturalmente ao Administrador.
-
-Conteúdo a exibir:
-
-| Capacidade | Administrador | Moderador |
-|---|---|---|
-| Criar/editar/excluir usuários **Administradores** | ✅ | ❌ |
-| Atribuir a função "Administrador" a um usuário | ✅ | ❌ |
-| Editar esta **Matriz de Permissões** | ✅ | ❌ (somente leitura) |
-| Gerenciar **Closers** (criar, editar, excluir, conectar Google Calendar de terceiros) | ✅ | ❌ |
-| Editar **Configurações globais** do sistema (limites de slot, listas dinâmicas) | ✅ | ❌ (somente leitura) |
-| Gerenciar **motivos de exclusão/cancelamento** | ✅ CRUD completo | ⚠️ Uso restrito |
-| Cadastrar/editar perfis de qualquer usuário e atribuir/remover funções | ✅ | ❌ |
-
-Texto introdutório curto antes da tabela:
-> "O Moderador atua como administrador operacional: tem o mesmo acesso ao dia a dia (agendamentos, pagamentos, follow-ups, dashboards e auditoria), mas **não altera a estrutura do sistema**. As capacidades abaixo são exclusivas do Administrador e não podem ser concedidas pela matriz."
-
-## Escopo
-
-- Apenas UI informativa (sem alterar permissões, RLS, ou comportamento).
-- Sem mudanças em backend, banco ou outros arquivos.
-
-## Não fazer
-
-- Não transformar essas diferenças em switches editáveis (são restrições de segurança intencionais).
-- Não mexer em `usePermissions`, RLS, ou `AdminPage`.
+Nenhuma alteração em banco, RLS ou lógica de bloqueio. Apenas UI.
