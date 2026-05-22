@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
+import { isPendingStageReason } from "@/lib/vendaConstants";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   agendada: { label: "Agendado", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
