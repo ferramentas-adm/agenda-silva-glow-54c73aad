@@ -535,6 +535,7 @@ export default function ReunioesListPage() {
                       </span>
                     </th>
                   ))}
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultado</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Observação</th>
                   <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">Ações</th>
                 </tr>
@@ -543,14 +544,14 @@ export default function ReunioesListPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 10 }).map((_, j) => (
+                      {Array.from({ length: 11 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 w-20 bg-muted/30 rounded animate-pulse" /></td>
                       ))}
                     </tr>
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
                       Nenhuma reunião encontrada
                     </td>
                   </tr>
@@ -591,36 +592,37 @@ export default function ReunioesListPage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{formatBR(ag.created_at)}</td>
                         <td className="px-4 py-3">
-                          <div className="flex flex-col gap-1">
-                            <Badge variant="outline" className={cn("text-[10px] w-fit", st.color)}>{st.label}</Badge>
-                            {ag.status === "realizada" && (() => {
-                              const v = vendaByAg[ag.id];
-                              if (!v) return null;
-                              if (v.vendeu === true) {
-                                const valor = Number(v.valor || 0);
-                                return (
-                                  <Badge variant="outline" className="text-[10px] w-fit bg-green-500/15 text-green-500 border-green-500/30">
-                                    Venda{valor > 0 ? ` · ${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : ""}
-                                  </Badge>
-                                );
-                              }
-                              if (v.follow_up === true) {
-                                return (
-                                  <Badge variant="outline" className="text-[10px] w-fit bg-amber-500/15 text-amber-500 border-amber-500/30">
-                                    Follow-up{v.follow_up_date ? ` · ${format(new Date(v.follow_up_date + "T12:00:00"), "dd/MM")}` : ""}
-                                  </Badge>
-                                );
-                              }
-                              if (v.vendeu === false && v.motivo_nao_fechamento && !isPendingStageReason(v.motivo_nao_fechamento)) {
-                                return (
-                                  <Badge variant="outline" className="text-[10px] w-fit bg-red-500/15 text-red-500 border-red-500/30" title={v.motivo_nao_fechamento}>
-                                    Perdido · {v.motivo_nao_fechamento}
-                                  </Badge>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </div>
+                          <Badge variant="outline" className={cn("text-[10px] w-fit", st.color)}>{st.label}</Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          {ag.status === "realizada" && (() => {
+                            const v = vendaByAg[ag.id];
+                            if (!v) return <span className="text-muted-foreground text-xs">—</span>;
+                            if (v.vendeu === true) {
+                              const valor = Number(v.valor || 0);
+                              return (
+                                <Badge variant="outline" className="text-[10px] w-fit bg-green-500/15 text-green-500 border-green-500/30">
+                                  Venda{valor > 0 ? ` · ${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : ""}
+                                </Badge>
+                              );
+                            }
+                            if (v.follow_up === true) {
+                              return (
+                                <Badge variant="outline" className="text-[10px] w-fit bg-amber-500/15 text-amber-500 border-amber-500/30">
+                                  Follow-up{v.follow_up_date ? ` · ${format(new Date(v.follow_up_date + "T12:00:00"), "dd/MM")}` : ""}
+                                </Badge>
+                              );
+                            }
+                            if (v.vendeu === false && v.motivo_nao_fechamento && !isPendingStageReason(v.motivo_nao_fechamento)) {
+                              return (
+                                <Badge variant="outline" className="text-[10px] w-fit bg-red-500/15 text-red-500 border-red-500/30" title={v.motivo_nao_fechamento}>
+                                  Perdido · {v.motivo_nao_fechamento}
+                                </Badge>
+                              );
+                            }
+                            return <span className="text-muted-foreground text-xs">—</span>;
+                          })()}
+                          {ag.status !== "realizada" && <span className="text-muted-foreground text-xs">—</span>}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
