@@ -150,6 +150,22 @@ export default function ReunioesListPage() {
     },
   });
 
+  const { data: vendasList = [] } = useQuery({
+    queryKey: ["reunioes-vendas"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendas")
+        .select("agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento");
+      return data || [];
+    },
+  });
+
+  const vendaByAg = useMemo(() => {
+    const m: Record<string, any> = {};
+    vendasList.forEach((v: any) => { if (v.agendamento_id) m[v.agendamento_id] = v; });
+    return m;
+  }, [vendasList]);
+
   const closerMap = useMemo(() => {
     const m: Record<string, string> = {};
     closers.forEach((c) => (m[c.id] = c.name));
