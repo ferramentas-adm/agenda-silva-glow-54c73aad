@@ -535,6 +535,7 @@ export default function ReunioesListPage() {
                       </span>
                     </th>
                   ))}
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultado</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Observação</th>
                   <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">Ações</th>
                 </tr>
