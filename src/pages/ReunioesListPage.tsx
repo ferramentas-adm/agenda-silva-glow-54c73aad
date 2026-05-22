@@ -592,36 +592,37 @@ export default function ReunioesListPage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{formatBR(ag.created_at)}</td>
                         <td className="px-4 py-3">
-                          <div className="flex flex-col gap-1">
-                            <Badge variant="outline" className={cn("text-[10px] w-fit", st.color)}>{st.label}</Badge>
-                            {ag.status === "realizada" && (() => {
-                              const v = vendaByAg[ag.id];
-                              if (!v) return null;
-                              if (v.vendeu === true) {
-                                const valor = Number(v.valor || 0);
-                                return (
-                                  <Badge variant="outline" className="text-[10px] w-fit bg-green-500/15 text-green-500 border-green-500/30">
-                                    Venda{valor > 0 ? ` · ${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : ""}
-                                  </Badge>
-                                );
-                              }
-                              if (v.follow_up === true) {
-                                return (
-                                  <Badge variant="outline" className="text-[10px] w-fit bg-amber-500/15 text-amber-500 border-amber-500/30">
-                                    Follow-up{v.follow_up_date ? ` · ${format(new Date(v.follow_up_date + "T12:00:00"), "dd/MM")}` : ""}
-                                  </Badge>
-                                );
-                              }
-                              if (v.vendeu === false && v.motivo_nao_fechamento && !isPendingStageReason(v.motivo_nao_fechamento)) {
-                                return (
-                                  <Badge variant="outline" className="text-[10px] w-fit bg-red-500/15 text-red-500 border-red-500/30" title={v.motivo_nao_fechamento}>
-                                    Perdido · {v.motivo_nao_fechamento}
-                                  </Badge>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </div>
+                          <Badge variant="outline" className={cn("text-[10px] w-fit", st.color)}>{st.label}</Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          {ag.status === "realizada" && (() => {
+                            const v = vendaByAg[ag.id];
+                            if (!v) return <span className="text-muted-foreground text-xs">—</span>;
+                            if (v.vendeu === true) {
+                              const valor = Number(v.valor || 0);
+                              return (
+                                <Badge variant="outline" className="text-[10px] w-fit bg-green-500/15 text-green-500 border-green-500/30">
+                                  Venda{valor > 0 ? ` · ${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : ""}
+                                </Badge>
+                              );
+                            }
+                            if (v.follow_up === true) {
+                              return (
+                                <Badge variant="outline" className="text-[10px] w-fit bg-amber-500/15 text-amber-500 border-amber-500/30">
+                                  Follow-up{v.follow_up_date ? ` · ${format(new Date(v.follow_up_date + "T12:00:00"), "dd/MM")}` : ""}
+                                </Badge>
+                              );
+                            }
+                            if (v.vendeu === false && v.motivo_nao_fechamento && !isPendingStageReason(v.motivo_nao_fechamento)) {
+                              return (
+                                <Badge variant="outline" className="text-[10px] w-fit bg-red-500/15 text-red-500 border-red-500/30" title={v.motivo_nao_fechamento}>
+                                  Perdido · {v.motivo_nao_fechamento}
+                                </Badge>
+                              );
+                            }
+                            return <span className="text-muted-foreground text-xs">—</span>;
+                          })()}
+                          {ag.status !== "realizada" && <span className="text-muted-foreground text-xs">—</span>}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
