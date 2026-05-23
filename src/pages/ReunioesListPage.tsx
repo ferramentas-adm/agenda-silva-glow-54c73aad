@@ -155,7 +155,7 @@ export default function ReunioesListPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento, segunda_reuniao");
+        .select("agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento, segunda_reuniao, explicacao_nao_fechamento");
       return data || [];
     },
   });
@@ -302,7 +302,7 @@ export default function ReunioesListPage() {
   };
 
   const exportCSV = () => {
-    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Resultado", "2ª Reunião", "Canal", "Observação"];
+    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Resultado", "2ª Reunião", "Canal", "Briefing (SDR)", "Por que não fechou (Closer)", "Observação"];
     const rows = filtered.map((ag) => [
       ag.lead_name,
       ag.lead_phone,
@@ -315,6 +315,8 @@ export default function ReunioesListPage() {
       outcomeText(ag),
       vendaByAg[ag.id]?.segunda_reuniao ? "Sim" : "—",
       (ag as any).channel_type || "—",
+      ((ag as any).briefing || "").replace(/\n/g, " "),
+      (vendaByAg[ag.id]?.explicacao_nao_fechamento || "").replace(/\n/g, " "),
       (ag.observation || "").replace(/\n/g, " "),
     ]);
 
