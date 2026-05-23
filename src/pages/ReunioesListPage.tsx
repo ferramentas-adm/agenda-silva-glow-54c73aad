@@ -85,7 +85,7 @@ export default function ReunioesListPage() {
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
+  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "segunda_reuniao" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const toggleSort = (key: SortKey) => {
@@ -249,7 +249,7 @@ export default function ReunioesListPage() {
         case "datetime": av = `${a.scheduled_date}T${a.scheduled_time}`; bv = `${b.scheduled_date}T${b.scheduled_time}`; break;
         case "created_at": av = a.created_at; bv = b.created_at; break;
         case "status": av = a.status; bv = b.status; break;
-        case "meeting_reason": av = (a.meeting_reason || "").toLowerCase(); bv = (b.meeting_reason || "").toLowerCase(); break;
+        case "segunda_reuniao": av = (a as any).segunda_reuniao ? 1 : 0; bv = (b as any).segunda_reuniao ? 1 : 0; break;
         case "channel_type": av = ((a as any).channel_type || "").toLowerCase(); bv = ((b as any).channel_type || "").toLowerCase(); break;
       }
       if (av < bv) return -1 * dir;
@@ -284,8 +284,25 @@ export default function ReunioesListPage() {
     setCurrentPage(1);
   };
 
+  const outcomeText = (ag: typeof agendamentos[number]) => {
+    if (ag.status !== "realizada") return "—";
+    const v = vendaByAg[ag.id];
+    if (!v) return "—";
+    if (v.vendeu === true) {
+      const valor = Number(v.valor || 0);
+      return `Venda${valor > 0 ? ` · ${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : ""}`;
+    }
+    if (v.follow_up === true) {
+      return `Follow-up${v.follow_up_date ? ` · ${format(new Date(v.follow_up_date + "T12:00:00"), "dd/MM")}` : ""}`;
+    }
+    if (v.vendeu === false && v.motivo_nao_fechamento && !isPendingStageReason(v.motivo_nao_fechamento)) {
+      return `Perdido · ${v.motivo_nao_fechamento}`;
+    }
+    return "—";
+  };
+
   const exportCSV = () => {
-    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Canal", "Observação"];
+    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Resultado", "2ª Reunião", "Canal", "Observação"];
     const rows = filtered.map((ag) => [
       ag.lead_name,
       ag.lead_phone,
@@ -295,7 +312,8 @@ export default function ReunioesListPage() {
       ag.scheduled_time,
       formatBR(ag.created_at),
       STATUS_MAP[ag.status]?.label || ag.status,
-      ag.meeting_reason || "—",
+      outcomeText(ag),
+      (ag as any).segunda_reuniao ? "Sim" : "—",
       (ag as any).channel_type || "—",
       (ag.observation || "").replace(/\n/g, " "),
     ]);
@@ -519,8 +537,6 @@ export default function ReunioesListPage() {
                     { key: "datetime", label: "Data/Hora" },
                     { key: "created_at", label: "Criado em" },
                     { key: "status", label: "Status" },
-                    { key: "meeting_reason", label: "Motivo" },
-                    { key: "channel_type", label: "Canal" },
                   ] as { key: SortKey; label: string }[]).map((col) => (
                     <th
                       key={col.key}
@@ -536,6 +552,23 @@ export default function ReunioesListPage() {
                     </th>
                   ))}
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultado</th>
+                  {([
+                    { key: "segunda_reuniao", label: "2ª Reunião" },
+                    { key: "channel_type", label: "Canal" },
+                  ] as { key: SortKey; label: string }[]).map((col) => (
+                    <th
+                      key={col.key}
+                      onClick={() => toggleSort(col.key)}
+                      className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none hover:text-foreground"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {sortKey === col.key
+                          ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+                          : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+                      </span>
+                    </th>
+                  ))}
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Observação</th>
                   <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">Ações</th>
                 </tr>
@@ -624,7 +657,7 @@ export default function ReunioesListPage() {
                           })()}
                           {ag.status !== "realizada" && <span className="text-muted-foreground text-xs">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).segunda_reuniao ? "Sim" : <span className="text-muted-foreground">—</span>}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px]">
                           {(() => {
