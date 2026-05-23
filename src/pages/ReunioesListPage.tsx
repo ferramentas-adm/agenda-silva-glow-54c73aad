@@ -85,7 +85,7 @@ export default function ReunioesListPage() {
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
+  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "segunda_reuniao" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const toggleSort = (key: SortKey) => {
