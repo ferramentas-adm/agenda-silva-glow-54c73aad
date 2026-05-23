@@ -284,8 +284,25 @@ export default function ReunioesListPage() {
     setCurrentPage(1);
   };
 
+  const outcomeText = (ag: typeof agendamentos[number]) => {
+    if (ag.status !== "realizada") return "—";
+    const v = vendaByAg[ag.id];
+    if (!v) return "—";
+    if (v.vendeu === true) {
+      const valor = Number(v.valor || 0);
+      return `Venda${valor > 0 ? ` · ${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : ""}`;
+    }
+    if (v.follow_up === true) {
+      return `Follow-up${v.follow_up_date ? ` · ${format(new Date(v.follow_up_date + "T12:00:00"), "dd/MM")}` : ""}`;
+    }
+    if (v.vendeu === false && v.motivo_nao_fechamento && !isPendingStageReason(v.motivo_nao_fechamento)) {
+      return `Perdido · ${v.motivo_nao_fechamento}`;
+    }
+    return "—";
+  };
+
   const exportCSV = () => {
-    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Canal", "Observação"];
+    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Resultado", "2ª Reunião", "Canal", "Observação"];
     const rows = filtered.map((ag) => [
       ag.lead_name,
       ag.lead_phone,
@@ -295,7 +312,8 @@ export default function ReunioesListPage() {
       ag.scheduled_time,
       formatBR(ag.created_at),
       STATUS_MAP[ag.status]?.label || ag.status,
-      ag.meeting_reason || "—",
+      outcomeText(ag),
+      (ag as any).segunda_reuniao ? "Sim" : "—",
       (ag as any).channel_type || "—",
       (ag.observation || "").replace(/\n/g, " "),
     ]);
