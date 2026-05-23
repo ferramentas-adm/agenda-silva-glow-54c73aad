@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
   Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban,
-  CalendarDays, Pencil, Users, PenLine, DollarSign,
+  CalendarDays, Pencil, Users, PenLine,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -1123,20 +1123,6 @@ export function CalendarContent() {
                   <Users className="h-3.5 w-3.5" />Transferir lead para outro closer
                 </Button>
               )}
-
-              {/* Registrar/editar venda manualmente — apenas gestor/moderador,
-                  para suprir casos em que o closer não preencheu o resultado. */}
-              {(role === "gestor" || role === "moderador") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs w-full border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
-                  onClick={() => setVendaDialogAg(detailAg)}
-                >
-                  <DollarSign className="h-3.5 w-3.5" />Registrar/editar venda (closer não preencheu)
-                </Button>
-              )}
-
 
               {canChangeStatus && (() => {
                 // SDR só pode operar em reagendadas se ele mesmo criou o reagendamento.

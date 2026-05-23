@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
-import { isPendingStageReason } from "@/lib/vendaConstants";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   agendada: { label: "Agendado", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
@@ -85,7 +84,7 @@ export default function ReunioesListPage() {
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "segunda_reuniao" | "channel_type";
+  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const toggleSort = (key: SortKey) => {
@@ -149,22 +148,6 @@ export default function ReunioesListPage() {
       return data || [];
     },
   });
-
-  const { data: vendasList = [] } = useQuery({
-    queryKey: ["reunioes-vendas"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("vendas")
-        .select("agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento, segunda_reuniao, explicacao_nao_fechamento");
-      return data || [];
-    },
-  });
-
-  const vendaByAg = useMemo(() => {
-    const m: Record<string, any> = {};
-    vendasList.forEach((v: any) => { if (v.agendamento_id) m[v.agendamento_id] = v; });
-    return m;
-  }, [vendasList]);
 
   const closerMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -249,7 +232,7 @@ export default function ReunioesListPage() {
         case "datetime": av = `${a.scheduled_date}T${a.scheduled_time}`; bv = `${b.scheduled_date}T${b.scheduled_time}`; break;
         case "created_at": av = a.created_at; bv = b.created_at; break;
         case "status": av = a.status; bv = b.status; break;
-        case "segunda_reuniao": av = vendaByAg[a.id]?.segunda_reuniao ? 1 : 0; bv = vendaByAg[b.id]?.segunda_reuniao ? 1 : 0; break;
+        case "meeting_reason": av = (a.meeting_reason || "").toLowerCase(); bv = (b.meeting_reason || "").toLowerCase(); break;
         case "channel_type": av = ((a as any).channel_type || "").toLowerCase(); bv = ((b as any).channel_type || "").toLowerCase(); break;
       }
       if (av < bv) return -1 * dir;
@@ -257,7 +240,7 @@ export default function ReunioesListPage() {
       return 0;
     });
     return arr;
-  }, [filtered, sortKey, sortDir, closerMap, profileMap, vendaByAg]);
+  }, [filtered, sortKey, sortDir, closerMap, profileMap]);
 
   // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -284,25 +267,8 @@ export default function ReunioesListPage() {
     setCurrentPage(1);
   };
 
-  const outcomeText = (ag: typeof agendamentos[number]) => {
-    if (ag.status !== "realizada") return "—";
-    const v = vendaByAg[ag.id];
-    if (!v) return "—";
-    if (v.vendeu === true) {
-      const valor = Number(v.valor || 0);
-      return `Venda${valor > 0 ? ` · ${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : ""}`;
-    }
-    if (v.follow_up === true) {
-      return `Follow-up${v.follow_up_date ? ` · ${format(new Date(v.follow_up_date + "T12:00:00"), "dd/MM")}` : ""}`;
-    }
-    if (v.vendeu === false && v.motivo_nao_fechamento && !isPendingStageReason(v.motivo_nao_fechamento)) {
-      return `Perdido · ${v.motivo_nao_fechamento}`;
-    }
-    return "—";
-  };
-
   const exportCSV = () => {
-    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Resultado", "2ª Reunião", "Canal", "Por que não fechou (Closer)", "Observação"];
+    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Canal", "Observação"];
     const rows = filtered.map((ag) => [
       ag.lead_name,
       ag.lead_phone,
@@ -312,10 +278,8 @@ export default function ReunioesListPage() {
       ag.scheduled_time,
       formatBR(ag.created_at),
       STATUS_MAP[ag.status]?.label || ag.status,
-      outcomeText(ag),
-      vendaByAg[ag.id]?.segunda_reuniao ? "Sim" : "—",
+      ag.meeting_reason || "—",
       (ag as any).channel_type || "—",
-      (vendaByAg[ag.id]?.explicacao_nao_fechamento || "").replace(/\n/g, " "),
       (ag.observation || "").replace(/\n/g, " "),
     ]);
 
@@ -538,23 +502,7 @@ export default function ReunioesListPage() {
                     { key: "datetime", label: "Data/Hora" },
                     { key: "created_at", label: "Criado em" },
                     { key: "status", label: "Status" },
-                  ] as { key: SortKey; label: string }[]).map((col) => (
-                    <th
-                      key={col.key}
-                      onClick={() => toggleSort(col.key)}
-                      className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none hover:text-foreground"
-                    >
-                      <span className="inline-flex items-center gap-1">
-                        {col.label}
-                        {sortKey === col.key
-                          ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
-                          : <ArrowUpDown className="h-3 w-3 opacity-40" />}
-                      </span>
-                    </th>
-                  ))}
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultado</th>
-                  {([
-                    { key: "segunda_reuniao", label: "2ª Reunião" },
+                    { key: "meeting_reason", label: "Motivo" },
                     { key: "channel_type", label: "Canal" },
                   ] as { key: SortKey; label: string }[]).map((col) => (
                     <th
@@ -578,14 +526,14 @@ export default function ReunioesListPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 11 }).map((_, j) => (
+                      {Array.from({ length: 10 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 w-20 bg-muted/30 rounded animate-pulse" /></td>
                       ))}
                     </tr>
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
                       Nenhuma reunião encontrada
                     </td>
                   </tr>
@@ -626,39 +574,9 @@ export default function ReunioesListPage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{formatBR(ag.created_at)}</td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline" className={cn("text-[10px] w-fit", st.color)}>{st.label}</Badge>
+                          <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
                         </td>
-                        <td className="px-4 py-3">
-                          {ag.status === "realizada" && (() => {
-                            const v = vendaByAg[ag.id];
-                            if (!v) return <span className="text-muted-foreground text-xs">—</span>;
-                            if (v.vendeu === true) {
-                              const valor = Number(v.valor || 0);
-                              return (
-                                <Badge variant="outline" className="text-[10px] w-fit bg-green-500/15 text-green-500 border-green-500/30">
-                                  Venda{valor > 0 ? ` · ${valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : ""}
-                                </Badge>
-                              );
-                            }
-                            if (v.follow_up === true) {
-                              return (
-                                <Badge variant="outline" className="text-[10px] w-fit bg-amber-500/15 text-amber-500 border-amber-500/30">
-                                  Follow-up{v.follow_up_date ? ` · ${format(new Date(v.follow_up_date + "T12:00:00"), "dd/MM")}` : ""}
-                                </Badge>
-                              );
-                            }
-                            if (v.vendeu === false && v.motivo_nao_fechamento && !isPendingStageReason(v.motivo_nao_fechamento)) {
-                              return (
-                                <Badge variant="outline" className="text-[10px] w-fit bg-red-500/15 text-red-500 border-red-500/30" title={v.motivo_nao_fechamento}>
-                                  Perdido · {v.motivo_nao_fechamento}
-                                </Badge>
-                              );
-                            }
-                            return <span className="text-muted-foreground text-xs">—</span>;
-                          })()}
-                          {ag.status !== "realizada" && <span className="text-muted-foreground text-xs">—</span>}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{vendaByAg[ag.id]?.segunda_reuniao ? "Sim" : <span className="text-muted-foreground">—</span>}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px]">
                           {(() => {
