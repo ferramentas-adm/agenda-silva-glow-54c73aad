@@ -155,7 +155,7 @@ export default function ReunioesListPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento");
+        .select("agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento, segunda_reuniao");
       return data || [];
     },
   });
