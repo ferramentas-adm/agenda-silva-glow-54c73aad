@@ -537,8 +537,6 @@ export default function ReunioesListPage() {
                     { key: "datetime", label: "Data/Hora" },
                     { key: "created_at", label: "Criado em" },
                     { key: "status", label: "Status" },
-                    { key: "meeting_reason", label: "Motivo" },
-                    { key: "channel_type", label: "Canal" },
                   ] as { key: SortKey; label: string }[]).map((col) => (
                     <th
                       key={col.key}
@@ -554,6 +552,23 @@ export default function ReunioesListPage() {
                     </th>
                   ))}
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultado</th>
+                  {([
+                    { key: "segunda_reuniao", label: "2ª Reunião" },
+                    { key: "channel_type", label: "Canal" },
+                  ] as { key: SortKey; label: string }[]).map((col) => (
+                    <th
+                      key={col.key}
+                      onClick={() => toggleSort(col.key)}
+                      className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none hover:text-foreground"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {sortKey === col.key
+                          ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+                          : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+                      </span>
+                    </th>
+                  ))}
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Observação</th>
                   <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">Ações</th>
                 </tr>
