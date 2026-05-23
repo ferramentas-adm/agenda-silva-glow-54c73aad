@@ -257,7 +257,7 @@ export default function ReunioesListPage() {
       return 0;
     });
     return arr;
-  }, [filtered, sortKey, sortDir, closerMap, profileMap]);
+  }, [filtered, sortKey, sortDir, closerMap, profileMap, vendaByAg]);
 
   // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
