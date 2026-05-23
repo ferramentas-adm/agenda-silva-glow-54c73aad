@@ -657,7 +657,7 @@ export default function ReunioesListPage() {
                           })()}
                           {ag.status !== "realizada" && <span className="text-muted-foreground text-xs">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).segunda_reuniao ? "Sim" : <span className="text-muted-foreground">—</span>}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px]">
                           {(() => {
