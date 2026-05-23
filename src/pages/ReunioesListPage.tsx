@@ -155,7 +155,7 @@ export default function ReunioesListPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento");
+        .select("agendamento_id, vendeu, valor, follow_up, follow_up_date, motivo_nao_fechamento, segunda_reuniao");
       return data || [];
     },
   });
@@ -249,7 +249,7 @@ export default function ReunioesListPage() {
         case "datetime": av = `${a.scheduled_date}T${a.scheduled_time}`; bv = `${b.scheduled_date}T${b.scheduled_time}`; break;
         case "created_at": av = a.created_at; bv = b.created_at; break;
         case "status": av = a.status; bv = b.status; break;
-        case "segunda_reuniao": av = (a as any).segunda_reuniao ? 1 : 0; bv = (b as any).segunda_reuniao ? 1 : 0; break;
+        case "segunda_reuniao": av = vendaByAg[a.id]?.segunda_reuniao ? 1 : 0; bv = vendaByAg[b.id]?.segunda_reuniao ? 1 : 0; break;
         case "channel_type": av = ((a as any).channel_type || "").toLowerCase(); bv = ((b as any).channel_type || "").toLowerCase(); break;
       }
       if (av < bv) return -1 * dir;
@@ -257,7 +257,7 @@ export default function ReunioesListPage() {
       return 0;
     });
     return arr;
-  }, [filtered, sortKey, sortDir, closerMap, profileMap]);
+  }, [filtered, sortKey, sortDir, closerMap, profileMap, vendaByAg]);
 
   // Reset page when filters change
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -313,7 +313,7 @@ export default function ReunioesListPage() {
       formatBR(ag.created_at),
       STATUS_MAP[ag.status]?.label || ag.status,
       outcomeText(ag),
-      (ag as any).segunda_reuniao ? "Sim" : "—",
+      vendaByAg[ag.id]?.segunda_reuniao ? "Sim" : "—",
       (ag as any).channel_type || "—",
       (ag.observation || "").replace(/\n/g, " "),
     ]);
@@ -657,7 +657,7 @@ export default function ReunioesListPage() {
                           })()}
                           {ag.status !== "realizada" && <span className="text-muted-foreground text-xs">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).segunda_reuniao ? "Sim" : <span className="text-muted-foreground">—</span>}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{vendaByAg[ag.id]?.segunda_reuniao ? "Sim" : <span className="text-muted-foreground">—</span>}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px]">
                           {(() => {
