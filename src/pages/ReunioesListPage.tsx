@@ -313,7 +313,7 @@ export default function ReunioesListPage() {
       formatBR(ag.created_at),
       STATUS_MAP[ag.status]?.label || ag.status,
       outcomeText(ag),
-      (ag as any).segunda_reuniao ? "Sim" : "—",
+      vendaByAg[ag.id]?.segunda_reuniao ? "Sim" : "—",
       (ag as any).channel_type || "—",
       (ag.observation || "").replace(/\n/g, " "),
     ]);
