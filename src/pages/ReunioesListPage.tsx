@@ -249,7 +249,7 @@ export default function ReunioesListPage() {
         case "datetime": av = `${a.scheduled_date}T${a.scheduled_time}`; bv = `${b.scheduled_date}T${b.scheduled_time}`; break;
         case "created_at": av = a.created_at; bv = b.created_at; break;
         case "status": av = a.status; bv = b.status; break;
-        case "meeting_reason": av = (a.meeting_reason || "").toLowerCase(); bv = (b.meeting_reason || "").toLowerCase(); break;
+        case "segunda_reuniao": av = (a as any).segunda_reuniao ? 1 : 0; bv = (b as any).segunda_reuniao ? 1 : 0; break;
         case "channel_type": av = ((a as any).channel_type || "").toLowerCase(); bv = ((b as any).channel_type || "").toLowerCase(); break;
       }
       if (av < bv) return -1 * dir;
