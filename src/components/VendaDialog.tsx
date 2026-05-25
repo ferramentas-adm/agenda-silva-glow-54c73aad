@@ -284,6 +284,43 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
       const outcome = computeOutcome();
 
+      // Se venda ganha, remove follow-ups pendentes de OUTRAS reuniões do mesmo lead
+      // (mesmo telefone normalizado) para evitar duplicidade de registro de venda.
+      if (vendeu === "sim") {
+        try {
+          const { data: agCurr } = await supabase
+            .from("agendamentos")
+            .select("lead_phone")
+            .eq("id", agendamentoId)
+            .maybeSingle();
+          const normalized = (agCurr?.lead_phone || "").replace(/\D/g, "");
+          if (normalized) {
+            const { data: sameLeadAgs } = await supabase
+              .from("agendamentos")
+              .select("id, lead_phone")
+              .neq("id", agendamentoId)
+              .is("deleted_at", null);
+            const otherIds = (sameLeadAgs ?? [])
+              .filter((a: any) => (a.lead_phone || "").replace(/\D/g, "") === normalized)
+              .map((a: any) => a.id);
+            if (otherIds.length > 0) {
+              await supabase
+                .from("vendas")
+                .update({
+                  follow_up: false,
+                  follow_up_date: null,
+                  follow_up_time: null,
+                })
+                .in("agendamento_id", otherIds)
+                .eq("follow_up", true)
+                .eq("vendeu", false);
+            }
+          }
+        } catch (e) {
+          console.warn("[vendas] falha ao limpar follow-ups do mesmo lead:", e);
+        }
+      }
+
       // Busca dados complementares para o webhook
       const { data: agData } = await supabase
         .from("agendamentos")
