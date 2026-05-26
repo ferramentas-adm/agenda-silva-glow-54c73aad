@@ -11,7 +11,7 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
-import { LeadsDashboardContent } from "@/pages/DashboardLeadsPage";
+
 import VendasTab from "@/components/dashboard/VendasTab";
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
@@ -28,7 +28,7 @@ import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads" | "carga" | "erros_sdr";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr";
 
 const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
@@ -36,7 +36,6 @@ const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
-  { key: "leads", label: "Formulário Bio" },
   { key: "carga", label: "Follows Closer", gestorOnly: true },
   { key: "erros_sdr", label: "Erros SDR", gestorOnly: true },
 ];
@@ -489,7 +488,7 @@ export default function DashboardComercialPage() {
         </div>
 
         {/* ─── Date nav (oculta na aba Agenda Closers) ──── */}
-        {activeTabKey !== "agenda" && activeTabKey !== "leads" && activeTabKey !== "carga" && (
+        {activeTabKey !== "agenda" && activeTabKey !== "carga" && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
@@ -590,7 +589,7 @@ export default function DashboardComercialPage() {
             updatedAgo={updatedAgo}
           />
         )}
-        {activeTabKey === "leads" && <LeadsDashboardContent />}
+        
         {activeTabKey === "carga" && isAdmin && <CargaClosersTab />}
         {activeTabKey === "erros_sdr" && isAdmin && (
           <ErrosSDRTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
@@ -976,6 +975,7 @@ function RankingSDRsTab({
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [dateOpen, setDateOpen] = useState(false);
   const [rangeOpen, setRangeOpen] = useState(false);
+  const [showComparecimento, setShowComparecimento] = useState(false);
 
   const togglePeriod = (key: RankingPeriodKey) => {
     setVisiblePeriods(prev => {
@@ -1055,6 +1055,26 @@ function RankingSDRsTab({
 
   const activePeriods = PERIOD_OPTIONS.filter(p => visiblePeriods.has(p.key));
 
+  const activeRanges = useMemo(
+    () => activePeriods.map(p => periodRanges[p.key]).filter((r): r is { from: string; to: string } => !!r),
+    [activePeriods, periodRanges],
+  );
+
+  const comparecimentoFor = (sdrId: string) => {
+    if (activeRanges.length === 0) return { realizadas: 0, para: 0, taxa: 0 };
+    const inAnyRange = (date: string) => activeRanges.some(r => date >= r.from && date <= r.to);
+    let para = 0;
+    let realizadas = 0;
+    agendamentos.forEach(a => {
+      if (sdrOf(a) !== sdrId) return;
+      if (!inAnyRange(a.scheduled_date)) return;
+      para += 1;
+      if (a.status === "realizada") realizadas += 1;
+    });
+    const taxa = para > 0 ? (realizadas / para) * 100 : 0;
+    return { realizadas, para, taxa };
+  };
+
   const ranking = useMemo(() => {
     return sdrProfiles
       .map(profile => {
@@ -1065,11 +1085,12 @@ function RankingSDRsTab({
           counts[p.key] = v;
           total += v;
         });
-        return { ...profile, counts, total };
+        const comp = showComparecimento ? comparecimentoFor(profile.user_id) : { realizadas: 0, para: 0, taxa: 0 };
+        return { ...profile, counts, total, comp };
       })
       .sort((a, b) => b.total - a.total);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdrProfiles, createdAgs, agendamentos, metricType, periodRanges, visiblePeriods]);
+  }, [sdrProfiles, createdAgs, agendamentos, metricType, periodRanges, visiblePeriods, showComparecimento]);
 
   const getPosition = (index: number, total: number) => {
     if (total === 0) {
@@ -1147,6 +1168,21 @@ function RankingSDRsTab({
         ))}
       </div>
 
+      {/* Comparecimento toggle */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Comparecimento:</span>
+        <Button
+          variant={showComparecimento ? "default" : "outline"}
+          size="sm"
+          className="h-7 text-xs gap-1.5"
+          onClick={() => setShowComparecimento(v => !v)}
+          title="Mostrar realizadas e taxa de comparecimento dos períodos selecionados"
+        >
+          {showComparecimento ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+          Realizadas + Taxa
+        </Button>
+      </div>
+
       {/* Specific date picker */}
       {visiblePeriods.has("data") && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -1218,13 +1254,19 @@ function RankingSDRsTab({
                   {metricLabel} — {periodColumnLabel(p)}
                 </th>
               ))}
+              {showComparecimento && (
+                <>
+                  <th className="text-center py-3 px-4 font-medium text-xs text-emerald-500 font-bold">Realizadas</th>
+                  <th className="text-center py-3 px-4 font-medium text-xs text-emerald-500 font-bold">Taxa</th>
+                </>
+              )}
               <th className="text-center py-3 px-4 font-medium text-xs text-muted-foreground italic">Posição</th>
             </tr>
           </thead>
           <tbody>
             {(ranking.length === 0 || activePeriods.length === 0) && (
               <tr>
-                <td colSpan={3 + activePeriods.length} className="text-center text-muted-foreground py-8 text-xs">
+                <td colSpan={3 + activePeriods.length + (showComparecimento ? 2 : 0)} className="text-center text-muted-foreground py-8 text-xs">
                   {activePeriods.length === 0 ? "Selecione ao menos um período" : "Nenhum SDR encontrado"}
                 </td>
               </tr>
@@ -1241,6 +1283,16 @@ function RankingSDRsTab({
                     </td>
                   );
                 })}
+                {showComparecimento && (
+                  <>
+                    <td className="py-3 px-4 text-center font-bold text-emerald-500">
+                      {row.comp.realizadas > 0 ? `${row.comp.realizadas}/${row.comp.para}` : "—"}
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold text-emerald-500">
+                      {row.comp.para > 0 ? `${row.comp.taxa.toFixed(0)}%` : "—"}
+                    </td>
+                  </>
+                )}
                 <td className="py-3 px-4 text-center">
                   {getPosition(i, row.total)}
                 </td>
