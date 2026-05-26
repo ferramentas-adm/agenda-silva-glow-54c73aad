@@ -11,7 +11,7 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
-import { LeadsDashboardContent } from "@/pages/DashboardLeadsPage";
+
 import VendasTab from "@/components/dashboard/VendasTab";
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
@@ -28,7 +28,7 @@ import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "leads" | "carga" | "erros_sdr";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr";
 
 const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
@@ -36,7 +36,6 @@ const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
-  { key: "leads", label: "Formulário Bio" },
   { key: "carga", label: "Follows Closer", gestorOnly: true },
   { key: "erros_sdr", label: "Erros SDR", gestorOnly: true },
 ];
@@ -489,7 +488,7 @@ export default function DashboardComercialPage() {
         </div>
 
         {/* ─── Date nav (oculta na aba Agenda Closers) ──── */}
-        {activeTabKey !== "agenda" && activeTabKey !== "leads" && activeTabKey !== "carga" && (
+        {activeTabKey !== "agenda" && activeTabKey !== "carga" && (
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
@@ -590,7 +589,7 @@ export default function DashboardComercialPage() {
             updatedAgo={updatedAgo}
           />
         )}
-        {activeTabKey === "leads" && <LeadsDashboardContent />}
+        
         {activeTabKey === "carga" && isAdmin && <CargaClosersTab />}
         {activeTabKey === "erros_sdr" && isAdmin && (
           <ErrosSDRTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
