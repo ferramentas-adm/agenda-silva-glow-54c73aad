@@ -975,6 +975,7 @@ function RankingSDRsTab({
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [dateOpen, setDateOpen] = useState(false);
   const [rangeOpen, setRangeOpen] = useState(false);
+  const [showComparecimento, setShowComparecimento] = useState(false);
 
   const togglePeriod = (key: RankingPeriodKey) => {
     setVisiblePeriods(prev => {
@@ -1054,6 +1055,26 @@ function RankingSDRsTab({
 
   const activePeriods = PERIOD_OPTIONS.filter(p => visiblePeriods.has(p.key));
 
+  const activeRanges = useMemo(
+    () => activePeriods.map(p => periodRanges[p.key]).filter((r): r is { from: string; to: string } => !!r),
+    [activePeriods, periodRanges],
+  );
+
+  const comparecimentoFor = (sdrId: string) => {
+    if (activeRanges.length === 0) return { realizadas: 0, para: 0, taxa: 0 };
+    const inAnyRange = (date: string) => activeRanges.some(r => date >= r.from && date <= r.to);
+    let para = 0;
+    let realizadas = 0;
+    agendamentos.forEach(a => {
+      if (sdrOf(a) !== sdrId) return;
+      if (!inAnyRange(a.scheduled_date)) return;
+      para += 1;
+      if (a.status === "realizada") realizadas += 1;
+    });
+    const taxa = para > 0 ? (realizadas / para) * 100 : 0;
+    return { realizadas, para, taxa };
+  };
+
   const ranking = useMemo(() => {
     return sdrProfiles
       .map(profile => {
@@ -1064,11 +1085,12 @@ function RankingSDRsTab({
           counts[p.key] = v;
           total += v;
         });
-        return { ...profile, counts, total };
+        const comp = showComparecimento ? comparecimentoFor(profile.user_id) : { realizadas: 0, para: 0, taxa: 0 };
+        return { ...profile, counts, total, comp };
       })
       .sort((a, b) => b.total - a.total);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdrProfiles, createdAgs, agendamentos, metricType, periodRanges, visiblePeriods]);
+  }, [sdrProfiles, createdAgs, agendamentos, metricType, periodRanges, visiblePeriods, showComparecimento]);
 
   const getPosition = (index: number, total: number) => {
     if (total === 0) {
