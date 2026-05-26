@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "@/assets/logo.png";
+import { tenantConfig } from "@/config/tenant";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -72,7 +73,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-sm text-center space-y-4">
-          <img src={logo} alt="Grupo Silva" className="h-16 w-16 mx-auto" />
+          <img src={tenantConfig.logoUrl || logo} alt={tenantConfig.name} className="h-16 w-16 mx-auto" />
           <h1 className="text-xl font-bold">Link inválido</h1>
           <p className="text-sm text-muted-foreground">
             Este link de recuperação de senha é inválido ou expirou.
@@ -103,7 +104,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm animate-fade-in">
         <div className="mb-8 flex flex-col items-center gap-4 text-center">
-          <img src={logo} alt="Grupo Silva" className="h-16 w-16" />
+          <img src={tenantConfig.logoUrl || logo} alt={tenantConfig.name} className="h-16 w-16" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Redefinir senha</h1>
             <p className="mt-1 text-sm text-muted-foreground">Crie uma nova senha para sua conta</p>

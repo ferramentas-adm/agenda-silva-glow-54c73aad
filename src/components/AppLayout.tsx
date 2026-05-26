@@ -6,6 +6,7 @@ import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List,
 import { usePermissions } from "@/hooks/usePermissions";
 import { useState, useRef, useCallback, useEffect } from "react";
 import logo from "@/assets/logo.png";
+import { tenantConfig } from "@/config/tenant";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 import CloserBlockDialog from "@/components/CloserBlockDialog";
 import NotificationBell from "@/components/NotificationBell";
@@ -96,8 +97,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex h-20 items-center justify-center border-b border-[hsl(0_0%_100%/0.06)]">
           <Link to="/">
             <img
-              src={logo}
-              alt="Grupo Silva"
+              src={tenantConfig.logoUrl || logo}
+              alt={tenantConfig.name}
               className={cn("shrink-0 transition-all duration-300", expanded ? "h-10" : "h-7")}
             />
           </Link>
@@ -178,9 +179,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <header className="fixed top-0 left-0 right-0 z-50 flex md:hidden items-center justify-between h-14 px-4 glass border-b border-[hsl(0_0%_100%/0.06)] sidebar-always-dark">
         <Link to="/" className="flex items-center gap-2">
-          <img src={logo} alt="Grupo Silva" className="h-7 w-7" />
+          <img src={tenantConfig.logoUrl || logo} alt={tenantConfig.name} className="h-7 w-7" />
           <span className="font-display text-lg font-bold tracking-tight">
-            Grupo <span className="text-primary">Silva</span>
+            {tenantConfig.name}
           </span>
         </Link>
         <div className="flex items-center gap-1">

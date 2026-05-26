@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
+import { tenantConfig } from "@/config/tenant";
 
 export default function ForceChangePasswordPage() {
   const { user, signOut } = useAuth();
@@ -66,7 +67,7 @@ export default function ForceChangePasswordPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm animate-fade-in">
         <div className="mb-8 flex flex-col items-center gap-4 text-center">
-          <img src={logo} alt="Grupo Silva" className="h-16 w-16" />
+          <img src={tenantConfig.logoUrl || logo} alt={tenantConfig.name} className="h-16 w-16" />
           <div>
             <ShieldCheck className="h-8 w-8 text-primary mx-auto mb-2" />
             <h1 className="text-2xl font-bold tracking-tight">Altere sua senha</h1>

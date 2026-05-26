@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
+import { tenantConfig } from "@/config/tenant";
 import loginBg from "@/assets/login-bg.webp";
 
 export default function LoginPage() {
@@ -69,8 +70,8 @@ export default function LoginPage() {
         {/* Logo section */}
         <div className="flex flex-col items-center gap-3 text-center">
           <img
-            src={logo}
-            alt="Grupo Silva"
+            src={tenantConfig.logoUrl || logo}
+            alt={tenantConfig.name}
             className="h-auto max-h-44 w-auto drop-shadow-[0_0_24px_hsl(66_83%_55%/0.25)]"
           />
           <p className="text-xs font-display font-medium tracking-[0.3em] text-muted-foreground uppercase">
@@ -85,7 +86,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm glass-card-intense rounded-2xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           {/* Card title */}
           <div className="mb-6 text-center md:text-left">
-            <h2 className="font-display text-lg font-semibold glow-text">Bem-vindo <span className="text-primary">Silva</span></h2>
+            <h2 className="font-display text-lg font-semibold glow-text">Bem-vindo {tenantConfig.name}</h2>
             
           </div>
 
