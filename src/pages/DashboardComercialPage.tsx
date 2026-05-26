@@ -1168,6 +1168,21 @@ function RankingSDRsTab({
         ))}
       </div>
 
+      {/* Comparecimento toggle */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Comparecimento:</span>
+        <Button
+          variant={showComparecimento ? "default" : "outline"}
+          size="sm"
+          className="h-7 text-xs gap-1.5"
+          onClick={() => setShowComparecimento(v => !v)}
+          title="Mostrar realizadas e taxa de comparecimento dos períodos selecionados"
+        >
+          {showComparecimento ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+          Realizadas + Taxa
+        </Button>
+      </div>
+
       {/* Specific date picker */}
       {visiblePeriods.has("data") && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -1239,13 +1254,19 @@ function RankingSDRsTab({
                   {metricLabel} — {periodColumnLabel(p)}
                 </th>
               ))}
+              {showComparecimento && (
+                <>
+                  <th className="text-center py-3 px-4 font-medium text-xs text-emerald-500 font-bold">Realizadas</th>
+                  <th className="text-center py-3 px-4 font-medium text-xs text-emerald-500 font-bold">Taxa</th>
+                </>
+              )}
               <th className="text-center py-3 px-4 font-medium text-xs text-muted-foreground italic">Posição</th>
             </tr>
           </thead>
           <tbody>
             {(ranking.length === 0 || activePeriods.length === 0) && (
               <tr>
-                <td colSpan={3 + activePeriods.length} className="text-center text-muted-foreground py-8 text-xs">
+                <td colSpan={3 + activePeriods.length + (showComparecimento ? 2 : 0)} className="text-center text-muted-foreground py-8 text-xs">
                   {activePeriods.length === 0 ? "Selecione ao menos um período" : "Nenhum SDR encontrado"}
                 </td>
               </tr>
@@ -1262,6 +1283,16 @@ function RankingSDRsTab({
                     </td>
                   );
                 })}
+                {showComparecimento && (
+                  <>
+                    <td className="py-3 px-4 text-center font-bold text-emerald-500">
+                      {row.comp.realizadas > 0 ? `${row.comp.realizadas}/${row.comp.para}` : "—"}
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold text-emerald-500">
+                      {row.comp.para > 0 ? `${row.comp.taxa.toFixed(0)}%` : "—"}
+                    </td>
+                  </>
+                )}
                 <td className="py-3 px-4 text-center">
                   {getPosition(i, row.total)}
                 </td>
