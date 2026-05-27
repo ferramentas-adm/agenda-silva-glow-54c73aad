@@ -69,46 +69,7 @@ export default function OverdueMeetingsLockOverlay() {
   };
 
 
-  const handleDismiss = async (m: OverdueMeeting, side: "sdr" | "closer") => {
-    if (!user?.id) return;
-    setUpdatingId(m.id);
-    try {
-      const patch = side === "sdr"
-        ? { sdr_handoff_at: new Date().toISOString() }
-        : { closer_handoff_at: new Date().toISOString() };
-      const { data, error } = await supabase
-        .from("agendamentos")
-        .update(patch as any)
-        .eq("id", m.id)
-        .select("id");
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        throw new Error("Sem permissão para repassar este agendamento.");
-      }
-      await logAudit(
-        side === "sdr" ? "sdr_dismiss_overdue" : "closer_dismiss_overdue",
-        "agendamento",
-        m.id,
-        {
-          lead_name: m.lead_name,
-          closer_name: m.closer_name ?? "",
-          scheduled_date: m.scheduled_date,
-          scheduled_time: m.scheduled_time,
-        },
-      );
-      toast.success(
-        side === "sdr"
-          ? "Reunião enviada para o Closer atualizar"
-          : "Aguardando atualização do SDR",
-      );
-      await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao repassar reunião");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
+
 
   return (
     <>
