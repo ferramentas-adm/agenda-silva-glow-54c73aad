@@ -636,6 +636,15 @@ export default function AgendarPage() {
                   )}
                 </div>
               )}
+              <div className="flex items-center justify-between rounded-md border border-border bg-secondary/30 px-4 py-3">
+                <div className="space-y-0.5">
+                  <label htmlFor="is-5k-toggle" className="text-sm font-medium cursor-pointer">
+                    Projeto 5K
+                  </label>
+                  <p className="text-xs text-muted-foreground">Marque para sinalizar esta reunião como Projeto 5K.</p>
+                </div>
+                <Switch id="is-5k-toggle" checked={is5k} onCheckedChange={setIs5k} />
+              </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5" />
@@ -653,6 +662,7 @@ export default function AgendarPage() {
 
             </>
           )}
+
         </div>
 
         {/* Navigation */}
