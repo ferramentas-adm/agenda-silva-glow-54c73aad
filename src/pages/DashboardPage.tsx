@@ -1061,7 +1061,7 @@ export function CalendarContent() {
                   )}
                   {detailAg.is_5k && (
                     <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-500 border-amber-500/40 font-bold">
-                      Mentoria 5K
+                      Projeto 5K
                     </Badge>
                   )}
                 </div>
