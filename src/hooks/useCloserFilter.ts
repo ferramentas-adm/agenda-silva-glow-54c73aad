@@ -65,18 +65,28 @@ export function useCloserFilter() {
     setInitialized(true);
   }, [closers, user, initialized, role]);
 
-  // Clean up selectedIds when closers list changes (e.g. closer deleted/deactivated)
+  // Sync selectedIds com a lista de closers ativos:
+  //  - remove ids que ficaram inativos/deletados
+  //  - ADICIONA closers novos que ainda não estavam na seleção salva
+  // Sem isso, agendas (incluindo "confirmadas") de closers adicionados
+  // depois da última seleção ficavam invisíveis na Dashboard.
   useEffect(() => {
     if (!initialized || !closers.length) return;
-    const activeIds = new Set(closers.map((c) => c.id));
+    if (role === "closer") return; // closer só vê o próprio
+    const activeIds = closers.map((c) => c.id);
     setSelectedIds((prev) => {
-      const cleaned = new Set([...prev].filter((id) => activeIds.has(id)));
-      // If all were removed, select all active
-      if (cleaned.size === 0) return activeIds;
-      if (cleaned.size === prev.size) return prev; // no change
-      return cleaned;
+      const next = new Set([...prev].filter((id) => activeIds.includes(id)));
+      let changed = next.size !== prev.size;
+      for (const id of activeIds) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      if (next.size === 0) return new Set(activeIds);
+      return changed ? next : prev;
     });
-  }, [closers, initialized]);
+  }, [closers, initialized, role]);
 
   // Persist to localStorage
   useEffect(() => {
