@@ -362,16 +362,16 @@ export function CalendarContent() {
 
   // Status counts gerais (admin/mod/sdr)
   // Conta APENAS agendamentos criados por usuários com função SDR, usando
-  // o status cru do banco — mesma regra da aba "Métricas SDRs" para que os
-  // números batam exatamente entre as duas telas. Reuniões criadas por
-  // Closers/Gestores aparecem nos cards separados "Total Closers" e
-  // "Closer Realizada".
+  // o mesmo status efetivo exibido no calendário. Assim, uma reunião nova de
+  // reagendamento com original_agendamento_id conta como "Confirmada".
+  // Reuniões criadas por Closers/Gestores aparecem nos cards separados.
   const statusCounts = useMemo(
     () =>
       filtered.reduce<Record<string, number>>((acc, agendamento) => {
         if (!agendamento.created_by) return acc;
         if (userRolesMap.get(agendamento.created_by) !== "sdr") return acc;
-        acc[agendamento.status] = (acc[agendamento.status] ?? 0) + 1;
+        const status = getEffectiveStatus(agendamento);
+        acc[status] = (acc[status] ?? 0) + 1;
         return acc;
       }, {}),
     [filtered, userRolesMap]
