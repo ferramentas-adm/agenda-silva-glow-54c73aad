@@ -109,7 +109,8 @@ export default function OverdueMeetingsLockOverlay() {
             {overdue.map((m) => {
               const isSdrOfThis = !!user && m.created_by === user.id;
               const isCloserOfThis = !!myCloserId && m.closer_id === myCloserId;
-              const canHandoff = !m.sdr_handoff_at && !m.closer_handoff_at;
+              // canHandoff removido: bypass do bloqueio foi desabilitado para
+              // forçar SDR/Closer a atualizarem o status real (No-show / Cancelada / Realizada).
               return (
               <div
                 key={m.id}
