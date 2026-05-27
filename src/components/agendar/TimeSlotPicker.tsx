@@ -247,6 +247,21 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       return;
     }
 
+    // SDR: bloqueia se este closer já tem reunião no horário escolhido
+    if (isSdr) {
+      const conflict = bookedTimes.some((bt) => {
+        const bStart = timeToMin(bt.slice(0, 5));
+        if (bStart === null) return false;
+        const bEnd = bStart + 60;
+        return startMin < bEnd && endMin > bStart;
+      });
+      if (conflict) {
+        setCustomError("Este closer já tem uma reunião marcada neste horário.");
+        return;
+      }
+    }
+
+
     // Slot lotado globalmente (todos closers somados)
     const startSlot = customStart.slice(0, 5);
     const cnt = countFor(startSlot);
