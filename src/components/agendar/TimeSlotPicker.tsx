@@ -118,6 +118,7 @@ function isCustomTimeConflicting(
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
   const { role } = useAuth();
   const canForceFullSlot = role === "gestor" || role === "moderador";
+  const isSdr = role === "sdr";
   const [customMode, setCustomMode] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -245,6 +246,21 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
       setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
       return;
     }
+
+    // SDR: bloqueia se este closer já tem reunião no horário escolhido
+    if (isSdr) {
+      const conflict = bookedTimes.some((bt) => {
+        const bStart = timeToMin(bt.slice(0, 5));
+        if (bStart === null) return false;
+        const bEnd = bStart + 60;
+        return startMin < bEnd && endMin > bStart;
+      });
+      if (conflict) {
+        setCustomError("Este closer já tem uma reunião marcada neste horário.");
+        return;
+      }
+    }
+
 
     // Slot lotado globalmente (todos closers somados)
     const startSlot = customStart.slice(0, 5);
@@ -374,10 +390,14 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             iconClass = "h-3.5 w-3.5 text-blue-500";
             title = "Ocupado no Google Calendar (permite agendar)";
           } else if (isBooked) {
-            slotStyle = "border-amber-500/50 bg-amber-500/10 hover:border-primary/50 active:scale-[0.97]";
+            slotStyle = isSdr
+              ? "border-amber-500/50 bg-amber-500/10 cursor-not-allowed opacity-70"
+              : "border-amber-500/50 bg-amber-500/10 hover:border-primary/50 active:scale-[0.97]";
             SlotIcon = AlertTriangle;
             iconClass = "h-3.5 w-3.5 text-amber-500";
-            title = "Já agendado internamente (permite novo)";
+            title = isSdr
+              ? "Este closer já tem reunião neste horário"
+              : "Já agendado internamente (permite novo)";
           }
 
           return (
@@ -387,6 +407,10 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
               onClick={() => {
                 if (isPersonalBlock) {
                   setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
+                  return;
+                }
+                if (isSdr && isBooked) {
+                  setBlockedInfo("Este closer já tem uma reunião marcada neste horário. Escolha outro horário ou outro closer.");
                   return;
                 }
                 if (isFull) {
