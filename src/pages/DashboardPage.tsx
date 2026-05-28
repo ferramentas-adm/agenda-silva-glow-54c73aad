@@ -1560,11 +1560,19 @@ function DayView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [colWidth, setColWidth] = useState<number>(160);
+
+  const TIME_COL = 60;
+  const MIN_COL = 150;
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const update = () => {
+      const available = el.clientWidth - TIME_COL;
+      const fit = Math.max(1, Math.min(closers.length, Math.floor(available / MIN_COL)));
+      const newWidth = Math.max(MIN_COL, available / fit);
+      setColWidth(newWidth);
       setCanScrollLeft(el.scrollLeft > 2);
       setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
     };
@@ -1581,10 +1589,7 @@ function DayView({
   const scrollByCol = (dir: 1 | -1) => {
     const el = scrollRef.current;
     if (!el) return;
-    const grid = el.firstElementChild as HTMLElement | null;
-    const firstCloserCol = grid?.children?.[1] as HTMLElement | undefined;
-    const width = firstCloserCol?.getBoundingClientRect().width ?? 180;
-    el.scrollBy({ left: dir * width, behavior: "smooth" });
+    el.scrollBy({ left: dir * colWidth, behavior: "smooth" });
   };
 
   return (
