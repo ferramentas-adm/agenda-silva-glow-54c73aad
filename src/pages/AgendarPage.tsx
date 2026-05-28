@@ -245,16 +245,21 @@ export default function AgendarPage() {
   // mas isso é salvo no campo `observation` (não em meeting_reason).
   const needsReason = false;
   const isReasonRequired = false;
-  const resolvedReason = isCloser ? "segunda_reuniao" : null;
+  const resolvedReason = (isCloser || (isAdmin && adminAsSecondMeeting)) ? "segunda_reuniao" : null;
 
   // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
-  const channelTypeRequired = role === "sdr" || role === "moderador" || role === "gestor";
+  // Quando admin marca como 2ª reunião, o canal é fixado em "Segunda Reunião".
+  const channelTypeRequired = (role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
     // Closer continua precisando justificar (vai para `observation`).
     if (isCloser && !meetingReasonCustom.trim()) {
       toast.error("Informe a justificativa do agendamento.");
+      return;
+    }
+    if (isAdmin && !adminAsSecondMeeting && !selectedSdrId) {
+      toast.error("Selecione o SDR responsável ou marque como 2ª reunião.");
       return;
     }
     if (channelTypeRequired && !channelType) {
