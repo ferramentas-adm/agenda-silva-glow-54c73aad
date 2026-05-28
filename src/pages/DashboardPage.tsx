@@ -1561,27 +1561,32 @@ function DayView({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [colWidth, setColWidth] = useState<number>(160);
-
-  const TIME_COL = 60;
-  const MIN_COL = 150;
-
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    let rafId = 0;
     const update = () => {
-      const available = el.clientWidth - TIME_COL;
-      const fit = Math.max(1, Math.min(closers.length, Math.floor(available / MIN_COL)));
-      const newWidth = Math.max(MIN_COL, available / fit);
-      setColWidth(newWidth);
-      setCanScrollLeft(el.scrollLeft > 2);
-      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const available = el.clientWidth - TIME_COL;
+        if (available <= 0) return;
+        const fit = Math.max(1, Math.min(closers.length, Math.floor(available / MIN_COL)));
+        const newWidth = Math.max(MIN_COL, available / fit);
+        setColWidth((prev) => (Math.abs(prev - newWidth) > 0.5 ? newWidth : prev));
+        setCanScrollLeft(el.scrollLeft > 2);
+        setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+      });
     };
     update();
     el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
     const ro = new ResizeObserver(update);
     ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
     return () => {
+      cancelAnimationFrame(rafId);
       el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
       ro.disconnect();
     };
   }, [closers.length]);
