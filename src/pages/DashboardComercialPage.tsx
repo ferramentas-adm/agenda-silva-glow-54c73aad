@@ -287,18 +287,23 @@ export default function DashboardComercialPage() {
     });
     const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
 
-    // Pool base: somente agendamentos criados por SDRs.
-    const sdrAgs = agendamentos.filter(
-      a => a.created_by && sdrUserIds.has(a.created_by),
-    );
+    // Pool base: agendamentos de SDR — usa MESMA regra do Dashboard (calendário):
+    // created_by é SDR OU sdr_responsavel_id está preenchido (atribuído por gestor/mod).
+    const isSdrAg = (a: AgendamentoMetric) =>
+      (!!a.created_by && sdrUserIds.has(a.created_by)) || !!a.sdr_responsavel_id;
+
+    const sdrAgs = agendamentos.filter(isSdrAg);
     // Para "Geradas/Criadas" usamos o pool fetched por created_at (createdAgs)
     // — assim incluímos reuniões criadas hoje mesmo que agendadas para fora
     // do range mensal (o pool `agendamentos` é filtrado por scheduled_date).
-    // Isto garante paridade exata com o painel "Produtividade SDR".
     // Exclui reagendamentos (que têm original_agendamento_id) — só conta agendas novas.
     const sdrCreatedAgs = createdAgs.filter(
-      a => a.created_by && sdrUserIds.has(a.created_by) && !a.original_agendamento_id,
+      a => isSdrAg(a) && !a.original_agendamento_id,
     );
+
+    // Variante "ativa" (exclui canceladas) — usada para os totais agregados.
+    // As contagens por status (cancelado/no_show/etc) continuam usando o pool completo.
+    const active = (list: AgendamentoMetric[]) => list.filter(a => a.status !== 'cancelada');
 
     // Quando há intervalo ativo, "todayAgs"/"todayCreated" passam a ser
     // a soma agregada de todo o período selecionado. Caso contrário, mantém
@@ -315,6 +320,12 @@ export default function DashboardComercialPage() {
     const yesterdayAgs = sdrAgs.filter(a => a.scheduled_date === yesterdayStr);
     const tomorrowAgs = sdrAgs.filter(a => a.scheduled_date === tomorrowStr);
     const monthAgs = sdrAgs.filter(a => a.scheduled_date >= monthStart && a.scheduled_date <= monthEnd);
+
+    const todayAgsActive = active(todayAgs);
+    const todayCreatedActive = active(todayCreated);
+    const yesterdayAgsActive = active(yesterdayAgs);
+    const tomorrowAgsActive = active(tomorrowAgs);
+    const monthAgsActive = active(monthAgs);
 
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
