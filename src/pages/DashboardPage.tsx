@@ -928,6 +928,7 @@ export function CalendarContent() {
             busyBlocks={googleBusyBlocks}
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
+            userRolesMap={userRolesMap}
             onDelete={setDeleteTarget}
             onClickAg={setDetailAg}
             onClickEmptySlot={(closerId, time) => {
@@ -935,6 +936,7 @@ export function CalendarContent() {
               navigate(`/agendar?closer=${closerId}&date=${dateStr}&time=${time}`);
             }}
           />
+
         )}
       </div>
 
