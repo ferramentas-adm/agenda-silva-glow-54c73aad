@@ -1646,17 +1646,36 @@ function DayView({
                               )}>
                                 B
                               </span>
-                              {ag.is_5k && (
-                                <span className={cn(
-                                  "absolute top-0 left-0 rounded-br-md rounded-tl-md px-1.5 py-0.5 font-bold leading-none bg-amber-500/90 text-white",
-                                  isCompact ? "text-[8px]" : "text-[10px]"
-                                )}>
-                                  5K
-                                </span>
-                              )}
-                              <div className={cn("font-semibold truncate pr-5", ag.is_5k && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
+                              {(() => {
+                                const isCloserBooked = ag.created_by ? userRolesMap.get(ag.created_by) === "closer" : false;
+                                if (!ag.is_5k && !isCloserBooked) return null;
+                                return (
+                                  <div className="absolute top-0 left-0 flex gap-0.5">
+                                    {ag.is_5k && (
+                                      <span className={cn(
+                                        "rounded-br-md rounded-tl-md px-1.5 py-0.5 font-bold leading-none bg-amber-500/90 text-white",
+                                        isCompact ? "text-[8px]" : "text-[10px]"
+                                      )}>
+                                        5K
+                                      </span>
+                                    )}
+                                    {isCloserBooked && (
+                                      <span className={cn(
+                                        "px-1.5 py-0.5 font-bold leading-none bg-sky-500/90 text-white",
+                                        !ag.is_5k && "rounded-tl-md",
+                                        "rounded-br-md",
+                                        isCompact ? "text-[8px]" : "text-[10px]"
+                                      )} title="Reunião marcada por Closer (2ª reunião)">
+                                        2ª
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                              <div className={cn("font-semibold truncate pr-5", (ag.is_5k || (ag.created_by && userRolesMap.get(ag.created_by) === "closer")) && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
                                 {ag.lead_name}
                               </div>
+
                               <div className="flex items-center gap-1 text-[11px] opacity-80">
                                 <Clock className="h-3 w-3 shrink-0" />
                                 <span className={cn("truncate", isCancelled && "line-through")}>{(() => {
