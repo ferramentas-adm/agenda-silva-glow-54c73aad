@@ -1,18 +1,24 @@
-## Correção: Total agend. dia incluindo canceladas
+## Correções
 
-**Problema:** O card "Total agend. dia" soma todos os agendamentos (incluindo `cancelada`), enquanto "Agendas pra Hoje" e "Total Closers" filtram canceladas. Por isso a soma não bate.
+**1. Card "Total Closers" (inconsistência 41 vs 42)**
 
-- Hoje: 40 SDR + 2 Closer + 2 canceladas SDR = 44
-- Ontem: 69 + 7 + 2 canceladas = 78
+Hoje:
+- `Total agend. dia` = 41 (exclui canceladas) ✓
+- `Total Closers` = 2 (inclui 1 cancelada do Leandro Ritte + 1 agendada do Matheus) ✗
 
-Sim, é exatamente o mesmo bug e a correção resolve os dois dias (e qualquer outro).
+Fazer `closerCreatedCount` excluir canceladas, igual ao Total. Resultado: SDR=40 + Closer=1 = Total=41 (matemática consistente).
 
-### Mudança
+Arquivo: `src/pages/DashboardPage.tsx` linha 397-401.
 
-`src/pages/DashboardPage.tsx` (~linha 747):
+**2. Bloqueio não dispara para reuniões "Confirmada" que são reagendadas**
 
-```ts
-const totalAgend = sourceAgendamentos.filter(a => a.status !== "cancelada").length;
-```
+Reuniões com `status='reagendada'` + `original_agendamento_id` são exibidas como "Confirmada" no calendário (via `getEffectiveStatus`), mas o overlay de bloqueio (`useOverdueMeetings`) busca apenas `status IN ('agendada','confirmada')` — ignorando essas.
 
-Depois disso: "Total agend. dia" = SDRs visíveis + Closers, batendo com a soma exibida.
+Casos confirmados no banco:
+- Bruno: 23/05 10h (Thais Campos)
+- Igor: 25/05 11h, 18h, 21h
+- Pedro Ferro: 26/05 10h
+
+Corrigir: incluir `reagendada` no filtro e, em JS, manter apenas as que têm `original_agendamento_id` (o registro novo, exibido como Confirmada). As reagendadas "antigas" (sem `original_agendamento_id`) representam a reunião movida para outra data e não devem bloquear.
+
+Arquivo: `src/hooks/useOverdueMeetings.ts` — query e filtro pós-fetch.
