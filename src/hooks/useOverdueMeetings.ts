@@ -105,6 +105,22 @@ export function useOverdueMeetings() {
         (m) => meetingEpochMin(m.scheduled_date, m.scheduled_time) + OVERDUE_GRACE_MINUTES <= nowMin,
       );
 
+      // Regra de repasse: quem REPASSA é liberado; quem RECEBE permanece travado até resolver.
+      // - sdr_handoff_at: SDR repassou ao Closer → SDR liberado, Closer travado.
+      // - closer_handoff_at: Closer repassou ao SDR → Closer liberado, SDR travado.
+      overdue = overdue.filter((m) => {
+        const isSdr = !!user?.id && m.created_by === user.id;
+        const isCloser = !!myCloserId && m.closer_id === myCloserId;
+        // Se for ambos (raro: SDR que também é Closer da própria reunião), trava se qualquer lado ainda precisar resolver.
+        if (isSdr && m.sdr_handoff_at && !isCloser) return false;
+        if (isCloser && m.closer_handoff_at && !isSdr) return false;
+        if (isSdr && isCloser) {
+          // Só libera se ambos lados já repassaram (situação improvável).
+          return !(m.sdr_handoff_at && m.closer_handoff_at);
+        }
+        return true;
+      });
+
       if (overdue.length === 0) return [];
 
       // Busca nomes em lote
