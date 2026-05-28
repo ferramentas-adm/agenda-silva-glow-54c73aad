@@ -51,6 +51,7 @@ interface AgendamentoRow {
   closer_id: string | null;
   scheduled_date: string;
   lead_name: string;
+  status: string;
 }
 
 interface CloserRow {
@@ -116,7 +117,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           .select(`
             id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
             motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
-            agendamentos!inner(id, closer_id, scheduled_date, lead_name)
+            agendamentos!inner(id, closer_id, scheduled_date, lead_name, status)
           `)
           .is("agendamentos.deleted_at", null)
           .order("created_at", { ascending: false })
@@ -208,6 +209,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Vendas do período selecionado (dia único OU intervalo)
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
+      const ag = agMap.get(v.agendamento_id);
+      // Só considera vendas de reuniões efetivamente realizadas — alinha
+      // com o card "Realizadas" do calendário.
+      if (ag?.status !== "realizada") return false;
       const cd = closingDateOf(v);
       if (!cd) return false;
       if (isRange && rangeFromStr && rangeToStr) {
