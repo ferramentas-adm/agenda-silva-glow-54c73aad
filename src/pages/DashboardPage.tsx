@@ -1619,7 +1619,6 @@ function DayView({
           className="grid"
           style={{ gridTemplateColumns: `${TIME_COL}px repeat(${closers.length}, ${colWidth}px)` }}
         >
-        >
         {/* Header */}
         <div className="border-b border-primary/10 p-2" />
         {closers.map((c) => {
