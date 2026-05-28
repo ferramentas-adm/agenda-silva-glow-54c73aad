@@ -390,9 +390,10 @@ export function CalendarContent() {
     [filtered]
   );
 
-  // Total Closers (= 2ª reunião) — exclui canceladas para bater com "Total agend. dia"
+  // Total Closers (= 2ª reunião) — inclui canceladas (alinhado a "Total agend. dia")
   const closerCreatedCount = useMemo(
-    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && a.status !== "cancelada" && isSecondMeetingAgenda(a)).length,
+    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSecondMeetingAgenda(a)).length,
+
     [filtered, userRolesMap]
   );
 
