@@ -743,8 +743,8 @@ export function CalendarContent() {
           const sourceTotalReal = sourceCounts["realizada"] ?? 0;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
-          // Total agend. dia = todas as agendas do dia (todos os status)
-          const totalAgend = sourceAgendamentos.length;
+          // Total agend. dia = todas as agendas do dia exceto canceladas
+          const totalAgend = sourceAgendamentos.filter(a => a.status !== "cancelada").length;
 
           // Ainda a real. dia: agendada + confirmada (sem filtro de horário)
           const aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
