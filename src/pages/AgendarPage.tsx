@@ -320,11 +320,11 @@ export default function AgendarPage() {
         meet_link: meetLink,
         google_event_id: googleResult.success ? (googleResult.event_id ?? null) : null,
         created_by: user.id,
-        sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
+        sdr_responsavel_id: isAdmin && !adminAsSecondMeeting && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
-        // Closer: canal sempre fixado como "Segunda Reunião"
-        channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
+        // Closer (ou admin marcando 2ª): canal fixado como "Segunda Reunião"
+        channel_type: (isCloser || (isAdmin && adminAsSecondMeeting)) ? "Segunda Reunião" : (channelType || null),
         is_5k: is5k,
       } as any).select("id").single();
 
