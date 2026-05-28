@@ -1,11 +1,30 @@
-## Mudanças em `src/pages/DashboardPage.tsx`
+## Refatorar cards do `DashboardPage.tsx`
 
-1. **Reverter `totalSdrCount`** para somar todos os status (`TOTAL_STATUSES`), como era antes.
+Todos os cards passam a contar **todas as agendas do dia** (SDR + 2ª reunião), e não só SDR. Os cards "Total Closers" e "Closer Realizada" continuam isolando a fatia 2ª reunião.
 
-2. **`Total agend. dia`** passa a ser `totalSdrCount + closerCreatedCount` (SDR todos status + 2ª reunião todos status), em vez de só `agendada+confirmada` do `sourceCounts`.
+### Cards
 
-3. **`Ainda a real. dia`** continua = `totalAgend - sourceTotal`, mas agora usa o novo `totalAgend`.
+| Card | Cálculo |
+|---|---|
+| **Total agend. dia** | `filtered.length` — todos os status (agendada, confirmada, realizada, cancelada, no_show, reagendada). Ícone trocado de `Clock` → `CalendarDays`. |
+| **Total real. dia** | status = `realizada` (todas). |
+| **Ainda a real. dia** | status ∈ (`agendada`, `confirmada`) com filtro de horário: <br>• data < hoje → `0` <br>• data > hoje → todas agendada+confirmada <br>• data = hoje → `scheduled_time >= próxima hora cheia` (ex.: 10:49 → ≥ 11:00; 11:15 → ≥ 12:00). <br>Recalcula a cada minuto. |
+| **Sem confirmar** | status = `agendada` (todas). |
+| **Confirmadas** | status = `confirmada` (todas). |
+| **Realizadas** | status = `realizada` (todas). |
+| **Canceladas / No-shows / Reagendadas / Não comparecimento** | mesma lógica atual, mas agora sobre todas as agendas do dia (não só SDR). |
+| **Total Closers** | mantém: 2ª reunião, todos os status. |
+| **Closer Realizada** | mantém: 2ª reunião, status `realizada`. |
 
-Resultado esperado: hoje 37 SDR + 1 Closer = 38 no Total agend. dia.
+### Visão Closer (`isCloserView`)
 
-Obs: na visão de closer (`isCloserView`), o card "Total agend. dia" usa só a contagem do próprio closer (`closerOwnStatusCounts` agendada+confirmada) — mantém o comportamento atual dessa view.
+Continua usando `closerOwnStatusCounts` (só as agendas do próprio closer). A lógica de `Ainda a real. dia` com filtro de horário se aplica igualmente.
+
+### Implementação
+
+- Criar `allStatusCounts` (filtered reduzido por status efetivo, sem filtrar por SDR/2ª).
+- Substituir `sourceCounts` no admin/mod/sdr view por `allStatusCounts`.
+- Criar helper `aindaARealCount(counts, agendamentos, currentDate, now)` que aplica o filtro de horário.
+- Estado `now` atualizado por `setInterval` de 60s para o card de "Ainda a real. dia" reagir à passagem da hora.
+
+Nada muda no schema nem em `AgendarPage`.
