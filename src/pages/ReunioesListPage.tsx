@@ -140,13 +140,25 @@ export default function ReunioesListPage() {
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["reunioes-list"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("agendamentos")
-        .select("*")
-        .is("deleted_at", null)
-        .order("scheduled_date", { ascending: false })
-        .order("scheduled_time", { ascending: false });
-      return data || [];
+      const PAGE = 1000;
+      const all: any[] = [];
+      let from = 0;
+      // Pagina até esgotar (Supabase limita 1000 por request)
+      while (true) {
+        const { data, error } = await supabase
+          .from("agendamentos")
+          .select("*")
+          .is("deleted_at", null)
+          .order("scheduled_date", { ascending: false })
+          .order("scheduled_time", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = data || [];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     },
   });
 
