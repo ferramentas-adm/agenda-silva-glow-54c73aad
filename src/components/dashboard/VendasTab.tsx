@@ -106,16 +106,28 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const { data: vendas = [] } = useQuery<VendaRow[]>({
     queryKey: ["vendas-tab"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vendas")
-        .select(`
-          id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
-          motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
-          agendamentos!inner(id, closer_id, scheduled_date, lead_name)
-        `)
-        .is("agendamentos.deleted_at", null)
-        .range(0, 9999);
-      return (data ?? []) as unknown as VendaRow[];
+      // Pagina manualmente para contornar o limite default de 1000 linhas do PostgREST.
+      const PAGE = 1000;
+      const all: VendaRow[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("vendas")
+          .select(`
+            id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
+            motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
+            agendamentos!inner(id, closer_id, scheduled_date, lead_name)
+          `)
+          .is("agendamentos.deleted_at", null)
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as VendaRow[];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     },
     refetchInterval: 60_000,
   });
