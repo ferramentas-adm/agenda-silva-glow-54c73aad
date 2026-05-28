@@ -389,6 +389,17 @@ export function CalendarContent() {
     [filtered, userRolesMap]
   );
 
+  // Status counts de TODAS as agendas do dia (SDR + 2ª reunião)
+  const allStatusCounts = useMemo(
+    () =>
+      filtered.reduce<Record<string, number>>((acc, agendamento) => {
+        const status = getEffectiveStatus(agendamento);
+        acc[status] = (acc[status] ?? 0) + 1;
+        return acc;
+      }, {}),
+    [filtered]
+  );
+
   // Total Closers (= 2ª reunião)
   const closerCreatedCount = useMemo(
     () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSecondMeetingAgenda(a)).length,
