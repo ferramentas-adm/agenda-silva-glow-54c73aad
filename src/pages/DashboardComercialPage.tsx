@@ -301,13 +301,11 @@ export default function DashboardComercialPage() {
       a => isSdrAg(a) && !a.original_agendamento_id,
     );
 
-    // Variante "ativa" (exclui canceladas) — usada para os totais agregados.
-    // As contagens por status (cancelado/no_show/etc) continuam usando o pool completo.
-    const active = (list: AgendamentoMetric[]) => list.filter(a => a.status !== 'cancelada');
-
     // Quando há intervalo ativo, "todayAgs"/"todayCreated" passam a ser
     // a soma agregada de todo o período selecionado. Caso contrário, mantém
     // o comportamento de dia único (currentDate).
+    // OBS: todos os totais incluem canceladas — alinhado ao card "Total agend. dia"
+    // do Dashboard. Mudanças nessa regra devem ser refletidas no DashboardPage.tsx.
     const todayAgs = isRangeActive && rangeFromStr && rangeToStr
       ? sdrAgs.filter(a => a.scheduled_date >= rangeFromStr && a.scheduled_date <= rangeToStr)
       : sdrAgs.filter(a => a.scheduled_date === dateStr);
@@ -320,12 +318,6 @@ export default function DashboardComercialPage() {
     const yesterdayAgs = sdrAgs.filter(a => a.scheduled_date === yesterdayStr);
     const tomorrowAgs = sdrAgs.filter(a => a.scheduled_date === tomorrowStr);
     const monthAgs = sdrAgs.filter(a => a.scheduled_date >= monthStart && a.scheduled_date <= monthEnd);
-
-    const todayAgsActive = active(todayAgs);
-    const todayCreatedActive = active(todayCreated);
-    const yesterdayAgsActive = active(yesterdayAgs);
-    const tomorrowAgsActive = active(tomorrowAgs);
-    const monthAgsActive = active(monthAgs);
 
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
@@ -346,22 +338,22 @@ export default function DashboardComercialPage() {
     const canceladoCount = sc(todayAgs, "cancelada");
     const reagendadoCount = sc(todayAgs, "reagendada");
     const compareceuCount = sc(todayAgs, "realizada");
-    // totalDia agora considera só agendas ativas (exclui canceladas) — alinhado ao Dashboard.
-    const totalDia = todayAgsActive.length;
-    // Taxa de Comparecimento = realizadas / total de agendamentos ativos do período
+    // totalDia inclui canceladas — alinhado ao Dashboard.
+    const totalDia = todayAgs.length;
+    // Taxa de Comparecimento = realizadas / total de agendamentos do período (inclui canceladas)
     const taxaComp = totalDia > 0
       ? (compareceuCount / totalDia) * 100
       : 0;
 
-    const prevMonthSdrActive = prevMonthAgs.filter(a => isSdrAg(a) && a.status !== 'cancelada');
+    const prevMonthSdr = prevMonthAgs.filter(isSdrAg);
 
     return {
-      todayScheduled: todayAgsActive.length,
-      todayCreated: todayCreatedActive.length,
-      yesterdayScheduled: yesterdayAgsActive.length,
-      tomorrowScheduled: tomorrowAgsActive.length,
-      monthTotal: monthAgsActive.length,
-      monthDiff: monthAgsActive.length - prevMonthSdrActive.length,
+      todayScheduled: todayAgs.length,
+      todayCreated: todayCreated.length,
+      yesterdayScheduled: yesterdayAgs.length,
+      tomorrowScheduled: tomorrowAgs.length,
+      monthTotal: monthAgs.length,
+      monthDiff: monthAgs.length - prevMonthSdr.length,
       confirmado: sc(todayAgs, "confirmada"),
       agendado: sc(todayAgs, "agendada"),
       compareceu: sc(todayAgs, "realizada"),
@@ -370,14 +362,14 @@ export default function DashboardComercialPage() {
       reagendado: reagendadoCount,
       taxaComp,
       totalDia,
-      channelsToday: byChannel(todayAgsActive),
-      channelsCreatedToday: byChannel(todayCreatedActive),
+      channelsToday: byChannel(todayAgs),
+      channelsCreatedToday: byChannel(todayCreated),
       // IDs para drill-down
-      todayScheduledIds: todayAgsActive.map(a => a.id),
-      todayCreatedIds: todayCreatedActive.map(a => a.id),
-      yesterdayScheduledIds: yesterdayAgsActive.map(a => a.id),
-      tomorrowScheduledIds: tomorrowAgsActive.map(a => a.id),
-      monthTotalIds: monthAgsActive.map(a => a.id),
+      todayScheduledIds: todayAgs.map(a => a.id),
+      todayCreatedIds: todayCreated.map(a => a.id),
+      yesterdayScheduledIds: yesterdayAgs.map(a => a.id),
+      tomorrowScheduledIds: tomorrowAgs.map(a => a.id),
+      monthTotalIds: monthAgs.map(a => a.id),
       confirmadoIds: todayAgs.filter(a => a.status === "confirmada").map(a => a.id),
       agendadoIds: todayAgs.filter(a => a.status === "agendada").map(a => a.id),
       compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
@@ -386,6 +378,7 @@ export default function DashboardComercialPage() {
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
     };
   }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr]);
+
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
 
