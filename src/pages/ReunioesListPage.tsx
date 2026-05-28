@@ -499,7 +499,24 @@ export default function ReunioesListPage() {
               </PopoverContent>
             </Popover>
           </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setExcludeWithSale((v) => !v); setCurrentPage(1); }}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                excludeWithSale
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", excludeWithSale ? "bg-primary" : "bg-muted-foreground/40")} />
+              Excluir reuniões com venda fechada
+            </button>
+          </div>
         </div>
+
 
         {/* Table */}
         <div className="glass-card-intense rounded-xl border border-[hsl(0_0%_100%/0.06)] .light:border-border overflow-hidden">
