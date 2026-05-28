@@ -733,13 +733,13 @@ export function CalendarContent() {
         {!loadingAgendamentos && (() => {
           // Visão de Closer (individual): mostra apenas seus próprios números, sem "Total Closers"
           const isCloserView = role === "closer";
-          const sourceTotal = isCloserView ? closerOwnTotal : totalSdrCount;
+          const sourceTotal = isCloserView ? closerOwnTotal : totalSdrCount + closerCreatedCount;
           const sourceCounts = isCloserView ? closerOwnStatusCounts : statusCounts;
-          const totalLabel = isCloserView ? "Total Closer" : "Total SDRs";
+          const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
           const cards = [
             { key: "total", label: totalLabel, icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
-            { key: "agendada", label: "Total do dia", icon: Clock, color: "text-blue-300", bg: "bg-blue-500/10" },
+            { key: "agendada", label: "A realizar no dia", icon: Clock, color: "text-blue-300", bg: "bg-blue-500/10" },
             { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
             { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
             { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
