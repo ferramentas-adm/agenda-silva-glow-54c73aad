@@ -314,9 +314,10 @@ export default function AgendarPage() {
         duration_minutes: durationMinutes,
         observation: finalObservation,
         briefing: briefingText.trim() || null,
-        // Novo agendamento entra como 'agendada' (trigger envia "Agendado" ao DataCrazy).
-        // Reagendamento (mudou de dia) entra como 'reagendada' (trigger envia "Reagendada").
-        status: editId ? "reagendada" : "agendada",
+        // Todo novo registro entra como 'agendada' — inclusive reagendamentos,
+        // que precisam passar pelo fluxo de confirmação novamente.
+        // (O trigger envia "Reagendada" ao DataCrazy quando original_agendamento_id está setado.)
+        status: "agendada",
         meet_link: meetLink,
         google_event_id: googleResult.success ? (googleResult.event_id ?? null) : null,
         created_by: user.id,
