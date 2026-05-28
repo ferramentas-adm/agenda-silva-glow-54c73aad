@@ -1646,7 +1646,7 @@ function DayView({
                                 B
                               </span>
                               {(() => {
-                                const isCloserBooked = ag.created_by ? userRolesMap.get(ag.created_by) === "closer" : false;
+                                const isCloserBooked = (ag.created_by ? userRolesMap.get(ag.created_by) === "closer" : false) || ag.meeting_reason === "segunda_reuniao";
                                 if (!ag.is_5k && !isCloserBooked) return null;
                                 return (
                                   <div className="absolute top-0 left-0 flex gap-0.5">
