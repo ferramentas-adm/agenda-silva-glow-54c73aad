@@ -663,7 +663,7 @@ export default function AgendarPage() {
                 <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
               ) : null}
 
-              {(role === "sdr" || role === "moderador" || role === "gestor") && (
+              {(role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting) && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
                     Tipo de Canal <span className="text-destructive">*</span>
