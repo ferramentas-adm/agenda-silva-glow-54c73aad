@@ -751,7 +751,7 @@ export function CalendarContent() {
 
           const cards = [
             { key: "total_agend", label: "Total agend. dia", icon: CalendarDays, color: "text-sky-300", bg: "bg-sky-500/10" },
-            { key: "total", label: totalLabel, icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
+            
             { key: "ainda_real", label: "Ainda a real. dia", icon: Hourglass, color: "text-amber-300", bg: "bg-amber-500/10" },
             { key: "agendada", label: "Sem confirmar", icon: Clock, color: "text-blue-300", bg: "bg-blue-500/10" },
             { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
@@ -771,7 +771,7 @@ export function CalendarContent() {
           return (
             <div className={cn(
               "grid grid-cols-2 sm:grid-cols-4 gap-3",
-              isCloserView ? "xl:grid-cols-10" : "xl:grid-cols-12"
+              isCloserView ? "xl:grid-cols-9" : "xl:grid-cols-11"
             )}>
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
