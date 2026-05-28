@@ -1587,6 +1587,7 @@ function DayView({
     el.scrollBy({ left: dir * width, behavior: "smooth" });
   };
 
+  return (
     <div className="relative">
       {canScrollLeft && (
         <button
