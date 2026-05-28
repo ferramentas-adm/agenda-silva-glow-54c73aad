@@ -41,7 +41,7 @@ import { useCan } from "@/hooks/usePermissions";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { AlertTriangle } from "lucide-react";
-import { brTodayYMD, brPartsOf } from "@/lib/timezone";
+
 
 interface Agendamento {
   id: string;
@@ -162,12 +162,6 @@ export function CalendarContent() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
-  // Tick a cada 60s para o card "Ainda a real. dia" reagir à passagem da hora
-  const [nowTick, setNowTick] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowTick(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
@@ -752,23 +746,8 @@ export function CalendarContent() {
           // Total agend. dia = todas as agendas do dia (todos os status)
           const totalAgend = sourceAgendamentos.length;
 
-          // Ainda a real. dia: agendada + confirmada com filtro de horário
-          const todayYMD = brTodayYMD();
-          const dateYMD = format(currentDate, "yyyy-MM-dd");
-          let aindaReal = 0;
-          if (dateYMD > todayYMD) {
-            aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
-          } else if (dateYMD === todayYMD) {
-            void nowTick; // dep para recalcular a cada minuto
-            const { hour: nowHour } = brPartsOf(new Date());
-            const threshold = nowHour + 1; // próxima hora cheia
-            aindaReal = sourceAgendamentos.filter((a) => {
-              if (a.status !== "agendada" && a.status !== "confirmada") return false;
-              const h = parseInt((a.scheduled_time ?? "00:00").split(":")[0], 10);
-              return Number.isFinite(h) && h >= threshold;
-            }).length;
-          }
-          // dateYMD < todayYMD → 0
+          // Ainda a real. dia: agendada + confirmada (sem filtro de horário)
+          const aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
 
           const cards = [
             { key: "total_agend", label: "Total agend. dia", icon: CalendarDays, color: "text-sky-300", bg: "bg-sky-500/10" },
