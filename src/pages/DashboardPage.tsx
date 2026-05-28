@@ -1557,12 +1557,63 @@ function DayView({
     );
   }
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      setCanScrollLeft(el.scrollLeft > 2);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [closers.length]);
+
+  const scrollByCol = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const grid = el.firstElementChild as HTMLElement | null;
+    const firstCloserCol = grid?.children?.[1] as HTMLElement | undefined;
+    const width = firstCloserCol?.getBoundingClientRect().width ?? 180;
+    el.scrollBy({ left: dir * width, behavior: "smooth" });
+  };
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-primary/10 bg-card">
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: `70px repeat(${closers.length}, minmax(180px, 1fr))` }}
-      >
+    <div className="relative">
+      {canScrollLeft && (
+        <button
+          type="button"
+          onClick={() => scrollByCol(-1)}
+          aria-label="Coluna anterior"
+          className="absolute left-1 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-background/90 border border-primary/20 shadow-md flex items-center justify-center hover:bg-primary/10 transition-colors"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      )}
+      {canScrollRight && (
+        <button
+          type="button"
+          onClick={() => scrollByCol(1)}
+          aria-label="Próxima coluna"
+          className="absolute right-1 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-background/90 border border-primary/20 shadow-md flex items-center justify-center hover:bg-primary/10 transition-colors"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      )}
+      <div ref={scrollRef} className="overflow-x-auto rounded-xl border border-primary/10 bg-card">
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `60px repeat(${closers.length}, minmax(140px, 1fr))` }}
+        >
         {/* Header */}
         <div className="border-b border-primary/10 p-2" />
         {closers.map((c) => {
