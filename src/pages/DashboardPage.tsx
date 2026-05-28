@@ -733,7 +733,9 @@ export function CalendarContent() {
         {!loadingAgendamentos && (() => {
           // Visão de Closer (individual): mostra apenas seus próprios números, sem "Total Closers"
           const isCloserView = role === "closer";
-          const sourceTotal = isCloserView ? closerOwnTotal : totalSdrCount + closerCreatedCount;
+          const sourceTotal = isCloserView
+            ? closerOwnTotal
+            : (statusCounts["realizada"] ?? 0) + closerRealizadaCount;
           const sourceCounts = isCloserView ? closerOwnStatusCounts : statusCounts;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
