@@ -263,7 +263,7 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale;
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -275,6 +275,7 @@ export default function ReunioesListPage() {
     setFilterCreatedDateFrom(undefined);
     setFilterCreatedDateTo(undefined);
     setSearchText("");
+    setExcludeWithSale(false);
     setCurrentPage(1);
   };
 
