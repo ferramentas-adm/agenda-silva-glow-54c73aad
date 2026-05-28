@@ -787,31 +787,25 @@ export function CalendarContent() {
                   count = sourceCounts[key] ?? 0;
                 }
                 return (
-                  <div key={key} className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3", bg)}>
-                    <Icon className={cn("h-5 w-5 shrink-0", color)} />
-                    <div>
-                      <p className="text-lg font-bold leading-none">{count}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
-                    </div>
+                  <div key={key} className={cn("rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0", bg)}>
+                    <Icon className={cn("h-4 w-4 shrink-0", color)} />
+                    <p className="text-lg font-bold leading-none">{count}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
                   </div>
                 );
               })}
               {/* Total Closers + Closer Realizada — apenas para Admin / Moderador / SDR */}
               {!isCloserView && (
                 <>
-                  <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-purple-500/10")}>
-                    <Users className={cn("h-5 w-5 shrink-0 text-purple-400")} />
-                    <div>
-                      <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Total Closers</p>
-                    </div>
+                  <div className={cn("rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0 bg-purple-500/10")}>
+                    <Users className={cn("h-4 w-4 shrink-0 text-purple-400")} />
+                    <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Total Closers</p>
                   </div>
-                  <div className={cn("rounded-xl border border-primary/10 p-3 flex items-center gap-3 bg-emerald-500/10")}>
-                    <CheckCircle2 className={cn("h-5 w-5 shrink-0 text-emerald-400")} />
-                    <div>
-                      <p className="text-lg font-bold leading-none">{closerRealizadaCount}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Closer Realizada</p>
-                    </div>
+                  <div className={cn("rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0 bg-emerald-500/10")}>
+                    <CheckCircle2 className={cn("h-4 w-4 shrink-0 text-emerald-400")} />
+                    <p className="text-lg font-bold leading-none">{closerRealizadaCount}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Closer Realizada</p>
                   </div>
                 </>
               )}
