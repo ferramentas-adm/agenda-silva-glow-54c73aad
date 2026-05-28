@@ -150,6 +150,15 @@ export default function ReunioesListPage() {
     },
   });
 
+  // Set de agendamento_ids com venda fechada (vendeu = true)
+  const { data: vendaAgendamentoIds = new Set<string>() } = useQuery({
+    queryKey: ["vendas-agendamento-ids"],
+    queryFn: async () => {
+      const { data } = await supabase.from("vendas").select("agendamento_id").eq("vendeu", true);
+      return new Set<string>((data || []).map((v: any) => v.agendamento_id).filter(Boolean));
+    },
+  });
+
   const closerMap = useMemo(() => {
     const m: Record<string, string> = {};
     closers.forEach((c) => (m[c.id] = c.name));
