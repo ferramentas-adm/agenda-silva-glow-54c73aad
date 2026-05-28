@@ -209,6 +209,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Vendas do período selecionado (dia único OU intervalo)
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
+      const ag = agMap.get(v.agendamento_id);
+      // Só considera vendas de reuniões efetivamente realizadas — alinha
+      // com o card "Realizadas" do calendário.
+      if (ag?.status !== "realizada") return false;
       const cd = closingDateOf(v);
       if (!cd) return false;
       if (isRange && rangeFromStr && rangeToStr) {
