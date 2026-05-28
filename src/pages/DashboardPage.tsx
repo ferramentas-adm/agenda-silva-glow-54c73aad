@@ -1594,7 +1594,7 @@ function DayView({
           type="button"
           onClick={() => scrollByCol(-1)}
           aria-label="Coluna anterior"
-          className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-background border-2 border-white text-white shadow-lg flex items-center justify-center hover:bg-primary/10 transition-colors"
+          className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-black/80 border-2 border-white text-white shadow-xl flex items-center justify-center hover:bg-primary/10 transition-colors"
         >
           <ChevronLeft className="h-6 w-6" strokeWidth={2.5} />
         </button>
@@ -1604,7 +1604,7 @@ function DayView({
           type="button"
           onClick={() => scrollByCol(1)}
           aria-label="Próxima coluna"
-          className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-background border-2 border-white text-white shadow-lg flex items-center justify-center hover:bg-primary/10 transition-colors"
+          className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-black/80 border-2 border-white text-white shadow-xl flex items-center justify-center hover:bg-primary/10 transition-colors"
         >
           <ChevronRight className="h-6 w-6" strokeWidth={2.5} />
         </button>
