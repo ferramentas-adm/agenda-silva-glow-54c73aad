@@ -366,7 +366,10 @@ export function CalendarContent() {
 
   // Total SDRs (Admin/Mod/SDR view)
   const totalSdrCount = useMemo(
-    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSdrAgenda(a)).length,
+    () =>
+      filtered.filter(
+        (a) => (a.status === "agendada" || a.status === "confirmada") && isSdrAgenda(a)
+      ).length,
     [filtered, userRolesMap]
   );
 
