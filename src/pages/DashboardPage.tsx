@@ -732,7 +732,9 @@ export function CalendarContent() {
           const sourceCounts = isCloserView ? closerOwnStatusCounts : statusCounts;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
-          const totalAgend = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
+          const totalAgend = isCloserView
+            ? (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0)
+            : totalSdrCount + closerCreatedCount;
 
           const cards = [
             { key: "total_agend", label: "Total agend. dia", icon: Clock, color: "text-sky-300", bg: "bg-sky-500/10" },
