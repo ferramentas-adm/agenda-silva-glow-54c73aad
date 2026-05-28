@@ -733,6 +733,7 @@ export function CalendarContent() {
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
           const cards = [
+            { key: "total_agend", label: "Total agend. dia", icon: Clock, color: "text-sky-300", bg: "bg-sky-500/10" },
             { key: "total", label: totalLabel, icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
             { key: "agendada", label: "Sem confirmar", icon: Clock, color: "text-blue-300", bg: "bg-blue-500/10" },
             { key: "confirmada", label: "Confirmadas", icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
@@ -752,11 +753,14 @@ export function CalendarContent() {
           return (
             <div className={cn(
               "grid grid-cols-2 sm:grid-cols-4 gap-3",
-              isCloserView ? "xl:grid-cols-8" : "xl:grid-cols-10"
+              isCloserView ? "xl:grid-cols-9" : "xl:grid-cols-11"
             )}>
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
                 if (key === "total") count = sourceTotal;
+                else if (key === "total_agend") {
+                  count = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
+                }
                 else if (key === "nao_comparecimento") {
                   count =
                     (sourceCounts["cancelada"] ?? 0) +
