@@ -51,6 +51,7 @@ interface AgendamentoRow {
   closer_id: string | null;
   scheduled_date: string;
   lead_name: string;
+  status: string;
 }
 
 interface CloserRow {
