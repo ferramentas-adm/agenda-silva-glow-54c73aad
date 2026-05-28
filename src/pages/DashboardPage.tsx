@@ -367,7 +367,7 @@ export function CalendarContent() {
 
   // Total SDRs (Admin/Mod/SDR view)
   const totalSdrCount = useMemo(
-    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSdrAgenda(a)).length,
+    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && a.status !== "cancelada" && isSdrAgenda(a)).length,
     [filtered, userRolesMap]
   );
 
@@ -743,8 +743,10 @@ export function CalendarContent() {
           const sourceTotalReal = sourceCounts["realizada"] ?? 0;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
-          // Total agend. dia = todas as agendas do dia exceto canceladas
-          const totalAgend = sourceAgendamentos.filter(a => a.status !== "cancelada").length;
+          // Total agend. dia = agendas SDR ativas + agendas Closers ativas
+          const totalAgend = isCloserView
+            ? sourceAgendamentos.filter(a => a.status !== "cancelada").length
+            : totalSdrCount + closerCreatedCount;
 
           // Ainda a real. dia: agendada + confirmada (sem filtro de horário)
           const aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
