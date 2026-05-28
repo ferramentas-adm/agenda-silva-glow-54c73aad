@@ -161,6 +161,12 @@ export function CalendarContent() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  // Tick a cada 60s para o card "Ainda a real. dia" reagir à passagem da hora
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
