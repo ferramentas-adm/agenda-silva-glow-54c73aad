@@ -83,6 +83,7 @@ export default function ReunioesListPage() {
   const [filterCreatedDateTo, setFilterCreatedDateTo] = useState<Date | undefined>();
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
+  const [excludeWithSale, setExcludeWithSale] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
@@ -146,6 +147,15 @@ export default function ReunioesListPage() {
         .order("scheduled_date", { ascending: false })
         .order("scheduled_time", { ascending: false });
       return data || [];
+    },
+  });
+
+  // Set de agendamento_ids com venda fechada (vendeu = true)
+  const { data: vendaAgendamentoIds = new Set<string>() } = useQuery({
+    queryKey: ["vendas-agendamento-ids"],
+    queryFn: async () => {
+      const { data } = await supabase.from("vendas").select("agendamento_id").eq("vendeu", true);
+      return new Set<string>((data || []).map((v: any) => v.agendamento_id).filter(Boolean));
     },
   });
 
@@ -214,9 +224,10 @@ export default function ReunioesListPage() {
         const s = searchText.toLowerCase();
         if (!ag.lead_name.toLowerCase().includes(s) && !ag.lead_phone.includes(s)) return false;
       }
+      if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, vendaAgendamentoIds]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -252,7 +263,7 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale;
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -264,6 +275,7 @@ export default function ReunioesListPage() {
     setFilterCreatedDateFrom(undefined);
     setFilterCreatedDateTo(undefined);
     setSearchText("");
+    setExcludeWithSale(false);
     setCurrentPage(1);
   };
 
@@ -487,7 +499,24 @@ export default function ReunioesListPage() {
               </PopoverContent>
             </Popover>
           </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setExcludeWithSale((v) => !v); setCurrentPage(1); }}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                excludeWithSale
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", excludeWithSale ? "bg-primary" : "bg-muted-foreground/40")} />
+              Excluir reuniões com venda fechada
+            </button>
+          </div>
         </div>
+
 
         {/* Table */}
         <div className="glass-card-intense rounded-xl border border-[hsl(0_0%_100%/0.06)] .light:border-border overflow-hidden">
