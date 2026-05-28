@@ -377,30 +377,27 @@ export function CalendarContent() {
     [filtered, userRolesMap]
   );
 
-  // Total Closers: reuniões do dia criadas por qualquer NÃO-SDR
-  // (Closer, Gestor ou Moderador). Garante que o total bate com a soma
-  // SDR + "Closer", sem deixar reuniões criadas por gestor/moderador
-  // fora da contagem.
+  // Total Closers: apenas reuniões do dia criadas por usuários com role "closer"
+  // (= 2ª reunião). Reuniões criadas por gestor/moderador NÃO entram aqui.
   const closerCreatedCount = useMemo(
     () => filtered.filter((a) => {
       if (!TOTAL_STATUSES.includes(a.status)) return false;
       if (!a.created_by) return false;
-      const r = userRolesMap.get(a.created_by);
-      return r === "closer" || r === "gestor" || r === "moderador";
+      return userRolesMap.get(a.created_by) === "closer";
     }).length,
     [filtered, userRolesMap]
   );
 
-  // Closer Realizada: reuniões realizadas criadas por qualquer NÃO-SDR.
+  // Closer Realizada: reuniões realizadas criadas por closer.
   const closerRealizadaCount = useMemo(
     () => filtered.filter((a) => {
       if (a.status !== "realizada") return false;
       if (!a.created_by) return false;
-      const r = userRolesMap.get(a.created_by);
-      return r === "closer" || r === "gestor" || r === "moderador";
+      return userRolesMap.get(a.created_by) === "closer";
     }).length,
     [filtered, userRolesMap]
   );
+
 
   const closerMap = useMemo(() => {
     const m = new Map<string, string>();
