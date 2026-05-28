@@ -106,16 +106,28 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const { data: vendas = [] } = useQuery<VendaRow[]>({
     queryKey: ["vendas-tab"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vendas")
-        .select(`
-          id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
-          motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
-          agendamentos!inner(id, closer_id, scheduled_date, lead_name)
-        `)
-        .is("agendamentos.deleted_at", null)
-        .range(0, 9999);
-      return (data ?? []) as unknown as VendaRow[];
+      // Pagina manualmente para contornar o limite default de 1000 linhas do PostgREST.
+      const PAGE = 1000;
+      const all: VendaRow[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("vendas")
+          .select(`
+            id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
+            motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
+            agendamentos!inner(id, closer_id, scheduled_date, lead_name)
+          `)
+          .is("agendamentos.deleted_at", null)
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as VendaRow[];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     },
     refetchInterval: 60_000,
   });
@@ -125,21 +137,31 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
     queryKey: ["vendas-tab-followup-closes"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("audit_logs")
-        .select("entity_id, details, created_at")
-        .eq("entity_type", "venda")
-        .eq("action", "follow_up_atualizado")
-        .range(0, 9999);
+      // Pagina para evitar o limite default de 1000 linhas.
+      const PAGE = 1000;
+      const rows: { entity_id: string | null; details: any; created_at: string }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("audit_logs")
+          .select("entity_id, details, created_at")
+          .eq("entity_type", "venda")
+          .eq("action", "follow_up_atualizado")
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as typeof rows;
+        rows.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
       const m = new Map<string, string>();
-      ((data ?? []) as { entity_id: string | null; details: any; created_at: string }[])
-        .forEach((r) => {
-          if (!r.entity_id) return;
-          if ((r.details?.outcome ?? "") !== "fechou") return;
-          // Mantém o mais recente, caso haja múltiplos
-          const cur = m.get(r.entity_id);
-          if (!cur || cur < r.created_at) m.set(r.entity_id, brDateOf(r.created_at));
-        });
+      rows.forEach((r) => {
+        if (!r.entity_id) return;
+        if ((r.details?.outcome ?? "") !== "fechou") return;
+        const cur = m.get(r.entity_id);
+        if (!cur || cur < r.created_at) m.set(r.entity_id, brDateOf(r.created_at));
+      });
       return m;
     },
     refetchInterval: 60_000,
