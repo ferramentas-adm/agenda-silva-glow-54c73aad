@@ -1443,6 +1443,7 @@ function DayView({
   busyBlocks,
   closerBlocks,
   closerIndexMap,
+  userRolesMap,
   onDelete,
   onClickAg,
   onClickEmptySlot,
@@ -1453,10 +1454,12 @@ function DayView({
   busyBlocks: GoogleBusyBlock[];
   closerBlocks: CloserBlock[];
   closerIndexMap: Map<string, number>;
+  userRolesMap: Map<string, string>;
   onDelete: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
   onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
+
   const BLOCK_TYPE_LABELS: Record<string, string> = {
     almoco: "Almoço",
     pessoal: "Pessoal",
