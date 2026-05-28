@@ -1817,6 +1817,7 @@ function DayView({
             </Fragment>
           );
         })}
+        </div>
       </div>
     </div>
   );
