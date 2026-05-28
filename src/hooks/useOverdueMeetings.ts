@@ -82,9 +82,9 @@ export function useOverdueMeetings() {
     queryFn: async () => {
       let q = supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at, original_agendamento_id")
         .is("deleted_at", null)
-        .in("status", ["agendada", "confirmada"])
+        .in("status", ["agendada", "confirmada", "reagendada"])
         .lte("scheduled_date", today)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
@@ -97,7 +97,11 @@ export function useOverdueMeetings() {
 
       const { data, error } = await q;
       if (error) throw error;
-      const list = (data ?? []) as Omit<OverdueMeeting, "closer_name" | "creator_name">[];
+      const raw = (data ?? []) as (Omit<OverdueMeeting, "closer_name" | "creator_name"> & { original_agendamento_id: string | null })[];
+      // 'reagendada' só pendura como pendente quando é o registro NOVO (tem original_agendamento_id),
+      // pois nesse caso é exibido como "Confirmada" na UI. As reagendadas antigas (sem original)
+      // representam a reunião que foi movida e não devem bloquear.
+      const list = raw.filter((m) => m.status !== "reagendada" || !!m.original_agendamento_id);
 
       // Filtra só as vencidas (>= horário + 1h05)
       const nowMin = nowEpochMin();
