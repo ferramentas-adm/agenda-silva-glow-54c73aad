@@ -744,18 +744,34 @@ export function CalendarContent() {
         {!loadingAgendamentos && (() => {
           // Visão de Closer (individual): mostra apenas seus próprios números, sem "Total Closers"
           const isCloserView = role === "closer";
-          const sourceTotal = isCloserView
-            ? closerOwnTotal
-            : (statusCounts["realizada"] ?? 0) + closerRealizadaCount;
-          const sourceCounts = isCloserView ? closerOwnStatusCounts : statusCounts;
+          const sourceCounts = isCloserView ? closerOwnStatusCounts : allStatusCounts;
+          const sourceAgendamentos = isCloserView ? closerOwnAgendamentos : filtered;
+          const sourceTotalReal = sourceCounts["realizada"] ?? 0;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
-          const totalAgend = isCloserView
-            ? (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0)
-            : totalSdrCount + closerCreatedCount;
+          // Total agend. dia = todas as agendas do dia (todos os status)
+          const totalAgend = sourceAgendamentos.length;
+
+          // Ainda a real. dia: agendada + confirmada com filtro de horário
+          const todayYMD = brTodayYMD();
+          const dateYMD = format(currentDate, "yyyy-MM-dd");
+          let aindaReal = 0;
+          if (dateYMD > todayYMD) {
+            aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
+          } else if (dateYMD === todayYMD) {
+            void nowTick; // dep para recalcular a cada minuto
+            const { hour: nowHour } = brPartsOf(new Date());
+            const threshold = nowHour + 1; // próxima hora cheia
+            aindaReal = sourceAgendamentos.filter((a) => {
+              if (a.status !== "agendada" && a.status !== "confirmada") return false;
+              const h = parseInt((a.scheduled_time ?? "00:00").split(":")[0], 10);
+              return Number.isFinite(h) && h >= threshold;
+            }).length;
+          }
+          // dateYMD < todayYMD → 0
 
           const cards = [
-            { key: "total_agend", label: "Total agend. dia", icon: Clock, color: "text-sky-300", bg: "bg-sky-500/10" },
+            { key: "total_agend", label: "Total agend. dia", icon: CalendarDays, color: "text-sky-300", bg: "bg-sky-500/10" },
             { key: "total", label: totalLabel, icon: AlertCircle, color: "text-foreground", bg: "bg-secondary" },
             { key: "ainda_real", label: "Ainda a real. dia", icon: Hourglass, color: "text-amber-300", bg: "bg-amber-500/10" },
             { key: "agendada", label: "Sem confirmar", icon: Clock, color: "text-blue-300", bg: "bg-blue-500/10" },
@@ -780,13 +796,9 @@ export function CalendarContent() {
             )}>
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
-                if (key === "total") count = sourceTotal;
-                else if (key === "total_agend") {
-                  count = totalAgend;
-                }
-                else if (key === "ainda_real") {
-                  count = totalAgend - sourceTotal;
-                }
+                if (key === "total") count = sourceTotalReal;
+                else if (key === "total_agend") count = totalAgend;
+                else if (key === "ainda_real") count = aindaReal;
                 else if (key === "nao_comparecimento") {
                   count =
                     (sourceCounts["cancelada"] ?? 0) +
