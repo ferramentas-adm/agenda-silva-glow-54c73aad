@@ -110,14 +110,21 @@ export default function AgendarPage() {
     },
   });
 
-  // Fetch all active users for admin selector (any role)
+  // Fetch SDR users for admin selector (apenas perfis com role 'sdr')
   const { data: sdrUsers = [] } = useQuery({
-    queryKey: ["all-users-for-admin-scheduling"],
+    queryKey: ["sdr-users-for-admin-scheduling"],
     enabled: isAdmin,
     queryFn: async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "sdr");
+      const ids = (roles ?? []).map((r: any) => r.user_id);
+      if (ids.length === 0) return [];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
+        .in("user_id", ids)
         .eq("active", true)
         .order("full_name", { ascending: true });
       return profiles ?? [];
