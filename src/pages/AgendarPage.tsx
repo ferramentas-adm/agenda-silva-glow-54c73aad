@@ -86,6 +86,7 @@ export default function AgendarPage() {
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
+  const [adminAsSecondMeeting, setAdminAsSecondMeeting] = useState(false);
 
   const isAdmin = role === "gestor" || role === "moderador";
 
@@ -109,14 +110,21 @@ export default function AgendarPage() {
     },
   });
 
-  // Fetch all active users for admin selector (any role)
+  // Fetch SDR users for admin selector (apenas perfis com role 'sdr')
   const { data: sdrUsers = [] } = useQuery({
-    queryKey: ["all-users-for-admin-scheduling"],
+    queryKey: ["sdr-users-for-admin-scheduling"],
     enabled: isAdmin,
     queryFn: async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "sdr");
+      const ids = (roles ?? []).map((r: any) => r.user_id);
+      if (ids.length === 0) return [];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
+        .in("user_id", ids)
         .eq("active", true)
         .order("full_name", { ascending: true });
       return profiles ?? [];
@@ -237,16 +245,21 @@ export default function AgendarPage() {
   // mas isso é salvo no campo `observation` (não em meeting_reason).
   const needsReason = false;
   const isReasonRequired = false;
-  const resolvedReason = isCloser ? "segunda_reuniao" : null;
+  const resolvedReason = (isCloser || (isAdmin && adminAsSecondMeeting)) ? "segunda_reuniao" : null;
 
   // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
-  const channelTypeRequired = role === "sdr" || role === "moderador" || role === "gestor";
+  // Quando admin marca como 2ª reunião, o canal é fixado em "Segunda Reunião".
+  const channelTypeRequired = (role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
     if (!lead || !closerId || !date || !time || !user) return;
     // Closer continua precisando justificar (vai para `observation`).
     if (isCloser && !meetingReasonCustom.trim()) {
       toast.error("Informe a justificativa do agendamento.");
+      return;
+    }
+    if (isAdmin && !adminAsSecondMeeting && !selectedSdrId) {
+      toast.error("Selecione o SDR responsável ou marque como 2ª reunião.");
       return;
     }
     if (channelTypeRequired && !channelType) {
@@ -307,11 +320,11 @@ export default function AgendarPage() {
         meet_link: meetLink,
         google_event_id: googleResult.success ? (googleResult.event_id ?? null) : null,
         created_by: user.id,
-        sdr_responsavel_id: isAdmin && selectedSdrId ? selectedSdrId : null,
+        sdr_responsavel_id: isAdmin && !adminAsSecondMeeting && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
-        // Closer: canal sempre fixado como "Segunda Reunião"
-        channel_type: isCloser ? "Segunda Reunião" : (channelType || null),
+        // Closer (ou admin marcando 2ª): canal fixado como "Segunda Reunião"
+        channel_type: (isCloser || (isAdmin && adminAsSecondMeeting)) ? "Segunda Reunião" : (channelType || null),
         is_5k: is5k,
       } as any).select("id").single();
 
@@ -565,30 +578,64 @@ export default function AgendarPage() {
               </div>
 
               {isAdmin && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Responsável pelo agendamento</label>
-                  <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o responsável (opcional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sdrUsers.length === 0 ? (
-                        <SelectItem value="__none" disabled>
-                          Nenhum usuário cadastrado
-                        </SelectItem>
-                      ) : (
-                        sdrUsers.map((s) => (
-                          <SelectItem key={s.user_id} value={s.user_id}>
-                            {s.full_name}
-                          </SelectItem>
-                        ))
+                <>
+                  <div className="flex items-center justify-between rounded-md border border-border bg-secondary/30 px-4 py-3">
+                    <div className="space-y-0.5">
+                      <label htmlFor="admin-2a-toggle" className="text-sm font-medium cursor-pointer">
+                        É 2ª reunião (marcada por Closer)
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Ative se esta reunião está sendo marcada em nome de um Closer. Caso contrário, escolha o SDR responsável abaixo.
+                      </p>
+                    </div>
+                    <Switch
+                      id="admin-2a-toggle"
+                      checked={adminAsSecondMeeting}
+                      onCheckedChange={(v) => {
+                        setAdminAsSecondMeeting(v);
+                        if (v) {
+                          setSelectedSdrId(null);
+                          setChannelType("Segunda Reunião");
+                        } else if (channelType === "Segunda Reunião") {
+                          setChannelType("");
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {!adminAsSecondMeeting && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">
+                        SDR responsável <span className="text-destructive">*</span>
+                      </label>
+                      <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o SDR" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sdrUsers.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              Nenhum SDR cadastrado
+                            </SelectItem>
+                          ) : (
+                            sdrUsers.map((s) => (
+                              <SelectItem key={s.user_id} value={s.user_id}>
+                                {s.full_name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {!selectedSdrId && (
+                        <p className="text-xs text-destructive">Selecione um SDR ou marque como 2ª reunião.</p>
                       )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Caso não selecione, você (administrador) será registrado como responsável.
-                  </p>
-                </div>
+                    </div>
+                  )}
+
+                  {adminAsSecondMeeting && (
+                    <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
+                  )}
+                </>
               )}
 
               {/* Closer: campo "Justificar Reagendamento" aparece em qualquer agendamento (novo ou reagendamento) */}
@@ -616,7 +663,7 @@ export default function AgendarPage() {
                 <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
               ) : null}
 
-              {(role === "sdr" || role === "moderador" || role === "gestor") && (
+              {(role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting) && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
                     Tipo de Canal <span className="text-destructive">*</span>
