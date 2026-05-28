@@ -67,16 +67,11 @@ interface Agendamento {
   is_5k: boolean | null;
 }
 
-// ─── Status efetivo (apenas visual / contagem) ───────────────────
-// Quando um agendamento é reagendado, o NOVO registro (criado na nova data)
-// fica com status='reagendada' E carrega original_agendamento_id apontando
-// para o antigo. Para fins visuais e de contagem queremos tratar esse novo
-// como "Confirmada" — sem alterar o status real no banco nem o webhook
-// enviado ao DataCrazy (que continua recebendo "Reagendada").
-// O original (que foi reagendado) tem status='reagendada' e
-// original_agendamento_id=null → permanece exibido como "Reagendada".
+// ─── Status efetivo ──────────────────────────────────────────────
+// Mantido apenas para compatibilidade nos call sites. Hoje retorna o status real:
+// reagendamentos novos entram como 'agendada' e precisam passar pelo fluxo de
+// confirmação novamente, então não existe mais o caso híbrido reagendada+original_id.
 function getEffectiveStatus(ag: { status: string; original_agendamento_id?: string | null }): string {
-  if (ag.status === "reagendada" && ag.original_agendamento_id) return "confirmada";
   return ag.status;
 }
 

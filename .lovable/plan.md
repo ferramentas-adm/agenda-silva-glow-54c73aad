@@ -1,57 +1,78 @@
 ## Diagnóstico
 
-Os dois dashboards usam definições diferentes para "agenda de SDR", então comparar números entre eles não bate:
+Hoje quando um SDR reagenda uma reunião, o sistema cria DOIS registros:
+- **Original** (na data antiga): `status='reagendada'`, `original_agendamento_id=null` → aparece como "Reagendada" no calendário.
+- **Novo** (na data nova): `status='reagendada'`, `original_agendamento_id=<id antigo>` → aparece como **"Confirmada"** no calendário (via `getEffectiveStatus`), **sem passar pelo fluxo de confirmação**.
 
-**Dashboard (calendário) — `Total agend. dia`, `Total Closers`:**
-- SDR = `created_by` é SDR **OU** `sdr_responsavel_id` preenchido — **excluindo `cancelada`**
-- Closer = `created_by` é Closer **OU** `meeting_reason='segunda_reuniao'` — **excluindo `cancelada`**
+Isso quebra duas coisas:
+1. Reuniões aparecem como "Confirmada" sem terem sido de fato confirmadas pelo lead.
+2. As métricas SDR contam essas reuniões como "Reagendado" (status real), não "Confirmado" (visual), gerando inconsistência.
+3. Quando vencem, o overlay de bloqueio só pegava se `status IN ('agendada','confirmada')` — quem ficou como reagendada+original_id escapava (fix anterior tentou cobrir, mas adiciona complexidade).
 
-**Dashboard Comercial → Métricas SDRs — `Agendas Para [data]`:**
-- SDR = somente `created_by` é SDR — **incluindo canceladas**
-- Não considera `sdr_responsavel_id`
+Confirmei no banco: **38 registros** atuais nessa situação (todos `reagendada` + `original_id`), em datas passadas — Neto, Igor, Pedro Ferro, Padilha, André, Pedro Vieira. Por isso esses Closers não estão sendo bloqueados.
 
-### Conferi no banco (27/05 = ontem):
-- SDR só por `created_by` (com canceladas) = **69** ← o que aparece no Comercial
-- SDR ativos (excl. canceladas), incluindo `sdr_responsavel` = **62** ← o que vai no Total do Dashboard
-- Closer ativos = **4**
-- `Total agend. dia` = 62 + 4 = **66** ← o que está aparecendo
+## Decisão (sua)
 
-Confirmado: não há overlap real (segunda reunião só é criada por Closer). A diferença entre 69 e 62 são 7 canceladas + alguns agendamentos sem `sdr_responsavel_id` que entram no Comercial mas não no Dashboard.
+Reagendamento NOVO entra como **`agendada`** e precisa passar pelo fluxo de confirmação de novo — não nasce "Confirmada".
 
-## Proposta
+## Plano
 
-Alinhar o **Dashboard Comercial** à mesma definição do **Dashboard (calendário)**:
+### 1. Migration: corrigir dados existentes
+Backfill: todos os 38 agendamentos `reagendada` + `original_id NOT NULL` (não deletados) viram `agendada`.
 
-1. Pool de SDR no Comercial passa a considerar `created_by SDR` **OU** `sdr_responsavel_id` preenchido (mesma regra do `isSdrAgenda` do Dashboard).
-2. Cards de contagem do dia (`Agendas Para`, `Agendas De`, `Agendas Para [amanhã]`, `Total mês`) passam a **excluir `cancelada`** — assim "Agendas Para" deixa de contar agendas que foram canceladas (o que faz mais sentido conceitualmente, e o card "Cancelado" já mostra essas separadamente).
-3. `todayCreated` (Agendas Geradas) recebe o mesmo tratamento: exclui canceladas.
-4. Métricas individuais (`Confirmado`, `Agendado`, `Compareceu`, `No-show`, `Cancelado`, `Reagendado`) **não mudam** — continuam por status.
-5. `Taxa de Comparecimento` continua usando o `totalDia` (que já refletirá o novo pool).
-
-### Resultado esperado depois da mudança
-
-| Dia | SDR (Comercial) | Closer (Dashboard) | Total agend. dia (Dashboard) |
-|-----|---|---|---|
-| 27/05 | 62 | 4 | 66 |
-| 28/05 | 40 | 1 | 41 |
-
-Os números **vão bater** entre as duas telas.
-
-⚠️ Observação: você disse "deveria dar 73". Isso só seria possível se "Total agend. dia" passasse a **incluir canceladas**. Hoje as canceladas estão fora porque o card "Canceladas" já as mostra separadamente — incluí-las no total geraria dupla contagem visual. Recomendo **manter excluindo canceladas** e alinhar o Comercial pra baixo (62 em vez de 69). Se preferir o oposto (Total = 69+4=73, incluindo canceladas em todos os lugares), me avise antes da implementação.
-
-## Arquivos
-
-- `src/pages/DashboardComercialPage.tsx` — ajustar `sdrAgs`/`createdAgs`/`todayScheduled`/`todayCreated`/`monthAgs` (linhas ~290-315) para usar nova definição de SDR e excluir canceladas dos totais.
-
-## Técnico
-
-```ts
-// src/pages/DashboardComercialPage.tsx
-const isSdrAg = (a) =>
-  (a.created_by && sdrUserIds.has(a.created_by)) || !!a.sdr_responsavel_id;
-
-const sdrAgs = agendamentos.filter(a => isSdrAg(a) && a.status !== 'cancelada');
-const sdrCreatedAgs = createdAgs.filter(
-  a => isSdrAg(a) && !a.original_agendamento_id && a.status !== 'cancelada'
-);
+```sql
+UPDATE agendamentos
+SET status = 'agendada'
+WHERE status = 'reagendada'
+  AND original_agendamento_id IS NOT NULL
+  AND deleted_at IS NULL;
 ```
+
+### 2. Trigger `detect_and_mark_reschedule()`
+Hoje seta `NEW.status='reagendada'` quando detecta reagendamento. Mudar para **apenas** setar `NEW.original_agendamento_id` (mantém status default `agendada`).
+
+### 3. Trigger `notify_status_change_webhook()`
+DataCrazy precisa continuar recebendo "Reagendada" pra esses novos registros (compatibilidade CRM). No bloco do `INSERT`, se `original_agendamento_id IS NOT NULL`, enviar `status_display = 'Reagendada'` mesmo o `status` sendo `'agendada'`.
+
+### 4. Trigger `enforce_initial_agendamento_status()`
+Hoje converte `confirmada → agendada` no INSERT. Sem mudanças.
+
+### 5. `src/pages/AgendarPage.tsx` (linha 319 e 333-343)
+- Linha 319: trocar `status: editId ? "reagendada" : "agendada"` por sempre `status: "agendada"`.
+- Manter o `UPDATE` do original para `reagendada` (linhas 335-343).
+
+### 6. Remover `getEffectiveStatus`
+Não existe mais o caso "reagendada com original_id". Limpar de:
+- `src/pages/DashboardPage.tsx` (função no topo + usos em `statusCounts`/`allStatusCounts`)
+- `src/components/dashboard/ProdutividadeSDRTab.tsx` (mesma função)
+
+`statusCounts` passa a usar `agendamento.status` direto.
+
+### 7. `src/hooks/useOverdueMeetings.ts`
+- Linha 87: voltar para `.in("status", ["agendada", "confirmada"])`.
+- Linhas 100-104: remover o filtro extra de `reagendada + original_id`.
+- Tirar `original_agendamento_id` do SELECT (não é mais necessário).
+
+### 8. Métricas SDR e cards
+Nenhuma mudança de lógica. Como os reagendamentos novos viram `agendada`, eles aparecem automaticamente em:
+- Card "Sem confirmar" / "Agendado" (Dashboard e Métricas)
+- Contagens de "Total agend. dia" (já incluem agendada)
+
+O card "Reagendado" passa a contar **apenas** o lado original do reagendamento (que é o comportamento correto — uma reunião reagendada, contada uma vez).
+
+### 9. Validação pós-deploy
+- Conferir no banco: `SELECT COUNT(*) FROM agendamentos WHERE status='reagendada' AND original_agendamento_id IS NOT NULL` deve dar **0**.
+- Neto, Igor, Pedro Ferro, André devem ser bloqueados no próximo login (38 reuniões antigas viram `agendada` e o overlay pega).
+- Métricas SDR de Maio passam a mostrar essas 38 em "Agendado" (e elas terão que ser resolvidas pelos Closers via overlay).
+
+## Arquivos afetados
+
+- **Migration nova** (schema + data): trigger `detect_and_mark_reschedule`, trigger `notify_status_change_webhook`, backfill dos 38 registros.
+- `src/pages/AgendarPage.tsx`
+- `src/pages/DashboardPage.tsx`
+- `src/components/dashboard/ProdutividadeSDRTab.tsx`
+- `src/hooks/useOverdueMeetings.ts`
+
+## Observação
+
+Após esse fix, os Closers que voltarem a abrir o sistema vão se deparar com o overlay de bloqueio listando TODAS as reuniões pendentes (Neto vai ver 3, Igor várias, etc). Eles precisarão resolver cada uma (Realizada / No-show / Cancelada) antes de continuar usando. Esse é exatamente o comportamento que você pediu.
