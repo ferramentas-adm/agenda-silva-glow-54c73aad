@@ -117,7 +117,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           .select(`
             id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
             motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
-            agendamentos!inner(id, closer_id, scheduled_date, lead_name)
+            agendamentos!inner(id, closer_id, scheduled_date, lead_name, status)
           `)
           .is("agendamentos.deleted_at", null)
           .order("created_at", { ascending: false })
