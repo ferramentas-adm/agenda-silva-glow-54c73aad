@@ -86,6 +86,7 @@ export default function AgendarPage() {
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
+  const [adminAsSecondMeeting, setAdminAsSecondMeeting] = useState(false);
 
   const isAdmin = role === "gestor" || role === "moderador";
 
