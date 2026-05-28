@@ -1,16 +1,11 @@
-## Mudança
+## Mudanças em `src/pages/DashboardPage.tsx`
 
-No `src/pages/DashboardPage.tsx`, alterar `totalSdrCount` (linha 368-371) para contar apenas `agendada` + `confirmada` (em vez de `TOTAL_STATUSES`).
+1. **Reverter `totalSdrCount`** para somar todos os status (`TOTAL_STATUSES`), como era antes.
 
-Resultado: o card "Agendas pra Hoje" (SDR) vai bater com o "Total agend. dia".
+2. **`Total agend. dia`** passa a ser `totalSdrCount + closerCreatedCount` (SDR todos status + 2ª reunião todos status), em vez de só `agendada+confirmada` do `sourceCounts`.
 
-```ts
-const totalSdrCount = useMemo(
-  () => filtered.filter(
-    (a) => (a.status === "agendada" || a.status === "confirmada") && isSdrAgenda(a)
-  ).length,
-  [filtered, userRolesMap]
-);
-```
+3. **`Ainda a real. dia`** continua = `totalAgend - sourceTotal`, mas agora usa o novo `totalAgend`.
 
-Nada mais muda — `closerCreatedCount`, `closerRealizadaCount` e os cards de status continuam iguais.
+Resultado esperado: hoje 37 SDR + 1 Closer = 38 no Total agend. dia.
+
+Obs: na visão de closer (`isCloserView`), o card "Total agend. dia" usa só a contagem do próprio closer (`closerOwnStatusCounts` agendada+confirmada) — mantém o comportamento atual dessa view.
