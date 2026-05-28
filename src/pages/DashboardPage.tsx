@@ -1617,7 +1617,8 @@ function DayView({
       <div ref={scrollRef} className="overflow-x-auto rounded-xl border border-primary/10 bg-card">
         <div
           className="grid"
-          style={{ gridTemplateColumns: `60px repeat(${closers.length}, minmax(140px, 1fr))` }}
+          style={{ gridTemplateColumns: `${TIME_COL}px repeat(${closers.length}, ${colWidth}px)` }}
+        >
         >
         {/* Header */}
         <div className="border-b border-primary/10 p-2" />
