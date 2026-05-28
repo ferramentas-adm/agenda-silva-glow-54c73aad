@@ -771,7 +771,7 @@ export function CalendarContent() {
           return (
             <div className={cn(
               "grid grid-cols-2 sm:grid-cols-4 gap-3",
-              isCloserView ? "xl:grid-cols-10" : "xl:grid-cols-12"
+              isCloserView ? "xl:grid-cols-9" : "xl:grid-cols-11"
             )}>
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
