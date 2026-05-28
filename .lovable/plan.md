@@ -1,13 +1,18 @@
-## Mudanças em `src/pages/DashboardPage.tsx`
+## Correção: Total agend. dia incluindo canceladas
 
-1. **Remover `nowTick` e o `setInterval` de 60s** (linhas 165-170) — não é mais necessário.
+**Problema:** O card "Total agend. dia" soma todos os agendamentos (incluindo `cancelada`), enquanto "Agendas pra Hoje" e "Total Closers" filtram canceladas. Por isso a soma não bate.
 
-2. **Simplificar `aindaReal`** (linhas 755-771) para apenas:
+- Hoje: 40 SDR + 2 Closer + 2 canceladas SDR = 44
+- Ontem: 69 + 7 + 2 canceladas = 78
+
+Sim, é exatamente o mesmo bug e a correção resolve os dois dias (e qualquer outro).
+
+### Mudança
+
+`src/pages/DashboardPage.tsx` (~linha 747):
 
 ```ts
-const aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
+const totalAgend = sourceAgendamentos.filter(a => a.status !== "cancelada").length;
 ```
 
-Sem filtro de horário, sem `brTodayYMD`/`brPartsOf`/`format(currentDate, …)` aqui.
-
-3. Se `brTodayYMD` e `brPartsOf` ficarem sem uso após a mudança, removo os imports.
+Depois disso: "Total agend. dia" = SDRs visíveis + Closers, batendo com a soma exibida.
