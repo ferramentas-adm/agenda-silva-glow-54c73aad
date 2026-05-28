@@ -1079,6 +1079,12 @@ export function CalendarContent() {
                       Projeto 5K
                     </Badge>
                   )}
+                  {detailAg.created_by && userRolesMap.get(detailAg.created_by) === "closer" && (
+                    <Badge variant="outline" className="text-xs bg-sky-500/20 text-sky-400 border-sky-500/40 font-bold">
+                      2ª Reunião (Closer)
+                    </Badge>
+                  )}
+
                 </div>
               </div>
 
