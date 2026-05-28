@@ -219,6 +219,7 @@ export default function ReunioesListPage() {
       if (filterCreatedDateTo) {
         const createdDate = localDateOf(ag.created_at);
         if (createdDate > format(filterCreatedDateTo, "yyyy-MM-dd")) return false;
+      }
       if (searchText) {
         const s = searchText.toLowerCase();
         if (!ag.lead_name.toLowerCase().includes(s) && !ag.lead_phone.includes(s)) return false;
