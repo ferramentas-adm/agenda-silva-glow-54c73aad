@@ -41,6 +41,7 @@ import { useCan } from "@/hooks/usePermissions";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { AlertTriangle } from "lucide-react";
+import { brTodayYMD, brPartsOf } from "@/lib/timezone";
 
 interface Agendamento {
   id: string;
