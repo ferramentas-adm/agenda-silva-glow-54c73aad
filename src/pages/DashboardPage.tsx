@@ -1560,7 +1560,10 @@ function DayView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const [colWidth, setColWidth] = useState<number>(160);
+
+  const TIME_COL = 60;
+  const MIN_COL = 150;
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
