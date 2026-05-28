@@ -346,19 +346,22 @@ export default function DashboardComercialPage() {
     const canceladoCount = sc(todayAgs, "cancelada");
     const reagendadoCount = sc(todayAgs, "reagendada");
     const compareceuCount = sc(todayAgs, "realizada");
-    const totalDia = todayAgs.length;
-    // Taxa de Comparecimento = realizadas / total de agendamentos do período
+    // totalDia agora considera só agendas ativas (exclui canceladas) — alinhado ao Dashboard.
+    const totalDia = todayAgsActive.length;
+    // Taxa de Comparecimento = realizadas / total de agendamentos ativos do período
     const taxaComp = totalDia > 0
       ? (compareceuCount / totalDia) * 100
       : 0;
 
+    const prevMonthSdrActive = prevMonthAgs.filter(a => isSdrAg(a) && a.status !== 'cancelada');
+
     return {
-      todayScheduled: todayAgs.length,
-      todayCreated: todayCreated.length,
-      yesterdayScheduled: yesterdayAgs.length,
-      tomorrowScheduled: tomorrowAgs.length,
-      monthTotal: monthAgs.length,
-      monthDiff: monthAgs.length - prevMonthAgs.filter(a => a.created_by && sdrUserIds.has(a.created_by)).length,
+      todayScheduled: todayAgsActive.length,
+      todayCreated: todayCreatedActive.length,
+      yesterdayScheduled: yesterdayAgsActive.length,
+      tomorrowScheduled: tomorrowAgsActive.length,
+      monthTotal: monthAgsActive.length,
+      monthDiff: monthAgsActive.length - prevMonthSdrActive.length,
       confirmado: sc(todayAgs, "confirmada"),
       agendado: sc(todayAgs, "agendada"),
       compareceu: sc(todayAgs, "realizada"),
@@ -367,14 +370,14 @@ export default function DashboardComercialPage() {
       reagendado: reagendadoCount,
       taxaComp,
       totalDia,
-      channelsToday: byChannel(todayAgs),
-      channelsCreatedToday: byChannel(todayCreated),
+      channelsToday: byChannel(todayAgsActive),
+      channelsCreatedToday: byChannel(todayCreatedActive),
       // IDs para drill-down
-      todayScheduledIds: todayAgs.map(a => a.id),
-      todayCreatedIds: todayCreated.map(a => a.id),
-      yesterdayScheduledIds: yesterdayAgs.map(a => a.id),
-      tomorrowScheduledIds: tomorrowAgs.map(a => a.id),
-      monthTotalIds: monthAgs.map(a => a.id),
+      todayScheduledIds: todayAgsActive.map(a => a.id),
+      todayCreatedIds: todayCreatedActive.map(a => a.id),
+      yesterdayScheduledIds: yesterdayAgsActive.map(a => a.id),
+      tomorrowScheduledIds: tomorrowAgsActive.map(a => a.id),
+      monthTotalIds: monthAgsActive.map(a => a.id),
       confirmadoIds: todayAgs.filter(a => a.status === "confirmada").map(a => a.id),
       agendadoIds: todayAgs.filter(a => a.status === "agendada").map(a => a.id),
       compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
