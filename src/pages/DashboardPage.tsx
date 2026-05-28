@@ -1671,7 +1671,7 @@ function DayView({
                                   </div>
                                 );
                               })()}
-                              <div className={cn("font-semibold truncate pr-5", (ag.is_5k || (ag.created_by && userRolesMap.get(ag.created_by) === "closer")) && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
+                              <div className={cn("font-semibold truncate pr-5", (ag.is_5k || (ag.created_by && userRolesMap.get(ag.created_by) === "closer") || ag.meeting_reason === "segunda_reuniao") && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
                                 {ag.lead_name}
                               </div>
 
