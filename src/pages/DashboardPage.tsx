@@ -350,26 +350,31 @@ export function CalendarContent() {
   // Status válidos para o "Total" da barra superior
   const TOTAL_STATUSES = ["agendada", "confirmada", "realizada", "cancelada", "no_show", "reagendada"];
 
-  // Total SDRs (Admin/Mod/SDR view): agendamentos do dia criados por usuários com role 'sdr'
+  // Helpers de classificação:
+  // - SDR: agenda criada por usuário SDR OU agenda em que gestor/moderador apontou um SDR responsável.
+  // - 2ª reunião: agenda criada por closer OU agenda marcada como 'segunda_reuniao' por gestor/moderador.
+  const isSdrAgenda = (a: Agendamento) => {
+    if (a.created_by && userRolesMap.get(a.created_by) === "sdr") return true;
+    if (a.sdr_responsavel_id) return true;
+    return false;
+  };
+  const isSecondMeetingAgenda = (a: Agendamento) => {
+    if (a.created_by && userRolesMap.get(a.created_by) === "closer") return true;
+    if (a.meeting_reason === "segunda_reuniao") return true;
+    return false;
+  };
+
+  // Total SDRs (Admin/Mod/SDR view)
   const totalSdrCount = useMemo(
-    () => filtered.filter((a) => {
-      if (!TOTAL_STATUSES.includes(a.status)) return false;
-      if (!a.created_by) return false;
-      return userRolesMap.get(a.created_by) === "sdr";
-    }).length,
+    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSdrAgenda(a)).length,
     [filtered, userRolesMap]
   );
 
-  // Status counts gerais (admin/mod/sdr)
-  // Conta APENAS agendamentos criados por usuários com função SDR, usando
-  // o mesmo status efetivo exibido no calendário. Assim, uma reunião nova de
-  // reagendamento com original_agendamento_id conta como "Confirmada".
-  // Reuniões criadas por Closers/Gestores aparecem nos cards separados.
+  // Status counts SDR usando status efetivo
   const statusCounts = useMemo(
     () =>
       filtered.reduce<Record<string, number>>((acc, agendamento) => {
-        if (!agendamento.created_by) return acc;
-        if (userRolesMap.get(agendamento.created_by) !== "sdr") return acc;
+        if (!isSdrAgenda(agendamento)) return acc;
         const status = getEffectiveStatus(agendamento);
         acc[status] = (acc[status] ?? 0) + 1;
         return acc;
@@ -377,24 +382,15 @@ export function CalendarContent() {
     [filtered, userRolesMap]
   );
 
-  // Total Closers: apenas reuniões do dia criadas por usuários com role "closer"
-  // (= 2ª reunião). Reuniões criadas por gestor/moderador NÃO entram aqui.
+  // Total Closers (= 2ª reunião)
   const closerCreatedCount = useMemo(
-    () => filtered.filter((a) => {
-      if (!TOTAL_STATUSES.includes(a.status)) return false;
-      if (!a.created_by) return false;
-      return userRolesMap.get(a.created_by) === "closer";
-    }).length,
+    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSecondMeetingAgenda(a)).length,
     [filtered, userRolesMap]
   );
 
-  // Closer Realizada: reuniões realizadas criadas por closer.
+  // Closer Realizada (2ª reunião realizada)
   const closerRealizadaCount = useMemo(
-    () => filtered.filter((a) => {
-      if (a.status !== "realizada") return false;
-      if (!a.created_by) return false;
-      return userRolesMap.get(a.created_by) === "closer";
-    }).length,
+    () => filtered.filter((a) => a.status === "realizada" && isSecondMeetingAgenda(a)).length,
     [filtered, userRolesMap]
   );
 
