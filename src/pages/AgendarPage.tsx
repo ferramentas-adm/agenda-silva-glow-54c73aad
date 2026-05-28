@@ -578,30 +578,64 @@ export default function AgendarPage() {
               </div>
 
               {isAdmin && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Responsável pelo agendamento</label>
-                  <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o responsável (opcional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sdrUsers.length === 0 ? (
-                        <SelectItem value="__none" disabled>
-                          Nenhum usuário cadastrado
-                        </SelectItem>
-                      ) : (
-                        sdrUsers.map((s) => (
-                          <SelectItem key={s.user_id} value={s.user_id}>
-                            {s.full_name}
-                          </SelectItem>
-                        ))
+                <>
+                  <div className="flex items-center justify-between rounded-md border border-border bg-secondary/30 px-4 py-3">
+                    <div className="space-y-0.5">
+                      <label htmlFor="admin-2a-toggle" className="text-sm font-medium cursor-pointer">
+                        É 2ª reunião (marcada por Closer)
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Ative se esta reunião está sendo marcada em nome de um Closer. Caso contrário, escolha o SDR responsável abaixo.
+                      </p>
+                    </div>
+                    <Switch
+                      id="admin-2a-toggle"
+                      checked={adminAsSecondMeeting}
+                      onCheckedChange={(v) => {
+                        setAdminAsSecondMeeting(v);
+                        if (v) {
+                          setSelectedSdrId(null);
+                          setChannelType("Segunda Reunião");
+                        } else if (channelType === "Segunda Reunião") {
+                          setChannelType("");
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {!adminAsSecondMeeting && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">
+                        SDR responsável <span className="text-destructive">*</span>
+                      </label>
+                      <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o SDR" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sdrUsers.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              Nenhum SDR cadastrado
+                            </SelectItem>
+                          ) : (
+                            sdrUsers.map((s) => (
+                              <SelectItem key={s.user_id} value={s.user_id}>
+                                {s.full_name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {!selectedSdrId && (
+                        <p className="text-xs text-destructive">Selecione um SDR ou marque como 2ª reunião.</p>
                       )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Caso não selecione, você (administrador) será registrado como responsável.
-                  </p>
-                </div>
+                    </div>
+                  )}
+
+                  {adminAsSecondMeeting && (
+                    <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
+                  )}
+                </>
               )}
 
               {/* Closer: campo "Justificar Reagendamento" aparece em qualquer agendamento (novo ou reagendamento) */}
