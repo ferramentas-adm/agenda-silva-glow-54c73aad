@@ -69,14 +69,8 @@ export function useOverdueMeetings() {
     staleTime: 10 * 60 * 1000,
   });
 
-  // Yesterday + today (cobre virada de dia BRT)
+  // Hoje em BRT; a busca precisa incluir QUALQUER data anterior ainda pendente.
   const today = brTodayYMD();
-  const yesterday = useMemo(() => {
-    const [y, m, d] = today.split("-").map(Number);
-    const dt = new Date(Date.UTC(y, m - 1, d));
-    dt.setUTCDate(dt.getUTCDate() - 1);
-    return dt.toISOString().slice(0, 10);
-  }, [today]);
 
   const enabled = !!user && !isManager && myCloserId !== undefined;
 
@@ -91,8 +85,9 @@ export function useOverdueMeetings() {
         .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at")
         .is("deleted_at", null)
         .in("status", ["agendada", "confirmada"])
-        .gte("scheduled_date", yesterday)
-        .lte("scheduled_date", today);
+        .lte("scheduled_date", today)
+        .order("scheduled_date", { ascending: true })
+        .order("scheduled_time", { ascending: true });
 
       const orParts: string[] = [];
       if (user?.id) orParts.push(`created_by.eq.${user.id}`);
@@ -109,18 +104,6 @@ export function useOverdueMeetings() {
       let overdue = list.filter(
         (m) => meetingEpochMin(m.scheduled_date, m.scheduled_time) + OVERDUE_GRACE_MINUTES <= nowMin,
       );
-
-      // Filtra repasses por lado: se meu lado já foi marcado,
-      // a reunião some do MEU overlay. O outro lado continua travado.
-      if (user?.id) {
-        overdue = overdue.filter((m) => {
-          const isSdr = m.created_by === user.id;
-          const isCloser = !!myCloserId && m.closer_id === myCloserId;
-          if (isSdr && m.sdr_handoff_at) return false;
-          if (isCloser && m.closer_handoff_at) return false;
-          return true;
-        });
-      }
 
       if (overdue.length === 0) return [];
 
