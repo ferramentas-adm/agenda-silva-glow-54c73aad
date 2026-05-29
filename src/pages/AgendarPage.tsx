@@ -627,9 +627,10 @@ export default function AgendarPage() {
                     </div>
                   )}
 
-                  {adminAsSecondMeeting && (
-                    <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
+                  {adminAsSecondMeeting && channelType && (
+                    <SummaryRow label="Tipo de canal" value={channelType} />
                   )}
+
                 </>
               )}
 
