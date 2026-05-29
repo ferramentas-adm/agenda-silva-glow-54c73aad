@@ -1,31 +1,53 @@
-# Remover "Segunda Reunião" do channel_type
+# Enviar dados completos da 2ª reunião no webhook do DataCrazy
 
-O campo `channel_type` deixa de aceitar o valor especial `"Segunda Reunião"`. Em agendamentos de 2ª reunião, o canal passa a ser **herdado automaticamente do 1º agendamento** (mesmo telefone normalizado), tanto no banco quanto no webhook. O fato de ser 2ª reunião continua sendo identificado por `meeting_reason = 'segunda_reuniao'` e `is_segunda_reuniao: true`.
+## Objetivo
+
+Quando o closer marcar **"Sim — marcar segunda reunião"** no diálogo de Resultado, o webhook disparado pelo INSERT do novo agendamento deve carregar, no mesmo POST, todos os campos preenchidos no diálogo (faturamento, motivo, explicação, valor apresentado, recebimento acordado, briefing) — para que o DataCrazy faça um único mapeamento.
+
+## Estratégia
+
+O trigger `notify_status_change_webhook` já dispara no INSERT do novo agendamento. Vamos:
+
+1. **Marcar o novo agendamento** com `meeting_reason = 'segunda_reuniao'`, `original_agendamento_id = <id da reunião de origem>` e `briefing = observacoes do diálogo` para o trigger encontrar a venda original.
+2. **Reordenar** o frontend para criar o `pagamento` (recebimento acordado) **antes** do INSERT do novo agendamento, garantindo que o trigger consiga lê-lo.
+3. **Atualizar o trigger** para, quando for INSERT de 2ª reunião com `original_agendamento_id`, juntar dados de `vendas` (faturamento, motivo, explicação, valor) e `pagamentos` (recebimento acordado) do agendamento de origem e incluir no payload.
 
 ## Mudanças
 
-### 1. `src/pages/AgendarPage.tsx`
-- Remover o `useEffect` (linhas ~93-97) que força `channelType = "Segunda Reunião"` quando o usuário é closer.
-- Ao carregar 2ª reunião (closer ou admin marcando), buscar o `channel_type` do agendamento original (mesmo telefone, mais antigo, não excluído) e pré-preencher. Já existe lookup similar nas linhas ~190-210 — estender para closer também.
-- No INSERT (linha ~328): trocar `(isCloser || (isAdmin && adminAsSecondMeeting)) ? "Segunda Reunião" : channelType` por simplesmente `channelType || null` (ou o canal herdado).
-- Na chamada de Google Calendar (linha ~380): mesma coisa, usar o canal herdado em vez de fixar string.
-- Resumo/SummaryRow (linhas ~637 e ~664): mostrar o canal real (herdado) em vez do literal "Segunda Reunião". Para closer, exibir como label readonly (não editável), mostrando o canal herdado.
-- Toggle "marcar como 2ª reunião" do admin (linhas ~599-600): parar de sobrescrever `channelType` com "Segunda Reunião"; manter o canal já preenchido.
+### 1. `src/components/VendaDialog.tsx`
 
-### 2. Trigger `notify_status_change_webhook` (migration)
-Hoje o webhook só lê `NEW.channel_type`. Para 2ª reunião o valor virá do INSERT (já herdado pelo front), então **nenhuma mudança no trigger é necessária** — desde que o front salve o canal correto. Confirmar lendo o último migration e deixando-o intacto.
+No bloco de criação da 2ª reunião (atualmente em ~linha 348), além dos campos já existentes, adicionar:
 
-### 3. Backfill (opcional, recomendado)
-Atualizar registros antigos onde `channel_type = 'Segunda Reunião'` para o canal do agendamento original correspondente (match por telefone normalizado + `created_at` mais antigo da mesma série). Onde não houver match, deixar `NULL`. Executado via `supabase--insert` com um único UPDATE.
+- `briefing: observacoes.trim()` — corresponde ao campo "Descreva brevemente o que o cliente faz" do diálogo
+- `meeting_reason: "segunda_reuniao"`
+- `original_agendamento_id: agendamentoId`
 
-## Detalhes técnicos
+E **mover o bloco de criação do pagamento** (atualmente em ~linha 391) para **antes** do INSERT do novo agendamento, para que o trigger encontre o recebimento ao montar o payload.
 
-- A busca do canal original usa o mesmo padrão já existente no `detect_and_mark_reschedule` e no trecho do trigger para `_sdr_name` em 2ª reunião: `regexp_replace(lead_phone, '\D', '', 'g')` + `ORDER BY created_at ASC LIMIT 1`.
-- No front, fazer o lookup quando: (a) usuário é closer ao abrir AgendarPage com lead selecionado, ou (b) admin marca toggle "2ª reunião". Reaproveitar a query que já existe em `loadPrior` (linhas ~190-210) — hoje ela ignora o canal para closer; basta remover essa condicional.
-- Nenhuma alteração em `AdminPage` / `useAppSettingList` — a lista "Tipos de canal" já é a fonte única.
-- Edge functions (`datacrazy-*`) não precisam mudar: continuam repassando `channel_type` como vier.
+Sem mudanças em campos, validações ou UI.
+
+### 2. Migration — atualizar `notify_status_change_webhook`
+
+Adicionar, dentro do branch não-deleção, lógica que detecta `TG_OP = 'INSERT' AND NEW.meeting_reason = 'segunda_reuniao' AND NEW.original_agendamento_id IS NOT NULL`. Quando verdadeiro, buscar:
+
+- De `vendas` (joined pelo `agendamento_id = NEW.original_agendamento_id`):
+  - `lead_revenue` → `lead_revenue`
+  - `motivo_nao_fechamento` → `motivo_nao_fechamento`
+  - `explicacao_nao_fechamento` → `explicacao_nao_fechamento`
+  - `valor` → `valor_apresentado`
+- De `pagamentos` (mesmo `agendamento_id`):
+  - Se existir registro: `recebimento_acordado = true`, `valor_previsto`, `data_prevista`
+  - Se não existir: `recebimento_acordado = false`, `valor_previsto = null`, `data_prevista = null`
+
+E mesclar ao `_payload` já existente. O `briefing` já entra naturalmente porque `NEW.briefing` será preenchido pelo frontend. Demais reuniões (1ª, reagendamentos, cancelamentos, follow-up regular) continuam recebendo o payload atual sem alteração.
 
 ## Fora de escopo
 
-- Não alterar `meeting_reason` (continua tendo "Segunda Reunião" na lista de motivos, que é diferente de canal).
-- Não tocar em RLS, schema ou estrutura de tabelas.
+- Não muda nenhum outro tipo de evento (1ª reunião, reagendamento, cancelamento, no-show, exclusão).
+- Não cria edge function nova.
+- Não altera nenhum campo do diálogo de Resultado (briefing já é obrigatório via `observacoes`).
+- Não altera RLS, schema de tabelas ou tipos.
+
+## Teste após aprovar
+
+Após a build, faço um INSERT de teste via `supabase--insert` simulando o fluxo completo (venda + pagamento + 2ª reunião) e confirmo no log que o payload chega com todos os campos novos preenchidos.
