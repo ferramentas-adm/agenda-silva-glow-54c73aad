@@ -1,36 +1,31 @@
-# Enviar webhook de teste "Segunda Reunião" para a DataCrazy
+# Remover "Segunda Reunião" do channel_type
 
-Disparar um POST direto para o webhook da DataCrazy via `net.http_post` no banco, com payload idêntico ao que o trigger `notify_status_change_webhook` gera para uma 2ª reunião no INSERT. Não cria registro em `agendamentos`, é só o webhook.
+O campo `channel_type` deixa de aceitar o valor especial `"Segunda Reunião"`. Em agendamentos de 2ª reunião, o canal passa a ser **herdado automaticamente do 1º agendamento** (mesmo telefone normalizado), tanto no banco quanto no webhook. O fato de ser 2ª reunião continua sendo identificado por `meeting_reason = 'segunda_reuniao'` e `is_segunda_reuniao: true`.
 
-## Payload que será enviado
+## Mudanças
 
-```json
-{
-  "lead_name": "Lead Teste Mapeamento",
-  "lead_phone": "+55 (11) 99999-0001",
-  "status": "Agendado",
-  "scheduled_datetime": "2026-06-02T15:00:00Z",
-  "created_at": "2026-05-29T18:40:00Z",
-  "sdr_name": "SDR Original (Teste)",
-  "closer_name": "Closer Atual (Teste)",
-  "briefing": "Cliente quer entender as opções de planos. Já recebeu proposta na 1ª reunião.",
-  "meeting_reason": "segunda_reuniao",
-  "is_segunda_reuniao": true,
-  "channel_type": "Segunda Reunião",
-  "meet_link": "https://meet.google.com/abc-defg-hij",
-  "calendar_link": "https://calendar.google.com/calendar/render?action=TEMPLATE&text=Grupo+Silva+%26+Lead+Teste+Mapeamento&dates=20260602T150000/20260602T160000&ctz=America/Sao_Paulo"
-}
-```
+### 1. `src/pages/AgendarPage.tsx`
+- Remover o `useEffect` (linhas ~93-97) que força `channelType = "Segunda Reunião"` quando o usuário é closer.
+- Ao carregar 2ª reunião (closer ou admin marcando), buscar o `channel_type` do agendamento original (mesmo telefone, mais antigo, não excluído) e pré-preencher. Já existe lookup similar nas linhas ~190-210 — estender para closer também.
+- No INSERT (linha ~328): trocar `(isCloser || (isAdmin && adminAsSecondMeeting)) ? "Segunda Reunião" : channelType` por simplesmente `channelType || null` (ou o canal herdado).
+- Na chamada de Google Calendar (linha ~380): mesma coisa, usar o canal herdado em vez de fixar string.
+- Resumo/SummaryRow (linhas ~637 e ~664): mostrar o canal real (herdado) em vez do literal "Segunda Reunião". Para closer, exibir como label readonly (não editável), mostrando o canal herdado.
+- Toggle "marcar como 2ª reunião" do admin (linhas ~599-600): parar de sobrescrever `channelType` com "Segunda Reunião"; manter o canal já preenchido.
 
-## Como será executado
+### 2. Trigger `notify_status_change_webhook` (migration)
+Hoje o webhook só lê `NEW.channel_type`. Para 2ª reunião o valor virá do INSERT (já herdado pelo front), então **nenhuma mudança no trigger é necessária** — desde que o front salve o canal correto. Confirmar lendo o último migration e deixando-o intacto.
 
-Comando único no banco:
-```sql
-SELECT net.http_post(
-  url := 'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/1e5d35d1-ce8e-4f54-8f77-a2a5073cbe5c/090af1d1-0253-4445-b6b4-4eb2b2f6c3c6',
-  body := '<payload acima>'::jsonb,
-  headers := jsonb_build_object('Content-Type', 'application/json')
-);
-```
+### 3. Backfill (opcional, recomendado)
+Atualizar registros antigos onde `channel_type = 'Segunda Reunião'` para o canal do agendamento original correspondente (match por telefone normalizado + `created_at` mais antigo da mesma série). Onde não houver match, deixar `NULL`. Executado via `supabase--insert` com um único UPDATE.
 
-Após executar, dá pra conferir no fluxo da DataCrazy a chegada com todos os campos para mapeamento.
+## Detalhes técnicos
+
+- A busca do canal original usa o mesmo padrão já existente no `detect_and_mark_reschedule` e no trecho do trigger para `_sdr_name` em 2ª reunião: `regexp_replace(lead_phone, '\D', '', 'g')` + `ORDER BY created_at ASC LIMIT 1`.
+- No front, fazer o lookup quando: (a) usuário é closer ao abrir AgendarPage com lead selecionado, ou (b) admin marca toggle "2ª reunião". Reaproveitar a query que já existe em `loadPrior` (linhas ~190-210) — hoje ela ignora o canal para closer; basta remover essa condicional.
+- Nenhuma alteração em `AdminPage` / `useAppSettingList` — a lista "Tipos de canal" já é a fonte única.
+- Edge functions (`datacrazy-*`) não precisam mudar: continuam repassando `channel_type` como vier.
+
+## Fora de escopo
+
+- Não alterar `meeting_reason` (continua tendo "Segunda Reunião" na lista de motivos, que é diferente de canal).
+- Não tocar em RLS, schema ou estrutura de tabelas.
