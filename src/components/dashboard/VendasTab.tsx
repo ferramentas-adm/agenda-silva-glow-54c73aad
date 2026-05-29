@@ -5,13 +5,13 @@ import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
-  Filter, X, CalendarIcon, Pencil, Trash2, Loader2,
+  Filter, X, CalendarIcon, Pencil, Trash2, Loader2, Download,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { brDateOf } from "@/lib/timezone";
+import { brDateOf, formatBRDateTime } from "@/lib/timezone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ interface VendaRow {
   follow_up_time: string | null;
   segunda_reuniao: boolean;
   motivo_nao_fechamento: string | null;
+  explicacao_nao_fechamento: string | null;
+  resumo_venda: string | null;
   observacoes: string | null;
   closed_at: string | null;
   created_at: string;
@@ -50,7 +52,14 @@ interface AgendamentoRow {
   id: string;
   closer_id: string | null;
   scheduled_date: string;
+  scheduled_time: string;
   lead_name: string;
+  lead_phone: string | null;
+  channel_type: string | null;
+  briefing: string | null;
+  created_at: string;
+  created_by: string | null;
+  sdr_responsavel_id: string | null;
   status: string;
 }
 
@@ -116,8 +125,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           .from("vendas")
           .select(`
             id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
-            motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
-            agendamentos!inner(id, closer_id, scheduled_date, lead_name, status)
+            motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
+            agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status)
           `)
           .is("agendamentos.deleted_at", null)
           .order("created_at", { ascending: false })
@@ -173,6 +182,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     queryFn: async () => {
       const { data } = await supabase.from("closers").select("id, name").eq("active", true).order("name");
       return (data ?? []) as CloserRow[];
+    },
+  });
+
+  // Mapa user_id -> full_name (para resolver nome do SDR no CSV)
+  const { data: profilesMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["vendas-tab-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_public_profiles");
+      if (error) throw error;
+      const m = new Map<string, string>();
+      ((data ?? []) as { user_id: string; full_name: string }[]).forEach((p) => {
+        m.set(p.user_id, p.full_name);
+      });
+      return m;
     },
   });
 
@@ -263,6 +286,68 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [vendasDia, agMap, motivosCloserFilter]);
 
   const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
+
+  // Download CSV dos leads que estão na seção "Motivos de Não Fechamento"
+  const handleDownloadMotivosCsv = () => {
+    const rows = vendasDiaParaMotivos.filter((v) => !v.vendeu);
+    if (rows.length === 0) return;
+
+    const headers = [
+      "Lead", "Telefone", "Data agendamento", "Hora", "Closer", "SDR", "Canal",
+      "Criado em", "Status reunião", "Motivo do não fechamento",
+      "Explicação do porquê não fechou", "Resumo do cliente", "Briefing", "Observações",
+    ];
+
+    const escape = (val: unknown) => {
+      const s = val == null ? "" : String(val);
+      return `"${s.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+    };
+
+    const fmtScheduledDate = (ymd: string) => {
+      const [y, m, d] = ymd.split("-");
+      return d && m && y ? `${d}/${m}/${y}` : ymd;
+    };
+
+    const lines = rows.map((v) => {
+      const ag = v.agendamentos;
+      const closerName = ag?.closer_id ? closerMap.get(ag.closer_id) || "" : "";
+      const sdrId = ag?.sdr_responsavel_id ?? ag?.created_by ?? null;
+      const sdrName = sdrId ? profilesMap.get(sdrId) || "" : "";
+      return [
+        ag?.lead_name ?? "",
+        ag?.lead_phone ?? "",
+        ag ? fmtScheduledDate(ag.scheduled_date) : "",
+        ag?.scheduled_time ?? "",
+        closerName,
+        sdrName,
+        ag?.channel_type ?? "",
+        ag?.created_at ? formatBRDateTime(ag.created_at) : "",
+        ag?.status ?? "",
+        v.motivo_nao_fechamento ?? "",
+        v.explicacao_nao_fechamento ?? "",
+        v.resumo_venda ?? "",
+        ag?.briefing ?? "",
+        v.observacoes ?? "",
+      ].map(escape).join(";");
+    });
+
+    const csv = "\uFEFF" + [headers.map(escape).join(";"), ...lines].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const periodoSlug = isRange && rangeFromStr && rangeToStr
+      ? `${rangeFromStr}_a_${rangeToStr}`
+      : dateStr;
+    const closerSlug = motivosCloserFilter === "all"
+      ? "todos-closers"
+      : (closerMap.get(motivosCloserFilter) || "closer").toLowerCase().replace(/\s+/g, "-");
+    a.href = url;
+    a.download = `motivos-nao-fechamento_${periodoSlug}_${closerSlug}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // Motivos de não fechamento
   const motivosCount = useMemo(() => {
@@ -494,17 +579,30 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                 <AlertTriangle className="h-4 w-4 text-orange-500" />
                 Motivos de Não Fechamento
               </CardTitle>
-              <Select value={motivosCloserFilter} onValueChange={setMotivosCloserFilter}>
-                <SelectTrigger className="h-8 w-[170px] text-xs">
-                  <SelectValue placeholder="Closer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os closers</SelectItem>
-                  {closers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select value={motivosCloserFilter} onValueChange={setMotivosCloserFilter}>
+                  <SelectTrigger className="h-8 w-[170px] text-xs">
+                    <SelectValue placeholder="Closer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os closers</SelectItem>
+                    {closers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleDownloadMotivosCsv}
+                  disabled={totalNaoFechouMotivos === 0}
+                  aria-label="Baixar CSV"
+                  title="Baixar CSV dos leads não fechados"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
