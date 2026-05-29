@@ -90,12 +90,8 @@ export default function AgendarPage() {
 
   const isAdmin = role === "gestor" || role === "moderador";
 
-  // Closer: fixar canal como "Segunda Reunião" automaticamente em qualquer fluxo (novo ou reagendamento)
-  useEffect(() => {
-    if (role === "closer" && channelType !== "Segunda Reunião") {
-      setChannelType("Segunda Reunião");
-    }
-  }, [role, channelType]);
+
+
 
   // Fetch closers for name resolution
   const { data: closers = [] } = useQuery({
