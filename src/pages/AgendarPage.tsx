@@ -243,7 +243,7 @@ export default function AgendarPage() {
   const resolvedReason = (isCloser || (isAdmin && adminAsSecondMeeting)) ? "segunda_reuniao" : null;
 
   // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
-  // Quando admin marca como 2ª reunião, o canal é fixado em "Segunda Reunião".
+  // Em 2ª reunião (closer ou admin marcando), o canal é herdado do 1º agendamento.
   const channelTypeRequired = (role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
