@@ -654,10 +654,11 @@ export default function AgendarPage() {
 
               {/* Campo "Motivo da reunião" foi removido do fluxo para todas as funções. */}
 
-              {/* Tipo de canal — closer vê como label fixo "Segunda Reunião"; demais escolhem no select */}
-              {isCloser ? (
-                <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
+              {/* Closer: o canal é herdado do 1º agendamento (somente leitura) */}
+              {isCloser && channelType ? (
+                <SummaryRow label="Tipo de canal" value={channelType} />
               ) : null}
+
 
               {(role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting) && (
                 <div className="space-y-1.5">
