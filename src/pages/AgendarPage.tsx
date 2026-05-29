@@ -150,12 +150,11 @@ export default function AgendarPage() {
     if (!lead) {
       setLead({ id: "edit", name: editData.lead_name, phone: editData.lead_phone });
     }
-    // Closer: canal sempre fixado como "Segunda Reunião" — não herda do original.
-    if (role === "closer") {
-      if (!channelType) setChannelType("Segunda Reunião");
-    } else if (editData.channel_type && !channelType) {
+    // Herda o canal do agendamento original (inclusive para closer em 2ª reunião)
+    if (editData.channel_type && !channelType) {
       setChannelType(editData.channel_type);
     }
+
     if (editData.briefing && !briefingText) {
       setBriefingText(editData.briefing);
     }
