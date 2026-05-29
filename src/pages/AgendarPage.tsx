@@ -199,7 +199,7 @@ export default function AgendarPage() {
       if (!prior) return;
       if (prior.briefing) setBriefingText((cur) => cur || prior.briefing);
       if (prior.observation) setObservation((cur) => cur || prior.observation);
-      if (prior.channel_type && role !== "closer") setChannelType((cur) => cur || prior.channel_type);
+      if (prior.channel_type) setChannelType((cur) => cur || prior.channel_type);
       if (prior.is_5k) setIs5k((cur) => cur || true);
       if (typeof prior.duration_minutes === "number" && prior.duration_minutes !== 60) {
         setDurationMinutes((cur) => (cur === 60 ? prior.duration_minutes : cur));
