@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2, Eye } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2, Eye, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +63,41 @@ export default function OverdueMeetingsLockOverlay() {
       refetch();
     } catch (err: any) {
       toast.error(err?.message || "Erro ao atualizar status");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleHandoff = async (m: OverdueMeeting, direction: "sdr_to_closer" | "closer_to_sdr") => {
+    setUpdatingId(m.id);
+    try {
+      const patch: any =
+        direction === "sdr_to_closer"
+          ? { sdr_handoff_at: new Date().toISOString() }
+          : { closer_handoff_at: new Date().toISOString() };
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update(patch)
+        .eq("id", m.id)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Sem permissão para transferir.");
+      await logAudit("handoff", "agendamento", m.id, {
+        lead_name: m.lead_name,
+        direction,
+        scheduled_date: m.scheduled_date,
+        scheduled_time: m.scheduled_time,
+      });
+      toast.success(
+        direction === "sdr_to_closer"
+          ? "Reunião transferida para o Closer"
+          : "Reunião transferida para o SDR",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+      await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao transferir");
     } finally {
       setUpdatingId(null);
     }
@@ -184,6 +219,40 @@ export default function OverdueMeetingsLockOverlay() {
                         Cancelada
                       </Button>
                     </>
+                  )}
+                  {isCloserOfThis && !m.closer_handoff_at && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={updatingId === m.id}
+                      onClick={() => handleHandoff(m, "closer_to_sdr")}
+                      className="h-8 text-xs gap-1"
+                      title="Transfere a responsabilidade ao SDR (uso único)"
+                    >
+                      {updatingId === m.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                      )}
+                      Transferir para SDR
+                    </Button>
+                  )}
+                  {isSdrOfThis && !m.sdr_handoff_at && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={updatingId === m.id}
+                      onClick={() => handleHandoff(m, "sdr_to_closer")}
+                      className="h-8 text-xs gap-1"
+                      title="Transfere a responsabilidade ao Closer (uso único)"
+                    >
+                      {updatingId === m.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                      )}
+                      Transferir para Closer
+                    </Button>
                   )}
                   {!isSdrOfThis && !isCloserOfThis && (
                     <p className="text-xs text-muted-foreground italic">
