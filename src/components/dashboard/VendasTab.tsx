@@ -579,17 +579,30 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                 <AlertTriangle className="h-4 w-4 text-orange-500" />
                 Motivos de Não Fechamento
               </CardTitle>
-              <Select value={motivosCloserFilter} onValueChange={setMotivosCloserFilter}>
-                <SelectTrigger className="h-8 w-[170px] text-xs">
-                  <SelectValue placeholder="Closer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os closers</SelectItem>
-                  {closers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select value={motivosCloserFilter} onValueChange={setMotivosCloserFilter}>
+                  <SelectTrigger className="h-8 w-[170px] text-xs">
+                    <SelectValue placeholder="Closer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os closers</SelectItem>
+                    {closers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleDownloadMotivosCsv}
+                  disabled={totalNaoFechouMotivos === 0}
+                  aria-label="Baixar CSV"
+                  title="Baixar CSV dos leads não fechados"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
