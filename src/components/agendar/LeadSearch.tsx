@@ -51,8 +51,13 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
       return dcLeads.map(mapToLead);
     },
     enabled: !!tagAgendamentoId,
-    staleTime: 0,
-    refetchOnMount: "always",
+    // Cache por 5 minutos para evitar re-baixar a lista inteira a cada visita.
+    // Botão "Atualizar" continua forçando refetch via invalidateQueries.
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
   });
 
   const handleRefresh = () => {

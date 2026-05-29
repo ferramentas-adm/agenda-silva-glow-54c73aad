@@ -1,10 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { buscarLeadsComTagId } from "@/services/datacrazy";
 import logo from "@/assets/logo.png";
 import { tenantConfig } from "@/config/tenant";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
@@ -21,7 +22,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
   const isModerador = role === "moderador";
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [blocksOpen, setBlocksOpen] = useState(false);
+
+  // Warm-up + prefetch da lista de leads do DataCrazy assim que o app carrega
+  // (evita cold-start da edge function e ~10s no primeiro acesso a /agendar).
+  useEffect(() => {
+    if (!user) return;
+    const tagId = (import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO as string) || "";
+    if (!tagId) return;
+    queryClient.prefetchQuery({
+      queryKey: ["datacrazy-leads-agendamento", tagId],
+      queryFn: async () => {
+        const dcLeads = await buscarLeadsComTagId(tagId);
+        return dcLeads.map((l: any) => ({
+          id: l.id,
+          name: l.name,
+          phone: l.phone || (l.phones && l.phones[0]?.phone) || "",
+          dataCrazyId: l.id,
+          tags: l.tags,
+        }));
+      },
+      staleTime: 5 * 60_000,
+    });
+  }, [user, queryClient]);
 
   // Sidebar hover-expand state
   const [expanded, setExpanded] = useState(false);
