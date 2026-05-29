@@ -319,8 +319,9 @@ export default function AgendarPage() {
         sdr_responsavel_id: isAdmin && !adminAsSecondMeeting && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
-        // Closer (ou admin marcando 2ª): canal fixado como "Segunda Reunião"
-        channel_type: (isCloser || (isAdmin && adminAsSecondMeeting)) ? "Segunda Reunião" : (channelType || null),
+        // Canal vem da lista "Tipos de canal"; em 2ª reunião é herdado do 1º agendamento.
+        channel_type: channelType || null,
+
         is_5k: is5k,
       } as any).select("id").single();
 
