@@ -1,10 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { buscarLeadsComTagId } from "@/services/datacrazy";
 import logo from "@/assets/logo.png";
 import { tenantConfig } from "@/config/tenant";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
