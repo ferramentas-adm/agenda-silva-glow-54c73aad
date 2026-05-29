@@ -104,6 +104,9 @@ export async function resendAgendamentoWebhook({
       created_at: createdIso,
       sdr_name: sdrName,
       briefing: ag.briefing ?? "",
+      meeting_reason: (ag as any).meeting_reason ?? "",
+      is_segunda_reuniao: (ag as any).meeting_reason === "segunda_reuniao",
+      channel_type: (ag as any).channel_type ?? "",
       calendar_link: buildCalendarLink(
         ag.lead_name,
         ag.scheduled_date,
