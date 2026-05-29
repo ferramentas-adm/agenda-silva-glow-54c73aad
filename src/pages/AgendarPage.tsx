@@ -90,12 +90,8 @@ export default function AgendarPage() {
 
   const isAdmin = role === "gestor" || role === "moderador";
 
-  // Closer: fixar canal como "Segunda Reunião" automaticamente em qualquer fluxo (novo ou reagendamento)
-  useEffect(() => {
-    if (role === "closer" && channelType !== "Segunda Reunião") {
-      setChannelType("Segunda Reunião");
-    }
-  }, [role, channelType]);
+
+
 
   // Fetch closers for name resolution
   const { data: closers = [] } = useQuery({
@@ -154,12 +150,11 @@ export default function AgendarPage() {
     if (!lead) {
       setLead({ id: "edit", name: editData.lead_name, phone: editData.lead_phone });
     }
-    // Closer: canal sempre fixado como "Segunda Reunião" — não herda do original.
-    if (role === "closer") {
-      if (!channelType) setChannelType("Segunda Reunião");
-    } else if (editData.channel_type && !channelType) {
+    // Herda o canal do agendamento original (inclusive para closer em 2ª reunião)
+    if (editData.channel_type && !channelType) {
       setChannelType(editData.channel_type);
     }
+
     if (editData.briefing && !briefingText) {
       setBriefingText(editData.briefing);
     }
@@ -204,7 +199,7 @@ export default function AgendarPage() {
       if (!prior) return;
       if (prior.briefing) setBriefingText((cur) => cur || prior.briefing);
       if (prior.observation) setObservation((cur) => cur || prior.observation);
-      if (prior.channel_type && role !== "closer") setChannelType((cur) => cur || prior.channel_type);
+      if (prior.channel_type) setChannelType((cur) => cur || prior.channel_type);
       if (prior.is_5k) setIs5k((cur) => cur || true);
       if (typeof prior.duration_minutes === "number" && prior.duration_minutes !== 60) {
         setDurationMinutes((cur) => (cur === 60 ? prior.duration_minutes : cur));
@@ -248,7 +243,7 @@ export default function AgendarPage() {
   const resolvedReason = (isCloser || (isAdmin && adminAsSecondMeeting)) ? "segunda_reuniao" : null;
 
   // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
-  // Quando admin marca como 2ª reunião, o canal é fixado em "Segunda Reunião".
+  // Em 2ª reunião (closer ou admin marcando), o canal é herdado do 1º agendamento.
   const channelTypeRequired = (role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
@@ -324,8 +319,9 @@ export default function AgendarPage() {
         sdr_responsavel_id: isAdmin && !adminAsSecondMeeting && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
-        // Closer (ou admin marcando 2ª): canal fixado como "Segunda Reunião"
-        channel_type: (isCloser || (isAdmin && adminAsSecondMeeting)) ? "Segunda Reunião" : (channelType || null),
+        // Canal vem da lista "Tipos de canal"; em 2ª reunião é herdado do 1º agendamento.
+        channel_type: channelType || null,
+
         is_5k: is5k,
       } as any).select("id").single();
 
@@ -377,7 +373,7 @@ export default function AgendarPage() {
         agendamentoId: insertedData?.id ?? null,
         meetingReason: resolvedReason,
         meetingReasonCustom: meetingReason === "outros" ? meetingReasonCustom : null,
-        channelType: isCloser ? "Segunda Reunião" : channelType,
+        channelType: channelType,
       });
 
       if (meetError) {
@@ -596,11 +592,9 @@ export default function AgendarPage() {
                         setAdminAsSecondMeeting(v);
                         if (v) {
                           setSelectedSdrId(null);
-                          setChannelType("Segunda Reunião");
-                        } else if (channelType === "Segunda Reunião") {
-                          setChannelType("");
                         }
                       }}
+
                     />
                   </div>
 
@@ -633,9 +627,10 @@ export default function AgendarPage() {
                     </div>
                   )}
 
-                  {adminAsSecondMeeting && (
-                    <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
+                  {adminAsSecondMeeting && channelType && (
+                    <SummaryRow label="Tipo de canal" value={channelType} />
                   )}
+
                 </>
               )}
 
@@ -659,10 +654,11 @@ export default function AgendarPage() {
 
               {/* Campo "Motivo da reunião" foi removido do fluxo para todas as funções. */}
 
-              {/* Tipo de canal — closer vê como label fixo "Segunda Reunião"; demais escolhem no select */}
-              {isCloser ? (
-                <SummaryRow label="Tipo de canal" value="Segunda Reunião" />
+              {/* Closer: o canal é herdado do 1º agendamento (somente leitura) */}
+              {isCloser && channelType ? (
+                <SummaryRow label="Tipo de canal" value={channelType} />
               ) : null}
+
 
               {(role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting) && (
                 <div className="space-y-1.5">
