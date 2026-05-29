@@ -121,41 +121,59 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
   }
 
   // DataCrazy `/leads` endpoint pagination:
-  //  - `limit` controls page size (default 100, max 100)
-  //  - `skip` controls the offset (NOT `page` or `offset` — those are silently ignored)
-  //  - response shape is `{ count: <total>, data: [...] }`
+  //  - `limit` controla page size (default 100, max 100)
+  //  - `skip` controla offset
+  //  - resposta `{ count: <total>, data: [...] }`
   const PAGE_SIZE = 100;
-  const MAX_LEADS = 5000; // safety cap
-  const all: DataCrazyLead[] = [];
-  const seen = new Set<string>();
+  const MAX_LEADS = 1000; // teto realista (10 páginas)
+  const CONCURRENCY = 5;
 
-  let skip = 0;
-  let totalCount: number | null = null;
-
-  while (skip < MAX_LEADS) {
+  const fetchPage = async (skip: number) => {
     const data = await api(
       "GET",
-      `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`
+      `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`,
     );
     const pageLeads: DataCrazyLead[] = Array.isArray(data) ? data : data?.data || [];
+    const count =
+      data && typeof data === "object" && typeof (data as any).count === "number"
+        ? (data as any).count
+        : null;
+    return { pageLeads, count };
+  };
 
-    if (totalCount === null && data && typeof data === "object" && typeof (data as any).count === "number") {
-      totalCount = (data as any).count;
+  // 1ª chamada serve para descobrir o `count`
+  const first = await fetchPage(0);
+  const all: DataCrazyLead[] = [];
+  const seen = new Set<string>();
+  for (const lead of first.pageLeads) {
+    if (lead?.id && !seen.has(lead.id)) {
+      seen.add(lead.id);
+      all.push(lead);
     }
+  }
 
-    if (pageLeads.length === 0) break;
+  const total = first.count ?? all.length;
+  const cap = Math.min(total, MAX_LEADS);
+  if (cap <= PAGE_SIZE || first.pageLeads.length < PAGE_SIZE) return all;
 
-    let added = 0;
-    for (const lead of pageLeads) {
-      if (lead?.id && !seen.has(lead.id)) { seen.add(lead.id); all.push(lead); added++; }
+  // Restante das páginas em paralelo, em lotes de CONCURRENCY
+  const skips: number[] = [];
+  for (let s = PAGE_SIZE; s < cap; s += PAGE_SIZE) skips.push(s);
+
+  for (let i = 0; i < skips.length; i += CONCURRENCY) {
+    const batch = skips.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map((s) => fetchPage(s).catch(() => ({ pageLeads: [] as DataCrazyLead[], count: null }))));
+    let addedAny = false;
+    for (const { pageLeads } of results) {
+      for (const lead of pageLeads) {
+        if (lead?.id && !seen.has(lead.id)) {
+          seen.add(lead.id);
+          all.push(lead);
+          addedAny = true;
+        }
+      }
     }
-
-    // Safety: if API ignored `skip` (returned identical data), bail out.
-    if (added === 0) break;
-    if (pageLeads.length < PAGE_SIZE) break;
-    if (totalCount !== null && all.length >= totalCount) break;
-
-    skip += PAGE_SIZE;
+    if (!addedAny) break;
   }
 
   return all;
