@@ -592,11 +592,9 @@ export default function AgendarPage() {
                         setAdminAsSecondMeeting(v);
                         if (v) {
                           setSelectedSdrId(null);
-                          setChannelType("Segunda Reunião");
-                        } else if (channelType === "Segunda Reunião") {
-                          setChannelType("");
                         }
                       }}
+
                     />
                   </div>
 
