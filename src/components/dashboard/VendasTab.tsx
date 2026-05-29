@@ -39,6 +39,8 @@ interface VendaRow {
   follow_up_time: string | null;
   segunda_reuniao: boolean;
   motivo_nao_fechamento: string | null;
+  explicacao_nao_fechamento: string | null;
+  resumo_venda: string | null;
   observacoes: string | null;
   closed_at: string | null;
   created_at: string;
@@ -50,7 +52,14 @@ interface AgendamentoRow {
   id: string;
   closer_id: string | null;
   scheduled_date: string;
+  scheduled_time: string;
   lead_name: string;
+  lead_phone: string | null;
+  channel_type: string | null;
+  briefing: string | null;
+  created_at: string;
+  created_by: string | null;
+  sdr_responsavel_id: string | null;
   status: string;
 }
 
