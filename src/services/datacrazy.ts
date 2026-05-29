@@ -125,7 +125,7 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
   //  - `skip` controla offset
   //  - resposta `{ count: <total>, data: [...] }`
   const PAGE_SIZE = 100;
-  const MAX_LEADS = 1000; // teto realista (10 páginas)
+  const MAX_LEADS = 5000; // teto antigo — traz todos os leads com a tag
   const CONCURRENCY = 5;
 
   const fetchPage = async (skip: number) => {
