@@ -22,7 +22,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
   const isModerador = role === "moderador";
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [blocksOpen, setBlocksOpen] = useState(false);
+
+  // Warm-up + prefetch da lista de leads do DataCrazy assim que o app carrega
+  // (evita cold-start da edge function e ~10s no primeiro acesso a /agendar).
+  useEffect(() => {
+    if (!user) return;
+    const tagId = (import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO as string) || "";
+    if (!tagId) return;
+    queryClient.prefetchQuery({
+      queryKey: ["datacrazy-leads-agendamento", tagId],
+      queryFn: async () => {
+        const dcLeads = await buscarLeadsComTagId(tagId);
+        return dcLeads.map((l: any) => ({
+          id: l.id,
+          name: l.name,
+          phone: l.phone || (l.phones && l.phones[0]?.phone) || "",
+          dataCrazyId: l.id,
+          tags: l.tags,
+        }));
+      },
+      staleTime: 5 * 60_000,
+    });
+  }, [user, queryClient]);
 
   // Sidebar hover-expand state
   const [expanded, setExpanded] = useState(false);
