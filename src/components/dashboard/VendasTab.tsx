@@ -185,6 +185,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     },
   });
 
+  // Mapa user_id -> full_name (para resolver nome do SDR no CSV)
+  const { data: profilesMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["vendas-tab-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_public_profiles");
+      if (error) throw error;
+      const m = new Map<string, string>();
+      ((data ?? []) as { user_id: string; full_name: string }[]).forEach((p) => {
+        m.set(p.user_id, p.full_name);
+      });
+      return m;
+    },
+  });
+
   const agMap = useMemo(() => {
     const m = new Map<string, AgendamentoRow>();
     vendas.forEach((v) => {
