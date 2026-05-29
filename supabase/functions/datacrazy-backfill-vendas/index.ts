@@ -18,7 +18,9 @@ interface BackfillParams {
   end_date?: string | null;
   only_with_motivo?: boolean;
   dry_run?: boolean;
-  limit?: number | null;
+  limit?: number | null; // hard cap on rows considered (test mode = 1)
+  offset?: number; // cursor — process chunk starting here
+  chunk_size?: number; // default 40
 }
 
 serve(async (req) => {
@@ -31,7 +33,6 @@ serve(async (req) => {
   const webhookUrl = Deno.env.get("DATACRAZY_WEBHOOK_URL");
   if (!webhookUrl) return json(500, { error: "DATACRAZY_WEBHOOK_URL not configured" });
 
-  // Auth — only gestor can run
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json(401, { error: "unauthorized" });
   const token = authHeader.replace("Bearer ", "");
@@ -45,10 +46,7 @@ serve(async (req) => {
   const userEmail = (claimsData.claims.email as string) ?? "";
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: isGestor } = await admin.rpc("has_role", {
-    _user_id: userId,
-    _role: "gestor",
-  });
+  const { data: isGestor } = await admin.rpc("has_role", { _user_id: userId, _role: "gestor" });
   if (!isGestor) return json(403, { error: "forbidden" });
 
   let params: BackfillParams;
@@ -59,10 +57,14 @@ serve(async (req) => {
   }
   if (!params.start_date) return json(400, { error: "start_date required" });
 
-  // Fetch vendas + agendamento (paginated to bypass 1k limit)
+  const offset = Math.max(0, params.offset ?? 0);
+  const chunkSize = Math.min(60, Math.max(1, params.chunk_size ?? 40));
+
+  // ---- Fetch full list of candidate IDs first (cheap) ----
+  // We paginate the SELECT so we can deterministically count + slice.
   const PAGE = 1000;
-  let from = 0;
-  const rows: any[] = [];
+  let p = 0;
+  const allRows: any[] = [];
   while (true) {
     let q = admin
       .from("vendas")
@@ -77,29 +79,35 @@ serve(async (req) => {
       .eq("agendamentos.status", "realizada")
       .gte("agendamentos.scheduled_date", params.start_date)
       .order("created_at", { ascending: true })
-      .range(from, from + PAGE - 1);
+      .range(p, p + PAGE - 1);
     if (params.end_date) q = q.lte("agendamentos.scheduled_date", params.end_date);
     if (params.only_with_motivo) q = q.not("motivo_nao_fechamento", "is", null);
     const { data, error } = await q;
     if (error) return json(500, { error: error.message });
     if (!data || data.length === 0) break;
-    rows.push(...data);
+    allRows.push(...data);
     if (data.length < PAGE) break;
-    from += PAGE;
+    p += PAGE;
   }
 
-  let filtered = rows;
-  if (params.limit && params.limit > 0) filtered = filtered.slice(0, params.limit);
+  let candidates = allRows;
+  if (params.limit && params.limit > 0) candidates = candidates.slice(0, params.limit);
+  const total = candidates.length;
 
   if (params.dry_run) {
-    return json(200, { total: filtered.length, dry_run: true });
+    return json(200, { total, dry_run: true });
   }
 
-  // Resolve closers + sdrs maps
-  const closerIds = Array.from(new Set(filtered.map((r) => r.agendamentos?.closer_id).filter(Boolean)));
+  const chunk = candidates.slice(offset, offset + chunkSize);
+  if (chunk.length === 0) {
+    return json(200, { total, offset, processed: 0, sent: 0, failed: 0, done: true });
+  }
+
+  // Resolve closers/sdrs only for this chunk
+  const closerIds = Array.from(new Set(chunk.map((r) => r.agendamentos?.closer_id).filter(Boolean)));
   const sdrIds = Array.from(
     new Set(
-      filtered
+      chunk
         .map((r) => r.agendamentos?.sdr_responsavel_id ?? r.agendamentos?.created_by)
         .filter(Boolean),
     ),
@@ -115,20 +123,22 @@ serve(async (req) => {
     (ps ?? []).forEach((p: any) => sdrMap.set(p.user_id, p.full_name));
   }
 
-  // Log start
-  await admin.from("audit_logs").insert({
-    user_id: userId,
-    user_name: userEmail,
-    action: "datacrazy_backfill_start",
-    entity_type: "vendas",
-    details: {
-      total: filtered.length,
-      start_date: params.start_date,
-      end_date: params.end_date ?? null,
-      only_with_motivo: !!params.only_with_motivo,
-      limit: params.limit ?? null,
-    },
-  });
+  // Log chunk start
+  if (offset === 0) {
+    await admin.from("audit_logs").insert({
+      user_id: userId,
+      user_name: userEmail,
+      action: "datacrazy_backfill_start",
+      entity_type: "vendas",
+      details: {
+        total,
+        start_date: params.start_date,
+        end_date: params.end_date ?? null,
+        only_with_motivo: !!params.only_with_motivo,
+        limit: params.limit ?? null,
+      },
+    });
+  }
 
   // Rate limit: 90 req/min => 1 req per ~670ms
   const MIN_INTERVAL_MS = 670;
@@ -136,8 +146,8 @@ serve(async (req) => {
   let failed = 0;
   const errors: { agendamento_id: string; error: string }[] = [];
 
-  for (let i = 0; i < filtered.length; i++) {
-    const r = filtered[i];
+  for (let i = 0; i < chunk.length; i++) {
+    const r = chunk[i];
     const ag = r.agendamentos;
     if (!ag) continue;
     const closerName = ag.closer_id ? closerMap.get(ag.closer_id) ?? null : null;
@@ -194,32 +204,32 @@ serve(async (req) => {
       errors.push({ agendamento_id: ag.id, error: e instanceof Error ? e.message : String(e) });
     }
 
-    // Progress log every 50
-    if ((i + 1) % 50 === 0 || i === filtered.length - 1) {
-      await admin.from("audit_logs").insert({
-        user_id: userId,
-        user_name: userEmail,
-        action: "datacrazy_backfill_progress",
-        entity_type: "vendas",
-        details: { processed: i + 1, total: filtered.length, sent, failed },
-      });
-    }
-
-    // Throttle
-    if (i < filtered.length - 1) {
+    if (i < chunk.length - 1) {
       const elapsed = Date.now() - t0;
       const wait = Math.max(0, MIN_INTERVAL_MS - elapsed);
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     }
   }
 
+  const nextOffset = offset + chunk.length;
+  const done = nextOffset >= total;
+
   await admin.from("audit_logs").insert({
     user_id: userId,
     user_name: userEmail,
-    action: "datacrazy_backfill_done",
+    action: done ? "datacrazy_backfill_done" : "datacrazy_backfill_progress",
     entity_type: "vendas",
-    details: { total: filtered.length, sent, failed, errors: errors.slice(0, 20) },
+    details: { total, offset, processed: chunk.length, sent, failed, next_offset: nextOffset, errors: errors.slice(0, 10) },
   });
 
-  return json(200, { total: filtered.length, sent, failed, errors: errors.slice(0, 50) });
+  return json(200, {
+    total,
+    offset,
+    processed: chunk.length,
+    sent,
+    failed,
+    next_offset: nextOffset,
+    done,
+    errors: errors.slice(0, 20),
+  });
 });
