@@ -5,13 +5,13 @@ import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
-  Filter, X, CalendarIcon, Pencil, Trash2, Loader2,
+  Filter, X, CalendarIcon, Pencil, Trash2, Loader2, Download,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { brDateOf } from "@/lib/timezone";
+import { brDateOf, formatBRDateTime } from "@/lib/timezone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

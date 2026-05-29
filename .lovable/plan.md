@@ -1,30 +1,42 @@
-## Diagnóstico
+## Objetivo
 
-- **Dashboard "Total agend. dia"** (`DashboardPage.tsx`): hoje = `totalSdrCount + closerCreatedCount`, ambos **excluem canceladas**.
-- **Métricas SDRs "Agendas Para Hoje" / "Total agend. dia"** (`DashboardComercialPage.tsx`): também **excluem canceladas** (via `*Active`).
+Adicionar um ícone de download no cabeçalho do card **"Motivos de Não Fechamento"** (em `src/components/dashboard/VendasTab.tsx`) que exporta um arquivo `.csv` com os leads que estão computados na seção, respeitando os filtros ativos (período do dashboard + filtro de closer do próprio card).
 
-Sua regra: as duas devem **incluir canceladas**, e a Métricas SDRs continua **só SDR** (sem Closer).
+## Onde alterar
 
-## Plano
+Arquivo único: `src/components/dashboard/VendasTab.tsx`
 
-### 1. `src/pages/DashboardPage.tsx`
+## Mudanças
 
-- `totalSdrCount` (linha 364) — remover `a.status !== "cancelada"`.
-- `closerCreatedCount` (linha 394) — remover `a.status !== "cancelada"`. Atualizar comentário.
-- `totalAgend` isCloserView (linha 743) — remover `.filter(a => a.status !== "cancelada")`, virar `sourceAgendamentos.filter(a => TOTAL_STATUSES.includes(a.status)).length`.
+1. **Importar** o ícone `Download` do `lucide-react` e helpers `formatBRDateTime` / `formatBRDate` de `@/lib/timezone`.
 
-### 2. `src/pages/DashboardComercialPage.tsx` (useMemo ~290-388)
+2. **Estender a query `vendas-tab`** incluindo no select os campos necessários ao CSV:
+   - `vendas.explicacao_nao_fechamento`, `vendas.resumo_venda`
+   - `agendamentos.lead_phone, channel_type, scheduled_time, created_at, sdr_responsavel_id, created_by, briefing`
+   - Atualizar as interfaces `VendaRow` e `AgendamentoRow`.
 
-- Remover helper `active()` e as variantes `*Active` (`todayAgsActive`, `todayCreatedActive`, `yesterdayAgsActive`, `tomorrowAgsActive`, `monthAgsActive`, `prevMonthSdrActive`).
-- Voltar todos os totais/IDs/`byChannel` para usar as listas completas (`todayAgs`, `todayCreated`, `yesterdayAgs`, `tomorrowAgs`, `monthAgs`, `prevMonthSdr`).
-- `totalDia` = `todayAgs.length`.
-- `taxaComp` = `compareceuCount / todayAgs.length` (denominador inclui canceladas — fica matematicamente coerente com o total exibido).
-- `monthDiff` = `monthAgs.length - prevMonthSdr.length`.
+3. **Nova query** `vendas-tab-profiles` que chama a RPC `get_public_profiles()` para mapear `user_id → full_name` (resolver nome do SDR).
 
-### 3. Sem outras mudanças
+4. **Botão de download** no header do card, ao lado do `Select` de closer:
+   - `Button` ghost com ícone `Download`, `aria-label="Baixar CSV"`.
+   - Desabilitado quando `naoFechouRows.length === 0`.
 
-Os cards de status (Confirmadas, Canceladas, Realizadas, No-show, Reagendadas) já usavam `todayAgs` cheio — continuam iguais.
+5. **Handler `handleDownloadCsv`**:
+   - Filtra `vendasDiaParaMotivos` por `!v.vendeu` (mesma base que alimenta o card).
+   - Para cada linha, monta as colunas:
+     - Nome do lead, Telefone, Data agendamento (dd/MM/yyyy), Hora, Closer, SDR, Canal, Data de criação, Status da reunião, Motivo do não fechamento, Explicação do porquê não fechou, Resumo do cliente, Observações.
+   - Escapa valores com `"` e quebras de linha (CSV padrão: aspas duplas, duplicação de `"` interno, separador `;` para abrir bem no Excel pt-BR, BOM UTF-8 `\uFEFF` no início).
+   - Cria um `Blob`, gera URL com `URL.createObjectURL` e dispara download via `<a>` com nome `motivos-nao-fechamento_{periodo}_{closer}.csv`.
 
-## Resultado
+## Detalhes técnicos
 
-Ambos os cards passam a contar canceladas. Como Métricas SDRs ignora Closer e o Dashboard soma Closer, eles **podem diferir** no número absoluto, mas usam a **mesma regra de status** (todas as agendas do dia, inclusive canceladas). Daqui pra frente, mudar a inclusão/exclusão de qualquer status em um deles deve ser feito no outro também.
+- **SDR**: usar `sdr_responsavel_id ?? created_by` e resolver via profilesMap.
+- **Closer**: usar `closerMap` (já existe).
+- **Data do agendamento**: `scheduled_date` (já está em yyyy-MM-dd, converter para dd/MM/yyyy).
+- **Data de criação**: `agendamentos.created_at` formatado com `formatBRDateTime`.
+- **Sem dependências novas**: usar apenas APIs do navegador (`Blob`, `URL.createObjectURL`).
+
+## Fora de escopo
+
+- Não alterar layout/estilos do restante do dashboard.
+- Não mexer em RLS, edge functions ou schema do banco.
