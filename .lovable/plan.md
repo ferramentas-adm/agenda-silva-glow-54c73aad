@@ -1,54 +1,76 @@
-# Padronizar payload do webhook DataCrazy
+# Relatório: lentidão na aba "Novo Agendamento"
 
-## Objetivo
+## Diagnóstico
 
-Garantir que as **3 formas** de criar agendamento (toggle Admin, VendaDialog do Closer, Closer agendando direto no `/agendar`) — e também updates de status e deleções — disparem o webhook DataCrazy com **exatamente o mesmo conjunto de chaves**, preenchendo `null` (ou string vazia para strings) quando o dado não se aplicar.
+O gargalo principal **não é o React** nem o Supabase — é a busca de leads no **DataCrazy**, feita no passo inicial da tela. Hoje:
 
-## Situação atual
+- `LeadSearch` dispara `buscarLeadsComTagId()` (src/services/datacrazy.ts:117)
+- Essa função pagina o endpoint `/leads` em páginas de 100, **sequencialmente**, até 5.000 leads
+- Cada página passa pela edge function `datacrazy-proxy` (cold start + round-trip externo)
+- O `useQuery` está com `staleTime: 0` + `refetchOnMount: "always"` (LeadSearch.tsx:54–55) → **toda visita re-baixa tudo**, sem cache
 
-A função `notify_status_change_webhook` monta o payload condicionalmente:
-- `closer_name` só é incluído se `closer_id IS NOT NULL`
-- `meet_link` só é incluído se preenchido
-- `calendar_link` só é incluído em não-deleções
-- Bloco de enriquecimento (`lead_revenue`, `motivo_nao_fechamento`, `explicacao_nao_fechamento`, `valor_apresentado`, `recebimento_acordado`, `valor_previsto`, `data_prevista`) só é anexado em **INSERT de 2ª reunião com `original_agendamento_id`** → fica fora em Forma 1, Forma 3 (sem reagendamento), updates e deleções
-- `deleted_at` e `deletion_reason` só existem em deleções
+Com poucas centenas de leads marcados já são facilmente 6–15s. Esse é o motivo dos >10s.
 
-Resultado: cada cenário envia um subset diferente de chaves, dificultando o consumo no CRM.
+Outros pontos secundários (não dominantes, mas somam):
 
-## Mudança
+- 3 `useQuery` independentes na própria página (`closers`, `sdr-users`, `agendamento-edit`) — OK, mas o de SDR faz 2 idas ao banco em série (`user_roles` → `profiles`).
+- `useEffect` de autopreenchimento (AgendarPage.tsx:179) dispara uma query extra ao banco a cada seleção de lead.
+- `CloserSelector` faz 3 queries por troca de data.
+- Edge function `datacrazy-proxy` provavelmente sofre cold start (Deno) na primeira chamada.
 
-Editar a função `public.notify_status_change_webhook` (migration) para sempre montar **um único payload base** com todas as chaves abaixo, usando `null` quando não houver valor:
+## Plano de otimização (sem mudar funcionalidade)
 
-**Chaves sempre presentes no payload:**
-- `lead_name`, `lead_phone`
-- `status`
-- `scheduled_datetime`, `created_at`
-- `sdr_name`, `closer_name`
-- `briefing`, `meeting_reason`, `is_segunda_reuniao`, `channel_type`
-- `meet_link`, `calendar_link`
-- `deleted_at`, `deletion_reason`
-- `lead_revenue`, `motivo_nao_fechamento`, `explicacao_nao_fechamento`, `valor_apresentado`
-- `recebimento_acordado`, `valor_previsto`, `data_prevista`
+### 1. Corrigir o cache da lista de leads (ganho maior, ~80% do problema)
+Em `src/components/agendar/LeadSearch.tsx`:
+- Remover `staleTime: 0` e `refetchOnMount: "always"`.
+- Usar `staleTime: 5 * 60_000` (5 min) e `gcTime: 30 * 60_000`.
+- Manter o botão "Atualizar" para forçar refetch manual (já existe via `invalidateQueries`).
+- Adicionar `placeholderData: (prev) => prev` para a tela não piscar para o estado vazio durante refetch.
 
-Regras de preenchimento:
-- Campos de venda/pagamento: continuam sendo buscados quando é INSERT de `segunda_reuniao` com `original_agendamento_id`; caso contrário viram `null`.
-- `closer_name`: `null` quando não houver `closer_id`.
-- `meet_link`: `null` quando vazio.
-- `calendar_link`: sempre calculado (inclusive em deleções, baseado em `scheduled_date/time`).
-- `deleted_at` / `deletion_reason`: `null` fora de deleção.
-- `recebimento_acordado`: `false` quando não há pagamento; `null` apenas se a reunião não for 2ª reunião enriquecida — manteremos `false` como padrão para consistência booleana.
+Resultado esperado: primeira visita continua igual, **demais visitas ficam instantâneas**.
 
-## Não muda
+### 2. Paralelizar/limitar paginação no DataCrazy
+Em `src/services/datacrazy.ts` `buscarLeadsComTagId`:
+- Fazer a 1ª chamada para obter `count`.
+- Disparar as páginas restantes em **paralelo** com `Promise.all` (em lotes de 5).
+- Reduzir o `MAX_LEADS` para um valor realista (ex.: 1000) — hoje 5000 é overkill.
 
-- Lógica de quando o webhook dispara (mesmas condições de status/INSERT/deleção).
-- Frontend (`AgendarPage.tsx`, `VendaDialog.tsx`) — nenhuma alteração de UI ou regra de negócio.
-- Edge functions.
+Ganho: corta o tempo da primeira carga proporcionalmente ao nº de páginas (3–5×).
 
-## Validação
+### 3. Prefetch e skeleton imediato
+- Em `AppLayout`/rota, ao montar o item de menu "Novo Agendamento", chamar `queryClient.prefetchQuery(["datacrazy-leads-agendamento", tagId])` no hover/foco do link.
+- Garantir que o passo `lead` já renderize o restante do formulário (steps, botões) imediatamente — só a lista mostra skeleton.
 
-Após aplicar a migration, simular as 3 formas (similar ao teste já feito anteriormente):
-1. Toggle Admin (Forma 1) — verificar payload no log do trigger / DataCrazy.
-2. VendaDialog → "Sim, marcar segunda reunião" (Forma 2).
-3. Closer cria reunião direto no `/agendar` (Forma 3).
+### 4. Reduzir queries em série na página
+Em `AgendarPage.tsx`:
+- Unir as duas queries de SDR em **uma RPC** (`get_sdr_users()`) que faz o join `user_roles` ⨝ `profiles` no banco — 1 round-trip em vez de 2.
+- Combinar `closers-active` (já existe) com `closers-availability` reaproveitando dados em cache.
 
-Confirmar que as 3 chamadas trazem o mesmo conjunto de chaves, com `null` onde aplicável.
+### 5. Aquecer a edge function `datacrazy-proxy`
+- No `AppLayout`, após login, disparar um `supabase.functions.invoke("datacrazy-proxy", { body: { method: "GET", path: "/ping" } })` em background (fire-and-forget) para eliminar o cold start no primeiro clique do usuário.
+
+### 6. Medições antes/depois
+Adicionar `console.time`/`console.timeEnd` em torno de `buscarLeadsComTagId` durante o teste para confirmar o ganho. Remover depois.
+
+## Estimativa de impacto
+
+| Mudança | Esforço | Ganho esperado |
+|---|---|---|
+| 1. Cache do useQuery | 2 min | **-80% nas re-visitas** |
+| 2. Paginação paralela | 15 min | -50–70% na 1ª carga |
+| 3. Prefetch no menu | 10 min | percepção: 0s ao clicar |
+| 4. RPC SDR | 20 min | -200–400ms |
+| 5. Warm-up edge fn | 5 min | -300–800ms na 1ª chamada |
+
+Total realista: tempo médio de **>10s** cai para **<1s** após a primeira visita e **2–4s** na primeira.
+
+## Detalhes técnicos
+
+- Arquivos tocados: `src/components/agendar/LeadSearch.tsx`, `src/services/datacrazy.ts`, `src/pages/AgendarPage.tsx`, `src/components/AppLayout.tsx` (prefetch), 1 migration para a RPC `get_sdr_users`.
+- Sem mudanças de UI, sem mudança de comportamento de webhook, sem mudança de schema (exceto a RPC opcional).
+- Sem dependência nova.
+
+## Fora de escopo (mas observações)
+
+- Cold start do Deno em edge functions só desaparece com tráfego frequente ou upgrade de instância (Lovable Cloud → Backend → Advanced settings).
+- Se o DataCrazy expuser filtro server-side por nome/telefone, a longo prazo vale trocar "baixar tudo e filtrar local" por busca incremental — fora do escopo deste ajuste.
