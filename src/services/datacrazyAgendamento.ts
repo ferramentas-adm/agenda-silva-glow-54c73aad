@@ -60,7 +60,7 @@ export async function resendAgendamentoWebhook({
     const { data: ag, error } = await supabase
       .from("agendamentos")
       .select(
-        "id, lead_name, lead_phone, scheduled_date, scheduled_time, created_at, briefing, meet_link, closer_id, sdr_responsavel_id, created_by",
+        "id, lead_name, lead_phone, scheduled_date, scheduled_time, created_at, briefing, meet_link, closer_id, sdr_responsavel_id, created_by, meeting_reason, channel_type",
       )
       .eq("id", agendamentoId)
       .maybeSingle();
