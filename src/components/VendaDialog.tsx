@@ -340,6 +340,26 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         sdrName = p?.full_name ?? null;
       }
 
+      // Cria pagamento previsto ANTES de inserir a 2ª reunião, para que o
+      // trigger do webhook consiga ler o recebimento acordado ao montar o payload.
+      if (hasRecebimento && valorPrevistoValido && dataPrevista) {
+        const { error: pagError } = await supabase.from("pagamentos").insert({
+          cliente_nome: agData?.lead_name ?? leadName,
+          cliente_telefone: agData?.lead_phone ?? null,
+          valor_previsto: valorPrevistoNum,
+          data_prevista: format(dataPrevista, "yyyy-MM-dd"),
+          status: "pendente",
+          closer_id: agData?.closer_id ?? null,
+          agendamento_id: agendamentoId,
+          observacoes: observacoes.trim() || null,
+          created_by: user.id,
+        });
+        if (pagError) {
+          console.warn("[pagamentos] falha ao criar pagamento previsto:", pagError);
+          toast.warning("Venda registrada, mas falhou ao criar pagamento previsto.");
+        }
+      }
+
       // Se for "Segunda reunião", cria um novo agendamento na data/horário escolhidos
       if (segundaAtiva && followUpDate && followUpTime && agData) {
         const originLabel = agData.scheduled_date
@@ -355,6 +375,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           status: "agendada",
           channel_type: agData.channel_type ?? null,
           observation: `Segunda reunião — origem: reunião do ${originLabel}`,
+          briefing: observacoes.trim() || null,
+          meeting_reason: "segunda_reuniao",
+          original_agendamento_id: agendamentoId,
           created_by: user.id,
         } as any);
         if (novoAgError) {
@@ -387,24 +410,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         lead_revenue: leadRevenue || null,
       } as any);
 
-      // Cria pagamento previsto se foi acordado recebimento de valor durante a reunião
-      if (hasRecebimento && valorPrevistoValido && dataPrevista) {
-        const { error: pagError } = await supabase.from("pagamentos").insert({
-          cliente_nome: agData?.lead_name ?? leadName,
-          cliente_telefone: agData?.lead_phone ?? null,
-          valor_previsto: valorPrevistoNum,
-          data_prevista: format(dataPrevista, "yyyy-MM-dd"),
-          status: "pendente",
-          closer_id: agData?.closer_id ?? null,
-          agendamento_id: agendamentoId,
-          observacoes: observacoes.trim() || null,
-          created_by: user.id,
-        });
-        if (pagError) {
-          console.warn("[pagamentos] falha ao criar pagamento previsto:", pagError);
-          toast.warning("Venda registrada, mas falhou ao criar pagamento previsto.");
-        }
-      }
+
 
       await logAudit("venda_registrada", "venda", agendamentoId, {
         lead_name: leadName,
