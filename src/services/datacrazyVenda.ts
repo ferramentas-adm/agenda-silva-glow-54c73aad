@@ -19,7 +19,6 @@ export interface VendaWebhookPayload {
   outcome: "fechou" | "perdeu" | "follow_up" | "em_andamento";
   registered_at: string;
   lead_revenue?: string | null;
-  source?: "live" | "backfill";
 }
 
 /**
