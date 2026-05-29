@@ -287,6 +287,68 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
 
+  // Download CSV dos leads que estão na seção "Motivos de Não Fechamento"
+  const handleDownloadMotivosCsv = () => {
+    const rows = vendasDiaParaMotivos.filter((v) => !v.vendeu);
+    if (rows.length === 0) return;
+
+    const headers = [
+      "Lead", "Telefone", "Data agendamento", "Hora", "Closer", "SDR", "Canal",
+      "Criado em", "Status reunião", "Motivo do não fechamento",
+      "Explicação do porquê não fechou", "Resumo do cliente", "Briefing", "Observações",
+    ];
+
+    const escape = (val: unknown) => {
+      const s = val == null ? "" : String(val);
+      return `"${s.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+    };
+
+    const fmtScheduledDate = (ymd: string) => {
+      const [y, m, d] = ymd.split("-");
+      return d && m && y ? `${d}/${m}/${y}` : ymd;
+    };
+
+    const lines = rows.map((v) => {
+      const ag = v.agendamentos;
+      const closerName = ag?.closer_id ? closerMap.get(ag.closer_id) || "" : "";
+      const sdrId = ag?.sdr_responsavel_id ?? ag?.created_by ?? null;
+      const sdrName = sdrId ? profilesMap.get(sdrId) || "" : "";
+      return [
+        ag?.lead_name ?? "",
+        ag?.lead_phone ?? "",
+        ag ? fmtScheduledDate(ag.scheduled_date) : "",
+        ag?.scheduled_time ?? "",
+        closerName,
+        sdrName,
+        ag?.channel_type ?? "",
+        ag?.created_at ? formatBRDateTime(ag.created_at) : "",
+        ag?.status ?? "",
+        v.motivo_nao_fechamento ?? "",
+        v.explicacao_nao_fechamento ?? "",
+        v.resumo_venda ?? "",
+        ag?.briefing ?? "",
+        v.observacoes ?? "",
+      ].map(escape).join(";");
+    });
+
+    const csv = "\uFEFF" + [headers.map(escape).join(";"), ...lines].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const periodoSlug = isRange && rangeFromStr && rangeToStr
+      ? `${rangeFromStr}_a_${rangeToStr}`
+      : dateStr;
+    const closerSlug = motivosCloserFilter === "all"
+      ? "todos-closers"
+      : (closerMap.get(motivosCloserFilter) || "closer").toLowerCase().replace(/\s+/g, "-");
+    a.href = url;
+    a.download = `motivos-nao-fechamento_${periodoSlug}_${closerSlug}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // Motivos de não fechamento
   const motivosCount = useMemo(() => {
     const map = new Map<string, number>();
