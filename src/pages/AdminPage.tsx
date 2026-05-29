@@ -1370,7 +1370,7 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 bg-secondary">
+            <TabsList className="grid w-full grid-cols-5 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
@@ -1387,6 +1387,10 @@ export default function AdminPage() {
                 <Plus className="h-3.5 w-3.5" />
                 Listas
               </TabsTrigger>
+              <TabsTrigger value="integracao" className="gap-1.5 text-xs sm:text-sm">
+                <RefreshCw className="h-3.5 w-3.5" />
+                Integração
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -1401,7 +1405,11 @@ export default function AdminPage() {
             <TabsContent value="lists">
               <DynamicListsSection />
             </TabsContent>
+            <TabsContent value="integracao">
+              <DatacrazyBackfillCard />
+            </TabsContent>
           </Tabs>
+
         ) : isModerador ? (
           <Tabs defaultValue="lists" className="space-y-4">
             <TabsList className="grid w-full grid-cols-1 bg-secondary">
