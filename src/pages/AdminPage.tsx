@@ -27,6 +27,7 @@ import DynamicListManager from "@/components/DynamicListManager";
 import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
+import DatacrazyBackfillCard from "@/components/admin/DatacrazyBackfillCard";
 import { logAudit } from "@/services/auditLog";
 
 /* ─── Listas dinâmicas (Canais / Motivos / Justificativas) ───── */
