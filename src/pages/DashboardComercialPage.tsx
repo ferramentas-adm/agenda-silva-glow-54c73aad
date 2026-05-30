@@ -392,7 +392,7 @@ export default function DashboardComercialPage() {
     if (diff < 1) return "Atualizado agora";
     return `Atualizado há ${diff} minuto${diff > 1 ? "s" : ""}`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataUpdatedAt, clock]);
+  }, [dataUpdatedAt, updatedAgoTick]);
 
   const goPrev = () => { setDateRange(undefined); setCurrentDate(d => subDays(d, 1)); };
   const goNext = () => { setDateRange(undefined); setCurrentDate(d => addDays(d, 1)); };
@@ -489,7 +489,7 @@ export default function DashboardComercialPage() {
           {/* Clock + Online */}
           <div className="ml-auto flex items-center gap-4">
             <span className="text-lg font-mono font-bold tracking-tight">
-              {format(clock, "HH:mm:ss")}
+              <LiveClock />
             </span>
             <span className="flex items-center gap-1.5 text-xs text-primary">
               <Wifi className="h-3.5 w-3.5" />
