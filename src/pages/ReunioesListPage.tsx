@@ -655,7 +655,26 @@ export default function ReunioesListPage() {
                           <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">
+                          {canDelete ? (
+                            <Select
+                              value={(ag as any).channel_type || "__none"}
+                              onValueChange={(v) => handleUpdateChannel(ag, v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs glass-input min-w-[140px]">
+                                <SelectValue placeholder="—" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none">—</SelectItem>
+                                {CHANNEL_TYPES.map((ct) => (
+                                  <SelectItem key={ct} value={ct}>{ct}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            (ag as any).channel_type || "—"
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px]">
                           {(() => {
                             const urlRegex = /https?:\/\/[^\s]+/g;
