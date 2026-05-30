@@ -326,16 +326,24 @@ export default function DashboardComercialPage() {
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
     const byChannel = (list: AgendamentoMetric[]) => {
-      const map = new Map<string, string[]>();
+      const map = new Map<string, { ids: string[]; idsRealizadas: string[] }>();
       list.forEach(a => {
         const ch = a.channel_type || "Sem canal";
-        const arr = map.get(ch) || [];
-        arr.push(a.id);
-        map.set(ch, arr);
+        const cur = map.get(ch) || { ids: [], idsRealizadas: [] };
+        cur.ids.push(a.id);
+        if (a.status === "realizada") cur.idsRealizadas.push(a.id);
+        map.set(ch, cur);
       });
       return Array.from(map.entries())
-        .sort((a, b) => b[1].length - a[1].length)
-        .map(([canal, ids], i) => ({ num: i + 1, canal, qtd: ids.length, ids }));
+        .sort((a, b) => b[1].ids.length - a[1].ids.length)
+        .map(([canal, v], i) => ({
+          num: i + 1,
+          canal,
+          qtd: v.ids.length,
+          ids: v.ids,
+          qtdRealizadas: v.idsRealizadas.length,
+          idsRealizadas: v.idsRealizadas,
+        }));
     };
 
     const noShowCount = sc(todayAgs, "no_show");
