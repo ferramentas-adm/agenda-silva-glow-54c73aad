@@ -35,9 +35,13 @@ export default function GoogleCalendarBanner() {
   });
 
   // Check if closer has google tokens
+  // C1: sem polling de 5s — atualizamos por window focus (abaixo) e
+  // invalidação manual após o callback do OAuth.
   const { data: hasToken } = useQuery({
     queryKey: ["closer-has-google-token", closerMatch?.id],
     enabled: !!closerMatch?.id,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("closer_google_tokens")
@@ -49,7 +53,6 @@ export default function GoogleCalendarBanner() {
       // If row found, return true
       return !!data;
     },
-    refetchInterval: 5_000,
   });
 
   // Refetch when window regains focus (after OAuth popup closes)

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, parseISO } from "date-fns";
 import type { DateRange } from "react-day-picker";
@@ -100,7 +100,10 @@ export default function DashboardComercialPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [clock, setClock] = useState(new Date());
+  // M3: relógio movido para <LiveClock/> memoizado para não re-renderizar
+  // a página inteira de 1.300 linhas a cada segundo. Mantemos apenas um
+  // tick lento (30s) para atualizar a label "Atualizado há X min".
+  const [updatedAgoTick, setUpdatedAgoTick] = useState(0);
   const [tabSettingsOpen, setTabSettingsOpen] = useState(false);
 
   // Recarrega preferências quando o usuário muda (login/logout)
@@ -141,9 +144,10 @@ export default function DashboardComercialPage() {
     });
   };
 
-  // Live clock
+  // Tick lento (30s) só para recomputar a label "Atualizado há X min".
+  // O HH:mm:ss vive em <LiveClock/> e re-renderiza isoladamente.
   useEffect(() => {
-    const timer = setInterval(() => setClock(new Date()), 1000);
+    const timer = setInterval(() => setUpdatedAgoTick((t) => t + 1), 30_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -388,7 +392,7 @@ export default function DashboardComercialPage() {
     if (diff < 1) return "Atualizado agora";
     return `Atualizado há ${diff} minuto${diff > 1 ? "s" : ""}`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataUpdatedAt, clock]);
+  }, [dataUpdatedAt, updatedAgoTick]);
 
   const goPrev = () => { setDateRange(undefined); setCurrentDate(d => subDays(d, 1)); };
   const goNext = () => { setDateRange(undefined); setCurrentDate(d => addDays(d, 1)); };
@@ -485,7 +489,7 @@ export default function DashboardComercialPage() {
           {/* Clock + Online */}
           <div className="ml-auto flex items-center gap-4">
             <span className="text-lg font-mono font-bold tracking-tight">
-              {format(clock, "HH:mm:ss")}
+              <LiveClock />
             </span>
             <span className="flex items-center gap-1.5 text-xs text-primary">
               <Wifi className="h-3.5 w-3.5" />
@@ -1311,3 +1315,16 @@ function RankingSDRsTab({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// M3: Relógio isolado e memoizado. Re-renderiza só ele mesmo a cada segundo,
+// sem disparar reconciliação no componente DashboardComercialPage (1.300 linhas).
+// ─────────────────────────────────────────────────────────────────────────────
+const LiveClock = memo(function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return <>{format(now, "HH:mm:ss")}</>;
+});

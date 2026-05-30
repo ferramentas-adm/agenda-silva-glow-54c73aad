@@ -28,6 +28,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
+      // C3: garbage-collect cached query data after 10 min of inactivity
+      // para evitar acúmulo de memória em sessões longas.
+      gcTime: 10 * 60_000,
       retry: (failureCount, error: unknown) => {
         const status = (error as any)?.status;
         if (typeof status === "number" && status >= 400 && status < 500) return false;
