@@ -105,20 +105,49 @@ export function useOverdueMeetings() {
         (m) => meetingEpochMin(m.scheduled_date, m.scheduled_time) + OVERDUE_GRACE_MINUTES <= nowMin,
       );
 
-      // Regra de repasse: quem REPASSA é liberado; quem RECEBE permanece travado até resolver.
-      // - sdr_handoff_at: SDR repassou ao Closer → SDR liberado, Closer travado.
-      // - closer_handoff_at: Closer repassou ao SDR → Closer liberado, SDR travado.
+      // Regra de repasse: o handoff TRANSFERE responsabilidade — sempre um lado
+      // fica travado até a reunião ser resolvida. Quem fez o handoff MAIS RECENTE
+      // libera; o outro lado é o responsável atual e permanece bloqueado.
+      // - Sem handoffs → ambos travados.
+      // - Só sdr_handoff → SDR livre, Closer travado.
+      // - Só closer_handoff → Closer livre, SDR travado.
+      // - Ambos → compara timestamps: o mais recente liberta quem repassou; o
+      //   outro lado é o responsável atual e segue travado.
       overdue = overdue.filter((m) => {
         const isSdr = !!user?.id && m.created_by === user.id;
         const isCloser = !!myCloserId && m.closer_id === myCloserId;
-        // Se for ambos (raro: SDR que também é Closer da própria reunião), trava se qualquer lado ainda precisar resolver.
-        if (isSdr && m.sdr_handoff_at && !isCloser) return false;
-        if (isCloser && m.closer_handoff_at && !isSdr) return false;
-        if (isSdr && isCloser) {
-          // Só libera se ambos lados já repassaram (situação improvável).
-          return !(m.sdr_handoff_at && m.closer_handoff_at);
+
+        const sdrAt = m.sdr_handoff_at ? Date.parse(m.sdr_handoff_at) : null;
+        const closerAt = m.closer_handoff_at ? Date.parse(m.closer_handoff_at) : null;
+
+        // Determina o responsável atual.
+        // - Nenhum handoff → ambos responsáveis.
+        // - Apenas um → o lado oposto é o responsável.
+        // - Ambos → quem repassou por último entregou para o outro lado.
+        let sdrResponsible = true;
+        let closerResponsible = true;
+        if (sdrAt && closerAt) {
+          if (sdrAt >= closerAt) {
+            // SDR repassou por último → Closer responsável.
+            sdrResponsible = false;
+            closerResponsible = true;
+          } else {
+            sdrResponsible = true;
+            closerResponsible = false;
+          }
+        } else if (sdrAt && !closerAt) {
+          sdrResponsible = false;
+          closerResponsible = true;
+        } else if (!sdrAt && closerAt) {
+          sdrResponsible = true;
+          closerResponsible = false;
         }
-        return true;
+
+        // Usuário é SDR+Closer da mesma reunião: trava se qualquer um dos lados ainda é responsável.
+        if (isSdr && isCloser) return sdrResponsible || closerResponsible;
+        if (isSdr) return sdrResponsible;
+        if (isCloser) return closerResponsible;
+        return false;
       });
 
       if (overdue.length === 0) return [];
