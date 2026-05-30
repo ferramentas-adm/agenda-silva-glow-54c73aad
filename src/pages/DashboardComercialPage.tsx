@@ -722,14 +722,52 @@ function ChannelTable({
   onRowClick,
 }: {
   title: string;
-  data: { num: number; canal: string; qtd: number; ids: string[] }[];
-  onRowClick?: (row: { canal: string; ids: string[] }) => void;
+  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[] }[];
+  onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" }) => void;
 }) {
+  const [mode, setMode] = useState<"todas" | "realizadas">("todas");
+
+  const rows = useMemo(() => {
+    const mapped = data.map((r) => ({
+      ...r,
+      currentQtd: mode === "todas" ? r.qtd : r.qtdRealizadas,
+      currentIds: mode === "todas" ? r.ids : r.idsRealizadas,
+    }));
+    const filtered = mode === "realizadas" ? mapped.filter((r) => r.currentQtd > 0) : mapped;
+    return filtered
+      .sort((a, b) => b.currentQtd - a.currentQtd)
+      .map((r, i) => ({ ...r, num: i + 1 }));
+  }, [data, mode]);
+
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <Users className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">{title}</h3>
+        </div>
+        <div className="inline-flex rounded-md border border-primary/10 p-0.5 bg-muted/30">
+          <button
+            type="button"
+            onClick={() => setMode("todas")}
+            className={cn(
+              "px-2.5 py-1 text-xs rounded transition-colors",
+              mode === "todas" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Todas
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("realizadas")}
+            className={cn(
+              "px-2.5 py-1 text-xs rounded transition-colors",
+              mode === "realizadas" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Realizadas
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -742,25 +780,25 @@ function ChannelTable({
             </tr>
           </thead>
           <tbody>
-            {data.length === 0 && (
+            {rows.length === 0 && (
               <tr>
                 <td colSpan={3} className="text-center text-muted-foreground py-4 text-xs">
                   Nenhum registro
                 </td>
               </tr>
             )}
-            {data.map((row) => (
+            {rows.map((row) => (
               <tr
                 key={row.canal}
                 className={cn(
                   "border-b border-primary/5",
                   onRowClick && "cursor-pointer hover:bg-primary/5 transition-colors"
                 )}
-                onClick={onRowClick ? () => onRowClick({ canal: row.canal, ids: row.ids }) : undefined}
+                onClick={onRowClick ? () => onRowClick({ canal: row.canal, ids: row.currentIds, mode }) : undefined}
               >
                 <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
                 <td className="py-2 px-2 font-medium">{row.canal}</td>
-                <td className="py-2 px-2 text-right font-bold">{row.qtd}</td>
+                <td className="py-2 px-2 text-right font-bold">{row.currentQtd}</td>
               </tr>
             ))}
           </tbody>
