@@ -1,20 +1,53 @@
-## Objetivo
-Permitir alternar a tabela "Agendas Para … — por Canal" (e a gêmea "Criadas") entre mostrar **todas as agendas** e somente as **realizadas**, com um botão no cabeçalho da tabela.
+# Alinhar 2ª reunião com fluxo de agendamento normal
 
-## Mudanças (somente `src/pages/DashboardComercialPage.tsx`)
+Hoje, ao criar a segunda reunião pelo painel **Resultado da Reunião** (`VendaDialog.tsx`), o sistema apenas insere uma linha em `agendamentos` sem criar evento no Google Calendar do closer, sem gerar Meet link e sem `google_event_id`. O webhook do CRM dispara com `meet_link: NULL` e `calendar_link` genérico (template URL).
 
-1. **`byChannel(list)` (~linha 328):** retornar, além de `ids` (todas) e `qtd`, também `idsRealizadas` e `qtdRealizadas` — agrupando os agendamentos por canal e separando os com `status === "realizada"`.
+A meta é replicar exatamente o comportamento do `AgendarPage`: criar evento real no Google Calendar do closer, capturar o Meet link, salvar `meet_link` e `google_event_id` em `agendamentos`, e só então deixar o trigger do webhook disparar com os dados corretos.
 
-2. **`ChannelTable` (~linha 711):**
-   - Adicionar estado local `mode: "todas" | "realizadas"`.
-   - No cabeçalho do card (ao lado do título), adicionar um toggle compacto (dois botões `Todas` / `Realizadas`) usando tokens do design system.
-   - A coluna "Qtd" e a ordenação passam a refletir o modo selecionado; linhas com `qtd === 0` no modo atual ficam ocultas.
-   - `onRowClick` envia os `ids` correspondentes ao modo (todas ou só realizadas) para o drilldown existente.
+## Mudanças
 
-3. **Título dinâmico no drilldown:** quando o modo for "realizadas", concatenar " · Realizadas" ao título passado ao `openDrill` (apenas no callback `onRowClick` das duas instâncias ~linhas 928–935).
+### `src/components/VendaDialog.tsx` (bloco da 2ª reunião, linhas ~363-387)
 
-## Fora de escopo
-- Nada de mudança no backend, queries ou business logic. Só presentation/UI.
-- Não altero a tabela de SDR/Closer, apenas as duas `ChannelTable`.
+1. Antes do `supabase.from("agendamentos").insert(...)` da segunda reunião, chamar `createGoogleCalendarEvent` (já importado de `@/hooks/useGoogleCalendar`) com:
+   - `closer_id`: `agData.closer_id`
+   - `lead_name` / `lead_phone`: do `agData`
+   - `sdr_name`: nome do SDR original (já recuperado em `sdrName`) — fallback para nome do usuário logado
+   - `scheduled_date`: `format(followUpDate, "yyyy-MM-dd")`
+   - `scheduled_time`: `followUpTime`
+   - `duration_minutes`: 60 (padrão; herdar do agendamento original se disponível)
 
-Confirma que posso seguir?
+2. Tratar resultado igual ao `AgendarPage`:
+   - sucesso → guardar `meetLink` e `eventId`
+   - falha → logar warning, exibir `toast.warning` informativo, mas seguir criando o agendamento sem Meet
+
+3. Incluir `meet_link` e `google_event_id` no `insert` da nova reunião.
+
+4. Validação prévia: se o `closer_id` não tiver Google conectado (`closer_google_tokens`), o `google-create-event` já retorna erro tratável — apenas seguir sem Meet e avisar via toast.
+
+### Ordem das operações (importante para o webhook)
+
+Hoje:
+```
+insert pagamento → insert agendamento (trigger dispara webhook) → sendVendaToDataCrazy
+```
+
+Novo:
+```
+insert pagamento
+  → createGoogleCalendarEvent (await)
+    → insert agendamento com meet_link + google_event_id (trigger dispara webhook já com meet_link preenchido)
+      → sendVendaToDataCrazy
+```
+
+O trigger `notify_status_change_webhook` já lê `NEW.meet_link` no payload, então nenhuma alteração no banco é necessária — basta o insert já vir com o valor correto.
+
+### Observações
+
+- Nenhuma migração de banco.
+- Nenhuma alteração em edge function.
+- Sem impacto no fluxo de SDR/AgendarPage (continua igual).
+- Se a 2ª reunião for criada com closer sem Google conectado, comportamento degrada com graça (igual ao AgendarPage hoje).
+
+## Arquivos afetados
+
+- `src/components/VendaDialog.tsx` — único arquivo editado
