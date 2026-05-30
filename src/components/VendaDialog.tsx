@@ -23,6 +23,7 @@ import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_REASONS, isPendingStageReason } from "@/lib/vendaConstants";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
+import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 
 interface VendaDialogProps {
   open: boolean;
