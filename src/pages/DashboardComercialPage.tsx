@@ -144,9 +144,10 @@ export default function DashboardComercialPage() {
     });
   };
 
-  // Live clock
+  // Tick lento (30s) só para recomputar a label "Atualizado há X min".
+  // O HH:mm:ss vive em <LiveClock/> e re-renderiza isoladamente.
   useEffect(() => {
-    const timer = setInterval(() => setClock(new Date()), 1000);
+    const timer = setInterval(() => setUpdatedAgoTick((t) => t + 1), 30_000);
     return () => clearInterval(timer);
   }, []);
 
