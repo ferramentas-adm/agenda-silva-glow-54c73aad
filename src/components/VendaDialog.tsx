@@ -325,7 +325,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       // Busca dados complementares para o webhook
       const { data: agData } = await supabase
         .from("agendamentos")
-        .select("lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by, scheduled_date, channel_type")
+        .select("lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by, scheduled_date, channel_type, duration_minutes")
         .eq("id", agendamentoId)
         .maybeSingle();
 
