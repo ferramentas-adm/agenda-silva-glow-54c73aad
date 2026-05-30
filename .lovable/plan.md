@@ -1,19 +1,20 @@
-# Reverter o teto de leads para o valor antigo
+## Objetivo
+Permitir alternar a tabela "Agendas Para … — por Canal" (e a gêmea "Criadas") entre mostrar **todas as agendas** e somente as **realizadas**, com um botão no cabeçalho da tabela.
 
-Voltar o limite de leads buscados no DataCrazy de **1000 para 5000** (valor original), mantendo o restante das otimizações (cache de 5min, paginação paralela, prefetch no login).
+## Mudanças (somente `src/pages/DashboardComercialPage.tsx`)
 
-## Mudança
+1. **`byChannel(list)` (~linha 328):** retornar, além de `ids` (todas) e `qtd`, também `idsRealizadas` e `qtdRealizadas` — agrupando os agendamentos por canal e separando os com `status === "realizada"`.
 
-Arquivo: `src/services/datacrazy.ts`, função `buscarLeadsComTagId`
+2. **`ChannelTable` (~linha 711):**
+   - Adicionar estado local `mode: "todas" | "realizadas"`.
+   - No cabeçalho do card (ao lado do título), adicionar um toggle compacto (dois botões `Todas` / `Realizadas`) usando tokens do design system.
+   - A coluna "Qtd" e a ordenação passam a refletir o modo selecionado; linhas com `qtd === 0` no modo atual ficam ocultas.
+   - `onRowClick` envia os `ids` correspondentes ao modo (todas ou só realizadas) para o drilldown existente.
 
-```diff
-- const MAX_LEADS = 1000; // teto realista (10 páginas)
-+ const MAX_LEADS = 5000; // teto antigo — traz todos os leads com a tag
-```
+3. **Título dinâmico no drilldown:** quando o modo for "realizadas", concatenar " · Realizadas" ao título passado ao `openDrill` (apenas no callback `onRowClick` das duas instâncias ~linhas 928–935).
 
-## Impacto
+## Fora de escopo
+- Nada de mudança no backend, queries ou business logic. Só presentation/UI.
+- Não altero a tabela de SDR/Closer, apenas as duas `ChannelTable`.
 
-- **Comportamento:** todos os leads com a tag "agendamento" voltam a aparecer (até 5000, mesmo limite de antes).
-- **Performance:** a paginação paralela (lotes de 5) continua válida — a 1ª carga fica um pouco mais lenta que o teto de 1000, mas ainda bem mais rápida que o modelo original sequencial. Cache de 5min segue ativo, então re-visitas continuam instantâneas.
-
-Sem outras alterações.
+Confirma que posso seguir?
