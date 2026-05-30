@@ -366,19 +366,48 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         const originLabel = agData.scheduled_date
           ? format(new Date(agData.scheduled_date + "T12:00:00"), "dd/MM/yyyy")
           : "—";
+        const novaDateStr = format(followUpDate, "yyyy-MM-dd");
+        const novaDuration = (agData as any).duration_minutes ?? 60;
+
+        // Cria evento no Google Calendar do closer (Meet link + event id),
+        // espelhando o fluxo do AgendarPage. Degrada com graça em caso de falha.
+        let segundaMeetLink: string | null = null;
+        let segundaEventId: string | null = null;
+        if (agData.closer_id) {
+          const gRes = await createGoogleCalendarEvent({
+            closer_id: agData.closer_id,
+            lead_name: agData.lead_name,
+            lead_phone: agData.lead_phone,
+            sdr_name: sdrName ?? (user.user_metadata?.full_name || user.email || ""),
+            scheduled_date: novaDateStr,
+            scheduled_time: followUpTime,
+            duration_minutes: novaDuration,
+          });
+          if (gRes.success && gRes.meet_link) {
+            segundaMeetLink = gRes.meet_link;
+            segundaEventId = gRes.event_id ?? null;
+          } else {
+            console.warn("[segunda-reuniao] Google Calendar falhou:", gRes.error);
+            toast.warning("Segunda reunião criada sem link do Google Meet.");
+          }
+        }
+
         const { error: novoAgError } = await supabase.from("agendamentos").insert({
           lead_name: agData.lead_name,
           lead_phone: agData.lead_phone,
           closer_id: agData.closer_id,
           sdr_responsavel_id: agData.sdr_responsavel_id ?? null,
-          scheduled_date: format(followUpDate, "yyyy-MM-dd"),
+          scheduled_date: novaDateStr,
           scheduled_time: followUpTime,
+          duration_minutes: novaDuration,
           status: "agendada",
           channel_type: agData.channel_type ?? null,
           observation: `Segunda reunião — origem: reunião do ${originLabel}`,
           briefing: observacoes.trim() || null,
           meeting_reason: "segunda_reuniao",
           original_agendamento_id: agendamentoId,
+          meet_link: segundaMeetLink,
+          google_event_id: segundaEventId,
           created_by: user.id,
         } as any);
         if (novoAgError) {
