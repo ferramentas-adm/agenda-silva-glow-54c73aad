@@ -394,6 +394,28 @@ export default function ReunioesListPage() {
     }
   };
 
+  const handleUpdateChannel = async (ag: any, newChannel: string) => {
+    const oldChannel = (ag as any).channel_type || null;
+    const next = newChannel === "__none" ? null : newChannel;
+    if (next === oldChannel) return;
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ channel_type: next })
+        .eq("id", ag.id);
+      if (error) throw error;
+      await logAudit("update_channel_type", "agendamento", ag.id, {
+        lead_name: ag.lead_name,
+        from_channel: oldChannel,
+        to_channel: next,
+      });
+      toast.success("Canal atualizado");
+      queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao atualizar canal");
+    }
+  };
+
   const paginationPages = useMemo(() => {
     const pages: (number | "ellipsis")[] = [];
     if (totalPages <= 7) {
@@ -633,7 +655,26 @@ export default function ReunioesListPage() {
                           <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{(ag as any).channel_type || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">
+                          {canDelete ? (
+                            <Select
+                              value={(ag as any).channel_type || "__none"}
+                              onValueChange={(v) => handleUpdateChannel(ag, v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs glass-input min-w-[140px]">
+                                <SelectValue placeholder="—" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none">—</SelectItem>
+                                {CHANNEL_TYPES.map((ct) => (
+                                  <SelectItem key={ct} value={ct}>{ct}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            (ag as any).channel_type || "—"
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px]">
                           {(() => {
                             const urlRegex = /https?:\/\/[^\s]+/g;
