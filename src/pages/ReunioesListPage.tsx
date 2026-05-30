@@ -394,6 +394,28 @@ export default function ReunioesListPage() {
     }
   };
 
+  const handleUpdateChannel = async (ag: any, newChannel: string) => {
+    const oldChannel = (ag as any).channel_type || null;
+    const next = newChannel === "__none" ? null : newChannel;
+    if (next === oldChannel) return;
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ channel_type: next })
+        .eq("id", ag.id);
+      if (error) throw error;
+      await logAudit("update_channel_type", "agendamento", ag.id, {
+        lead_name: ag.lead_name,
+        from_channel: oldChannel,
+        to_channel: next,
+      });
+      toast.success("Canal atualizado");
+      queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao atualizar canal");
+    }
+  };
+
   const paginationPages = useMemo(() => {
     const pages: (number | "ellipsis")[] = [];
     if (totalPages <= 7) {
