@@ -1315,3 +1315,16 @@ function RankingSDRsTab({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// M3: Relógio isolado e memoizado. Re-renderiza só ele mesmo a cada segundo,
+// sem disparar reconciliação no componente DashboardComercialPage (1.300 linhas).
+// ─────────────────────────────────────────────────────────────────────────────
+const LiveClock = memo(function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return <>{format(now, "HH:mm:ss")}</>;
+});
