@@ -236,7 +236,9 @@ export function CalendarContent() {
       (data ?? []).forEach((r: { user_id: string; role: string }) => map.set(r.user_id, r.role));
       return map;
     },
-    staleTime: 60_000,
+    // Lista de papéis muda raramente — evita refetches de minuto em minuto.
+    staleTime: 30 * 60_000,
+    gcTime: Infinity,
   });
 
   // Fetch profiles for name resolution (responsável, briefing reader, etc.)
@@ -250,7 +252,9 @@ export function CalendarContent() {
       (data ?? []).forEach((p: { user_id: string; full_name: string }) => map.set(p.user_id, p.full_name));
       return map;
     },
-    staleTime: 60_000,
+    // Mapa de nomes muda raramente; mantém em cache pela sessão.
+    staleTime: 30 * 60_000,
+    gcTime: Infinity,
   });
 
   // Realtime: ouve mudanças em agendamentos para TODOS os usuários (independente da função).

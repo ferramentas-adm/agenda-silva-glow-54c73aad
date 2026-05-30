@@ -112,11 +112,29 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return format(currentDate, "dd 'de' MMMM", { locale: ptBR });
   }, [currentDate, isRange, dateRange]);
 
-  // Vendas: buscamos todas (volume baixo); filtramos por data via agendamentos.
+  // Janela server-side: cobre vendas e audit_logs com folga em torno do
+  // período selecionado. Evita baixar a tabela inteira a cada refetch.
+  // - Modo intervalo: usa o range escolhido com 60 dias de folga p/ trás (para
+  //   capturar reuniões antigas cujo follow-up fechou dentro do range).
+  // - Modo dia único: janela ampla padrão (180 dias atrás → 60 dias à frente).
+  const windowRange = useMemo(() => {
+    const pad = (d: Date) => format(d, "yyyy-MM-dd");
+    if (isRange && dateRange?.from && dateRange?.to) {
+      const start = new Date(dateRange.from); start.setDate(start.getDate() - 60);
+      const end = new Date(dateRange.to); end.setDate(end.getDate() + 7);
+      return { start: pad(start), end: pad(end) };
+    }
+    const base = new Date(currentDate);
+    const start = new Date(base); start.setDate(start.getDate() - 180);
+    const end = new Date(base); end.setDate(end.getDate() + 60);
+    return { start: pad(start), end: pad(end) };
+  }, [currentDate, isRange, dateRange?.from, dateRange?.to]);
+
+  // Vendas: limitadas a uma janela de datas server-side; ainda paginamos
+  // para acomodar volumes maiores que 1.000 linhas dentro da janela.
   const { data: vendas = [] } = useQuery<VendaRow[]>({
-    queryKey: ["vendas-tab"],
+    queryKey: ["vendas-tab", windowRange.start, windowRange.end],
     queryFn: async () => {
-      // Pagina manualmente para contornar o limite default de 1000 linhas do PostgREST.
       const PAGE = 1000;
       const all: VendaRow[] = [];
       let from = 0;
@@ -129,6 +147,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
             agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status)
           `)
           .is("agendamentos.deleted_at", null)
+          .gte("agendamentos.scheduled_date", windowRange.start)
+          .lte("agendamentos.scheduled_date", windowRange.end)
           .order("created_at", { ascending: false })
           .range(from, from + PAGE - 1);
         if (error) throw error;
@@ -139,24 +159,30 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }
       return all;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   // Mapa agendamento_id -> data (BRT yyyy-MM-dd) em que a venda foi marcada
   // como fechada via follow-up. Usa o audit log com outcome='fechou'.
   const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
-    queryKey: ["vendas-tab-followup-closes"],
+    queryKey: ["vendas-tab-followup-closes", windowRange.start, windowRange.end],
     queryFn: async () => {
-      // Pagina para evitar o limite default de 1000 linhas.
       const PAGE = 1000;
       const rows: { entity_id: string | null; details: any; created_at: string }[] = [];
       let from = 0;
+      // Filtra audit_logs por created_at dentro da janela para evitar full scan.
+      const startIso = `${windowRange.start}T00:00:00Z`;
+      const endIso = `${windowRange.end}T23:59:59Z`;
       while (true) {
         const { data, error } = await supabase
           .from("audit_logs")
           .select("entity_id, details, created_at")
           .eq("entity_type", "venda")
           .eq("action", "follow_up_atualizado")
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
           .order("created_at", { ascending: false })
           .range(from, from + PAGE - 1);
         if (error) throw error;
@@ -174,7 +200,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       });
       return m;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   const { data: closers = [] } = useQuery<CloserRow[]>({
@@ -246,32 +274,39 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr]);
 
 
-  // KPIs
-  const totalReunioesComResultado = vendasDia.length;
-  const totalVendas = vendasDia.filter((v) => v.vendeu).length;
-  const totalNaoFechou = vendasDia.filter((v) => !v.vendeu).length;
-  const taxaConversao = totalReunioesComResultado > 0 ? (totalVendas / totalReunioesComResultado) * 100 : 0;
-  // Coletado Total = soma de todos os valores efetivamente fechados no dia.
-  const coletadoTotal = vendasDia.filter((v) => v.vendeu && v.valor).reduce((acc, v) => acc + (v.valor || 0), 0);
-  // Coletado Médio = Coletado Total / Total de Vendas fechadas.
-  const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
+  // KPIs (memoizados para não recalcular em cada render)
+  const kpis = useMemo(() => {
+    const totalReunioesComResultado = vendasDia.length;
+    const totalVendas = vendasDia.filter((v) => v.vendeu).length;
+    const totalNaoFechou = vendasDia.filter((v) => !v.vendeu).length;
+    const taxaConversao = totalReunioesComResultado > 0 ? (totalVendas / totalReunioesComResultado) * 100 : 0;
+    const coletadoTotal = vendasDia
+      .filter((v) => v.vendeu && v.valor)
+      .reduce((acc, v) => acc + (v.valor || 0), 0);
+    const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
+    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio };
+  }, [vendasDia]);
+  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio } = kpis;
 
   // Follow-ups (escopo geral — não dependem do dia selecionado)
-  const followUpsAgendados = vendas.filter((v) => v.follow_up && v.follow_up_date).length;
-  const followUpsHoje = vendas.filter(
-    (v) => v.follow_up && v.follow_up_date && v.follow_up_date === todayStr,
-  ).length;
-  const followUpsAtrasados = vendas.filter(
-    (v) => v.follow_up && v.follow_up_date && v.follow_up_date < todayStr,
-  ).length;
+  const followUpStats = useMemo(() => {
+    const ativos = vendas.filter((v) => v.follow_up && v.follow_up_date);
+    return {
+      followUpsAgendados: ativos.length,
+      followUpsHoje: ativos.filter((v) => v.follow_up_date === todayStr).length,
+      followUpsAtrasados: ativos.filter((v) => v.follow_up_date! < todayStr).length,
+      followUpsAtivosIds: ativos.map((v) => v.agendamento_id),
+    };
+  }, [vendas, todayStr]);
+  const { followUpsAgendados, followUpsHoje, followUpsAtrasados, followUpsAtivosIds } = followUpStats;
 
   // IDs para drill-down
-  const vendasDiaIds = vendasDia.map((v) => v.agendamento_id);
-  const fechadasIds = vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id);
-  const naoFechouIds = vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id);
-  const followUpsAtivosIds = vendas
-    .filter((v) => v.follow_up && v.follow_up_date)
-    .map((v) => v.agendamento_id);
+  const drilldownIds = useMemo(() => ({
+    vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
+    fechadasIds: vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id),
+    naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
+  }), [vendasDia]);
+  const { vendasDiaIds, fechadasIds, naoFechouIds } = drilldownIds;
 
   // Filtro por closer no card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");

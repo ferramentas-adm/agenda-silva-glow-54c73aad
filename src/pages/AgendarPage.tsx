@@ -183,30 +183,36 @@ export default function AgendarPage() {
     if (!normalized) return;
 
     let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("agendamentos")
-        .select("briefing, observation, channel_type, is_5k, duration_minutes, lead_name, lead_phone")
-        .ilike("lead_phone", `%${normalized.slice(-8)}%`)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (cancelled || !data) return;
-      // Filtra por telefone normalizado exato
-      const prior = data.find((a: any) =>
-        (a.lead_phone || "").replace(/\D/g, "") === normalized
-      ) || data[0];
-      if (!prior) return;
-      if (prior.briefing) setBriefingText((cur) => cur || prior.briefing);
-      if (prior.observation) setObservation((cur) => cur || prior.observation);
-      if (prior.channel_type) setChannelType((cur) => cur || prior.channel_type);
-      if (prior.is_5k) setIs5k((cur) => cur || true);
-      if (typeof prior.duration_minutes === "number" && prior.duration_minutes !== 60) {
-        setDurationMinutes((cur) => (cur === 60 ? prior.duration_minutes : cur));
-      }
-    })();
+    // Debounce 300ms para evitar dispararmos a query a cada tecla.
+    const timer = setTimeout(() => {
+      (async () => {
+        const { data } = await supabase
+          .from("agendamentos")
+          .select("briefing, observation, channel_type, is_5k, duration_minutes, lead_name, lead_phone")
+          .ilike("lead_phone", `%${normalized.slice(-8)}%`)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .limit(10);
+        if (cancelled || !data) return;
+        // Filtra por telefone normalizado exato
+        const prior = data.find((a: any) =>
+          (a.lead_phone || "").replace(/\D/g, "") === normalized
+        ) || data[0];
+        if (!prior) return;
+        if (prior.briefing) setBriefingText((cur) => cur || prior.briefing);
+        if (prior.observation) setObservation((cur) => cur || prior.observation);
+        if (prior.channel_type) setChannelType((cur) => cur || prior.channel_type);
+        if (prior.is_5k) setIs5k((cur) => cur || true);
+        if (typeof prior.duration_minutes === "number" && prior.duration_minutes !== 60) {
+          setDurationMinutes((cur) => (cur === 60 ? prior.duration_minutes : cur));
+        }
+      })();
+    }, 300);
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead?.phone, editId]);
 
@@ -359,6 +365,10 @@ export default function AgendarPage() {
       queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
       queryClient.invalidateQueries({ queryKey: ["slot-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
 
 
       setSuccess({

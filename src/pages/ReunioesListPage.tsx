@@ -137,18 +137,31 @@ export default function ReunioesListPage() {
     },
   });
 
+  // Janela server-side: por padrão, últimos 180 dias. Quando o usuário escolhe
+  // uma data inicial mais antiga, a janela é estendida para cobrir o filtro.
+  const meetingWindowStart = useMemo(() => {
+    const defaultStart = new Date();
+    defaultStart.setDate(defaultStart.getDate() - 180);
+    if (filterMeetingDateFrom && filterMeetingDateFrom < defaultStart) {
+      return format(filterMeetingDateFrom, "yyyy-MM-dd");
+    }
+    return format(defaultStart, "yyyy-MM-dd");
+  }, [filterMeetingDateFrom]);
+
   const { data: agendamentos = [], isLoading } = useQuery({
-    queryKey: ["reunioes-list"],
+    queryKey: ["reunioes-list", meetingWindowStart],
     queryFn: async () => {
       const PAGE = 1000;
       const all: any[] = [];
       let from = 0;
-      // Pagina até esgotar (Supabase limita 1000 por request)
+      // Pagina até esgotar (Supabase limita 1000 por request), mas restringe
+      // por janela de datas server-side para não trazer histórico completo.
       while (true) {
         const { data, error } = await supabase
           .from("agendamentos")
-          .select("*")
+          .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, original_agendamento_id, duration_minutes, is_5k")
           .is("deleted_at", null)
+          .gte("scheduled_date", meetingWindowStart)
           .order("scheduled_date", { ascending: false })
           .order("scheduled_time", { ascending: false })
           .range(from, from + PAGE - 1);
@@ -160,6 +173,8 @@ export default function ReunioesListPage() {
       }
       return all;
     },
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   // Set de agendamento_ids com venda fechada (vendeu = true)
