@@ -100,7 +100,10 @@ export default function DashboardComercialPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [clock, setClock] = useState(new Date());
+  // M3: relógio movido para <LiveClock/> memoizado para não re-renderizar
+  // a página inteira de 1.300 linhas a cada segundo. Mantemos apenas um
+  // tick lento (30s) para atualizar a label "Atualizado há X min".
+  const [updatedAgoTick, setUpdatedAgoTick] = useState(0);
   const [tabSettingsOpen, setTabSettingsOpen] = useState(false);
 
   // Recarrega preferências quando o usuário muda (login/logout)
