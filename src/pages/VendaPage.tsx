@@ -10,9 +10,15 @@ export default function VendaPage() {
   const leadName = params.get("lead") ?? "Lead";
 
   const goBack = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-    await queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] }),
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] }),
+      queryClient.invalidateQueries({ queryKey: ["pending-meetings"] }),
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab"] }),
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab-followup-closes"] }),
+      queryClient.invalidateQueries({ queryKey: ["vendas-agendamento-ids"] }),
+      queryClient.invalidateQueries({ queryKey: ["reunioes-list"] }),
+    ]);
     navigate("/");
   };
 
