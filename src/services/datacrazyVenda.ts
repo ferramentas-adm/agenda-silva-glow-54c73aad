@@ -20,6 +20,10 @@ export interface VendaWebhookPayload {
   status?: "Follow-up" | "Perdido" | "Vendido" | null;
   registered_at: string;
   lead_revenue?: string | null;
+  valor_apresentado?: number | null;
+  recebimento_acordado?: boolean;
+  valor_previsto?: number | null;
+  data_prevista?: string | null;
 }
 
 /**

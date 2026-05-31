@@ -450,6 +450,10 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         status: crmStatus,
         registered_at: new Date().toISOString(),
         lead_revenue: leadRevenue || null,
+        valor_apresentado: valorNum,
+        recebimento_acordado: hasRecebimento,
+        valor_previsto: hasRecebimento && valorPrevistoValido ? valorPrevistoNum : null,
+        data_prevista: hasRecebimento && dataPrevista ? format(dataPrevista, "yyyy-MM-dd") : null,
       } as any);
 
 
