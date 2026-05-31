@@ -763,22 +763,36 @@ function ChannelTable({
   onRowClick,
 }: {
   title: string;
-  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[] }[];
-  onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" }) => void;
+  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[] }[];
+  onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" | "vendas" }) => void;
 }) {
-  const [mode, setMode] = useState<"todas" | "realizadas">("todas");
+  const [mode, setMode] = useState<"todas" | "realizadas" | "vendas">("todas");
 
   const rows = useMemo(() => {
     const mapped = data.map((r) => ({
       ...r,
-      currentQtd: mode === "todas" ? r.qtd : r.qtdRealizadas,
-      currentIds: mode === "todas" ? r.ids : r.idsRealizadas,
+      currentQtd: mode === "todas" ? r.qtd : mode === "realizadas" ? r.qtdRealizadas : r.qtdVendas,
+      currentIds: mode === "todas" ? r.ids : mode === "realizadas" ? r.idsRealizadas : r.idsVendas,
     }));
-    const filtered = mode === "realizadas" ? mapped.filter((r) => r.currentQtd > 0) : mapped;
+    const filtered = mode !== "todas" ? mapped.filter((r) => r.currentQtd > 0) : mapped;
     return filtered
       .sort((a, b) => b.currentQtd - a.currentQtd)
       .map((r, i) => ({ ...r, num: i + 1 }));
   }, [data, mode]);
+
+  const showTaxa = mode !== "todas";
+  const tabBtn = (key: "todas" | "realizadas" | "vendas", label: string) => (
+    <button
+      type="button"
+      onClick={() => setMode(key)}
+      className={cn(
+        "px-2.5 py-1 text-xs rounded transition-colors",
+        mode === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
@@ -788,26 +802,9 @@ function ChannelTable({
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
         <div className="inline-flex rounded-md border border-primary/10 p-0.5 bg-muted/30">
-          <button
-            type="button"
-            onClick={() => setMode("todas")}
-            className={cn(
-              "px-2.5 py-1 text-xs rounded transition-colors",
-              mode === "todas" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Todas
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("realizadas")}
-            className={cn(
-              "px-2.5 py-1 text-xs rounded transition-colors",
-              mode === "realizadas" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Realizadas
-          </button>
+          {tabBtn("todas", "Todas")}
+          {tabBtn("realizadas", "Realizadas")}
+          {tabBtn("vendas", "Vendas")}
         </div>
       </div>
 
@@ -817,8 +814,10 @@ function ChannelTable({
             <tr className="border-b border-primary/10 text-muted-foreground">
               <th className="text-left py-2 px-2 font-medium text-xs">#</th>
               <th className="text-left py-2 px-2 font-medium text-xs">Canal</th>
-              <th className="text-right py-2 px-2 font-medium text-xs">Qtd</th>
-              {mode === "realizadas" && (
+              <th className="text-right py-2 px-2 font-medium text-xs">
+                {mode === "vendas" ? "Vendas" : "Qtd"}
+              </th>
+              {showTaxa && (
                 <th className="text-right py-2 px-2 font-medium text-xs">Taxa</th>
               )}
             </tr>
@@ -826,7 +825,7 @@ function ChannelTable({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={mode === "realizadas" ? 4 : 3} className="text-center text-muted-foreground py-4 text-xs">
+                <td colSpan={showTaxa ? 4 : 3} className="text-center text-muted-foreground py-4 text-xs">
                   Nenhum registro
                 </td>
               </tr>
@@ -843,9 +842,11 @@ function ChannelTable({
                 <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
                 <td className="py-2 px-2 font-medium">{row.canal}</td>
                 <td className="py-2 px-2 text-right font-bold">{row.currentQtd}</td>
-                {mode === "realizadas" && (
+                {showTaxa && (
                   <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
-                    {row.qtd > 0 ? `${((row.qtdRealizadas / row.qtd) * 100).toFixed(0)}%` : "—"}
+                    {row.qtd > 0
+                      ? `${(((mode === "realizadas" ? row.qtdRealizadas : row.qtdVendas) / row.qtd) * 100).toFixed(0)}%`
+                      : "—"}
                   </td>
                 )}
               </tr>
