@@ -241,6 +241,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return m;
   }, [closers]);
 
+  // Closer logado: trava todos os filtros nos próprios números.
+  const { user, role } = useAuth();
+  const isCloserView = role === "closer";
+  const myCloserId = useMemo(() => {
+    if (!isCloserView || !user?.email) return null;
+    const me = closers.find((c) => (c as any).email?.toLowerCase?.() === user.email!.toLowerCase());
+    return me?.id ?? null;
+  }, [isCloserView, user?.email, closers]);
+
   // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd):
   // - Se houver override manual (vendas.closed_at), usa esse.
   // - Se houver audit log de follow-up com outcome='fechou' para esse
