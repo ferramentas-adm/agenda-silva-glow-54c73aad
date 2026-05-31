@@ -62,9 +62,9 @@ const formatBR = (iso: string): string => brDateTimeFmt.format(new Date(iso)).re
 export default function ReunioesListPage() {
   const { user, role, isGestor, isModerador } = useAuth();
   const queryClient = useQueryClient();
-  const canDelete = isGestor || isModerador;
   const isCloser = role === "closer";
   const isSDR = role === "sdr";
+  const canDelete = isGestor || isModerador || isSDR;
   const canSeeAllPeers = isGestor || isModerador;
   const { data: deletionReasons = [] } = useDeletionReasons();
   const isAdminLike = isGestor || isModerador;
