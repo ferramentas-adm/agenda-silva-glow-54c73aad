@@ -1028,7 +1028,7 @@ function MetricasSDRsTab({
         <ChannelTable
           title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")}
           data={metrics.channelsCreatedToday}
-          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Criadas ${rangeLabel}` : getChannelTableLabel(currentDate, "criadas").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : ""}`, ids)}
+          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Criadas ${rangeLabel}` : getChannelTableLabel(currentDate, "criadas").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : mode === "vendas" ? " · Vendas" : ""}`, ids)}
         />
       </div>
 
