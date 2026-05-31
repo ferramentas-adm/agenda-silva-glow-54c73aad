@@ -8,29 +8,61 @@ import { retryWithBackoff } from "@/lib/retryWithBackoff";
 
 // ─── Proxy helper ────────────────────────────────────────────────
 
-async function api(method: string, path: string, payload?: unknown) {
-  return retryWithBackoff(
-    async () => {
-      const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
-        body: { method, path, payload },
-      });
+// Fila global serializa TODAS as chamadas ao proxy do DataCrazy, evitando
+// que múltiplos componentes (AppLayout + LeadSearch, etc.) batam em paralelo
+// e estourem o rate-limit (HTTP 429).
+let apiChain: Promise<unknown> = Promise.resolve();
+const GLOBAL_GAP_MS = 250;
+const sleepGlobal = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-      if (error) {
-        // Preserva status (quando disponível) para o decisor de retry
-        const wrapped = new Error(`DataCrazy proxy error: ${error.message}`) as Error & {
-          status?: number;
-          context?: unknown;
-        };
-        wrapped.status = (error as { status?: number }).status;
-        wrapped.context = (error as { context?: unknown }).context;
-        throw wrapped;
-      }
-      if (data?.error) throw new Error(`DataCrazy API error: ${data.error}`);
-      return data;
-    },
-    { label: `datacrazy-proxy ${method} ${path}` },
-  );
+// Dedupe de GETs idênticos em voo (cobre React StrictMode / re-renders).
+const inFlightGets = new Map<string, Promise<unknown>>();
+
+async function api(method: string, path: string, payload?: unknown) {
+  const isGet = method.toUpperCase() === "GET";
+  const dedupeKey = isGet ? `GET ${path}` : null;
+  if (dedupeKey && inFlightGets.has(dedupeKey)) {
+    return inFlightGets.get(dedupeKey);
+  }
+
+  const run = async () =>
+    retryWithBackoff(
+      async () => {
+        const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
+          body: { method, path, payload },
+        });
+
+        if (error) {
+          const wrapped = new Error(`DataCrazy proxy error: ${error.message}`) as Error & {
+            status?: number;
+            context?: unknown;
+          };
+          wrapped.status = (error as { status?: number }).status;
+          wrapped.context = (error as { context?: unknown }).context;
+          throw wrapped;
+        }
+        if (data?.error) throw new Error(`DataCrazy API error: ${data.error}`);
+        return data;
+      },
+      { label: `datacrazy-proxy ${method} ${path}` },
+    );
+
+  const chained = apiChain.then(async () => {
+    const result = await run();
+    await sleepGlobal(GLOBAL_GAP_MS);
+    return result;
+  });
+  // Mantém a corrente viva mesmo após falhas
+  apiChain = chained.catch(() => undefined);
+
+  if (dedupeKey) {
+    inFlightGets.set(dedupeKey, chained);
+    chained.finally(() => inFlightGets.delete(dedupeKey));
+  }
+
+  return chained;
 }
+
 
 // Settings from app_settings (loaded at runtime)
 let settingsCache: Record<string, string> | null = null;
