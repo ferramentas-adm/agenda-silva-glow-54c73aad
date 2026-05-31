@@ -89,13 +89,16 @@ export default function DashboardComercialPage() {
   const { user, role } = useAuth();
   const isGestor = role === "gestor";
   const isAdmin = role === "gestor" || role === "moderador";
+  const isCloser = role === "closer";
   const allowedTabs = useMemo(
-    () => TABS.filter((t) => !t.gestorOnly || isAdmin),
-    [isAdmin],
+    () => isCloser
+      ? TABS.filter((t) => t.key === "vendas")
+      : TABS.filter((t) => !t.gestorOnly || isAdmin),
+    [isAdmin, isCloser],
   );
 
   const [visibleTabs, setVisibleTabs] = useState<Set<TabKey>>(() => loadVisibleTabs(user?.id));
-  const [activeTabKey, setActiveTabKey] = useState<TabKey>("metricas");
+  const [activeTabKey, setActiveTabKey] = useState<TabKey>(isCloser ? "vendas" : "metricas");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
