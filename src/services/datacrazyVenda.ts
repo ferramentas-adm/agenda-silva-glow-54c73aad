@@ -17,6 +17,7 @@ export interface VendaWebhookPayload {
   follow_up_time: string | null;
   observacoes: string | null;
   outcome: "fechou" | "perdeu" | "follow_up" | "em_andamento";
+  status?: "Follow-up" | "Perdido" | "Vendido" | null;
   registered_at: string;
   lead_revenue?: string | null;
 }
