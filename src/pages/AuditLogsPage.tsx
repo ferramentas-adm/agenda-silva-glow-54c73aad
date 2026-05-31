@@ -88,7 +88,16 @@ export default function AuditLogsPage() {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["audit-logs", page, pageSize, dateFrom?.toISOString(), dateTo?.toISOString(), entityIdFilter],
+    queryKey: [
+      "audit-logs",
+      page,
+      pageSize,
+      dateFrom?.toISOString(),
+      dateTo?.toISOString(),
+      entityIdFilter,
+      actionFilter,
+      entityFilter,
+    ],
     queryFn: async () => {
       let query = supabase
         .from("audit_logs")
@@ -96,12 +105,10 @@ export default function AuditLogsPage() {
         .order("created_at", { ascending: false });
 
       if (dateFrom) {
-        // Início do dia em BRT (UTC-3, sem DST) = 03:00 UTC
         const ymd = pickedDateToYMD(dateFrom);
         query = query.gte("created_at", `${ymd}T03:00:00.000Z`);
       }
       if (dateTo) {
-        // Fim do dia em BRT = 03:00 UTC do dia seguinte
         const endDate = new Date(dateTo);
         endDate.setDate(endDate.getDate() + 1);
         const ymd = pickedDateToYMD(endDate);
@@ -109,6 +116,12 @@ export default function AuditLogsPage() {
       }
       if (entityIdFilter.trim()) {
         query = query.eq("entity_id", entityIdFilter.trim());
+      }
+      if (actionFilter !== "all") {
+        query = query.eq("action", actionFilter);
+      }
+      if (entityFilter !== "all") {
+        query = query.eq("entity_type", entityFilter);
       }
 
       const from = page * pageSize;
@@ -125,24 +138,16 @@ export default function AuditLogsPage() {
   const totalPages = Math.ceil(total / pageSize);
 
   const filtered = useMemo(() => {
-    let result = logs;
-    if (entityFilter !== "all") {
-      result = result.filter((l) => l.entity_type === entityFilter);
-    }
-    if (actionFilter !== "all") {
-      result = result.filter((l) => l.action === actionFilter);
-    }
-    if (search) {
-      const s = search.toLowerCase();
-      result = result.filter(
-        (l) =>
-          l.user_name.toLowerCase().includes(s) ||
-          (ACTION_LABELS[l.action] || l.action).toLowerCase().includes(s) ||
-          JSON.stringify(l.details).toLowerCase().includes(s)
-      );
-    }
-    return result;
-  }, [logs, search, entityFilter, actionFilter]);
+    if (!search) return logs;
+    const s = search.toLowerCase();
+    return logs.filter(
+      (l) =>
+        l.user_name.toLowerCase().includes(s) ||
+        (ACTION_LABELS[l.action] || l.action).toLowerCase().includes(s) ||
+        JSON.stringify(l.details).toLowerCase().includes(s)
+    );
+  }, [logs, search]);
+
 
   // CSV export for agendamentos report
   const handleExportCSV = async () => {
@@ -250,7 +255,7 @@ export default function AuditLogsPage() {
               className="pl-9"
             />
           </div>
-          <Select value={entityFilter} onValueChange={setEntityFilter}>
+          <Select value={entityFilter} onValueChange={(v) => { setEntityFilter(v); setPage(0); }}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filtrar por tipo" />
             </SelectTrigger>
@@ -266,7 +271,7 @@ export default function AuditLogsPage() {
               <SelectItem value="settings">Configurações</SelectItem>
           </SelectContent>
           </Select>
-          <Select value={actionFilter} onValueChange={setActionFilter}>
+          <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setPage(0); }}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filtrar por ação" />
             </SelectTrigger>
@@ -277,6 +282,7 @@ export default function AuditLogsPage() {
               ))}
             </SelectContent>
           </Select>
+
 
           {/* Date from */}
           <Popover>
