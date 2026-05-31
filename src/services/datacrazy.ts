@@ -126,19 +126,37 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
   //  - resposta `{ count: <total>, data: [...] }`
   const PAGE_SIZE = 100;
   const MAX_LEADS = 5000; // teto antigo — traz todos os leads com a tag
-  const CONCURRENCY = 5;
+  const REQUEST_DELAY_MS = 350; // gap entre chamadas para evitar 429 do DataCrazy
+  const MAX_RETRIES = 4;
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   const fetchPage = async (skip: number) => {
-    const data = await api(
-      "GET",
-      `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`,
-    );
-    const pageLeads: DataCrazyLead[] = Array.isArray(data) ? data : data?.data || [];
-    const count =
-      data && typeof data === "object" && typeof (data as any).count === "number"
-        ? (data as any).count
-        : null;
-    return { pageLeads, count };
+    let attempt = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        const data = await api(
+          "GET",
+          `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`,
+        );
+        const pageLeads: DataCrazyLead[] = Array.isArray(data) ? data : data?.data || [];
+        const count =
+          data && typeof data === "object" && typeof (data as any).count === "number"
+            ? (data as any).count
+            : null;
+        return { pageLeads, count };
+      } catch (err: any) {
+        const msg = String(err?.message || err || "");
+        const is429 = msg.includes("429") || /too many requests/i.test(msg);
+        if (is429 && attempt < MAX_RETRIES) {
+          attempt += 1;
+          await sleep(800 * Math.pow(2, attempt)); // 1.6s, 3.2s, 6.4s, 12.8s
+          continue;
+        }
+        throw err;
+      }
+    }
   };
 
   // 1ª chamada serve para descobrir o `count`
@@ -156,25 +174,27 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
   const cap = Math.min(total, MAX_LEADS);
   if (cap <= PAGE_SIZE || first.pageLeads.length < PAGE_SIZE) return all;
 
-  // Restante das páginas em paralelo, em lotes de CONCURRENCY
-  const skips: number[] = [];
-  for (let s = PAGE_SIZE; s < cap; s += PAGE_SIZE) skips.push(s);
-
-  for (let i = 0; i < skips.length; i += CONCURRENCY) {
-    const batch = skips.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map((s) => fetchPage(s).catch(() => ({ pageLeads: [] as DataCrazyLead[], count: null }))));
+  // Restante das páginas em série, com pequeno delay entre chamadas (DataCrazy
+  // estoura 429 quando recebe várias requisições em paralelo).
+  for (let s = PAGE_SIZE; s < cap; s += PAGE_SIZE) {
+    await sleep(REQUEST_DELAY_MS);
+    let pageLeads: DataCrazyLead[] = [];
+    try {
+      ({ pageLeads } = await fetchPage(s));
+    } catch {
+      pageLeads = [];
+    }
     let addedAny = false;
-    for (const { pageLeads } of results) {
-      for (const lead of pageLeads) {
-        if (lead?.id && !seen.has(lead.id)) {
-          seen.add(lead.id);
-          all.push(lead);
-          addedAny = true;
-        }
+    for (const lead of pageLeads) {
+      if (lead?.id && !seen.has(lead.id)) {
+        seen.add(lead.id);
+        all.push(lead);
+        addedAny = true;
       }
     }
     if (!addedAny) break;
   }
+
 
   return all;
 }
