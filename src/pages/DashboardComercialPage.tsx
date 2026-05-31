@@ -422,17 +422,19 @@ export default function DashboardComercialPage() {
         {/* ─── Header bar ────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Play/Pause + Tabs */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setIsPlaying(!isPlaying)}
-              title={isPlaying ? "Pausar rotação" : "Iniciar rotação"}
-            >
-              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </Button>
-          </div>
+          {!isCloser && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIsPlaying(!isPlaying)}
+                title={isPlaying ? "Pausar rotação" : "Iniciar rotação"}
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
 
           <div className="flex gap-1 flex-wrap">
             {visibleTabList.map((tab) => (
