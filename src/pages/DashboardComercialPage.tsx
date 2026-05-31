@@ -248,6 +248,37 @@ export default function DashboardComercialPage() {
     refetchInterval: 2 * 60 * 1000,
   });
 
+  // Vendas (vendeu=true) para os agendamentos atuais — usado para coluna "Vendas / Taxa"
+  const vendaAgIds = useMemo(() => {
+    const s = new Set<string>();
+    agendamentos.forEach(a => s.add(a.id));
+    createdAgs.forEach(a => s.add(a.id));
+    return Array.from(s);
+  }, [agendamentos, createdAgs]);
+
+  const { data: soldAgIds = [] } = useQuery<string[]>({
+    queryKey: ["dashboard-comercial-vendas", vendaAgIds.length, vendaAgIds[0], vendaAgIds[vendaAgIds.length - 1]],
+    enabled: vendaAgIds.length > 0,
+    queryFn: async () => {
+      const out: string[] = [];
+      const chunkSize = 500;
+      for (let i = 0; i < vendaAgIds.length; i += chunkSize) {
+        const chunk = vendaAgIds.slice(i, i + chunkSize);
+        const { data, error } = await supabase
+          .from("vendas")
+          .select("agendamento_id")
+          .eq("vendeu", true)
+          .in("agendamento_id", chunk);
+        if (error) break;
+        (data ?? []).forEach((v: { agendamento_id: string }) => out.push(v.agendamento_id));
+      }
+      return out;
+    },
+    refetchInterval: 2 * 60 * 1000,
+  });
+
+  const soldSet = useMemo(() => new Set(soldAgIds), [soldAgIds]);
+
 
   // SDR profiles
   const { data: sdrProfiles = [] } = useQuery<SDRProfile[]>({
@@ -329,12 +360,13 @@ export default function DashboardComercialPage() {
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
     const byChannel = (list: AgendamentoMetric[]) => {
-      const map = new Map<string, { ids: string[]; idsRealizadas: string[] }>();
+      const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[] }>();
       list.forEach(a => {
         const ch = a.channel_type || "Sem canal";
-        const cur = map.get(ch) || { ids: [], idsRealizadas: [] };
+        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [] };
         cur.ids.push(a.id);
         if (a.status === "realizada") cur.idsRealizadas.push(a.id);
+        if (soldSet.has(a.id)) cur.idsVendas.push(a.id);
         map.set(ch, cur);
       });
       return Array.from(map.entries())
@@ -346,6 +378,8 @@ export default function DashboardComercialPage() {
           ids: v.ids,
           qtdRealizadas: v.idsRealizadas.length,
           idsRealizadas: v.idsRealizadas,
+          qtdVendas: v.idsVendas.length,
+          idsVendas: v.idsVendas,
         }));
     };
 
@@ -392,7 +426,7 @@ export default function DashboardComercialPage() {
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr, soldSet]);
 
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
@@ -729,22 +763,36 @@ function ChannelTable({
   onRowClick,
 }: {
   title: string;
-  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[] }[];
-  onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" }) => void;
+  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[] }[];
+  onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" | "vendas" }) => void;
 }) {
-  const [mode, setMode] = useState<"todas" | "realizadas">("todas");
+  const [mode, setMode] = useState<"todas" | "realizadas" | "vendas">("todas");
 
   const rows = useMemo(() => {
     const mapped = data.map((r) => ({
       ...r,
-      currentQtd: mode === "todas" ? r.qtd : r.qtdRealizadas,
-      currentIds: mode === "todas" ? r.ids : r.idsRealizadas,
+      currentQtd: mode === "todas" ? r.qtd : mode === "realizadas" ? r.qtdRealizadas : r.qtdVendas,
+      currentIds: mode === "todas" ? r.ids : mode === "realizadas" ? r.idsRealizadas : r.idsVendas,
     }));
-    const filtered = mode === "realizadas" ? mapped.filter((r) => r.currentQtd > 0) : mapped;
+    const filtered = mode !== "todas" ? mapped.filter((r) => r.currentQtd > 0) : mapped;
     return filtered
       .sort((a, b) => b.currentQtd - a.currentQtd)
       .map((r, i) => ({ ...r, num: i + 1 }));
   }, [data, mode]);
+
+  const showTaxa = mode !== "todas";
+  const tabBtn = (key: "todas" | "realizadas" | "vendas", label: string) => (
+    <button
+      type="button"
+      onClick={() => setMode(key)}
+      className={cn(
+        "px-2.5 py-1 text-xs rounded transition-colors",
+        mode === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
@@ -754,26 +802,9 @@ function ChannelTable({
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
         <div className="inline-flex rounded-md border border-primary/10 p-0.5 bg-muted/30">
-          <button
-            type="button"
-            onClick={() => setMode("todas")}
-            className={cn(
-              "px-2.5 py-1 text-xs rounded transition-colors",
-              mode === "todas" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Todas
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("realizadas")}
-            className={cn(
-              "px-2.5 py-1 text-xs rounded transition-colors",
-              mode === "realizadas" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Realizadas
-          </button>
+          {tabBtn("todas", "Todas")}
+          {tabBtn("realizadas", "Realizadas")}
+          {tabBtn("vendas", "Vendas")}
         </div>
       </div>
 
@@ -783,8 +814,10 @@ function ChannelTable({
             <tr className="border-b border-primary/10 text-muted-foreground">
               <th className="text-left py-2 px-2 font-medium text-xs">#</th>
               <th className="text-left py-2 px-2 font-medium text-xs">Canal</th>
-              <th className="text-right py-2 px-2 font-medium text-xs">Qtd</th>
-              {mode === "realizadas" && (
+              <th className="text-right py-2 px-2 font-medium text-xs">
+                {mode === "vendas" ? "Vendas" : "Qtd"}
+              </th>
+              {showTaxa && (
                 <th className="text-right py-2 px-2 font-medium text-xs">Taxa</th>
               )}
             </tr>
@@ -792,7 +825,7 @@ function ChannelTable({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={mode === "realizadas" ? 4 : 3} className="text-center text-muted-foreground py-4 text-xs">
+                <td colSpan={showTaxa ? 4 : 3} className="text-center text-muted-foreground py-4 text-xs">
                   Nenhum registro
                 </td>
               </tr>
@@ -809,9 +842,11 @@ function ChannelTable({
                 <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
                 <td className="py-2 px-2 font-medium">{row.canal}</td>
                 <td className="py-2 px-2 text-right font-bold">{row.currentQtd}</td>
-                {mode === "realizadas" && (
+                {showTaxa && (
                   <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
-                    {row.qtd > 0 ? `${((row.qtdRealizadas / row.qtd) * 100).toFixed(0)}%` : "—"}
+                    {row.qtd > 0
+                      ? `${(((mode === "realizadas" ? row.qtdRealizadas : row.qtdVendas) / row.qtd) * 100).toFixed(0)}%`
+                      : "—"}
                   </td>
                 )}
               </tr>
@@ -988,12 +1023,12 @@ function MetricasSDRsTab({
         <ChannelTable
           title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")}
           data={metrics.channelsToday}
-          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Para ${rangeLabel}` : getChannelTableLabel(currentDate, "para").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : ""}`, ids)}
+          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Para ${rangeLabel}` : getChannelTableLabel(currentDate, "para").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : mode === "vendas" ? " · Vendas" : ""}`, ids)}
         />
         <ChannelTable
           title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")}
           data={metrics.channelsCreatedToday}
-          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Criadas ${rangeLabel}` : getChannelTableLabel(currentDate, "criadas").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : ""}`, ids)}
+          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Criadas ${rangeLabel}` : getChannelTableLabel(currentDate, "criadas").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : mode === "vendas" ? " · Vendas" : ""}`, ids)}
         />
       </div>
 
