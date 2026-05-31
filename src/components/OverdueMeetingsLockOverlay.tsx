@@ -47,15 +47,7 @@ export default function OverdueMeetingsLockOverlay() {
       if (!data || data.length === 0) {
         throw new Error("Sem permissão para alterar este agendamento.");
       }
-      await logAudit("update_status", "agendamento", m.id, {
-        lead_name: m.lead_name,
-        closer_name: m.closer_name ?? "",
-        scheduled_date: m.scheduled_date,
-        scheduled_time: m.scheduled_time,
-        old_status: m.status,
-        new_status: newStatus,
-        source: "overdue_lock",
-      });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
       toast.success(`Status atualizado para ${newStatus === "no_show" ? "No-show" : "Cancelada"}`);
       await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
       await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });

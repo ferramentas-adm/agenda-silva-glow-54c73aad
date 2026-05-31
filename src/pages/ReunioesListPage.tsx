@@ -343,13 +343,7 @@ export default function ReunioesListPage() {
         .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id, deletion_reason: deleteReason.trim() })
         .eq("id", deleteTarget.id);
       if (error) throw error;
-      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, {
-        lead_name: deleteTarget.lead_name,
-        closer_name: closerMap[deleteTarget.closer_id] || "",
-        scheduled_date: deleteTarget.scheduled_date,
-        scheduled_time: deleteTarget.scheduled_time,
-        reason: deleteReason.trim(),
-      });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
       toast.success("Agendamento excluído com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
     } catch {

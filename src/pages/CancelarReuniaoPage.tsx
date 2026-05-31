@@ -65,15 +65,7 @@ export default function CancelarReuniaoPage() {
         .select("id");
       if (error) throw error;
       if (!data || data.length === 0) throw new Error("Sem permissão para cancelar este agendamento.");
-      await logAudit("update_status", "agendamento", ag.id, {
-        lead_name: ag.lead_name,
-        scheduled_date: ag.scheduled_date,
-        scheduled_time: ag.scheduled_time,
-        old_status: ag.status,
-        new_status: "cancelada",
-        cancellation_reason: trimmed,
-        source: "cancel_page",
-      });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
       toast.success("Reunião cancelada.");
       await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
       await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
