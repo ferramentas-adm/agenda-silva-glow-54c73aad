@@ -75,7 +75,7 @@ const ENTITY_LABELS: Record<string, string> = {
   settings: "Configurações",
 };
 
-const PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 20;
 
 export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
@@ -83,11 +83,12 @@ export default function AuditLogsPage() {
   const [actionFilter, setActionFilter] = useState("all");
   const [entityIdFilter, setEntityIdFilter] = useState("");
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["audit-logs", page, dateFrom?.toISOString(), dateTo?.toISOString(), entityIdFilter],
+    queryKey: ["audit-logs", page, pageSize, dateFrom?.toISOString(), dateTo?.toISOString(), entityIdFilter],
     queryFn: async () => {
       let query = supabase
         .from("audit_logs")
@@ -110,8 +111,8 @@ export default function AuditLogsPage() {
         query = query.eq("entity_id", entityIdFilter.trim());
       }
 
-      const from = page * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
       query = query.range(from, to);
 
       const { data, count } = await query;
@@ -121,7 +122,7 @@ export default function AuditLogsPage() {
 
   const logs = data?.logs ?? [];
   const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalPages = Math.ceil(total / pageSize);
 
   const filtered = useMemo(() => {
     let result = logs;
