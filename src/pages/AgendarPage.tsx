@@ -345,18 +345,23 @@ export default function AgendarPage() {
         }
       }
 
-      await logAudit(
-        editId ? "reschedule_agendamento" : "create_agendamento",
-        "agendamento",
-        insertedData?.id,
-        {
-          lead_name: lead.name,
-          closer_name: closerName,
-          scheduled_date: dateStr,
-          scheduled_time: time,
-          ...(editId ? { original_agendamento_id: editId } : {}),
-        }
-      );
+      if (editId) {
+        // Apenas o rótulo "reschedule_agendamento" é gravado pelo cliente.
+        // O INSERT do novo agendamento e o UPDATE do status do original já são
+        // capturados automaticamente pelo trigger log_agendamento_change.
+        await logAudit(
+          "reschedule_agendamento",
+          "agendamento",
+          insertedData?.id,
+          {
+            lead_name: lead.name,
+            closer_name: closerName,
+            scheduled_date: dateStr,
+            scheduled_time: time,
+            original_agendamento_id: editId,
+          }
+        );
+      }
 
       // Reagendamento: o trigger do banco já envia "Reagendada" ao DataCrazy
       // automaticamente no INSERT (status = 'reagendada'), então NÃO chamamos
