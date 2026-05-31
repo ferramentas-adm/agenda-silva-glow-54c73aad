@@ -634,17 +634,19 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                 Motivos de Não Fechamento
               </CardTitle>
               <div className="flex items-center gap-2">
-                <Select value={motivosCloserFilter} onValueChange={setMotivosCloserFilter}>
-                  <SelectTrigger className="h-8 w-[170px] text-xs">
-                    <SelectValue placeholder="Closer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os closers</SelectItem>
-                    {closers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!isCloserView && (
+                  <Select value={motivosCloserFilter} onValueChange={setMotivosCloserFilter}>
+                    <SelectTrigger className="h-8 w-[170px] text-xs">
+                      <SelectValue placeholder="Closer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os closers</SelectItem>
+                      {closers.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -784,18 +786,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="min-w-[150px]">
-              <Label className="text-[10px] uppercase tracking-wide">Closer</Label>
-              <Select value={fuFilterCloser} onValueChange={setFuFilterCloser}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {closers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isCloserView && (
+              <div className="min-w-[150px]">
+                <Label className="text-[10px] uppercase tracking-wide">Closer</Label>
+                <Select value={fuFilterCloser} onValueChange={setFuFilterCloser}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {closers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="min-w-[150px]">
               <Label className="text-[10px] uppercase tracking-wide">Motivo</Label>
               <Select value={fuFilterMotivo} onValueChange={setFuFilterMotivo}>
