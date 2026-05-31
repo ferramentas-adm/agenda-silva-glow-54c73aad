@@ -89,13 +89,16 @@ export default function DashboardComercialPage() {
   const { user, role } = useAuth();
   const isGestor = role === "gestor";
   const isAdmin = role === "gestor" || role === "moderador";
+  const isCloser = role === "closer";
   const allowedTabs = useMemo(
-    () => TABS.filter((t) => !t.gestorOnly || isAdmin),
-    [isAdmin],
+    () => isCloser
+      ? TABS.filter((t) => t.key === "vendas")
+      : TABS.filter((t) => !t.gestorOnly || isAdmin),
+    [isAdmin, isCloser],
   );
 
   const [visibleTabs, setVisibleTabs] = useState<Set<TabKey>>(() => loadVisibleTabs(user?.id));
-  const [activeTabKey, setActiveTabKey] = useState<TabKey>("metricas");
+  const [activeTabKey, setActiveTabKey] = useState<TabKey>(isCloser ? "vendas" : "metricas");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -419,17 +422,19 @@ export default function DashboardComercialPage() {
         {/* ─── Header bar ────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Play/Pause + Tabs */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setIsPlaying(!isPlaying)}
-              title={isPlaying ? "Pausar rotação" : "Iniciar rotação"}
-            >
-              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </Button>
-          </div>
+          {!isCloser && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIsPlaying(!isPlaying)}
+                title={isPlaying ? "Pausar rotação" : "Iniciar rotação"}
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
 
           <div className="flex gap-1 flex-wrap">
             {visibleTabList.map((tab) => (
@@ -449,6 +454,7 @@ export default function DashboardComercialPage() {
           </div>
 
           {/* Visibilidade de Abas */}
+          {!isCloser && (
           <Popover open={tabSettingsOpen} onOpenChange={setTabSettingsOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -493,6 +499,7 @@ export default function DashboardComercialPage() {
               </div>
             </PopoverContent>
           </Popover>
+          )}
 
           {/* Clock + Online */}
           <div className="ml-auto flex items-center gap-4">

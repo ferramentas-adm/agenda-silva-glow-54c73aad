@@ -205,11 +205,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     gcTime: 5 * 60_000,
   });
 
-  const { data: closers = [] } = useQuery<CloserRow[]>({
+  const { data: closers = [] } = useQuery<(CloserRow & { email: string | null })[]>({
     queryKey: ["vendas-tab-closers"],
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id, name").eq("active", true).order("name");
-      return (data ?? []) as CloserRow[];
+      const { data } = await supabase.from("closers").select("id, name, email").eq("active", true).order("name");
+      return (data ?? []) as (CloserRow & { email: string | null })[];
     },
   });
 
@@ -241,6 +241,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return m;
   }, [closers]);
 
+  // Closer logado: trava todos os filtros nos próprios números.
+  const { user, role } = useAuth();
+  const isCloserView = role === "closer";
+  const myCloserId = useMemo(() => {
+    if (!isCloserView || !user?.email) return null;
+    const me = closers.find((c) => (c as any).email?.toLowerCase?.() === user.email!.toLowerCase());
+    return me?.id ?? null;
+  }, [isCloserView, user?.email, closers]);
+
   // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd):
   // - Se houver override manual (vendas.closed_at), usa esse.
   // - Se houver audit log de follow-up com outcome='fechou' para esse
@@ -257,13 +266,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return ag.scheduled_date;
   };
 
-  // Vendas do período selecionado (dia único OU intervalo)
+  // Vendas do período selecionado (dia único OU intervalo). Para closer logado,
+  // aplica filtro adicional para mostrar apenas seus próprios números.
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
-      // Só considera vendas de reuniões efetivamente realizadas — alinha
-      // com o card "Realizadas" do calendário.
       if (ag?.status !== "realizada") return false;
+      if (isCloserView) {
+        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+      }
       const cd = closingDateOf(v);
       if (!cd) return false;
       if (isRange && rangeFromStr && rangeToStr) {
@@ -271,7 +282,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }
       return cd === dateStr;
     });
-  }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr]);
+  }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId]);
 
 
   // KPIs (memoizados para não recalcular em cada render)
@@ -288,16 +299,24 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [vendasDia]);
   const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio } = kpis;
 
-  // Follow-ups (escopo geral — não dependem do dia selecionado)
+  // Follow-ups (escopo geral — não dependem do dia selecionado).
+  // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
   const followUpStats = useMemo(() => {
-    const ativos = vendas.filter((v) => v.follow_up && v.follow_up_date);
+    const ativos = vendas.filter((v) => {
+      if (!v.follow_up || !v.follow_up_date) return false;
+      if (isCloserView) {
+        const ag = agMap.get(v.agendamento_id);
+        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+      }
+      return true;
+    });
     return {
       followUpsAgendados: ativos.length,
       followUpsHoje: ativos.filter((v) => v.follow_up_date === todayStr).length,
       followUpsAtrasados: ativos.filter((v) => v.follow_up_date! < todayStr).length,
       followUpsAtivosIds: ativos.map((v) => v.agendamento_id),
     };
-  }, [vendas, todayStr]);
+  }, [vendas, todayStr, isCloserView, myCloserId, agMap]);
   const { followUpsAgendados, followUpsHoje, followUpsAtrasados, followUpsAtivosIds } = followUpStats;
 
   // IDs para drill-down
@@ -428,7 +447,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
-  const { role } = useAuth();
   const isManager = role === "gestor" || role === "moderador";
   const queryClient = useQueryClient();
 
@@ -475,6 +493,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         };
       })
       .filter((f) => {
+        if (isCloserView && (!myCloserId || f.closerId !== myCloserId)) return false;
         if (fuFilterCloser !== "all" && f.closerId !== fuFilterCloser) return false;
         if (fuFilterMotivo !== "all" && f.motivo !== fuFilterMotivo) return false;
         if (dateFilterStr && f.date !== dateFilterStr) return false;
@@ -496,7 +515,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           : (a.time || "").localeCompare(b.time || "");
       })
       .slice(0, 20);
-  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate, fuFilterStatus, fuSort]);
+  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate, fuFilterStatus, fuSort, isCloserView, myCloserId]);
 
   // Estado para edição/remoção (apenas managers)
   const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);

@@ -68,15 +68,7 @@ export default function PendingMeetingsBanner() {
       if (!data || data.length === 0) {
         throw new Error("Sem permissão para alterar este agendamento.");
       }
-      await logAudit("update_status", "agendamento", m.id, {
-        lead_name: m.lead_name,
-        closer_name: m.closer_name ?? "",
-        scheduled_date: m.scheduled_date,
-        scheduled_time: m.scheduled_time,
-        old_status: m.status,
-        new_status: newStatus,
-        source: "pending_banner",
-      });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
       toast.success(`Status atualizado para ${STATUS_LABEL[newStatus] ?? newStatus}`);
       // Invalida caches relacionados
       await queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });

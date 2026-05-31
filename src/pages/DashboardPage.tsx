@@ -560,14 +560,7 @@ export function CalendarContent() {
       }
       const oldName = closerMap.get(detailAg.closer_id) || "—";
       const newName = closerMap.get(newCloserId) || "—";
-      await logAudit("edit_agendamento", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        scheduled_date: detailAg.scheduled_date,
-        scheduled_time: detailAg.scheduled_time,
-        field: "closer_id",
-        from: oldName,
-        to: newName,
-      });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
       patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: newCloserId }));
       setDetailAg({ ...detailAg, closer_id: newCloserId });
       toast.success(`Closer alterado para ${newName}`);
@@ -593,14 +586,7 @@ export function CalendarContent() {
       }
       const oldName = currentSdr ? (profilesMap.get(currentSdr) || "—") : "—";
       const newName = profilesMap.get(newSdrId) || "—";
-      await logAudit("edit_agendamento", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        scheduled_date: detailAg.scheduled_date,
-        scheduled_time: detailAg.scheduled_time,
-        field: "sdr_responsavel_id",
-        from: oldName,
-        to: newName,
-      });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
       patchAgendamentosCache(detailAg.id, (a) => ({ ...a, sdr_responsavel_id: newSdrId }));
       setDetailAg({ ...detailAg, sdr_responsavel_id: newSdrId } as any);
       toast.success(`Responsável alterado para ${newName}`);
@@ -624,7 +610,7 @@ export function CalendarContent() {
       if (!data || data.length === 0) {
         throw new Error("Você não tem permissão para excluir este agendamento.");
       }
-      await logAudit("delete_agendamento", "agendamento", deleteTarget.id, { lead_name: deleteTarget.lead_name, closer_name: closerMap.get(deleteTarget.closer_id ?? "") || "", scheduled_date: deleteTarget.scheduled_date, scheduled_time: deleteTarget.scheduled_time, reason: deleteReason.trim() });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change (action=delete_agendamento, inclui deletion_reason).
       toast.success("Agendamento excluído com sucesso.");
       await queryClient.refetchQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
@@ -661,7 +647,7 @@ export function CalendarContent() {
       if (!data || data.length === 0) {
         throw new Error("Você não tem permissão para alterar o status deste agendamento.");
       }
-      await logAudit("update_status", "agendamento", detailAg.id, { lead_name: detailAg.lead_name, closer_name: closerMap.get(detailAg.closer_id ?? "") || "", scheduled_date: detailAg.scheduled_date, scheduled_time: detailAg.scheduled_time, old_status: detailAg.status, new_status: newStatus });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change (action=update_status).
       toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
       const updatedAg = { ...detailAg, status: newStatus };
       patchAgendamentosCache(detailAg.id, (agendamento) => ({ ...agendamento, status: newStatus }));
@@ -705,14 +691,7 @@ export function CalendarContent() {
       if (!data || data.length === 0) {
         throw new Error("Você não tem permissão para editar este agendamento.");
       }
-      await logAudit("edit_agendamento", "agendamento", detailAg.id, {
-        lead_name: detailAg.lead_name,
-        closer_name: closerMap.get(detailAg.closer_id ?? "") || "",
-        scheduled_date: detailAg.scheduled_date,
-        field: "scheduled_time",
-        from: detailAg.scheduled_time,
-        to: editTime,
-      });
+      // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
       // Reenvia ao DataCrazy com status "Confirmado" (mesmo dia, novo horário).
       void resendAgendamentoWebhook({
         agendamentoId: detailAg.id,
@@ -941,7 +920,7 @@ export function CalendarContent() {
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
-            onDelete={setDeleteTarget}
+            onDelete={role === "gestor" || role === "moderador" ? setDeleteTarget : undefined}
             onClickAg={setDetailAg}
             onClickEmptySlot={(closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");
@@ -1473,7 +1452,7 @@ function DayView({
   closerBlocks: CloserBlock[];
   closerIndexMap: Map<string, number>;
   userRolesMap: Map<string, string>;
-  onDelete: (target: DeleteTarget) => void;
+  onDelete?: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
   onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
@@ -1775,13 +1754,15 @@ function DayView({
                                     <Video className="h-2.5 w-2.5" />
                                   </a>
                                 )}
-                                <button
-                                  className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-0.5 -m-0.5 rounded"
-                                  onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name, closer_id: ag.closer_id, scheduled_date: ag.scheduled_date, scheduled_time: ag.scheduled_time }); }}
-                                  title="Excluir agendamento"
-                                >
-                                  <Trash2 className={cn(isCompact ? "h-3 w-3" : "h-4 w-4")} />
-                                </button>
+                                {onDelete && (
+                                  <button
+                                    className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-0.5 -m-0.5 rounded"
+                                    onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name, closer_id: ag.closer_id, scheduled_date: ag.scheduled_date, scheduled_time: ag.scheduled_time }); }}
+                                    title="Excluir agendamento"
+                                  >
+                                    <Trash2 className={cn(isCompact ? "h-3 w-3" : "h-4 w-4")} />
+                                  </button>
+                                )}
                               </div>
                               {/* Status badges - compact: single line truncated */}
                               <div className={cn("flex gap-0.5 overflow-hidden", isCompact ? "flex-nowrap" : "flex-wrap")}>
