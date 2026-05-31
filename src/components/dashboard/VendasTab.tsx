@@ -205,11 +205,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     gcTime: 5 * 60_000,
   });
 
-  const { data: closers = [] } = useQuery<CloserRow[]>({
+  const { data: closers = [] } = useQuery<(CloserRow & { email: string | null })[]>({
     queryKey: ["vendas-tab-closers"],
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id, name").eq("active", true).order("name");
-      return (data ?? []) as CloserRow[];
+      const { data } = await supabase.from("closers").select("id, name, email").eq("active", true).order("name");
+      return (data ?? []) as (CloserRow & { email: string | null })[];
     },
   });
 
@@ -266,13 +266,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return ag.scheduled_date;
   };
 
-  // Vendas do período selecionado (dia único OU intervalo)
+  // Vendas do período selecionado (dia único OU intervalo). Para closer logado,
+  // aplica filtro adicional para mostrar apenas seus próprios números.
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
-      // Só considera vendas de reuniões efetivamente realizadas — alinha
-      // com o card "Realizadas" do calendário.
       if (ag?.status !== "realizada") return false;
+      if (isCloserView) {
+        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+      }
       const cd = closingDateOf(v);
       if (!cd) return false;
       if (isRange && rangeFromStr && rangeToStr) {
@@ -280,7 +282,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }
       return cd === dateStr;
     });
-  }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr]);
+  }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId]);
 
 
   // KPIs (memoizados para não recalcular em cada render)
