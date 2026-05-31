@@ -416,6 +416,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         }
       }
 
+      // Status para o CRM (DataCrazy): define em qual etapa do pipeline o card vai parar.
+      // Segunda reunião não envia status novo — o webhook de agendamento já cuida do novo card.
+      const crmStatus: "Follow-up" | "Perdido" | "Vendido" | null =
+        vendeu === "sim"
+          ? "Vendido"
+          : acompanhamento === "follow_up"
+            ? "Follow-up"
+            : acompanhamento === "perdeu"
+              ? "Perdido"
+              : null;
+
       // Dispara webhook (não bloqueante)
       sendVendaToDataCrazy({
         agendamento_id: agendamentoId,
@@ -436,6 +447,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         segunda_reuniao_time: segundaAtiva && followUpTime ? followUpTime : null,
         observacoes: observacoes.trim() || null,
         outcome,
+        status: crmStatus,
         registered_at: new Date().toISOString(),
         lead_revenue: leadRevenue || null,
       } as any);

@@ -1,26 +1,34 @@
-## Ajuste de dados — Luiz Construtora chalés (30/05/2026 16:00)
+## Objetivo
 
-Agendamento: `24ac80fc-1d4a-4566-9066-2bffb73b9c74` (closer Pedro Ferro).
+Enviar ao webhook `datacrazy-venda-webhook` um campo `status` claro para que o DataCrazy mova o card no pipeline conforme o desfecho registrado pelo closer no diálogo **Resultado da Reunião**.
 
-### 1. Atualizar venda existente (`1f73e54d-2ae2-4e55-afbc-f93d79e3f70d`)
-- `vendeu` → `true`
-- `valor` (apresentado) → mantém **R$ 40.000,00**
-- `closed_at` → **2026-05-30**
-- `follow_up` → `false`, `follow_up_date` e `follow_up_time` → `null`
-- `motivo_nao_fechamento` e `explicacao_nao_fechamento` → `null`
-- `observacoes` → mantém
+## Mapeamento
 
-### 2. Criar pagamento
-- `cliente_nome`: "Luiz Construtora chalés"
-- `cliente_telefone`: +55 (35) 99940-6338
-- `valor_previsto`: 700,00
-- `valor_realizado`: 700,00
-- `valor_apresentado`: 40.000,00
-- `data_prevista`: 2026-05-30
-- `data_pagamento`: 2026-05-30
-- `status`: `pago`
-- `closer_id`: Pedro Ferro (`58cb7503-…`)
-- `agendamento_id` e `venda_id` vinculados
-- `created_by`: o gestor que está executando (mesmo `created_by` da venda original)
+| Escolha no formulário | `status` enviado |
+|---|---|
+| Vendeu = **Sim** | `Vendido` |
+| Vendeu = Não + **Sim — agendar follow-up** | `Follow-up` |
+| Vendeu = Não + **Não (venda perdida)** | `Perdido` |
+| Vendeu = Não + **Sim — marcar segunda reunião** | *(não envia status novo — o webhook de status do agendamento já cuida da nova reunião)* |
 
-Ambas as operações via tool `supabase--insert` (UPDATE + INSERT).
+## Alterações
+
+### 1. `src/services/datacrazyVenda.ts`
+- Adicionar `status?: "Follow-up" | "Perdido" | "Vendido" | null` à interface `VendaWebhookPayload`.
+
+### 2. `src/components/VendaDialog.tsx` (função `handleSubmit`)
+- Calcular `crmStatus` antes do `sendVendaToDataCrazy`:
+  - `vendeu === "sim"` → `"Vendido"`
+  - `vendeu === "nao" && acompanhamento === "follow_up"` → `"Follow-up"`
+  - `vendeu === "nao" && acompanhamento === "perdeu"` → `"Perdido"`
+  - `segunda_reuniao` → `null` (não envia para não duplicar com o webhook de agendamento)
+- Incluir `status: crmStatus` no payload.
+
+### 3. `supabase/functions/datacrazy-venda-webhook/index.ts`
+- Repassar o campo `status` no `enrichedPayload` (já passa via spread, mas vamos garantir e documentar). Nenhuma lógica adicional necessária — o DataCrazy lê o `status` diretamente.
+
+## Observações
+
+- O campo existente `outcome` é mantido para compatibilidade interna (logs/auditoria), mas o `status` é o campo que o CRM vai consumir.
+- Segunda reunião continua sem enviar status novo, conforme sua escolha. Se quiser adicionar um 4º status no futuro, basta estender o mapeamento.
+- Não há mudanças de schema, RLS, ou banco — só payload do webhook e UI lógica.
