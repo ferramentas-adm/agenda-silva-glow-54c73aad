@@ -515,7 +515,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           : (a.time || "").localeCompare(b.time || "");
       })
       .slice(0, 20);
-  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate, fuFilterStatus, fuSort]);
+  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate, fuFilterStatus, fuSort, isCloserView, myCloserId]);
 
   // Estado para edição/remoção (apenas managers)
   const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
