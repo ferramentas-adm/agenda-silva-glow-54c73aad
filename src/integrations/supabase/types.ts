@@ -151,6 +151,7 @@ export type Database = {
           entity_id: string | null
           entity_type: string
           id: string
+          user_email: string | null
           user_id: string
           user_name: string
         }
@@ -161,6 +162,7 @@ export type Database = {
           entity_id?: string | null
           entity_type: string
           id?: string
+          user_email?: string | null
           user_id: string
           user_name: string
         }
@@ -171,6 +173,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string
           id?: string
+          user_email?: string | null
           user_id?: string
           user_name?: string
         }
