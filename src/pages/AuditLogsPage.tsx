@@ -255,7 +255,7 @@ export default function AuditLogsPage() {
               className="pl-9"
             />
           </div>
-          <Select value={entityFilter} onValueChange={setEntityFilter}>
+          <Select value={entityFilter} onValueChange={(v) => { setEntityFilter(v); setPage(0); }}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filtrar por tipo" />
             </SelectTrigger>
@@ -271,7 +271,7 @@ export default function AuditLogsPage() {
               <SelectItem value="settings">Configurações</SelectItem>
           </SelectContent>
           </Select>
-          <Select value={actionFilter} onValueChange={setActionFilter}>
+          <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setPage(0); }}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filtrar por ação" />
             </SelectTrigger>
@@ -282,6 +282,7 @@ export default function AuditLogsPage() {
               ))}
             </SelectContent>
           </Select>
+
 
           {/* Date from */}
           <Popover>
