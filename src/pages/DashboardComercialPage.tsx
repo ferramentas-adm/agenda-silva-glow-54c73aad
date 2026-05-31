@@ -248,6 +248,37 @@ export default function DashboardComercialPage() {
     refetchInterval: 2 * 60 * 1000,
   });
 
+  // Vendas (vendeu=true) para os agendamentos atuais — usado para coluna "Vendas / Taxa"
+  const vendaAgIds = useMemo(() => {
+    const s = new Set<string>();
+    agendamentos.forEach(a => s.add(a.id));
+    createdAgs.forEach(a => s.add(a.id));
+    return Array.from(s);
+  }, [agendamentos, createdAgs]);
+
+  const { data: soldAgIds = [] } = useQuery<string[]>({
+    queryKey: ["dashboard-comercial-vendas", vendaAgIds.length, vendaAgIds[0], vendaAgIds[vendaAgIds.length - 1]],
+    enabled: vendaAgIds.length > 0,
+    queryFn: async () => {
+      const out: string[] = [];
+      const chunkSize = 500;
+      for (let i = 0; i < vendaAgIds.length; i += chunkSize) {
+        const chunk = vendaAgIds.slice(i, i + chunkSize);
+        const { data, error } = await supabase
+          .from("vendas")
+          .select("agendamento_id")
+          .eq("vendeu", true)
+          .in("agendamento_id", chunk);
+        if (error) break;
+        (data ?? []).forEach((v: { agendamento_id: string }) => out.push(v.agendamento_id));
+      }
+      return out;
+    },
+    refetchInterval: 2 * 60 * 1000,
+  });
+
+  const soldSet = useMemo(() => new Set(soldAgIds), [soldAgIds]);
+
 
   // SDR profiles
   const { data: sdrProfiles = [] } = useQuery<SDRProfile[]>({
