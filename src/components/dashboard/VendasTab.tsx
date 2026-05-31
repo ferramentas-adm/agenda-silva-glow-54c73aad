@@ -493,6 +493,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         };
       })
       .filter((f) => {
+        if (isCloserView && (!myCloserId || f.closerId !== myCloserId)) return false;
         if (fuFilterCloser !== "all" && f.closerId !== fuFilterCloser) return false;
         if (fuFilterMotivo !== "all" && f.motivo !== fuFilterMotivo) return false;
         if (dateFilterStr && f.date !== dateFilterStr) return false;
