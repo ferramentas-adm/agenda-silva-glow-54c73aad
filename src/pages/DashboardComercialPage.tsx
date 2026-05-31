@@ -360,12 +360,13 @@ export default function DashboardComercialPage() {
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
     const byChannel = (list: AgendamentoMetric[]) => {
-      const map = new Map<string, { ids: string[]; idsRealizadas: string[] }>();
+      const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[] }>();
       list.forEach(a => {
         const ch = a.channel_type || "Sem canal";
-        const cur = map.get(ch) || { ids: [], idsRealizadas: [] };
+        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [] };
         cur.ids.push(a.id);
         if (a.status === "realizada") cur.idsRealizadas.push(a.id);
+        if (soldSet.has(a.id)) cur.idsVendas.push(a.id);
         map.set(ch, cur);
       });
       return Array.from(map.entries())
@@ -377,6 +378,8 @@ export default function DashboardComercialPage() {
           ids: v.ids,
           qtdRealizadas: v.idsRealizadas.length,
           idsRealizadas: v.idsRealizadas,
+          qtdVendas: v.idsVendas.length,
+          idsVendas: v.idsVendas,
         }));
     };
 
