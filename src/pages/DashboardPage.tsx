@@ -941,7 +941,7 @@ export function CalendarContent() {
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
-            onDelete={setDeleteTarget}
+            onDelete={role === "gestor" || role === "moderador" ? setDeleteTarget : undefined}
             onClickAg={setDetailAg}
             onClickEmptySlot={(closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");
@@ -1473,7 +1473,7 @@ function DayView({
   closerBlocks: CloserBlock[];
   closerIndexMap: Map<string, number>;
   userRolesMap: Map<string, string>;
-  onDelete: (target: DeleteTarget) => void;
+  onDelete?: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
   onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
@@ -1775,13 +1775,15 @@ function DayView({
                                     <Video className="h-2.5 w-2.5" />
                                   </a>
                                 )}
-                                <button
-                                  className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-0.5 -m-0.5 rounded"
-                                  onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name, closer_id: ag.closer_id, scheduled_date: ag.scheduled_date, scheduled_time: ag.scheduled_time }); }}
-                                  title="Excluir agendamento"
-                                >
-                                  <Trash2 className={cn(isCompact ? "h-3 w-3" : "h-4 w-4")} />
-                                </button>
+                                {onDelete && (
+                                  <button
+                                    className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive p-0.5 -m-0.5 rounded"
+                                    onClick={(e) => { e.stopPropagation(); onDelete({ id: ag.id, lead_name: ag.lead_name, closer_id: ag.closer_id, scheduled_date: ag.scheduled_date, scheduled_time: ag.scheduled_time }); }}
+                                    title="Excluir agendamento"
+                                  >
+                                    <Trash2 className={cn(isCompact ? "h-3 w-3" : "h-4 w-4")} />
+                                  </button>
+                                )}
                               </div>
                               {/* Status badges - compact: single line truncated */}
                               <div className={cn("flex gap-0.5 overflow-hidden", isCompact ? "flex-nowrap" : "flex-wrap")}>
