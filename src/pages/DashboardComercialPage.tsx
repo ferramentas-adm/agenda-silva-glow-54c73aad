@@ -454,6 +454,7 @@ export default function DashboardComercialPage() {
           </div>
 
           {/* Visibilidade de Abas */}
+          {!isCloser && (
           <Popover open={tabSettingsOpen} onOpenChange={setTabSettingsOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -498,6 +499,7 @@ export default function DashboardComercialPage() {
               </div>
             </PopoverContent>
           </Popover>
+          )}
 
           {/* Clock + Online */}
           <div className="ml-auto flex items-center gap-4">
