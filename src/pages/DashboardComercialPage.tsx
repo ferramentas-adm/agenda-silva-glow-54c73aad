@@ -1023,7 +1023,7 @@ function MetricasSDRsTab({
         <ChannelTable
           title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")}
           data={metrics.channelsToday}
-          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Para ${rangeLabel}` : getChannelTableLabel(currentDate, "para").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : ""}`, ids)}
+          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Para ${rangeLabel}` : getChannelTableLabel(currentDate, "para").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : mode === "vendas" ? " · Vendas" : ""}`, ids)}
         />
         <ChannelTable
           title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")}
