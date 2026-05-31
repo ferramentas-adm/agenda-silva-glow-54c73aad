@@ -399,15 +399,31 @@ export default function AuditLogsPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-primary/10 px-4 py-3">
                 <p className="text-xs text-muted-foreground">
-                  {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} de {total}
+                  {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} de {total}
                 </p>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(page - 1)}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(page - 1)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+                  >
+                    <SelectTrigger className="h-7 w-[80px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="200">200</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
