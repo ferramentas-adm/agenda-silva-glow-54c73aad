@@ -437,7 +437,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
-  const { role } = useAuth();
   const isManager = role === "gestor" || role === "moderador";
   const queryClient = useQueryClient();
 
