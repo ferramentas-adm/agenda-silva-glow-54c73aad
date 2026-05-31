@@ -75,7 +75,7 @@ const ENTITY_LABELS: Record<string, string> = {
   settings: "Configurações",
 };
 
-const PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 20;
 
 export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
@@ -83,11 +83,12 @@ export default function AuditLogsPage() {
   const [actionFilter, setActionFilter] = useState("all");
   const [entityIdFilter, setEntityIdFilter] = useState("");
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["audit-logs", page, dateFrom?.toISOString(), dateTo?.toISOString(), entityIdFilter],
+    queryKey: ["audit-logs", page, pageSize, dateFrom?.toISOString(), dateTo?.toISOString(), entityIdFilter],
     queryFn: async () => {
       let query = supabase
         .from("audit_logs")
@@ -110,8 +111,8 @@ export default function AuditLogsPage() {
         query = query.eq("entity_id", entityIdFilter.trim());
       }
 
-      const from = page * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
       query = query.range(from, to);
 
       const { data, count } = await query;
@@ -121,7 +122,7 @@ export default function AuditLogsPage() {
 
   const logs = data?.logs ?? [];
   const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalPages = Math.ceil(total / pageSize);
 
   const filtered = useMemo(() => {
     let result = logs;
@@ -398,15 +399,31 @@ export default function AuditLogsPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-primary/10 px-4 py-3">
                 <p className="text-xs text-muted-foreground">
-                  {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} de {total}
+                  {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} de {total}
                 </p>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(page - 1)}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(page - 1)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+                  >
+                    <SelectTrigger className="h-7 w-[80px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="200">200</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
