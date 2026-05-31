@@ -299,16 +299,24 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [vendasDia]);
   const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio } = kpis;
 
-  // Follow-ups (escopo geral — não dependem do dia selecionado)
+  // Follow-ups (escopo geral — não dependem do dia selecionado).
+  // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
   const followUpStats = useMemo(() => {
-    const ativos = vendas.filter((v) => v.follow_up && v.follow_up_date);
+    const ativos = vendas.filter((v) => {
+      if (!v.follow_up || !v.follow_up_date) return false;
+      if (isCloserView) {
+        const ag = agMap.get(v.agendamento_id);
+        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+      }
+      return true;
+    });
     return {
       followUpsAgendados: ativos.length,
       followUpsHoje: ativos.filter((v) => v.follow_up_date === todayStr).length,
       followUpsAtrasados: ativos.filter((v) => v.follow_up_date! < todayStr).length,
       followUpsAtivosIds: ativos.map((v) => v.agendamento_id),
     };
-  }, [vendas, todayStr]);
+  }, [vendas, todayStr, isCloserView, myCloserId, agMap]);
   const { followUpsAgendados, followUpsHoje, followUpsAtrasados, followUpsAtivosIds } = followUpStats;
 
   // IDs para drill-down
