@@ -1,37 +1,28 @@
-## Problema
+## Objetivo
 
-No payload do webhook de venda (`datacrazy-venda-webhook`), os campos `valor_apresentado`, `valor_previsto`, `data_prevista` (e `recebimento_acordado`) não são enviados. Eles existem no payload do webhook de status (montado pelo trigger SQL), mas não no de venda — então no cenário "Não + Follow-up" o CRM não recebe esses dados.
+Adicionar 3 novos flags ao payload do **webhook único de agendamento** (function `notify_status_change_webhook`), no mesmo padrão do `is_segunda_reuniao` que já existe. Os flags são derivados da tabela `vendas` quando o agendamento vira `realizada`.
 
-Hoje o `VendaDialog.handleSubmit` já coleta:
-- `valor` (mas só preenchido quando `vendeu === "sim"`)
-- `hasRecebimento`, `valorPrevistoNum`, `dataPrevista` (seção "Recebimento futuro", permitida em "Não + Follow-up")
+## Novos campos no payload
 
-E grava em `pagamentos`, mas não inclui nada disso no payload enviado para o DataCrazy.
+| Campo | `true` quando… | Caso contrário |
+|---|---|---|
+| `is_vendido` | venda existe e `vendas.vendeu = true` | `null` |
+| `is_follow_up` | venda existe, `vendeu = false` e `follow_up = true` | `null` |
+| `is_perdido` | venda existe, `vendeu = false`, `follow_up = false`, `segunda_reuniao = false` e motivo **não** é etapa em andamento ("Aguardando o pagamento" / "Analisando o contrato") | `null` |
 
-## Mudanças
+Convenção idêntica ao `is_segunda_reuniao`: enviar `true` ou `null` (nunca `false`) — só aparecem preenchidos quando aplicáveis e são mutuamente exclusivos.
 
-1. **`src/services/datacrazyVenda.ts`** — Estender `VendaWebhookPayload` com os campos:
-   - `valor_apresentado: number | null`
-   - `recebimento_acordado: boolean`
-   - `valor_previsto: number | null`
-   - `data_prevista: string | null` (formato `YYYY-MM-DD`)
+## Onde alterar
 
-2. **`src/components/VendaDialog.tsx`** — No `sendVendaToDataCrazy(...)` do `handleSubmit`, adicionar:
-   - `valor_apresentado: valorNum` (mesmo valor de `valor`, mas com nome alinhado ao webhook de status; será `null` em "Não + Follow-up" se o usuário não digitou — alternativa: aceitar valor também no cenário "Não". Confirmar abaixo.)
-   - `recebimento_acordado: hasRecebimento`
-   - `valor_previsto: hasRecebimento && valorPrevistoValido ? valorPrevistoNum : null`
-   - `data_prevista: hasRecebimento && dataPrevista ? format(dataPrevista, "yyyy-MM-dd") : null`
+Apenas a function PL/pgSQL **`notify_status_change_webhook`** (via migration).
 
-3. **`supabase/functions/datacrazy-venda-webhook/index.ts`** — Nenhuma mudança lógica: ele já faz spread do payload, então os novos campos passam adiante automaticamente. Apenas garantir que continua mandando `event: "venda_resultado"` no topo.
+1. No bloco que já busca dados da `vendas` para enriquecimento (hoje só roda para INSERT de 2ª reunião), passar a buscar a venda **também quando `NEW.status = 'realizada'`** — usando `NEW.id` como `agendamento_id`.
+2. Calcular três variáveis locais `_is_vendido`, `_is_follow_up`, `_is_perdido` (`BOOLEAN`, default `NULL`) a partir dos campos `vendeu`, `follow_up`, `segunda_reuniao`, `motivo_nao_fechamento` da venda encontrada.
+3. Incluir as três chaves no `jsonb_build_object(...)` final, ao lado de `is_segunda_reuniao`.
 
-## Ponto a confirmar
+## O que NÃO muda
 
-Hoje o campo "Valor" só aparece/é exigido quando `vendeu === "sim"`. No cenário "Não + Follow-up" não existe input de valor apresentado na UI.
-
-Opções:
-- (A) Enviar `valor_apresentado = null` em "Não + Follow-up" (apenas `valor_previsto`/`data_prevista` quando o usuário preencheu Recebimento futuro). Não muda UI.
-- (B) Permitir digitar "valor apresentado" também quando "Não", como campo opcional, e mandar ao CRM.
-
-Default proposto: **(A)** — sem mudança de UI, apenas o payload passa a carregar os 4 campos novos (com `valor_apresentado = null` neste cenário). Se confirmar (B), adiciono o input.
-
-Depois da implementação, disparamos novamente o cenário "Não + Follow-up" via curl para validar o payload final.
+- O `status` segue derivado igual (continua `"Realizada"` no caso).
+- `is_segunda_reuniao` e demais campos do payload permanecem inalterados.
+- Edge function `datacrazy-venda-webhook` e o serviço `sendVendaToDataCrazy` no frontend não são tocados nesta tarefa (se quiser, em seguida posso remover essa rota duplicada — me avise).
+- Nenhuma mudança no frontend nem em outras tabelas.
