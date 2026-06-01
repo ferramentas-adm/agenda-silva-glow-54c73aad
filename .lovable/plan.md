@@ -1,28 +1,43 @@
 ## Objetivo
 
-Adicionar 3 novos flags ao payload do **webhook único de agendamento** (function `notify_status_change_webhook`), no mesmo padrão do `is_segunda_reuniao` que já existe. Os flags são derivados da tabela `vendas` quando o agendamento vira `realizada`.
+Enriquecer o payload do webhook `notify_status_change_webhook` (quando `status = 'realizada'`) com **todos os campos da venda atual**, lendo da tabela `vendas` via `agendamento_id = NEW.id`.
 
-## Novos campos no payload
+## O que muda
 
-| Campo | `true` quando… | Caso contrário |
-|---|---|---|
-| `is_vendido` | venda existe e `vendas.vendeu = true` | `null` |
-| `is_follow_up` | venda existe, `vendeu = false` e `follow_up = true` | `null` |
-| `is_perdido` | venda existe, `vendeu = false`, `follow_up = false`, `segunda_reuniao = false` e motivo **não** é etapa em andamento ("Aguardando o pagamento" / "Analisando o contrato") | `null` |
+Apenas a function PL/pgSQL `notify_status_change_webhook` (via migration).
 
-Convenção idêntica ao `is_segunda_reuniao`: enviar `true` ou `null` (nunca `false`) — só aparecem preenchidos quando aplicáveis e são mutuamente exclusivos.
+No bloco que já busca `vendas` para calcular `is_vendido/is_follow_up/is_perdido`, expandir o SELECT para trazer todos os campos relevantes e incluí-los no `jsonb_build_object` final — sobrescrevendo (apenas neste caso de `realizada`) os valores hoje calculados só para INSERT de 2ª reunião.
 
-## Onde alterar
+### Campos novos/preenchidos no payload quando `status = 'realizada'`
 
-Apenas a function PL/pgSQL **`notify_status_change_webhook`** (via migration).
+Lidos de `public.vendas` onde `agendamento_id = NEW.id`:
 
-1. No bloco que já busca dados da `vendas` para enriquecimento (hoje só roda para INSERT de 2ª reunião), passar a buscar a venda **também quando `NEW.status = 'realizada'`** — usando `NEW.id` como `agendamento_id`.
-2. Calcular três variáveis locais `_is_vendido`, `_is_follow_up`, `_is_perdido` (`BOOLEAN`, default `NULL`) a partir dos campos `vendeu`, `follow_up`, `segunda_reuniao`, `motivo_nao_fechamento` da venda encontrada.
-3. Incluir as três chaves no `jsonb_build_object(...)` final, ao lado de `is_segunda_reuniao`.
+| Chave no payload | Coluna em `vendas` |
+|---|---|
+| `vendeu` | `vendeu` |
+| `valor_coletado` | `valor` (quando `vendeu = true`) |
+| `resumo_venda` | `resumo_venda` |
+| `motivo_nao_fechamento` | `motivo_nao_fechamento` |
+| `explicacao_nao_fechamento` | `explicacao_nao_fechamento` |
+| `valor_apresentado` | `valor` (quando `vendeu = false`) — atual lógica de 2ª reunião usa `v.valor` como apresentado |
+| `lead_revenue` | `lead_revenue` |
+| `follow_up_date` | `follow_up_date` |
+| `follow_up_time` | `follow_up_time` |
+| `observacoes` | `observacoes` |
 
-## O que NÃO muda
+Mantidas as flags `is_vendido / is_follow_up / is_perdido` (sem mudança de regra).
 
-- O `status` segue derivado igual (continua `"Realizada"` no caso).
-- `is_segunda_reuniao` e demais campos do payload permanecem inalterados.
-- Edge function `datacrazy-venda-webhook` e o serviço `sendVendaToDataCrazy` no frontend não são tocados nesta tarefa (se quiser, em seguida posso remover essa rota duplicada — me avise).
-- Nenhuma mudança no frontend nem em outras tabelas.
+### O que NÃO muda
+
+- Campo `erro_sdr` (sdr_error): **não enviar** (conforme decisão).
+- `is_segunda_reuniao` e enriquecimento de INSERT de 2ª reunião (que já lê da venda da reunião **original**): permanecem como hoje.
+- `status` continua sendo `"Realizada"`.
+- Nenhuma mudança em frontend, edge functions ou outras tabelas.
+
+### Detalhe técnico
+
+Hoje a function tem dois blocos separados:
+1. INSERT de 2ª reunião → lê venda da reunião **original** e preenche `_lead_revenue`, `_motivo_nao_fechamento`, `_explicacao_nao_fechamento`, `_valor_apresentado`.
+2. `status = 'realizada'` → lê venda **atual** só para calcular flags.
+
+O plano é, no bloco (2), expandir o SELECT para também popular as variáveis locais (`_lead_revenue`, `_motivo_nao_fechamento`, `_explicacao_nao_fechamento`, `_valor_apresentado`) com os dados da venda atual, e adicionar três novas variáveis (`_valor_coletado`, `_resumo_venda`, `_follow_up_date`, `_follow_up_time`, `_observacoes`) que entram no `jsonb_build_object`. Os blocos (1) e (2) são mutuamente exclusivos na prática (INSERT vs UPDATE para realizada), então não há conflito.
