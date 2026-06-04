@@ -256,28 +256,35 @@ export default function DashboardComercialPage() {
     return Array.from(s);
   }, [agendamentos, createdAgs]);
 
-  const { data: soldAgIds = [] } = useQuery<string[]>({
+  const { data: soldVendas = [] } = useQuery<{ agendamento_id: string; valor: number | null }[]>({
     queryKey: ["dashboard-comercial-vendas", vendaAgIds.length, vendaAgIds[0], vendaAgIds[vendaAgIds.length - 1]],
     enabled: vendaAgIds.length > 0,
     queryFn: async () => {
-      const out: string[] = [];
+      const out: { agendamento_id: string; valor: number | null }[] = [];
       const chunkSize = 500;
       for (let i = 0; i < vendaAgIds.length; i += chunkSize) {
         const chunk = vendaAgIds.slice(i, i + chunkSize);
         const { data, error } = await supabase
           .from("vendas")
-          .select("agendamento_id")
+          .select("agendamento_id, valor")
           .eq("vendeu", true)
           .in("agendamento_id", chunk);
         if (error) break;
-        (data ?? []).forEach((v: { agendamento_id: string }) => out.push(v.agendamento_id));
+        (data ?? []).forEach((v: { agendamento_id: string; valor: number | null }) =>
+          out.push({ agendamento_id: v.agendamento_id, valor: v.valor }),
+        );
       }
       return out;
     },
     refetchInterval: 2 * 60 * 1000,
   });
 
-  const soldSet = useMemo(() => new Set(soldAgIds), [soldAgIds]);
+  const soldSet = useMemo(() => new Set(soldVendas.map(v => v.agendamento_id)), [soldVendas]);
+  const soldValueMap = useMemo(() => {
+    const m = new Map<string, number>();
+    soldVendas.forEach(v => m.set(v.agendamento_id, Number(v.valor) || 0));
+    return m;
+  }, [soldVendas]);
 
 
   // SDR profiles
@@ -360,13 +367,16 @@ export default function DashboardComercialPage() {
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
     const byChannel = (list: AgendamentoMetric[]) => {
-      const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[] }>();
+      const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[]; valorVendas: number }>();
       list.forEach(a => {
         const ch = a.channel_type || "Sem canal";
-        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [] };
+        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
         cur.ids.push(a.id);
         if (a.status === "realizada") cur.idsRealizadas.push(a.id);
-        if (soldSet.has(a.id)) cur.idsVendas.push(a.id);
+        if (soldSet.has(a.id)) {
+          cur.idsVendas.push(a.id);
+          cur.valorVendas += soldValueMap.get(a.id) || 0;
+        }
         map.set(ch, cur);
       });
       return Array.from(map.entries())
@@ -380,6 +390,7 @@ export default function DashboardComercialPage() {
           idsRealizadas: v.idsRealizadas,
           qtdVendas: v.idsVendas.length,
           idsVendas: v.idsVendas,
+          valorVendas: v.valorVendas,
         }));
     };
 
@@ -426,7 +437,7 @@ export default function DashboardComercialPage() {
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr, soldSet]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
 
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
@@ -763,7 +774,7 @@ function ChannelTable({
   onRowClick,
 }: {
   title: string;
-  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[] }[];
+  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[]; valorVendas: number }[];
   onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" | "vendas" }) => void;
 }) {
   const [mode, setMode] = useState<"todas" | "realizadas" | "vendas">("todas");
@@ -817,6 +828,9 @@ function ChannelTable({
               <th className="text-right py-2 px-2 font-medium text-xs">
                 {mode === "vendas" ? "Vendas" : "Qtd"}
               </th>
+              {mode === "vendas" && (
+                <th className="text-right py-2 px-2 font-medium text-xs">Valor</th>
+              )}
               {showTaxa && (
                 <th className="text-right py-2 px-2 font-medium text-xs">Taxa</th>
               )}
@@ -825,7 +839,7 @@ function ChannelTable({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={showTaxa ? 4 : 3} className="text-center text-muted-foreground py-4 text-xs">
+                <td colSpan={3 + (mode === "vendas" ? 1 : 0) + (showTaxa ? 1 : 0)} className="text-center text-muted-foreground py-4 text-xs">
                   Nenhum registro
                 </td>
               </tr>
@@ -842,6 +856,13 @@ function ChannelTable({
                 <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
                 <td className="py-2 px-2 font-medium">{row.canal}</td>
                 <td className="py-2 px-2 text-right font-bold">{row.currentQtd}</td>
+                {mode === "vendas" && (
+                  <td className="py-2 px-2 text-right tabular-nums font-semibold">
+                    {row.valorVendas > 0
+                      ? row.valorVendas.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                      : "—"}
+                  </td>
+                )}
                 {showTaxa && (
                   <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
                     {row.qtd > 0
