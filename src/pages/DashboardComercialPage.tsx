@@ -828,6 +828,9 @@ function ChannelTable({
               <th className="text-right py-2 px-2 font-medium text-xs">
                 {mode === "vendas" ? "Vendas" : "Qtd"}
               </th>
+              {mode === "vendas" && (
+                <th className="text-right py-2 px-2 font-medium text-xs">Valor</th>
+              )}
               {showTaxa && (
                 <th className="text-right py-2 px-2 font-medium text-xs">Taxa</th>
               )}
@@ -836,7 +839,7 @@ function ChannelTable({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={showTaxa ? 4 : 3} className="text-center text-muted-foreground py-4 text-xs">
+                <td colSpan={3 + (mode === "vendas" ? 1 : 0) + (showTaxa ? 1 : 0)} className="text-center text-muted-foreground py-4 text-xs">
                   Nenhum registro
                 </td>
               </tr>
@@ -853,6 +856,13 @@ function ChannelTable({
                 <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
                 <td className="py-2 px-2 font-medium">{row.canal}</td>
                 <td className="py-2 px-2 text-right font-bold">{row.currentQtd}</td>
+                {mode === "vendas" && (
+                  <td className="py-2 px-2 text-right tabular-nums font-semibold">
+                    {row.valorVendas > 0
+                      ? row.valorVendas.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                      : "—"}
+                  </td>
+                )}
                 {showTaxa && (
                   <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
                     {row.qtd > 0
