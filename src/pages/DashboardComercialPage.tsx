@@ -367,13 +367,16 @@ export default function DashboardComercialPage() {
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
     const byChannel = (list: AgendamentoMetric[]) => {
-      const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[] }>();
+      const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[]; valorVendas: number }>();
       list.forEach(a => {
         const ch = a.channel_type || "Sem canal";
-        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [] };
+        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
         cur.ids.push(a.id);
         if (a.status === "realizada") cur.idsRealizadas.push(a.id);
-        if (soldSet.has(a.id)) cur.idsVendas.push(a.id);
+        if (soldSet.has(a.id)) {
+          cur.idsVendas.push(a.id);
+          cur.valorVendas += soldValueMap.get(a.id) || 0;
+        }
         map.set(ch, cur);
       });
       return Array.from(map.entries())
@@ -387,6 +390,7 @@ export default function DashboardComercialPage() {
           idsRealizadas: v.idsRealizadas,
           qtdVendas: v.idsVendas.length,
           idsVendas: v.idsVendas,
+          valorVendas: v.valorVendas,
         }));
     };
 
