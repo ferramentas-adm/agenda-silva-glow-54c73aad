@@ -774,7 +774,7 @@ function ChannelTable({
   onRowClick,
 }: {
   title: string;
-  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[] }[];
+  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[]; valorVendas: number }[];
   onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" | "vendas" }) => void;
 }) {
   const [mode, setMode] = useState<"todas" | "realizadas" | "vendas">("todas");
