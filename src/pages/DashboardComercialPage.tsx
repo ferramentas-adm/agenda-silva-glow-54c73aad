@@ -256,28 +256,35 @@ export default function DashboardComercialPage() {
     return Array.from(s);
   }, [agendamentos, createdAgs]);
 
-  const { data: soldAgIds = [] } = useQuery<string[]>({
+  const { data: soldVendas = [] } = useQuery<{ agendamento_id: string; valor: number | null }[]>({
     queryKey: ["dashboard-comercial-vendas", vendaAgIds.length, vendaAgIds[0], vendaAgIds[vendaAgIds.length - 1]],
     enabled: vendaAgIds.length > 0,
     queryFn: async () => {
-      const out: string[] = [];
+      const out: { agendamento_id: string; valor: number | null }[] = [];
       const chunkSize = 500;
       for (let i = 0; i < vendaAgIds.length; i += chunkSize) {
         const chunk = vendaAgIds.slice(i, i + chunkSize);
         const { data, error } = await supabase
           .from("vendas")
-          .select("agendamento_id")
+          .select("agendamento_id, valor")
           .eq("vendeu", true)
           .in("agendamento_id", chunk);
         if (error) break;
-        (data ?? []).forEach((v: { agendamento_id: string }) => out.push(v.agendamento_id));
+        (data ?? []).forEach((v: { agendamento_id: string; valor: number | null }) =>
+          out.push({ agendamento_id: v.agendamento_id, valor: v.valor }),
+        );
       }
       return out;
     },
     refetchInterval: 2 * 60 * 1000,
   });
 
-  const soldSet = useMemo(() => new Set(soldAgIds), [soldAgIds]);
+  const soldSet = useMemo(() => new Set(soldVendas.map(v => v.agendamento_id)), [soldVendas]);
+  const soldValueMap = useMemo(() => {
+    const m = new Map<string, number>();
+    soldVendas.forEach(v => m.set(v.agendamento_id, Number(v.valor) || 0));
+    return m;
+  }, [soldVendas]);
 
 
   // SDR profiles
