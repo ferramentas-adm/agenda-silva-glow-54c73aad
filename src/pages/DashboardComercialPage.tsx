@@ -437,7 +437,7 @@ export default function DashboardComercialPage() {
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
       reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr, soldSet]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
 
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
