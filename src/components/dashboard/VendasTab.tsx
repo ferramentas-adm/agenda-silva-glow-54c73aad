@@ -295,9 +295,30 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       .filter((v) => v.vendeu && v.valor)
       .reduce((acc, v) => acc + (v.valor || 0), 0);
     const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
-    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio };
-  }, [vendasDia]);
-  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio } = kpis;
+
+    // Tempo médio de venda (dias entre criação do agendamento e a data de fechamento da venda)
+    const MS_DAY = 1000 * 60 * 60 * 24;
+    const tempos = vendasDia
+      .filter((v) => v.vendeu)
+      .map((v) => {
+        const ag = agMap.get(v.agendamento_id);
+        if (!ag?.created_at) return null;
+        const cd = closingDateOf(v);
+        if (!cd) return null;
+        const inicio = new Date(ag.created_at).getTime();
+        // cd é yyyy-MM-dd (BRT); usa meio-dia para evitar quirks de fuso
+        const fim = new Date(`${cd}T12:00:00-03:00`).getTime();
+        const diff = (fim - inicio) / MS_DAY;
+        return diff >= 0 ? diff : 0;
+      })
+      .filter((d): d is number => d !== null);
+    const tempoMedioVenda = tempos.length > 0
+      ? tempos.reduce((a, b) => a + b, 0) / tempos.length
+      : 0;
+
+    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, tempoMedioVenda };
+  }, [vendasDia, agMap, followUpCloseDateMap]);
+  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, tempoMedioVenda } = kpis;
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
   // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
