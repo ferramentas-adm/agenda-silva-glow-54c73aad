@@ -297,13 +297,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
     // % de vendas em 1a call vs follow-up/2a reuniao
-    const vendasPrimeiraCall = vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao).length;
-    const vendasFollowOuSegunda = vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).length;
+    const isSegunda = (v: Venda) => v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao";
+    const vendasPrimeiraCall = vendasDia.filter((v) => v.vendeu && !v.follow_up && !isSegunda(v)).length;
+    const vendasFollowOuSegunda = vendasDia.filter((v) => v.vendeu && (v.follow_up || isSegunda(v))).length;
     const pctPrimeiraCall = totalVendas > 0 ? (vendasPrimeiraCall / totalVendas) * 100 : 0;
     const pctFollow = totalVendas > 0 ? (vendasFollowOuSegunda / totalVendas) * 100 : 0;
 
     return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow };
-  }, [vendasDia]);
+  }, [vendasDia, agMap]);
+
   const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow } = kpis;
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
