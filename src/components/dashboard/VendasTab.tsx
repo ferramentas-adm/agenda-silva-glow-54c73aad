@@ -655,6 +655,32 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
             )
           }
         />
+        <KpiCard
+          icon={Clock}
+          label="Tempo Médio de Venda"
+          value={
+            totalVendas > 0
+              ? tempoMedioVenda < 1
+                ? `${Math.round(tempoMedioVenda * 24)}h`
+                : `${tempoMedioVenda.toFixed(1)} d`
+              : "—"
+          }
+          sub={
+            totalVendas > 0
+              ? `Da criação do agendamento ao fechamento (${totalVendas} venda${totalVendas !== 1 ? "s" : ""})`
+              : "Sem vendas no período"
+          }
+          color="primary"
+          onClick={() =>
+            openDrill(
+              `Tempo médio de venda — ${dayLabel}`,
+              fechadasIds,
+              totalVendas > 0
+                ? `Média: ${tempoMedioVenda.toFixed(1)} dia${tempoMedioVenda === 1 ? "" : "s"}`
+                : undefined,
+            )
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
