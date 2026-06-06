@@ -654,7 +654,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           value={totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}%` : "—"}
           sub={
             totalVendas > 0
-              ? `${pctFollow.toFixed(0)}% precisou de follow-up/2ª (${vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).length} de ${totalVendas})`
+              ? `${pctFollow.toFixed(0)}% precisou de follow-up/2ª (${fechadasFollowIds.length} de ${totalVendas})`
               : "Sem vendas no período"
           }
           color="primary"
