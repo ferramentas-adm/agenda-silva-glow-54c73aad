@@ -659,6 +659,17 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                     </SelectContent>
                   </Select>
                 )}
+                <Select value={motivosChannelFilter} onValueChange={setMotivosChannelFilter}>
+                  <SelectTrigger className="h-8 w-[170px] text-xs">
+                    <SelectValue placeholder="Canal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os canais</SelectItem>
+                    {motivosChannels.map((ch) => (
+                      <SelectItem key={ch} value={ch}>{ch}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button
                   variant="ghost"
                   size="icon"
