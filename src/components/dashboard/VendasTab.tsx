@@ -327,17 +327,29 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }), [vendasDia]);
   const { vendasDiaIds, fechadasIds, naoFechouIds } = drilldownIds;
 
-  // Filtro por closer no card "Motivos de Não Fechamento"
+  // Filtros do card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
+  const [motivosChannelFilter, setMotivosChannelFilter] = useState<string>("all");
 
-  // Vendas que entram no card de motivos (filtradas opcionalmente por closer)
+  // Canais disponíveis nas vendas do período (para o filtro)
+  const motivosChannels = useMemo(() => {
+    const set = new Set<string>();
+    vendasDia.forEach((v) => {
+      const ch = agMap.get(v.agendamento_id)?.channel_type;
+      if (ch) set.add(ch);
+    });
+    return Array.from(set).sort();
+  }, [vendasDia, agMap]);
+
+  // Vendas que entram no card de motivos (filtradas opcionalmente por closer e canal)
   const vendasDiaParaMotivos = useMemo(() => {
-    if (motivosCloserFilter === "all") return vendasDia;
     return vendasDia.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
-      return ag?.closer_id === motivosCloserFilter;
+      if (motivosCloserFilter !== "all" && ag?.closer_id !== motivosCloserFilter) return false;
+      if (motivosChannelFilter !== "all" && ag?.channel_type !== motivosChannelFilter) return false;
+      return true;
     });
-  }, [vendasDia, agMap, motivosCloserFilter]);
+  }, [vendasDia, agMap, motivosCloserFilter, motivosChannelFilter]);
 
   const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
 
