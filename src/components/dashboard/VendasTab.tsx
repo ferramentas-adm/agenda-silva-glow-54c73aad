@@ -299,7 +299,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
     // % de vendas em 1a call vs follow-up/2a reuniao
-    const isSegunda = (v: Venda) => v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao";
+    const isSegunda = (v: VendaRow) => v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao";
     const vendasPrimeiraCall = vendasDia.filter((v) => v.vendeu && !v.follow_up && !isSegunda(v)).length;
     const vendasFollowOuSegunda = vendasDia.filter((v) => v.vendeu && (v.follow_up || isSegunda(v))).length;
     const pctPrimeiraCall = totalVendas > 0 ? (vendasPrimeiraCall / totalVendas) * 100 : 0;
