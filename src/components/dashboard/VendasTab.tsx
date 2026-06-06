@@ -334,10 +334,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const drilldownIds = useMemo(() => ({
     vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
     fechadasIds: vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id),
-    fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao).map((v) => v.agendamento_id),
-    fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).map((v) => v.agendamento_id),
+    fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao && agMap.get(v.agendamento_id)?.meeting_reason !== "segunda_reuniao").map((v) => v.agendamento_id),
+    fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao")).map((v) => v.agendamento_id),
     naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
-  }), [vendasDia]);
+  }), [vendasDia, agMap]);
+
   const { vendasDiaIds, fechadasIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds } = drilldownIds;
 
   // Filtros do card "Motivos de Não Fechamento"
