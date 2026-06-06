@@ -61,6 +61,8 @@ interface AgendamentoRow {
   created_by: string | null;
   sdr_responsavel_id: string | null;
   status: string;
+  meeting_reason: string | null;
+
 }
 
 interface CloserRow {
@@ -144,7 +146,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           .select(`
             id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
             motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
-            agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status)
+            agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason)
           `)
           .is("agendamentos.deleted_at", null)
           .gte("agendamentos.scheduled_date", windowRange.start)
@@ -297,13 +299,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
     // % de vendas em 1a call vs follow-up/2a reuniao
-    const vendasPrimeiraCall = vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao).length;
-    const vendasFollowOuSegunda = vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).length;
+    const isSegunda = (v: VendaRow) => v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao";
+    const vendasPrimeiraCall = vendasDia.filter((v) => v.vendeu && !v.follow_up && !isSegunda(v)).length;
+    const vendasFollowOuSegunda = vendasDia.filter((v) => v.vendeu && (v.follow_up || isSegunda(v))).length;
     const pctPrimeiraCall = totalVendas > 0 ? (vendasPrimeiraCall / totalVendas) * 100 : 0;
     const pctFollow = totalVendas > 0 ? (vendasFollowOuSegunda / totalVendas) * 100 : 0;
 
     return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow };
-  }, [vendasDia]);
+  }, [vendasDia, agMap]);
+
   const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow } = kpis;
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
@@ -330,10 +334,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const drilldownIds = useMemo(() => ({
     vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
     fechadasIds: vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id),
-    fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao).map((v) => v.agendamento_id),
-    fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).map((v) => v.agendamento_id),
+    fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao && agMap.get(v.agendamento_id)?.meeting_reason !== "segunda_reuniao").map((v) => v.agendamento_id),
+    fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao")).map((v) => v.agendamento_id),
     naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
-  }), [vendasDia]);
+  }), [vendasDia, agMap]);
+
   const { vendasDiaIds, fechadasIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds } = drilldownIds;
 
   // Filtros do card "Motivos de Não Fechamento"
@@ -649,7 +654,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           value={totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}%` : "—"}
           sub={
             totalVendas > 0
-              ? `${pctFollow.toFixed(0)}% precisou de follow-up/2ª (${vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).length} de ${totalVendas})`
+              ? `${pctFollow.toFixed(0)}% precisou de follow-up/2ª (${fechadasFollowIds.length} de ${totalVendas})`
               : "Sem vendas no período"
           }
           color="primary"
