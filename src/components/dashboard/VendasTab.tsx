@@ -61,6 +61,8 @@ interface AgendamentoRow {
   created_by: string | null;
   sdr_responsavel_id: string | null;
   status: string;
+  meeting_reason: string | null;
+
 }
 
 interface CloserRow {
