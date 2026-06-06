@@ -296,29 +296,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       .reduce((acc, v) => acc + (v.valor || 0), 0);
     const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
-    // Tempo médio de venda (dias entre criação do agendamento e a data de fechamento da venda)
-    const MS_DAY = 1000 * 60 * 60 * 24;
-    const tempos = vendasDia
-      .filter((v) => v.vendeu)
-      .map((v) => {
-        const ag = agMap.get(v.agendamento_id);
-        if (!ag?.created_at) return null;
-        const cd = closingDateOf(v);
-        if (!cd) return null;
-        const inicio = new Date(ag.created_at).getTime();
-        // cd é yyyy-MM-dd (BRT); usa meio-dia para evitar quirks de fuso
-        const fim = new Date(`${cd}T12:00:00-03:00`).getTime();
-        const diff = (fim - inicio) / MS_DAY;
-        return diff >= 0 ? diff : 0;
-      })
-      .filter((d): d is number => d !== null);
-    const tempoMedioVenda = tempos.length > 0
-      ? tempos.reduce((a, b) => a + b, 0) / tempos.length
-      : 0;
+    // % de vendas em 1a call vs follow-up/2a reuniao
+    const vendasPrimeiraCall = vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao).length;
+    const vendasFollowOuSegunda = vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).length;
+    const pctPrimeiraCall = totalVendas > 0 ? (vendasPrimeiraCall / totalVendas) * 100 : 0;
+    const pctFollow = totalVendas > 0 ? (vendasFollowOuSegunda / totalVendas) * 100 : 0;
 
-    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, tempoMedioVenda };
-  }, [vendasDia, agMap, followUpCloseDateMap]);
-  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, tempoMedioVenda } = kpis;
+    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow };
+  }, [vendasDia]);
+  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow } = kpis;
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
   // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
@@ -344,9 +330,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const drilldownIds = useMemo(() => ({
     vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
     fechadasIds: vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id),
+    fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao).map((v) => v.agendamento_id),
+    fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).map((v) => v.agendamento_id),
     naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
   }), [vendasDia]);
-  const { vendasDiaIds, fechadasIds, naoFechouIds } = drilldownIds;
+  const { vendasDiaIds, fechadasIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds } = drilldownIds;
 
   // Filtros do card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
@@ -656,28 +644,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           }
         />
         <KpiCard
-          icon={Clock}
-          label="Tempo Médio de Venda"
-          value={
-            totalVendas > 0
-              ? tempoMedioVenda < 1
-                ? `${Math.round(tempoMedioVenda * 24)}h`
-                : `${tempoMedioVenda.toFixed(1)} d`
-              : "—"
-          }
+          icon={Phone}
+          label="Vendas em 1ª Call"
+          value={totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}%` : "—"}
           sub={
             totalVendas > 0
-              ? `Da criação do agendamento ao fechamento (${totalVendas} venda${totalVendas !== 1 ? "s" : ""})`
+              ? `${pctFollow.toFixed(0)}% precisou de follow-up/2ª (${vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao)).length} de ${totalVendas})`
               : "Sem vendas no período"
           }
           color="primary"
           onClick={() =>
             openDrill(
-              `Tempo médio de venda — ${dayLabel}`,
-              fechadasIds,
-              totalVendas > 0
-                ? `Média: ${tempoMedioVenda.toFixed(1)} dia${tempoMedioVenda === 1 ? "" : "s"}`
-                : undefined,
+              `Vendas em 1ª Call — ${dayLabel}`,
+              fechadasPrimeiraCallIds,
+              totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}% fecharam na 1ª call` : undefined,
             )
           }
         />
