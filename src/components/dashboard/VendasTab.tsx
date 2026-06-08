@@ -802,7 +802,17 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       </div>
 
       {/* Agendas por Canal — inclui segundas reuniões */}
-      <AgendasPorCanalPanel currentDate={currentDate} dateRange={dateRange} />
+      <AgendasPorCanalPanel
+        currentDate={currentDate}
+        dateRange={dateRange}
+        vendasFechadasNoPeriodo={vendasDia
+          .filter((v) => v.vendeu)
+          .map((v) => ({
+            agendamento_id: v.agendamento_id,
+            channel_type: agMap.get(v.agendamento_id)?.channel_type ?? null,
+            valor: Number(v.valor) || 0,
+          }))}
+      />
 
       <MetricDrilldownDialog
         open={drill.open}

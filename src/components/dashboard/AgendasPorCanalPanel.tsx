@@ -19,6 +19,14 @@ interface AgRow {
 interface Props {
   currentDate: Date;
   dateRange?: DateRange;
+  /**
+   * Vendas (vendeu=true) já filtradas pela data efetiva de fechamento
+   * dentro do período selecionado. Computadas em VendasTab para
+   * reaproveitar a mesma lógica de `closingDateOf` (closed_at, audit
+   * de follow-up ou scheduled_date). Garante que vendas fechadas em
+   * X via follow-up de reuniões antigas contem em X.
+   */
+  vendasFechadasNoPeriodo?: { agendamento_id: string; channel_type: string | null; valor: number }[];
 }
 
 /**
@@ -30,7 +38,7 @@ interface Props {
  * importante para a aba de vendas, onde queremos ver agendadas, realizadas
  * e vendas reais — inclusive vendas de segunda reunião.
  */
-export default function AgendasPorCanalPanel({ currentDate, dateRange }: Props) {
+export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFechadasNoPeriodo }: Props) {
   const isRange = !!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to));
   const fromStr = isRange ? format(dateRange!.from!, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
   const toStr = isRange ? format(dateRange!.to!, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
@@ -100,43 +108,22 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange }: Props) 
     refetchInterval: 2 * 60_000,
   });
 
-  const allIds = useMemo(() => {
-    const s = new Set<string>();
-    scheduledAgs.forEach((a) => s.add(a.id));
-    createdAgs.forEach((a) => s.add(a.id));
-    return Array.from(s);
-  }, [scheduledAgs, createdAgs]);
-
-  const { data: soldVendas = [] } = useQuery<{ agendamento_id: string; valor: number | null }[]>({
-    queryKey: ["vendas-canal-sold", allIds.length, allIds[0], allIds[allIds.length - 1]],
-    enabled: allIds.length > 0,
-    queryFn: async () => {
-      const out: { agendamento_id: string; valor: number | null }[] = [];
-      const CHUNK = 500;
-      for (let i = 0; i < allIds.length; i += CHUNK) {
-        const chunk = allIds.slice(i, i + CHUNK);
-        const { data, error } = await supabase
-          .from("vendas")
-          .select("agendamento_id, valor")
-          .eq("vendeu", true)
-          .in("agendamento_id", chunk);
-        if (error) break;
-        (data ?? []).forEach((v) =>
-          out.push({ agendamento_id: v.agendamento_id, valor: v.valor }),
-        );
-      }
-      return out;
-    },
-    staleTime: 60_000,
-    refetchInterval: 2 * 60_000,
-  });
-
-  const soldSet = useMemo(() => new Set(soldVendas.map((v) => v.agendamento_id)), [soldVendas]);
-  const soldValueMap = useMemo(() => {
-    const m = new Map<string, number>();
-    soldVendas.forEach((v) => m.set(v.agendamento_id, Number(v.valor) || 0));
+  // Vendas agrupadas por canal — usa a lista vinda da VendasTab (que já
+  // aplica a data efetiva de fechamento: closed_at, audit de follow-up
+  // ou scheduled_date). Assim, uma venda fechada hoje via follow-up de
+  // uma reunião antiga aparece sob "Hoje" e não sob a data da reunião
+  // original.
+  const vendasByChannel = useMemo(() => {
+    const m = new Map<string, { ids: string[]; valor: number }>();
+    (vendasFechadasNoPeriodo ?? []).forEach((v) => {
+      const ch = v.channel_type || "Sem canal";
+      const cur = m.get(ch) || { ids: [], valor: 0 };
+      cur.ids.push(v.agendamento_id);
+      cur.valor += v.valor;
+      m.set(ch, cur);
+    });
     return m;
-  }, [soldVendas]);
+  }, [vendasFechadasNoPeriodo]);
 
   const byChannel = useMemo(() => {
     return (list: AgRow[]) => {
@@ -146,10 +133,15 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange }: Props) 
         const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
         cur.ids.push(a.id);
         if (a.status === "realizada") cur.idsRealizadas.push(a.id);
-        if (soldSet.has(a.id)) {
-          cur.idsVendas.push(a.id);
-          cur.valorVendas += soldValueMap.get(a.id) || 0;
-        }
+        map.set(ch, cur);
+      });
+      // Incorpora vendas do período (por canal). Cria linha mesmo para
+      // canais que não têm agendamento no período (vendas vindas de
+      // follow-ups de reuniões fora do período).
+      vendasByChannel.forEach((v, ch) => {
+        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
+        cur.idsVendas = v.ids;
+        cur.valorVendas = v.valor;
         map.set(ch, cur);
       });
       return Array.from(map.entries())
@@ -166,7 +158,7 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange }: Props) 
           valorVendas: v.valorVendas,
         }));
     };
-  }, [soldSet, soldValueMap]);
+  }, [vendasByChannel]);
 
   const channelsScheduled = useMemo(() => byChannel(scheduledAgs), [byChannel, scheduledAgs]);
   const channelsCreated = useMemo(() => byChannel(createdAgs), [byChannel, createdAgs]);
