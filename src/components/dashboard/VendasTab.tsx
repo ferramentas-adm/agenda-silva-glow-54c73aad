@@ -774,7 +774,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
               <div className="space-y-2">
                 {closerPerf.map((c) => {
                   const closerIds = vendasDia
-                    .filter((v) => agMap.get(v.agendamento_id)?.closer_id === c.closerId)
+                    .filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.closer_id === c.closerId)
                     .map((v) => v.agendamento_id);
                   return (
                     <button
