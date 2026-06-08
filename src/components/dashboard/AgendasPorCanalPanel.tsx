@@ -19,6 +19,14 @@ interface AgRow {
 interface Props {
   currentDate: Date;
   dateRange?: DateRange;
+  /**
+   * Vendas (vendeu=true) já filtradas pela data efetiva de fechamento
+   * dentro do período selecionado. Computadas em VendasTab para
+   * reaproveitar a mesma lógica de `closingDateOf` (closed_at, audit
+   * de follow-up ou scheduled_date). Garante que vendas fechadas em
+   * X via follow-up de reuniões antigas contem em X.
+   */
+  vendasFechadasNoPeriodo?: { agendamento_id: string; channel_type: string | null; valor: number }[];
 }
 
 /**
