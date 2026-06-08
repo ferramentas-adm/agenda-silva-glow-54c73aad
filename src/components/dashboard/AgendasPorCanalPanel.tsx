@@ -38,7 +38,7 @@ interface Props {
  * importante para a aba de vendas, onde queremos ver agendadas, realizadas
  * e vendas reais — inclusive vendas de segunda reunião.
  */
-export default function AgendasPorCanalPanel({ currentDate, dateRange }: Props) {
+export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFechadasNoPeriodo }: Props) {
   const isRange = !!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to));
   const fromStr = isRange ? format(dateRange!.from!, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
   const toStr = isRange ? format(dateRange!.to!, "yyyy-MM-dd") : format(currentDate, "yyyy-MM-dd");
