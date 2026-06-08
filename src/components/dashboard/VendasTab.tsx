@@ -25,6 +25,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
+import AgendasPorCanalPanel from "@/components/dashboard/AgendasPorCanalPanel";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
