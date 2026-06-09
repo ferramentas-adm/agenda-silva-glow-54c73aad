@@ -396,7 +396,15 @@ export default function DashboardComercialPage() {
 
     const noShowCount = sc(todayAgs, "no_show");
     const canceladoCount = sc(todayAgs, "cancelada");
-    const reagendadoCount = sc(todayAgs, "reagendada");
+    // "Reagendado" = qualquer agenda no período que veio de reagendamento
+    // (status='reagendada' na original OU agenda nova com original_agendamento_id).
+    // Isso garante que reagendamentos detectados automaticamente apareçam mesmo
+    // quando a original já estava em estado final (no_show/cancelada/realizada).
+    const reagendadoIdsSet = new Set<string>();
+    todayAgs.forEach(a => {
+      if (a.status === "reagendada" || a.original_agendamento_id) reagendadoIdsSet.add(a.id);
+    });
+    const reagendadoCount = reagendadoIdsSet.size;
     const compareceuCount = sc(todayAgs, "realizada");
     // totalDia inclui canceladas — alinhado ao Dashboard.
     const totalDia = todayAgs.length;
@@ -435,7 +443,7 @@ export default function DashboardComercialPage() {
       compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
       noShowIds: todayAgs.filter(a => a.status === "no_show").map(a => a.id),
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
-      reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
+      reagendadoIds: Array.from(reagendadoIdsSet),
     };
   }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
 
