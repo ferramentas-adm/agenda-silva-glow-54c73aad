@@ -1162,6 +1162,8 @@ function RankingSDRsTab({
     if (metricType === "criadas") {
       return createdAgs.filter(a => {
         if (sdrOf(a) !== sdrId) return false;
+        // Reagendamentos não contam como agenda nova (alinhado com Produtividade SDR)
+        if (a.original_agendamento_id) return false;
         const d = localDateOf(a.created_at);
         return d >= range.from && d <= range.to;
       }).length;
