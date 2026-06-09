@@ -443,7 +443,7 @@ export default function DashboardComercialPage() {
       compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
       noShowIds: todayAgs.filter(a => a.status === "no_show").map(a => a.id),
       canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
-      reagendadoIds: todayAgs.filter(a => a.status === "reagendada").map(a => a.id),
+      reagendadoIds: Array.from(reagendadoIdsSet),
     };
   }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
 
