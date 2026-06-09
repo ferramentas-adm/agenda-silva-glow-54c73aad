@@ -766,6 +766,14 @@ export function CalendarContent() {
                     (sourceCounts["cancelada"] ?? 0) +
                     (sourceCounts["no_show"] ?? 0) +
                     (sourceCounts["reagendada"] ?? 0);
+                } else if (key === "reagendada") {
+                  // Conta tanto originais com status='reagendada' quanto agendas novas
+                  // com original_agendamento_id (detecção automática preserva status da original).
+                  const ids = new Set<string>();
+                  sourceAgendamentos.forEach((a) => {
+                    if (a.status === "reagendada" || (a as any).original_agendamento_id) ids.add(a.id);
+                  });
+                  count = ids.size;
                 } else {
                   count = sourceCounts[key] ?? 0;
                 }
