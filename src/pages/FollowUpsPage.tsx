@@ -818,6 +818,36 @@ function FollowUpActionDialog({
                   placeholder="0,00"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>Data da venda *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dataVenda && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dataVenda ? format(dataVenda, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dataVenda}
+                      onSelect={setDataVenda}
+                      disabled={(d) => d > new Date()}
+                      locale={ptBR}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-[11px] text-muted-foreground">
+                  Selecione o dia em que a venda realmente aconteceu (pode ser anterior a hoje).
+                </p>
+              </div>
             </>
           )}
 
