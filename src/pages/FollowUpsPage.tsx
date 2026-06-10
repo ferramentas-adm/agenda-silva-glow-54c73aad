@@ -664,7 +664,9 @@ function FollowUpActionDialog({
           follow_up_time: null,
           motivo_nao_fechamento: null,
           observacoes: observacoes.trim() || null,
+          closed_at: dataVenda ? format(dataVenda, "yyyy-MM-dd") : null,
         };
+
       } else if (outcome === "perdeu") {
         outcomeType = motivoIsPending ? "em_andamento" : "perdeu";
         updatePayload = {
