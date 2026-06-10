@@ -613,6 +613,7 @@ function FollowUpActionDialog({
   const [outcome, setOutcome] = useState<"fechou" | "perdeu" | "reagendar" | null>(null);
   const [valor, setValor] = useState("");
   const [resumoVenda, setResumoVenda] = useState("");
+  const [dataVenda, setDataVenda] = useState<Date | undefined>(undefined);
   const [motivo, setMotivo] = useState("");
   const [novaData, setNovaData] = useState<Date | undefined>(undefined);
   const [novoHorario, setNovoHorario] = useState("");
@@ -626,18 +627,20 @@ function FollowUpActionDialog({
     setOutcome(null);
     setValor("");
     setResumoVenda("");
+    setDataVenda(startOfToday());
     setMotivo("");
     setNovaData(undefined);
     setNovoHorario("");
     setObservacoes("");
   }, [row.id]);
 
+
   const valorNum = digitsToNumber(valor);
   const valorValido = !isNaN(valorNum) && valorNum > 0;
 
   const canSubmit = (() => {
     if (!outcome) return false;
-    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido;
+    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido && !!dataVenda;
     if (outcome === "perdeu") return !!motivo;
     if (outcome === "reagendar") return !!novaData && !!novoHorario;
     return false;
@@ -661,7 +664,9 @@ function FollowUpActionDialog({
           follow_up_time: null,
           motivo_nao_fechamento: null,
           observacoes: observacoes.trim() || null,
+          closed_at: dataVenda ? format(dataVenda, "yyyy-MM-dd") : null,
         };
+
       } else if (outcome === "perdeu") {
         outcomeType = motivoIsPending ? "em_andamento" : "perdeu";
         updatePayload = {
@@ -812,6 +817,36 @@ function FollowUpActionDialog({
                   onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
                   placeholder="0,00"
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Data da venda *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dataVenda && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dataVenda ? format(dataVenda, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dataVenda}
+                      onSelect={setDataVenda}
+                      disabled={(d) => d > new Date()}
+                      locale={ptBR}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-[11px] text-muted-foreground">
+                  Selecione o dia em que a venda realmente aconteceu (pode ser anterior a hoje).
+                </p>
               </div>
             </>
           )}
