@@ -613,6 +613,7 @@ function FollowUpActionDialog({
   const [outcome, setOutcome] = useState<"fechou" | "perdeu" | "reagendar" | null>(null);
   const [valor, setValor] = useState("");
   const [resumoVenda, setResumoVenda] = useState("");
+  const [dataVenda, setDataVenda] = useState<Date | undefined>(undefined);
   const [motivo, setMotivo] = useState("");
   const [novaData, setNovaData] = useState<Date | undefined>(undefined);
   const [novoHorario, setNovoHorario] = useState("");
@@ -626,11 +627,13 @@ function FollowUpActionDialog({
     setOutcome(null);
     setValor("");
     setResumoVenda("");
+    setDataVenda(startOfToday());
     setMotivo("");
     setNovaData(undefined);
     setNovoHorario("");
     setObservacoes("");
   }, [row.id]);
+
 
   const valorNum = digitsToNumber(valor);
   const valorValido = !isNaN(valorNum) && valorNum > 0;
