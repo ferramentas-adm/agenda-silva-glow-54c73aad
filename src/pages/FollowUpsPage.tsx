@@ -640,7 +640,7 @@ function FollowUpActionDialog({
 
   const canSubmit = (() => {
     if (!outcome) return false;
-    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido;
+    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido && !!dataVenda;
     if (outcome === "perdeu") return !!motivo;
     if (outcome === "reagendar") return !!novaData && !!novoHorario;
     return false;
