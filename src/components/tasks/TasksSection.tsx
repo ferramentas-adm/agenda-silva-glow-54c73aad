@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCan } from "@/hooks/usePermissions";
 import { toast } from "sonner";
+import FollowUpAddDialog from "@/components/FollowUpAddDialog";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
