@@ -26,8 +26,8 @@ interface AgendamentoLite {
   id: string;
   lead_name: string;
   lead_phone: string;
-  data: string;
-  hora: string | null;
+  scheduled_date: string;
+  scheduled_time: string | null;
   closer_id: string | null;
   closers: { name: string } | null;
 }
