@@ -75,10 +75,11 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
       const q = query.trim();
       let req = supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, data, hora, closer_id, closers ( name )")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, closer_id, closers ( name )")
+        .is("deleted_at", null)
         .or(`lead_name.ilike.%${q}%,lead_phone.ilike.%${q}%`)
-        .order("data", { ascending: false })
-        .order("hora", { ascending: false, nullsFirst: false })
+        .order("scheduled_date", { ascending: false })
+        .order("scheduled_time", { ascending: false, nullsFirst: false })
         .limit(50);
       if (isCloser && myCloserId) req = req.eq("closer_id", myCloserId);
       const { data, error } = await req;
