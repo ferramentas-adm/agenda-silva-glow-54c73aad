@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCan } from "@/hooks/usePermissions";
 import { toast } from "sonner";
+import FollowUpAddDialog from "@/components/FollowUpAddDialog";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export default function TasksSection() {
   const queryClient = useQueryClient();
 
   const [openDialog, setOpenDialog] = useState(false);
+  const [openFollowUpDialog, setOpenFollowUpDialog] = useState(false);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -148,9 +150,9 @@ export default function TasksSection() {
           </Badge>
         </CardTitle>
         {canManage && (
-          <Button size="sm" onClick={() => { setEditTarget(null); setOpenDialog(true); }}>
+          <Button size="sm" onClick={() => setOpenFollowUpDialog(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" />
-            Adicionar Tarefa
+            Adicionar Follow-Up
           </Button>
         )}
       </CardHeader>
@@ -183,6 +185,13 @@ export default function TasksSection() {
           myCloserId={myCloserId ?? null}
           closersList={closersList}
           onDone={() => queryClient.invalidateQueries({ queryKey: ["tasks"] })}
+        />
+      )}
+
+      {canManage && (
+        <FollowUpAddDialog
+          open={openFollowUpDialog}
+          onOpenChange={setOpenFollowUpDialog}
         />
       )}
 
