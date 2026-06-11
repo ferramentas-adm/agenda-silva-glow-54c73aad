@@ -225,8 +225,8 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
                           {a.closers?.name && ` · Closer: ${a.closers.name}`}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          Última agenda: {a.data ? format(new Date(`${a.data}T00:00:00`), "dd/MM/yyyy", { locale: ptBR }) : "—"}
-                          {a.hora ? ` · ${a.hora}` : ""}
+                          Última agenda: {a.scheduled_date ? format(new Date(`${a.scheduled_date}T00:00:00`), "dd/MM/yyyy", { locale: ptBR }) : "—"}
+                          {a.scheduled_time ? ` · ${a.scheduled_time}` : ""}
                         </p>
                       </div>
                     </button>
