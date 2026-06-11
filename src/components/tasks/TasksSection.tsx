@@ -51,6 +51,7 @@ export default function TasksSection() {
   const queryClient = useQueryClient();
 
   const [openDialog, setOpenDialog] = useState(false);
+  const [openFollowUpDialog, setOpenFollowUpDialog] = useState(false);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
