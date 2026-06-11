@@ -639,7 +639,10 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
                           <RadioGroupItem value="follow_up" id="ac-fu" />
-                          <Label htmlFor="ac-fu" className="cursor-pointer font-normal">Sim — agendar follow-up</Label>
+                          <Label htmlFor="ac-fu" className="cursor-pointer font-normal">
+                            Sim — agendar follow-up{" "}
+                            <span className="text-muted-foreground">(não agenda reunião)</span>
+                          </Label>
                         </div>
                         <div className="flex items-center gap-2">
                           <RadioGroupItem value="segunda_reuniao" id="ac-2nd" />
