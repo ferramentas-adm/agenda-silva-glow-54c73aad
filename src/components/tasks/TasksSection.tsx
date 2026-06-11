@@ -188,6 +188,13 @@ export default function TasksSection() {
         />
       )}
 
+      {canManage && (
+        <FollowUpAddDialog
+          open={openFollowUpDialog}
+          onOpenChange={setOpenFollowUpDialog}
+        />
+      )}
+
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
