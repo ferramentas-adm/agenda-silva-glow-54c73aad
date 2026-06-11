@@ -150,9 +150,9 @@ export default function TasksSection() {
           </Badge>
         </CardTitle>
         {canManage && (
-          <Button size="sm" onClick={() => { setEditTarget(null); setOpenDialog(true); }}>
+          <Button size="sm" onClick={() => setOpenFollowUpDialog(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" />
-            Adicionar Tarefa
+            Adicionar Follow-Up
           </Button>
         )}
       </CardHeader>
