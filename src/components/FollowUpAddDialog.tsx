@@ -26,8 +26,8 @@ interface AgendamentoLite {
   id: string;
   lead_name: string;
   lead_phone: string;
-  data: string;
-  hora: string | null;
+  scheduled_date: string;
+  scheduled_time: string | null;
   closer_id: string | null;
   closers: { name: string } | null;
 }
@@ -75,10 +75,11 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
       const q = query.trim();
       let req = supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, data, hora, closer_id, closers ( name )")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, closer_id, closers ( name )")
+        .is("deleted_at", null)
         .or(`lead_name.ilike.%${q}%,lead_phone.ilike.%${q}%`)
-        .order("data", { ascending: false })
-        .order("hora", { ascending: false, nullsFirst: false })
+        .order("scheduled_date", { ascending: false })
+        .order("scheduled_time", { ascending: false, nullsFirst: false })
         .limit(50);
       if (isCloser && myCloserId) req = req.eq("closer_id", myCloserId);
       const { data, error } = await req;
@@ -224,8 +225,8 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
                           {a.closers?.name && ` · Closer: ${a.closers.name}`}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          Última agenda: {a.data ? format(new Date(`${a.data}T00:00:00`), "dd/MM/yyyy", { locale: ptBR }) : "—"}
-                          {a.hora ? ` · ${a.hora}` : ""}
+                          Última agenda: {a.scheduled_date ? format(new Date(`${a.scheduled_date}T00:00:00`), "dd/MM/yyyy", { locale: ptBR }) : "—"}
+                          {a.scheduled_time ? ` · ${a.scheduled_time}` : ""}
                         </p>
                       </div>
                     </button>
