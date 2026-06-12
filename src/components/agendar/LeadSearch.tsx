@@ -44,21 +44,38 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
   // Fetch leads with "agendamento" tag from DataCrazy
   const tagAgendamentoId = import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO || "";
 
-  const { data: taggedLeads = [], isLoading, error, isFetching } = useQuery<Lead[]>({
+  const { data: taggedLeads = [], isLoading, error, isFetching, dataUpdatedAt } = useQuery<Lead[]>({
     queryKey: ["datacrazy-leads-agendamento", tagAgendamentoId],
     queryFn: async () => {
       const dcLeads = await buscarLeadsComTagId(tagAgendamentoId);
       return dcLeads.map(mapToLead);
     },
     enabled: !!tagAgendamentoId,
-    // Cache por 5 minutos para evitar re-baixar a lista inteira a cada visita.
-    // Botão "Atualizar" continua forçando refetch via invalidateQueries.
-    staleTime: 5 * 60_000,
+    // Sempre re-buscar ao abrir a tela / focar a aba, para que leads
+    // recém-tagueados no DataCrazy apareçam imediatamente.
+    staleTime: 0,
     gcTime: 30 * 60_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
+
+  // "Atualizado há Xs" — força re-render a cada 15s
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceTick((n) => n + 1), 15_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const lastUpdatedLabel = (() => {
+    if (!dataUpdatedAt) return null;
+    const secs = Math.max(0, Math.floor((Date.now() - dataUpdatedAt) / 1000));
+    if (secs < 60) return `há ${secs}s`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `há ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    return `há ${hrs} h`;
+  })();
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["datacrazy-leads-agendamento"] });
