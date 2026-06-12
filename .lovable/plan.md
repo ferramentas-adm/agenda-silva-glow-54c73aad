@@ -1,43 +1,48 @@
-## Objetivo
+## Diagnóstico
 
-Enriquecer o payload do webhook `notify_status_change_webhook` (quando `status = 'realizada'`) com **todos os campos da venda atual**, lendo da tabela `vendas` via `agendamento_id = NEW.id`.
+A lista de leads do painel **Novo Agendamento** (`src/components/agendar/LeadSearch.tsx`) é carregada via React Query usando estas opções:
 
-## O que muda
+```ts
+staleTime: 5 * 60_000,        // 5 minutos
+gcTime: 30 * 60_000,
+refetchOnMount: false,
+refetchOnWindowFocus: false,
+placeholderData: (prev) => prev,
+```
 
-Apenas a function PL/pgSQL `notify_status_change_webhook` (via migration).
+Resultado: quando a Bruna adiciona a tag **"agendamento"** no DataCrazy e abre a tela de Novo Agendamento, o React Query devolve a lista que ficou em cache na sessão dela (até 5 minutos atrás) — o lead novo só aparece se:
+- passarem 5 minutos, **ou**
+- ela clicar manualmente no botão "Atualizar" (ícone de refresh ao lado do filtro).
 
-No bloco que já busca `vendas` para calcular `is_vendido/is_follow_up/is_perdido`, expandir o SELECT para trazer todos os campos relevantes e incluí-los no `jsonb_build_object` final — sobrescrevendo (apenas neste caso de `realizada`) os valores hoje calculados só para INSERT de 2ª reunião.
+Não é problema de permissão, RLS ou tag — é cache do front-end. A query é a mesma para todos os usuários (`queryKey: ["datacrazy-leads-agendamento", tagId]`), então o cache pode inclusive ter sido populado por outro usuário antes.
 
-### Campos novos/preenchidos no payload quando `status = 'realizada'`
+Confirmações secundárias:
+- O endpoint do DataCrazy é chamado com `filter[tags]=<tagId>` e paginação serial — funciona corretamente.
+- Leads sem telefone aparecem na lista mas ficam desabilitados (com tooltip "Lead sem telefone"). Se o lead da Bruna estiver sem telefone no DataCrazy, esse é um segundo motivo possível — mas o sintoma seria "aparece cinza/não-clicável", não "some".
 
-Lidos de `public.vendas` onde `agendamento_id = NEW.id`:
+## O que vou fazer
 
-| Chave no payload | Coluna em `vendas` |
-|---|---|
-| `vendeu` | `vendeu` |
-| `valor_coletado` | `valor` (quando `vendeu = true`) |
-| `resumo_venda` | `resumo_venda` |
-| `motivo_nao_fechamento` | `motivo_nao_fechamento` |
-| `explicacao_nao_fechamento` | `explicacao_nao_fechamento` |
-| `valor_apresentado` | `valor` (quando `vendeu = false`) — atual lógica de 2ª reunião usa `v.valor` como apresentado |
-| `lead_revenue` | `lead_revenue` |
-| `follow_up_date` | `follow_up_date` |
-| `follow_up_time` | `follow_up_time` |
-| `observacoes` | `observacoes` |
+Tornar a lista sempre fresca ao abrir o painel, sem precisar clicar em "Atualizar":
 
-Mantidas as flags `is_vendido / is_follow_up / is_perdido` (sem mudança de regra).
+1. **`src/components/agendar/LeadSearch.tsx`**
+   - Reduzir `staleTime` para `0` (ou ~15 s) e ativar `refetchOnMount: "always"` + `refetchOnWindowFocus: true`. Assim, toda vez que a SDR entra na tela ou volta para a aba, a lista é re-buscada do DataCrazy.
+   - Manter `placeholderData: (prev) => prev` para não piscar a UI durante o refetch (mostra a lista antiga + spinner discreto).
+   - Adicionar um texto pequeno "Atualizado há Xs" ao lado do botão Atualizar, para a SDR ter feedback claro de quando foi a última sincronização.
+   - Melhorar a mensagem do estado vazio: quando o filtro digitado não encontra ninguém, sugerir explicitamente "Clique em Atualizar — pode levar alguns segundos após adicionar a tag no DataCrazy".
 
-### O que NÃO muda
+2. **Aviso de lead sem telefone (defensivo)**
+   - Se a busca local encontrar o nome mas o lead estiver com telefone vazio, mostrar um aviso destacado em vermelho ("Esse lead está sem telefone no DataCrazy — cadastre o telefone lá para conseguir agendar"), em vez de só desabilitar silenciosamente.
 
-- Campo `erro_sdr` (sdr_error): **não enviar** (conforme decisão).
-- `is_segunda_reuniao` e enriquecimento de INSERT de 2ª reunião (que já lê da venda da reunião **original**): permanecem como hoje.
-- `status` continua sendo `"Realizada"`.
-- Nenhuma mudança em frontend, edge functions ou outras tabelas.
+Nenhuma mudança de backend, RLS ou edge function é necessária.
 
-### Detalhe técnico
+## Detalhes técnicos
 
-Hoje a function tem dois blocos separados:
-1. INSERT de 2ª reunião → lê venda da reunião **original** e preenche `_lead_revenue`, `_motivo_nao_fechamento`, `_explicacao_nao_fechamento`, `_valor_apresentado`.
-2. `status = 'realizada'` → lê venda **atual** só para calcular flags.
+- Arquivo alterado: `src/components/agendar/LeadSearch.tsx` (apenas opções do `useQuery` e pequenos ajustes de UI).
+- O dedupe global em `src/services/datacrazy.ts` (`inFlightGets` + `apiChain`) já evita múltiplas chamadas paralelas, então ativar `refetchOnMount` não vai causar enxurrada de requests ao DataCrazy.
+- Como o gap entre chamadas serializadas é de 250 ms e a lista tem paginação de 100 por página, o refetch completo continua leve.
 
-O plano é, no bloco (2), expandir o SELECT para também popular as variáveis locais (`_lead_revenue`, `_motivo_nao_fechamento`, `_explicacao_nao_fechamento`, `_valor_apresentado`) com os dados da venda atual, e adicionar três novas variáveis (`_valor_coletado`, `_resumo_venda`, `_follow_up_date`, `_follow_up_time`, `_observacoes`) que entram no `jsonb_build_object`. Os blocos (1) e (2) são mutuamente exclusivos na prática (INSERT vs UPDATE para realizada), então não há conflito.
+## Fora de escopo
+
+- Não vou mexer na lógica de paginação nem no proxy do DataCrazy.
+- Não vou reduzir o cap de 5000 leads.
+- Se depois do deploy a Bruna ainda não vir o lead específico, o próximo passo é checar diretamente no DataCrazy se aquele lead tem mesmo a tag `agendamento` e um telefone preenchido — isso é dado externo que o painel não consegue forçar.
