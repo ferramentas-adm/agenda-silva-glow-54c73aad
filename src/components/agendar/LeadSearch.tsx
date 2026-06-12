@@ -44,21 +44,38 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
   // Fetch leads with "agendamento" tag from DataCrazy
   const tagAgendamentoId = import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO || "";
 
-  const { data: taggedLeads = [], isLoading, error, isFetching } = useQuery<Lead[]>({
+  const { data: taggedLeads = [], isLoading, error, isFetching, dataUpdatedAt } = useQuery<Lead[]>({
     queryKey: ["datacrazy-leads-agendamento", tagAgendamentoId],
     queryFn: async () => {
       const dcLeads = await buscarLeadsComTagId(tagAgendamentoId);
       return dcLeads.map(mapToLead);
     },
     enabled: !!tagAgendamentoId,
-    // Cache por 5 minutos para evitar re-baixar a lista inteira a cada visita.
-    // Botão "Atualizar" continua forçando refetch via invalidateQueries.
-    staleTime: 5 * 60_000,
+    // Sempre re-buscar ao abrir a tela / focar a aba, para que leads
+    // recém-tagueados no DataCrazy apareçam imediatamente.
+    staleTime: 0,
     gcTime: 30 * 60_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
+
+  // "Atualizado há Xs" — força re-render a cada 15s
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceTick((n) => n + 1), 15_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const lastUpdatedLabel = (() => {
+    if (!dataUpdatedAt) return null;
+    const secs = Math.max(0, Math.floor((Date.now() - dataUpdatedAt) / 1000));
+    if (secs < 60) return `há ${secs}s`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `há ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    return `há ${hrs} h`;
+  })();
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["datacrazy-leads-agendamento"] });
@@ -168,7 +185,13 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
 
       <div className="max-h-64 overflow-y-auto rounded-lg border border-input bg-popover">
         {filteredLeads.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum lead encontrado.</p>
+          <div className="px-4 py-3 space-y-1">
+            <p className="text-sm text-muted-foreground">Nenhum lead encontrado.</p>
+            <p className="text-xs text-muted-foreground">
+              Adicionou a tag <span className="font-semibold">"agendamento"</span> agora no DataCrazy?
+              Clique em <span className="font-semibold">Atualizar</span> — pode levar alguns segundos para sincronizar.
+            </p>
+          </div>
         ) : (
           filteredLeads.map((lead) => {
             const hasPhone = !!lead.phone && lead.phone.trim().length > 0;
@@ -177,19 +200,23 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
                 key={lead.id}
                 onClick={() => hasPhone && onSelect(lead)}
                 disabled={!hasPhone}
-                title={hasPhone ? undefined : "Lead sem telefone — não é possível agendar"}
+                title={hasPhone ? undefined : "Lead sem telefone — cadastre no DataCrazy"}
                 className={cn(
                   "flex w-full items-center gap-3 px-4 py-3 text-left border-b border-input/30 last:border-b-0 transition-colors",
                   hasPhone
                     ? "hover:bg-secondary/60 cursor-pointer"
-                    : "opacity-40 cursor-not-allowed"
+                    : "opacity-60 cursor-not-allowed"
                 )}
               >
                 <div>
                   <p className="text-sm font-medium">{lead.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {hasPhone ? lead.phone : "Sem telefone cadastrado"}
-                  </p>
+                  {hasPhone ? (
+                    <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                  ) : (
+                    <p className="text-xs text-destructive">
+                      Sem telefone no DataCrazy — cadastre o telefone do lead para conseguir agendar.
+                    </p>
+                  )}
                 </div>
               </button>
             );
@@ -197,9 +224,17 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        {taggedLeads.length} lead{taggedLeads.length !== 1 ? "s" : ""} com tag "agendamento"
+      <p className="text-xs text-muted-foreground flex items-center justify-between gap-2">
+        <span>
+          {taggedLeads.length} lead{taggedLeads.length !== 1 ? "s" : ""} com tag "agendamento"
+        </span>
+        {lastUpdatedLabel && (
+          <span className="text-[11px]">
+            {isFetching ? "Atualizando…" : `Atualizado ${lastUpdatedLabel}`}
+          </span>
+        )}
       </p>
     </div>
+
   );
 }
