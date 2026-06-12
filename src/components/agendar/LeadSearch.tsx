@@ -185,7 +185,13 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
 
       <div className="max-h-64 overflow-y-auto rounded-lg border border-input bg-popover">
         {filteredLeads.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum lead encontrado.</p>
+          <div className="px-4 py-3 space-y-1">
+            <p className="text-sm text-muted-foreground">Nenhum lead encontrado.</p>
+            <p className="text-xs text-muted-foreground">
+              Adicionou a tag <span className="font-semibold">"agendamento"</span> agora no DataCrazy?
+              Clique em <span className="font-semibold">Atualizar</span> — pode levar alguns segundos para sincronizar.
+            </p>
+          </div>
         ) : (
           filteredLeads.map((lead) => {
             const hasPhone = !!lead.phone && lead.phone.trim().length > 0;
@@ -194,19 +200,23 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
                 key={lead.id}
                 onClick={() => hasPhone && onSelect(lead)}
                 disabled={!hasPhone}
-                title={hasPhone ? undefined : "Lead sem telefone — não é possível agendar"}
+                title={hasPhone ? undefined : "Lead sem telefone — cadastre no DataCrazy"}
                 className={cn(
                   "flex w-full items-center gap-3 px-4 py-3 text-left border-b border-input/30 last:border-b-0 transition-colors",
                   hasPhone
                     ? "hover:bg-secondary/60 cursor-pointer"
-                    : "opacity-40 cursor-not-allowed"
+                    : "opacity-60 cursor-not-allowed"
                 )}
               >
                 <div>
                   <p className="text-sm font-medium">{lead.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {hasPhone ? lead.phone : "Sem telefone cadastrado"}
-                  </p>
+                  {hasPhone ? (
+                    <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                  ) : (
+                    <p className="text-xs text-destructive">
+                      Sem telefone no DataCrazy — cadastre o telefone do lead para conseguir agendar.
+                    </p>
+                  )}
                 </div>
               </button>
             );
@@ -214,9 +224,17 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        {taggedLeads.length} lead{taggedLeads.length !== 1 ? "s" : ""} com tag "agendamento"
+      <p className="text-xs text-muted-foreground flex items-center justify-between gap-2">
+        <span>
+          {taggedLeads.length} lead{taggedLeads.length !== 1 ? "s" : ""} com tag "agendamento"
+        </span>
+        {lastUpdatedLabel && (
+          <span className="text-[11px]">
+            {isFetching ? "Atualizando…" : `Atualizado ${lastUpdatedLabel}`}
+          </span>
+        )}
       </p>
     </div>
+
   );
 }
