@@ -157,7 +157,7 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
   //  - `skip` controla offset
   //  - resposta `{ count: <total>, data: [...] }`
   const PAGE_SIZE = 100;
-  const MAX_LEADS = 5000; // teto antigo — traz todos os leads com a tag
+  const MAX_LEADS = Number.POSITIVE_INFINITY; // sem teto — traz todos os leads com a tag
   const REQUEST_DELAY_MS = 350; // gap entre chamadas para evitar 429 do DataCrazy
   const MAX_RETRIES = 4;
 
