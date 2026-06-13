@@ -202,17 +202,19 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
     }
   }
 
-  const total = first.count ?? all.length;
+  const total = first.count ?? Number.POSITIVE_INFINITY;
   const cap = Math.min(total, MAX_LEADS);
-  if (cap <= PAGE_SIZE || first.pageLeads.length < PAGE_SIZE) return all;
+  // Se a primeira página não encheu, não há mais nada para buscar.
+  if (first.pageLeads.length < PAGE_SIZE) return all;
 
-  // Restante das páginas em série, com pequeno delay entre chamadas (DataCrazy
-  // estoura 429 quando recebe várias requisições em paralelo).
-  for (let s = PAGE_SIZE; s < cap; s += PAGE_SIZE) {
+  // Continua paginando enquanto vier página cheia (o DataCrazy nem sempre
+  // devolve o campo `count`, então não dá para confiar só nele).
+  let skip = PAGE_SIZE;
+  while (skip < cap) {
     await sleep(REQUEST_DELAY_MS);
     let pageLeads: DataCrazyLead[] = [];
     try {
-      ({ pageLeads } = await fetchPage(s));
+      ({ pageLeads } = await fetchPage(skip));
     } catch {
       pageLeads = [];
     }
@@ -224,8 +226,12 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
         addedAny = true;
       }
     }
+    // Para quando a página vier menor que PAGE_SIZE (fim) ou sem novidades.
+    if (pageLeads.length < PAGE_SIZE) break;
     if (!addedAny) break;
+    skip += PAGE_SIZE;
   }
+
 
 
   return all;
