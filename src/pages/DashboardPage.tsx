@@ -1144,6 +1144,19 @@ export function CalendarContent() {
                 </Button>
               )}
 
+              {/* Registrar venda — gestor/moderador podem registrar/atualizar venda
+                  mesmo quando o closer já marcou como realizada sem preencher. */}
+              {(role === "gestor" || role === "moderador") && detailAg.status === "realizada" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
+                  onClick={() => setVendaDialogAg(detailAg)}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />Registrar / atualizar venda
+                </Button>
+              )}
+
               {canChangeStatus && (() => {
                 // SDR só pode operar em reagendadas se ele mesmo criou o reagendamento.
                 const sdrIsOwnerOfReschedule =
