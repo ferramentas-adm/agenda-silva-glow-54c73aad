@@ -182,6 +182,7 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
         <ChannelTable
           title={paraTitle}
           data={channelsScheduled}
+          exportPrefix={`agendas-para-${fromStr}${fromStr !== toStr ? `_a_${toStr}` : ""}`}
           onRowClick={({ canal, ids, mode }) =>
             openDrill(`${baseLabelPara} — ${canal}${suffix(mode)}`, ids)
           }
@@ -189,6 +190,7 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
         <ChannelTable
           title={criadasTitle}
           data={channelsCreated}
+          exportPrefix={`agendas-criadas-${fromStr}${fromStr !== toStr ? `_a_${toStr}` : ""}`}
           onRowClick={({ canal, ids, mode }) =>
             openDrill(`${baseLabelCriadas} — ${canal}${suffix(mode)}`, ids)
           }
