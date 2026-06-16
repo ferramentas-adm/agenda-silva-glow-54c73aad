@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay, subDays, addDays } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import { Users } from "lucide-react";
+import { Users, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
@@ -180,6 +182,7 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
         <ChannelTable
           title={paraTitle}
           data={channelsScheduled}
+          exportPrefix={`agendas-para-${fromStr}${fromStr !== toStr ? `_a_${toStr}` : ""}`}
           onRowClick={({ canal, ids, mode }) =>
             openDrill(`${baseLabelPara} — ${canal}${suffix(mode)}`, ids)
           }
@@ -187,6 +190,7 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
         <ChannelTable
           title={criadasTitle}
           data={channelsCreated}
+          exportPrefix={`agendas-criadas-${fromStr}${fromStr !== toStr ? `_a_${toStr}` : ""}`}
           onRowClick={({ canal, ids, mode }) =>
             openDrill(`${baseLabelCriadas} — ${canal}${suffix(mode)}`, ids)
           }
@@ -207,13 +211,16 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
 function ChannelTable({
   title,
   data,
+  exportPrefix,
   onRowClick,
 }: {
   title: string;
   data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[]; valorVendas: number }[];
+  exportPrefix: string;
   onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" | "vendas" }) => void;
 }) {
   const [mode, setMode] = useState<"todas" | "realizadas" | "vendas">("todas");
+  const [exporting, setExporting] = useState(false);
 
   const rows = useMemo(() => {
     const mapped = data.map((r) => ({
@@ -241,6 +248,74 @@ function ChannelTable({
     </button>
   );
 
+
+  const handleExport = async () => {
+    const ids = Array.from(new Set(rows.flatMap((r) => r.currentIds)));
+    if (ids.length === 0) {
+      toast.info("Nenhum registro para exportar");
+      return;
+    }
+    setExporting(true);
+    try {
+      const CHUNK = 500;
+      type Ag = { id: string; lead_name: string | null; lead_phone: string | null; channel_type: string | null; status: string | null; scheduled_date: string | null };
+      type V = { agendamento_id: string; vendeu: boolean | null; valor: number | null; motivo_nao_fechamento: string | null };
+      const ags: Ag[] = [];
+      const vds: V[] = [];
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
+        const [{ data: a, error: ea }, { data: v, error: ev }] = await Promise.all([
+          supabase.from("agendamentos").select("id, lead_name, lead_phone, channel_type, status, scheduled_date").in("id", slice),
+          supabase.from("vendas").select("agendamento_id, vendeu, valor, motivo_nao_fechamento").in("agendamento_id", slice),
+        ]);
+        if (ea) throw ea;
+        if (ev) throw ev;
+        ags.push(...((a ?? []) as Ag[]));
+        vds.push(...((v ?? []) as V[]));
+      }
+      const vMap = new Map<string, V>();
+      vds.forEach((v) => vMap.set(v.agendamento_id, v));
+      const headers = ["Nome do lead", "Telefone", "Canal", "Status", "Data da reunião", "Vendeu", "Valor da venda", "Motivo não fechamento"];
+      const esc = (s: unknown) => {
+        const str = String(s ?? "").replace(/[\r\n]+/g, " ").replace(/"/g, '""');
+        return `"${str}"`;
+      };
+      const lines = [headers.map(esc).join(";")];
+      ags.forEach((a) => {
+        const v = vMap.get(a.id);
+        const vendeu = v == null ? "—" : v.vendeu ? "Sim" : "Não";
+        const valor = v?.valor != null ? Number(v.valor).toFixed(2).replace(".", ",") : "";
+        const data = a.scheduled_date ? a.scheduled_date.split("-").reverse().join("/") : "";
+        lines.push([
+          a.lead_name ?? "",
+          a.lead_phone ?? "",
+          a.channel_type ?? "Sem canal",
+          a.status ?? "",
+          data,
+          vendeu,
+          valor,
+          v?.motivo_nao_fechamento ?? "",
+        ].map(esc).join(";"));
+      });
+      const csv = "\uFEFF" + lines.join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${exportPrefix}-${mode}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exportados ${ags.length} registros`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Falha ao exportar CSV");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -248,12 +323,26 @@ function ChannelTable({
           <Users className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
-        <div className="inline-flex rounded-md border border-primary/10 p-0.5 bg-muted/30">
-          {tabBtn("todas", "Todas")}
-          {tabBtn("realizadas", "Realizadas")}
-          {tabBtn("vendas", "Vendas")}
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border border-primary/10 p-0.5 bg-muted/30">
+            {tabBtn("todas", "Todas")}
+            {tabBtn("realizadas", "Realizadas")}
+            {tabBtn("vendas", "Vendas")}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={exporting || rows.length === 0}
+            className="h-7 px-2 text-xs gap-1"
+          >
+            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Exportar
+          </Button>
         </div>
       </div>
+
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
