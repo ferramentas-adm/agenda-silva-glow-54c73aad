@@ -287,13 +287,25 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     });
   }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId]);
 
-  // Subconjunto usado APENAS no card "Taxa de Conversão": exclui Call Interompida.
-  const vendasDiaParaConversao = useMemo(
-    () => vendasDia.filter(
-      (v) => !(!v.vendeu && (v.motivo_nao_fechamento || "").trim().toLowerCase() === "call interompida"),
-    ),
-    [vendasDia],
-  );
+  // Subconjunto usado APENAS no card "Taxa de Conversão": usa scheduled_date no período
+  // e exclui Call Interompida/Interrompida do denominador.
+  const vendasDiaParaConversao = useMemo(() => {
+    return vendas.filter((v) => {
+      const ag = agMap.get(v.agendamento_id);
+      if (ag?.status !== "realizada") return false;
+      if (isCloserView) {
+        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+      }
+      const scheduledDate = ag?.scheduled_date;
+      if (!scheduledDate) return false;
+      const isInPeriod = isRange && rangeFromStr && rangeToStr
+        ? scheduledDate >= rangeFromStr && scheduledDate <= rangeToStr
+        : scheduledDate === dateStr;
+      if (!isInPeriod) return false;
+      const motivo = (v.motivo_nao_fechamento || "").trim().toLowerCase();
+      return !(!v.vendeu && (motivo === "call interompida" || motivo === "call interrompida"));
+    });
+  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId]);
 
 
   // KPIs (memoizados para não recalcular em cada render)
