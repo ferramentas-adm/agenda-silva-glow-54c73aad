@@ -682,7 +682,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           onClick={() =>
             openDrill(
               `Reuniões com resultado — ${dayLabel}`,
-              vendasDiaParaConversao.map((v) => v.agendamento_id),
+              conversaoData?.ids ?? [],
               `Taxa de conversão: ${taxaConversao.toFixed(1)}%`,
             )
           }
