@@ -275,10 +275,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (ag?.status !== "realizada") return false;
-      // Call interrompida não conta como reunião realizada para fins de
-      // contagem/conversão (é marcada como realizada apenas por convenção
-      // operacional, mas a call não aconteceu de fato).
-      if (!v.vendeu && (v.motivo_nao_fechamento || "").trim().toLowerCase() === "call interompida") return false;
       if (isCloserView) {
         if (!myCloserId || ag?.closer_id !== myCloserId) return false;
       }
@@ -291,13 +287,24 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     });
   }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId]);
 
+  // Subconjunto usado APENAS no card "Taxa de Conversão": exclui Call Interompida.
+  const vendasDiaParaConversao = useMemo(
+    () => vendasDia.filter(
+      (v) => !(!v.vendeu && (v.motivo_nao_fechamento || "").trim().toLowerCase() === "call interompida"),
+    ),
+    [vendasDia],
+  );
+
 
   // KPIs (memoizados para não recalcular em cada render)
   const kpis = useMemo(() => {
     const totalReunioesComResultado = vendasDia.length;
     const totalVendas = vendasDia.filter((v) => v.vendeu).length;
     const totalNaoFechou = vendasDia.filter((v) => !v.vendeu).length;
-    const taxaConversao = totalReunioesComResultado > 0 ? (totalVendas / totalReunioesComResultado) * 100 : 0;
+    // Taxa de conversão usa o subconjunto SEM Call Interompida
+    const totalReunioesConv = vendasDiaParaConversao.length;
+    const totalVendasConv = vendasDiaParaConversao.filter((v) => v.vendeu).length;
+    const taxaConversao = totalReunioesConv > 0 ? (totalVendasConv / totalReunioesConv) * 100 : 0;
     const coletadoTotal = vendasDia
       .filter((v) => v.vendeu && v.valor)
       .reduce((acc, v) => acc + (v.valor || 0), 0);
@@ -310,10 +317,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const pctPrimeiraCall = totalVendas > 0 ? (vendasPrimeiraCall / totalVendas) * 100 : 0;
     const pctFollow = totalVendas > 0 ? (vendasFollowOuSegunda / totalVendas) * 100 : 0;
 
-    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow };
-  }, [vendasDia, agMap]);
+    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow };
+  }, [vendasDia, vendasDiaParaConversao, agMap]);
 
-  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow } = kpis;
+  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow } = kpis;
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
   // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
