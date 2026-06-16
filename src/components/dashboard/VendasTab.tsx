@@ -360,15 +360,30 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return Array.from(set).sort();
   }, [vendasDia, agMap]);
 
-  // Vendas que entram no card de motivos (filtradas opcionalmente por closer e canal)
+  // Vendas que entram no card de motivos (filtradas opcionalmente por closer e canal).
+  // Aqui RE-INCLUÍMOS "Call Interompida" (que é excluída de vendasDia), pois o
+  // card de motivos deve mostrar quantas calls foram interrompidas no período.
   const vendasDiaParaMotivos = useMemo(() => {
-    return vendasDia.filter((v) => {
+    const base = vendas.filter((v) => {
+      const ag = agMap.get(v.agendamento_id);
+      if (ag?.status !== "realizada") return false;
+      if (isCloserView) {
+        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+      }
+      const cd = closingDateOf(v);
+      if (!cd) return false;
+      if (isRange && rangeFromStr && rangeToStr) {
+        return cd >= rangeFromStr && cd <= rangeToStr;
+      }
+      return cd === dateStr;
+    });
+    return base.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (motivosCloserFilter !== "all" && ag?.closer_id !== motivosCloserFilter) return false;
       if (motivosChannelFilter !== "all" && ag?.channel_type !== motivosChannelFilter) return false;
       return true;
     });
-  }, [vendasDia, agMap, motivosCloserFilter, motivosChannelFilter]);
+  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter]);
 
   const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
 
