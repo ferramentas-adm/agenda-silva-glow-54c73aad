@@ -275,6 +275,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (ag?.status !== "realizada") return false;
+      // Call interrompida não conta como reunião realizada para fins de
+      // contagem/conversão (é marcada como realizada apenas por convenção
+      // operacional, mas a call não aconteceu de fato).
+      if (!v.vendeu && (v.motivo_nao_fechamento || "").trim().toLowerCase() === "call interompida") return false;
       if (isCloserView) {
         if (!myCloserId || ag?.closer_id !== myCloserId) return false;
       }
