@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay, subDays, addDays } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import { Users } from "lucide-react";
+import { Users, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
