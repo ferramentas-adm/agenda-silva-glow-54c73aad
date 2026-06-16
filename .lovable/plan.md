@@ -1,16 +1,9 @@
-Plano:
+Plano aprovado para o card **Taxa de Conversão**:
 
 1. Alterar somente `src/components/dashboard/VendasTab.tsx`.
-2. No card `Taxa de Conversão`, parar de usar a lista de `vendas` como base da quantidade de reuniões, porque isso faz o número variar conforme registros de venda/follow-up e pode cair em outro dia.
-3. Criar uma base exclusiva para esse card contando `agendamentos` com:
-   - `scheduled_date` dentro do dia/período selecionado;
-   - `status = realizada`;
-   - `deleted_at` vazio;
-   - incluindo também as reuniões “de closer”, conforme o total operacional que você citou.
-4. Calcular a conversão só nesse card assim:
-   - denominador: total de reuniões realizadas dessa base do calendário;
-   - numerador: vendas fechadas vinculadas a esses agendamentos, sem duplicar por `agendamento_id`.
-5. Manter todos os outros cards, motivos de não fechamento, drilldowns e tabelas com a regra atual.
-6. Validar com os dias citados:
-   - 15/06 deve usar o total de realizadas do calendário + closer;
-   - 16/06 deve usar o total de realizadas do calendário + closer.
+2. Manter a exclusão de `Call Interompida/Call Interrompida`.
+3. Somar também as reuniões de **Closer Realizada** no denominador da conversão.
+4. Manter o numerador como vendas fechadas dentro dessa mesma base, sem duplicar por agendamento.
+5. Não mexer em nenhum outro card, tabela, filtro ou tela.
+
+Resultado esperado para hoje: sair de `3 de 49 reuniões` para `3 de 52 reuniões`.
