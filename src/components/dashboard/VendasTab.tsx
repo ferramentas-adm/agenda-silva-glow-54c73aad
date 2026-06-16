@@ -617,12 +617,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={Target}
           label="Taxa de Conversão"
           value={`${taxaConversao.toFixed(1)}%`}
-          sub={`${totalVendas} de ${totalReunioesComResultado} reuniões`}
+          sub={`${totalVendasConv} de ${totalReunioesConv} reuniões`}
           color="primary"
           onClick={() =>
             openDrill(
               `Reuniões com resultado — ${dayLabel}`,
-              vendasDiaIds,
+              vendasDiaParaConversao.map((v) => v.agendamento_id),
               `Taxa de conversão: ${taxaConversao.toFixed(1)}%`,
             )
           }
