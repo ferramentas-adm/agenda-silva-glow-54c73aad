@@ -791,6 +791,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-sm text-emerald-500">{fmtBRL(c.receita)}</p>
+                        {c.vendas > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Tíquete médio: {fmtBRL(c.receita / c.vendas)}
+                          </p>
+                        )}
                       </div>
                     </button>
                   );
