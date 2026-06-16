@@ -211,13 +211,16 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
 function ChannelTable({
   title,
   data,
+  exportPrefix,
   onRowClick,
 }: {
   title: string;
   data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[]; valorVendas: number }[];
+  exportPrefix: string;
   onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" | "vendas" }) => void;
 }) {
   const [mode, setMode] = useState<"todas" | "realizadas" | "vendas">("todas");
+  const [exporting, setExporting] = useState(false);
 
   const rows = useMemo(() => {
     const mapped = data.map((r) => ({
