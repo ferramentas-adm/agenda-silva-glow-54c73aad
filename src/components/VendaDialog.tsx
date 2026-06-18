@@ -583,6 +583,24 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
           {vendeu === "sim" && (
             <>
+              {produtosList.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Produto vendido *</Label>
+                  <Select value={produto} onValueChange={setProduto}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {produtosList.map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Edite a lista de produtos em Configurações.
+                  </p>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="valor">Valor coletado no ato *</Label>
                 <Input
@@ -595,6 +613,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
               </div>
             </>
           )}
+
 
           {vendeu === "nao" && (
             <>
