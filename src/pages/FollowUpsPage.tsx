@@ -631,6 +631,8 @@ function FollowUpActionDialog({
     setOutcome(null);
     setValor("");
     setResumoVenda("");
+    setProduto("");
+
     setDataVenda(startOfToday());
     setMotivo("");
     setNovaData(undefined);
@@ -644,7 +646,7 @@ function FollowUpActionDialog({
 
   const canSubmit = (() => {
     if (!outcome) return false;
-    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido && !!dataVenda;
+    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido && !!dataVenda && (produtosList.length === 0 || !!produto);
     if (outcome === "perdeu") return !!motivo;
     if (outcome === "reagendar") return !!novaData && !!novoHorario;
     return false;
@@ -663,6 +665,8 @@ function FollowUpActionDialog({
           vendeu: true,
           resumo_venda: resumoVenda.trim(),
           valor: valorNum,
+          produto: produto || null,
+
           follow_up: false,
           follow_up_date: null,
           follow_up_time: null,
