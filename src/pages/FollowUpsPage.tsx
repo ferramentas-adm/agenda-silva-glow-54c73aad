@@ -607,12 +607,16 @@ function FollowUpActionDialog({
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
+  const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+
 
   // IMPORTANTE: todos os campos começam SEMPRE em branco para evitar
   // que dados de leads anteriores apareçam por engano no próximo follow-up.
   const [outcome, setOutcome] = useState<"fechou" | "perdeu" | "reagendar" | null>(null);
   const [valor, setValor] = useState("");
   const [resumoVenda, setResumoVenda] = useState("");
+  const [produto, setProduto] = useState("");
+
   const [dataVenda, setDataVenda] = useState<Date | undefined>(undefined);
   const [motivo, setMotivo] = useState("");
   const [novaData, setNovaData] = useState<Date | undefined>(undefined);
