@@ -154,6 +154,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setIsEditing(true);
         setVendeu(data.vendeu ? "sim" : "nao");
         setResumoVenda(data.resumo_venda ?? "");
+        setProduto((data as { produto?: string | null }).produto ?? "");
+
         if (data.valor != null) {
           const cents = Math.round(Number(data.valor) * 100).toString();
           setValor(cents);
