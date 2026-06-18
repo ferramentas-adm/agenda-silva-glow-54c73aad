@@ -96,6 +96,7 @@ export const APP_SETTING_KEYS = {
   meeting_reasons: "meeting_reasons",
   channel_types: "channel_types",
   block_reasons: "block_reasons",
+  produtos: "produtos",
 } as const;
 
 export const APP_SETTING_LABELS: Record<string, string> = {
@@ -103,4 +104,6 @@ export const APP_SETTING_LABELS: Record<string, string> = {
   meeting_reasons: "Motivos da reunião",
   channel_types: "Tipos de canal",
   block_reasons: "Motivos de compromissos pessoais",
+  produtos: "Produtos",
 };
+

@@ -53,6 +53,13 @@ function DynamicListsSection() {
           description="Opções no pop-up de venda quando 'Vendeu? Não'."
           defaults={["Expectativas desalinhadas", "Não é o momento", "Sem capacidade financeira"]}
         />
+        <DynamicListManager
+          settingKey={APP_SETTING_KEYS.produtos}
+          title="Produtos"
+          description="Lista de produtos disponíveis para registro de venda."
+          defaults={[]}
+        />
+
       </div>
       <DeletionReasonsSection />
     </div>
