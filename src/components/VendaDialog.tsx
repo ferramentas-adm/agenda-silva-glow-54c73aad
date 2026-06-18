@@ -114,7 +114,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const resetAllFields = () => {
     setVendeu(null);
     setResumoVenda("");
+    setProduto("");
     setValor("");
+
     setAcompanhamento(null);
     setFollowUpDate(undefined);
     setFollowUpTime("");
