@@ -66,6 +66,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
+  const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+
 
   const [vendeu, setVendeu] = useState<"sim" | "nao" | null>(null);
   const [resumoVenda, setResumoVenda] = useState("");
