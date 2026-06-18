@@ -651,6 +651,7 @@ export type Database = {
           lead_revenue: string | null
           motivo_nao_fechamento: string | null
           observacoes: string | null
+          produto: string | null
           resumo_venda: string | null
           sdr_error: boolean
           segunda_reuniao: boolean
@@ -671,6 +672,7 @@ export type Database = {
           lead_revenue?: string | null
           motivo_nao_fechamento?: string | null
           observacoes?: string | null
+          produto?: string | null
           resumo_venda?: string | null
           sdr_error?: boolean
           segunda_reuniao?: boolean
@@ -691,6 +693,7 @@ export type Database = {
           lead_revenue?: string | null
           motivo_nao_fechamento?: string | null
           observacoes?: string | null
+          produto?: string | null
           resumo_venda?: string | null
           sdr_error?: boolean
           segunda_reuniao?: boolean

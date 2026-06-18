@@ -607,12 +607,16 @@ function FollowUpActionDialog({
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
+  const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+
 
   // IMPORTANTE: todos os campos começam SEMPRE em branco para evitar
   // que dados de leads anteriores apareçam por engano no próximo follow-up.
   const [outcome, setOutcome] = useState<"fechou" | "perdeu" | "reagendar" | null>(null);
   const [valor, setValor] = useState("");
   const [resumoVenda, setResumoVenda] = useState("");
+  const [produto, setProduto] = useState("");
+
   const [dataVenda, setDataVenda] = useState<Date | undefined>(undefined);
   const [motivo, setMotivo] = useState("");
   const [novaData, setNovaData] = useState<Date | undefined>(undefined);
@@ -627,6 +631,8 @@ function FollowUpActionDialog({
     setOutcome(null);
     setValor("");
     setResumoVenda("");
+    setProduto("");
+
     setDataVenda(startOfToday());
     setMotivo("");
     setNovaData(undefined);
@@ -640,7 +646,7 @@ function FollowUpActionDialog({
 
   const canSubmit = (() => {
     if (!outcome) return false;
-    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido && !!dataVenda;
+    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido && !!dataVenda && (produtosList.length === 0 || !!produto);
     if (outcome === "perdeu") return !!motivo;
     if (outcome === "reagendar") return !!novaData && !!novoHorario;
     return false;
@@ -659,6 +665,8 @@ function FollowUpActionDialog({
           vendeu: true,
           resumo_venda: resumoVenda.trim(),
           valor: valorNum,
+          produto: produto || null,
+
           follow_up: false,
           follow_up_date: null,
           follow_up_time: null,
@@ -799,6 +807,24 @@ function FollowUpActionDialog({
 
           {outcome === "fechou" && (
             <>
+              {produtosList.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Produto vendido *</Label>
+                  <Select value={produto} onValueChange={setProduto}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {produtosList.map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Edite a lista em Configurações.
+                  </p>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="resumo-fu">Resumo da venda *</Label>
                 <Textarea
@@ -808,6 +834,7 @@ function FollowUpActionDialog({
                   rows={3}
                 />
               </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="valor-fu">Valor coletado *</Label>
                 <Input

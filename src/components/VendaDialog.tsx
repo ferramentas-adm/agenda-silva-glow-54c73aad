@@ -66,10 +66,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
+  const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+
 
   const [vendeu, setVendeu] = useState<"sim" | "nao" | null>(null);
   const [resumoVenda, setResumoVenda] = useState("");
+  const [produto, setProduto] = useState("");
   const [valor, setValor] = useState("");
+
   // Tipo de acompanhamento quando NÃO vendeu: follow_up, segunda_reuniao ou perdeu (sem acompanhamento)
   const [acompanhamento, setAcompanhamento] = useState<"follow_up" | "segunda_reuniao" | "perdeu" | null>(null);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>(undefined);
@@ -110,7 +114,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const resetAllFields = () => {
     setVendeu(null);
     setResumoVenda("");
+    setProduto("");
     setValor("");
+
     setAcompanhamento(null);
     setFollowUpDate(undefined);
     setFollowUpTime("");
@@ -148,6 +154,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setIsEditing(true);
         setVendeu(data.vendeu ? "sim" : "nao");
         setResumoVenda(data.resumo_venda ?? "");
+        setProduto((data as { produto?: string | null }).produto ?? "");
+
         if (data.valor != null) {
           const cents = Math.round(Number(data.valor) * 100).toString();
           setValor(cents);
@@ -222,7 +230,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     // Faturamento do lead é obrigatório em qualquer cenário
     if (!leadRevenue) return false;
     if (!recebimentoValido) return false;
-    if (vendeu === "sim") return valorValido;
+    if (vendeu === "sim") return valorValido && (produtosList.length === 0 || !!produto);
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (!explicacaoNaoFechamento.trim()) return false;
@@ -264,7 +272,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           observacoes: observacoes.trim() || null,
           lead_revenue: leadRevenue || null,
           sdr_error: vendeu === "nao" ? sdrError : false,
+          produto: vendeu === "sim" ? (produto || null) : null,
           created_by: user.id,
+
         } as any,
         { onConflict: "agendamento_id" },
       );
@@ -437,6 +447,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         vendeu: vendeu === "sim",
         resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
         valor: valorNum,
+        produto: vendeu === "sim" ? (produto || null) : null,
+
         motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
         explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
         follow_up: fuActive,
@@ -571,6 +583,24 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
           {vendeu === "sim" && (
             <>
+              {produtosList.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Produto vendido *</Label>
+                  <Select value={produto} onValueChange={setProduto}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {produtosList.map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Edite a lista de produtos em Configurações.
+                  </p>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="valor">Valor coletado no ato *</Label>
                 <Input
@@ -583,6 +613,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
               </div>
             </>
           )}
+
 
           {vendeu === "nao" && (
             <>
