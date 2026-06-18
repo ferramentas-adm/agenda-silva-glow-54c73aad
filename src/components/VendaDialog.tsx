@@ -230,7 +230,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     // Faturamento do lead é obrigatório em qualquer cenário
     if (!leadRevenue) return false;
     if (!recebimentoValido) return false;
-    if (vendeu === "sim") return valorValido;
+    if (vendeu === "sim") return valorValido && (produtosList.length === 0 || !!produto);
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (!explicacaoNaoFechamento.trim()) return false;
@@ -272,7 +272,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           observacoes: observacoes.trim() || null,
           lead_revenue: leadRevenue || null,
           sdr_error: vendeu === "nao" ? sdrError : false,
+          produto: vendeu === "sim" ? (produto || null) : null,
           created_by: user.id,
+
         } as any,
         { onConflict: "agendamento_id" },
       );
