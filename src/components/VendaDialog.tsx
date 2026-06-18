@@ -447,6 +447,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         vendeu: vendeu === "sim",
         resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
         valor: valorNum,
+        produto: vendeu === "sim" ? (produto || null) : null,
+
         motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
         explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
         follow_up: fuActive,
