@@ -71,7 +71,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const [vendeu, setVendeu] = useState<"sim" | "nao" | null>(null);
   const [resumoVenda, setResumoVenda] = useState("");
+  const [produto, setProduto] = useState("");
   const [valor, setValor] = useState("");
+
   // Tipo de acompanhamento quando NÃO vendeu: follow_up, segunda_reuniao ou perdeu (sem acompanhamento)
   const [acompanhamento, setAcompanhamento] = useState<"follow_up" | "segunda_reuniao" | "perdeu" | null>(null);
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>(undefined);
