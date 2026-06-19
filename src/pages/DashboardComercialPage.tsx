@@ -674,7 +674,7 @@ export default function DashboardComercialPage() {
         {activeTabKey === "erros_sdr" && isAdmin && (
           <ErrosSDRTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
         )}
-        {activeTabKey === "tendencias" && isAdmin && <TendenciasTab />}
+        
       </div>
     </AppLayout>
   );
