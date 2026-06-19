@@ -1,70 +1,32 @@
-## Aba "Tendências" com Chat IA
+## 1. Remover a aba "Tendências"
 
-### 1. Nova aba no Dashboard Comercial
-Adicionar `TendenciasTab` em `DashboardComercialPage` (junto com Vendas, Carga, etc.).
+- Em `src/pages/DashboardComercialPage.tsx`: remover o `TabsTrigger` e `TabsContent` de Tendências, e o import do `TendenciasTab`.
+- Deletar `src/components/dashboard/TendenciasTab.tsx`.
+- Deletar Edge Function `supabase/functions/dashboard-ai-chat/` e remover entrada no `supabase/config.toml` (se houver).
+- Manter a tabela `ai_chat_messages` (migração já aplicada — drop via nova migração opcional; pergunto abaixo).
+- Remover dependências instaladas só pro chat se não usadas em outro lugar (`ai`, `react-markdown`, AI Elements). Confirmo antes de remover.
 
-**Painel superior — comparativo mês atual vs anterior (mesmo período do mês):**
-- Agendamentos, realizadas, vendas, conversão %, ticket médio, faturamento, no-show %, cancelamento %, follow-ups abertos, call interrompida.
-- Cada métrica mostra valor atual + delta (↑/↓ com cor) vs mesmo dia do mês passado.
-- Cards com destaque automático ("⚠ Alerta") quando: ticket cai >15%, conversão cai >2pp, follow-ups crescem >50%, no-show >22%.
+## 2. Análise de Junho (resposta direta no chat, sem código)
 
-**Painel "Padrões detectados":**
-- Top closers em queda de conversão (jun vs mai).
-- Motivos de não-fechamento que mais cresceram.
-- Tendência semanal (mini-gráfico) de conversão e ticket.
+Dados reais de Junho/2026 por semana (scheduled_date, BRT):
 
-Dados via queries Supabase no front (mesmo padrão do `VendasTab`).
+| Semana | Agend | Realiz | Vendas | Conv | Ticket | Faturamento | Follow-ups | No-show% |
+|---|---|---|---|---|---|---|---|---|
+| 01–07/jun | 380 | 222 | 18 | 8,1% | R$ 12.667 | R$ 228k | 47 | 18,4% |
+| 08–14/jun | 545 | 318 | 38 | 11,9% | R$ 10.461 | R$ 397k | 112 | 24,4% |
+| 15–19/jun (parcial) | 556 | 315 | **19** | **6,0%** | **R$ 5.232** | **R$ 99k** | **160** | 16,9% |
 
-### 2. Chat IA lateral/embaixo
-Chat embutido na própria aba (lado direito em desktop, embaixo em mobile) onde o gestor conversa sobre os dados.
+**Sim, estamos piorando — e forte — na semana atual:**
 
-**Decisões de UX (proposta — confirmar):**
-- **Forma:** uma conversa só por usuário (sem threads). Simples e foco em análise contínua.
-- **Persistência:** banco (tabela `ai_chat_messages` com RLS por `auth.uid()`), para o gestor retomar de outro dispositivo.
+1. **Conversão despencou**: 11,9% → **6,0%** (metade da semana anterior).
+2. **Ticket médio colapsou**: R$ 10,4k → **R$ 5,2k** (-50%). Mix de produto barato ou desconto agressivo.
+3. **Follow-ups explodindo**: 47 → 112 → **160**. Closers empurrando decisão em vez de fechar.
+4. **Faturamento**: R$ 397k → R$ 99k (semana ainda em curso, mas ritmo bem abaixo).
+5. **No-show melhorou** (24,4 → 16,9%) — único ponto positivo.
 
-**Arquitetura técnica:**
-- Edge Function `dashboard-ai-chat` usando **AI SDK + Lovable AI Gateway** (modelo padrão `google/gemini-3-flash-preview`).
-- Streaming via `streamText` + `toUIMessageStreamResponse`.
-- **Tools** que a IA pode chamar (tudo read-only, escopadas por permissão):
-  - `query_agendamentos(period, filters)` — agrega status/conversão/ticket por período/closer/canal.
-  - `query_vendas(period, filters)` — vendas, valores, motivos de não-fechamento, produtos.
-  - `query_followups(period)` — follow-ups abertos/atrasados.
-  - `compare_periods(metric, periodA, periodB)` — comparativo direto.
-  - `top_closers(period, metric)` — ranking.
-- System prompt com contexto: schema resumido, regras de negócio (ex.: "Call Interrompida fica fora da base de conversão"), papel do usuário, timezone BRT.
-- Verificação de role (gestor/moderador) antes de responder — SDR/Closer não acessam.
+**Diagnóstico**: o problema da semana 15–19 não é volume (agendamentos seguem altos), é **fechamento**. Ticket caindo + follow-ups subindo = closers cedendo demais ou qualificação fraca chegando na call.
 
-**UI:**
-- Componentes AI Elements (`Conversation`, `Message`, `MessageResponse`, `PromptInput`, `Tool` colapsado).
-- Markdown renderizado (tabelas, listas).
-- Sugestões iniciais clicáveis: "Por que o ticket caiu este mês?", "Quais closers regrediram?", "Resuma o mês até agora", "Tendências negativas escondidas".
+## Perguntas
 
-### 3. Banco
-Migration:
-- `ai_chat_messages` (id, user_id, role, content jsonb, created_at) + RLS `auth.uid() = user_id` + GRANTs.
-- Sem tabela de threads (conversa única por usuário).
-
-### 4. Detalhes técnicos
-- Reaproveitar helpers de timezone (`src/lib/timezone.ts`) em todas as queries de período.
-- Tools rodam dentro da Edge Function com `service_role` (chamadas escopadas — nunca expõem dados de outro tenant; este projeto é single-tenant).
-- `stopWhen: stepCountIs(50)` para loops de tools.
-- Tratar 429/402 do gateway com toast claro.
-
-```text
-DashboardComercialPage
-├── Tabs
-│   ├── Vendas (existe)
-│   ├── Carga (existe)
-│   └── Tendências  ← NOVO
-│       ├── ComparativoCards (mês atual vs anterior, alertas)
-│       ├── PadroesDetectados (closers em queda, motivos, semanal)
-│       └── ChatPanel
-│           └── PromptInput → /functions/v1/dashboard-ai-chat (stream)
-│                              ├── tools: query_*, compare_*, top_*
-│                              └── persiste em ai_chat_messages
-```
-
-### Perguntas antes de implementar
-1. **Conversa única** por usuário ou **múltiplas threads** (tipo ChatGPT, com histórico lateral)?
-2. **Persistir no banco** (retoma em qualquer dispositivo) ou **só localStorage** (mais simples, por navegador)?
-3. **Acesso ao chat:** só gestor/moderador, ou também SDR/Closer veem (com dados restritos ao próprio escopo)?
+1. Mantenho a tabela `ai_chat_messages` no banco ou dropo via migração?
+2. Quer que eu mantenha algum gráfico simples (ex.: linha de conversão semanal) em algum lugar do dashboard, ou remoção total?
