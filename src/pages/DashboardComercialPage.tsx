@@ -17,6 +17,7 @@ import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import CargaClosersTab from "@/components/dashboard/CargaClosersTab";
 import ErrosSDRTab from "@/components/dashboard/ErrosSDRTab";
+import TendenciasTab from "@/components/dashboard/TendenciasTab";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -28,7 +29,7 @@ import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr" | "tendencias";
 
 const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
@@ -38,6 +39,7 @@ const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "carga", label: "Follows Closer", gestorOnly: true },
   { key: "erros_sdr", label: "Erros SDR", gestorOnly: true },
+  { key: "tendencias", label: "Tendências + IA", gestorOnly: true },
 ];
 const ROTATION_INTERVAL = 30000;
 
@@ -673,6 +675,7 @@ export default function DashboardComercialPage() {
         {activeTabKey === "erros_sdr" && isAdmin && (
           <ErrosSDRTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
         )}
+        {activeTabKey === "tendencias" && isAdmin && <TendenciasTab />}
       </div>
     </AppLayout>
   );
