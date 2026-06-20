@@ -598,41 +598,25 @@ export default function DashboardComercialPage() {
               <Button variant="ghost" size="sm" className="h-7 text-xs ml-1" onClick={goToday}>
                 Hoje
               </Button>
-              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 ml-1">
-                    <CalendarDays className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange ?? { from: currentDate, to: currentDate }}
-                    onSelect={(r) => {
-                      setDateRange(r);
-                      if (r?.from && !r.to) {
-                        setCurrentDate(r.from);
-                      } else if (r?.from && r?.to) {
-                        setCurrentDate(r.from);
-                        if (isSameDay(r.from, r.to)) {
-                          setDateRange(undefined);
-                        }
-                        setCalendarOpen(false);
-                      }
-                    }}
-                    locale={ptBR}
-                    numberOfMonths={2}
-                    className="pointer-events-auto"
-                  />
-                  {dateRange?.from && (
-                    <div className="flex justify-end p-2 border-t">
-                      <Button variant="ghost" size="sm" onClick={() => { setDateRange(undefined); setCalendarOpen(false); }}>
-                        Limpar intervalo
-                      </Button>
-                    </div>
-                  )}
-                </PopoverContent>
-              </Popover>
+              <FacebookDateRangePicker
+                value={{
+                  from: dateRange?.from ?? currentDate,
+                  to: dateRange?.to ?? currentDate,
+                }}
+                comparison={comparison}
+                onChange={(period, cmp) => {
+                  setComparison(cmp);
+                  setCurrentDate(period.from);
+                  if (isSameDay(period.from, period.to)) {
+                    setDateRange(undefined);
+                  } else {
+                    setDateRange({ from: period.from, to: period.to });
+                  }
+                }}
+                align="start"
+                className="h-7 ml-1"
+                buttonSize="sm"
+              />
               <Button variant="ghost" size="icon" className="h-7 w-7 ml-1" onClick={handleRefresh} title="Atualizar dados">
                 <RefreshCw className="h-4 w-4" />
               </Button>
