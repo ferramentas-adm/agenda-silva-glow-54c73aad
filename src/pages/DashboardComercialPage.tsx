@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
+import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
 
 type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr";
 
@@ -104,6 +105,7 @@ export default function DashboardComercialPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [comparison, setComparison] = useState<FBComparison | null>(null);
   // M3: relógio movido para <LiveClock/> memoizado para não re-renderizar
   // a página inteira de 1.300 linhas a cada segundo. Mantemos apenas um
   // tick lento (30s) para atualizar a label "Atualizado há X min".
