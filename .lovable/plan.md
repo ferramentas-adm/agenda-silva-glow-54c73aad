@@ -1,32 +1,74 @@
-## 1. Remover a aba "Tendências"
+# Calendário estilo Facebook Ads
 
-- Em `src/pages/DashboardComercialPage.tsx`: remover o `TabsTrigger` e `TabsContent` de Tendências, e o import do `TendenciasTab`.
-- Deletar `src/components/dashboard/TendenciasTab.tsx`.
-- Deletar Edge Function `supabase/functions/dashboard-ai-chat/` e remover entrada no `supabase/config.toml` (se houver).
-- Manter a tabela `ai_chat_messages` (migração já aplicada — drop via nova migração opcional; pergunto abaixo).
-- Remover dependências instaladas só pro chat se não usadas em outro lugar (`ai`, `react-markdown`, AI Elements). Confirmo antes de remover.
+Criar um seletor de período rico (igual ao print) e usar nos dois dashboards: Comercial e Leads.
 
-## 2. Análise de Junho (resposta direta no chat, sem código)
+## Componente novo
 
-Dados reais de Junho/2026 por semana (scheduled_date, BRT):
+`src/components/FacebookDateRangePicker.tsx` — Popover com:
 
-| Semana | Agend | Realiz | Vendas | Conv | Ticket | Faturamento | Follow-ups | No-show% |
-|---|---|---|---|---|---|---|---|---|
-| 01–07/jun | 380 | 222 | 18 | 8,1% | R$ 12.667 | R$ 228k | 47 | 18,4% |
-| 08–14/jun | 545 | 318 | 38 | 11,9% | R$ 10.461 | R$ 397k | 112 | 24,4% |
-| 15–19/jun (parcial) | 556 | 315 | **19** | **6,0%** | **R$ 5.232** | **R$ 99k** | **160** | 16,9% |
+**Coluna esquerda — Presets** (radio list, em PT-BR, fuso America/Sao_Paulo):
+- Hoje
+- Ontem
+- Hoje e ontem
+- Últimos 7 dias
+- Últimos 14 dias
+- Últimos 28 dias
+- Últimos 30 dias
+- Esta semana (seg–dom)
+- Semana passada
+- Este mês
+- Mês passado
 
-**Sim, estamos piorando — e forte — na semana atual:**
+Seção "Usados recentemente" no topo: até 3 últimos presets escolhidos (persistidos em `localStorage`, chave `fb-date-presets-recent`).
 
-1. **Conversão despencou**: 11,9% → **6,0%** (metade da semana anterior).
-2. **Ticket médio colapsou**: R$ 10,4k → **R$ 5,2k** (-50%). Mix de produto barato ou desconto agressivo.
-3. **Follow-ups explodindo**: 47 → 112 → **160**. Closers empurrando decisão em vez de fechar.
-4. **Faturamento**: R$ 397k → R$ 99k (semana ainda em curso, mas ritmo bem abaixo).
-5. **No-show melhorou** (24,4 → 16,9%) — único ponto positivo.
+**Painel direito — Calendário duplo**:
+- Dois meses lado a lado (`react-day-picker` com `numberOfMonths={2}`, `mode="range"`, locale `ptBR`, semana começando segunda).
+- Selects de mês/ano em cada cabeçalho (navegação rápida estilo print) — overrides via `components.Caption` customizado usando `Select` shadcn.
+- Dias fora do range em cinza, dia selecionado em azul primário, hover azul claro.
 
-**Diagnóstico**: o problema da semana 15–19 não é volume (agendamentos seguem altos), é **fechamento**. Ticket caindo + follow-ups subindo = closers cedendo demais ou qualificação fraca chegando na call.
+**Linha inferior**:
+- Checkbox "Comparar" → quando ligado revela: dropdown ("Período anterior", "Ano anterior", "Personalizado") + dois inputs de data.
+- Dropdown principal com o preset atual + dois campos read-only "DD de mês" mostrando from/to.
+- Texto cinza: "Fuso horário das datas: Horário de São Paulo".
+- Botões `Cancelar` e `Atualizar` (primário). Estado só é commitado ao clicar Atualizar.
 
-## Perguntas
+**API**:
+```ts
+type Period = { from: Date; to: Date; presetKey?: string };
+type Comparison = { from: Date; to: Date; mode: "previous" | "year" | "custom" };
+interface Props {
+  value: Period;
+  comparison?: Comparison | null;
+  onChange: (period: Period, comparison: Comparison | null) => void;
+  align?: "start" | "end";
+}
+```
 
-1. Mantenho a tabela `ai_chat_messages` no banco ou dropo via migração?
-2. Quer que eu mantenha algum gráfico simples (ex.: linha de conversão semanal) em algum lugar do dashboard, ou remoção total?
+Trigger: botão outline mostrando `"20 jun 2026 – 20 jun 2026"` + ícone calendário (igual hoje, mas usando o novo popover).
+
+## Integração
+
+**`src/pages/DashboardComercialPage.tsx`**
+- Substituir o atual `Popover + Calendar` por `<FacebookDateRangePicker />`.
+- Adicionar estado `comparison`. Quando ativo, refazer queries de KPIs principais para o período de comparação e exibir delta % ao lado dos números (badge verde/vermelho).
+- Início (semana atual: 15–19/jun) deixa de ser hardcoded — default = "Este mês".
+
+**`src/pages/DashboardLeadsPage.tsx`**
+- Mesma substituição.
+- Comparação: nos cards de totais (leads iniciados, finalizados, taxa) mostrar delta vs período comparado. Gráfico de linha ganha série tracejada com o período de comparação.
+
+## Detalhes técnicos
+
+- Datas sempre em America/Sao_Paulo via helpers de `src/lib/timezone.ts` (regra do projeto). `from` = 00:00 BRT, `to` = 23:59:59 BRT antes de enviar para Supabase.
+- Cálculo de comparação:
+  - `previous`: mesmo número de dias imediatamente antes do `from`.
+  - `year`: mesmo intervalo um ano antes.
+  - `custom`: usuário escolhe.
+- Recentes salvos por preset key (não por data absoluta).
+- Calendário com `pointer-events-auto` (regra shadcn).
+- Sem alterações de schema.
+
+## Fora do escopo
+- Não muda nenhum outro filtro (canal, SDR, closer).
+- Não adiciona trimestre/ano-até-hoje (usuário pediu igual ao print).
+- Não altera nenhuma edge function.
