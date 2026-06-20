@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { formatBRDateTime } from "@/lib/timezone";
+import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
 
 interface LeadMetric {
   id: string;
@@ -67,6 +68,7 @@ export function LeadsDashboardContent() {
   });
   const [origemFilter, setOrigemFilter] = useState<string>("all");
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [comparison, setComparison] = useState<FBComparison | null>(null);
 
   const fromDate = dateRange?.from ?? null;
   const toDate = dateRange?.to ?? dateRange?.from ?? null;
@@ -217,51 +219,18 @@ export function LeadsDashboardContent() {
                 </>
               );
             })()}
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 justify-start text-left font-normal min-w-[220px]"
-                >
-                  <CalendarIcon className="h-4 w-4 mr-2 text-primary" />
-                  {fromDate && toDate ? (
-                    format(fromDate, "yyyy-MM-dd") !== format(toDate, "yyyy-MM-dd") ? (
-                      <span>
-                        {format(fromDate, "dd/MM/yy", { locale: ptBR })} – {format(toDate, "dd/MM/yy", { locale: ptBR })}
-                      </span>
-                    ) : (
-                      <span>{format(fromDate, "dd/MM/yyyy", { locale: ptBR })}</span>
-                    )
-                  ) : (
-                    <span className="text-muted-foreground">Selecionar período</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={(r) => {
-                    setDateRange(r);
-                    if (r?.from && r?.to) setCalendarOpen(false);
-                  }}
-                  numberOfMonths={2}
-                  locale={ptBR}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-                <div className="flex items-center justify-end gap-2 p-2 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDateRange(undefined)}
-                  >
-                    Limpar
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <FacebookDateRangePicker
+              value={{
+                from: fromDate ?? today,
+                to: toDate ?? today,
+              }}
+              comparison={comparison}
+              onChange={(period, cmp) => {
+                setDateRange({ from: period.from, to: period.to });
+                setComparison(cmp);
+              }}
+              align="end"
+            />
 
             {origens.length > 0 && (
               <Select value={origemFilter} onValueChange={setOrigemFilter}>
