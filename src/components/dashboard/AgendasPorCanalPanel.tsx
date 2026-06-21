@@ -342,6 +342,7 @@ function ChannelTable({
               <th className="text-right py-2 px-2 font-medium text-xs">Agendadas</th>
               <th className="text-right py-2 px-2 font-medium text-xs">Realizadas</th>
               <th className="text-right py-2 px-2 font-medium text-xs">Vendas</th>
+              <th className="text-right py-2 px-2 font-medium text-xs">Tíquete Médio</th>
               <th className="text-right py-2 px-2 font-medium text-xs">Conversão</th>
               <th className="text-right py-2 px-2 font-medium text-xs">Coletado</th>
             </tr>
@@ -349,7 +350,7 @@ function ChannelTable({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center text-muted-foreground py-4 text-xs">
+                <td colSpan={8} className="text-center text-muted-foreground py-4 text-xs">
                   Nenhum registro
                 </td>
               </tr>
