@@ -245,7 +245,7 @@ export function FacebookDateRangePicker({
                 onValueChange={(v) => applyPreset(v as PresetKey)}
                 className="space-y-1"
               >
-                {PRESETS.map((p) => (
+                {PRESETS.filter((p) => !recent.includes(p.key)).map((p) => (
                   <label key={p.key} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-muted cursor-pointer">
                     <RadioGroupItem value={p.key} id={p.key} />
                     <span>{p.label}</span>

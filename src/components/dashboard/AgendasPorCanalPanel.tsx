@@ -219,38 +219,28 @@ function ChannelTable({
   exportPrefix: string;
   onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" | "vendas" }) => void;
 }) {
-  const [mode, setMode] = useState<"todas" | "realizadas" | "vendas">("todas");
   const [exporting, setExporting] = useState(false);
 
-  const rows = useMemo(() => {
-    const mapped = data.map((r) => ({
-      ...r,
-      currentQtd: mode === "todas" ? r.qtd : mode === "realizadas" ? r.qtdRealizadas : r.qtdVendas,
-      currentIds: mode === "todas" ? r.ids : mode === "realizadas" ? r.idsRealizadas : r.idsVendas,
-    }));
-    const filtered = mode !== "todas" ? mapped.filter((r) => r.currentQtd > 0) : mapped;
-    return filtered
-      .sort((a, b) => b.currentQtd - a.currentQtd)
-      .map((r, i) => ({ ...r, num: i + 1 }));
-  }, [data, mode]);
-
-  const showTaxa = mode !== "todas";
-  const tabBtn = (key: "todas" | "realizadas" | "vendas", label: string) => (
-    <button
-      type="button"
-      onClick={() => setMode(key)}
-      className={cn(
-        "px-2.5 py-1 text-xs rounded transition-colors",
-        mode === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {label}
-    </button>
+  const rows = useMemo(
+    () => [...data].sort((a, b) => b.qtd - a.qtd).map((r, i) => ({ ...r, num: i + 1 })),
+    [data],
   );
 
+  const totals = useMemo(() => {
+    return rows.reduce(
+      (acc, r) => {
+        acc.qtd += r.qtd;
+        acc.qtdRealizadas += r.qtdRealizadas;
+        acc.qtdVendas += r.qtdVendas;
+        acc.valorVendas += r.valorVendas;
+        return acc;
+      },
+      { qtd: 0, qtdRealizadas: 0, qtdVendas: 0, valorVendas: 0 },
+    );
+  }, [rows]);
 
   const handleExport = async () => {
-    const ids = Array.from(new Set(rows.flatMap((r) => r.currentIds)));
+    const ids = Array.from(new Set(rows.flatMap((r) => r.ids)));
     if (ids.length === 0) {
       toast.info("Nenhum registro para exportar");
       return;
@@ -302,7 +292,7 @@ function ChannelTable({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${exportPrefix}-${mode}.csv`;
+      link.download = `${exportPrefix}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -316,6 +306,13 @@ function ChannelTable({
     }
   };
 
+  const fmtMoney = (v: number) =>
+    v > 0
+      ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      : "—";
+  const pct = (num: number, den: number) =>
+    den > 0 ? `${((num / den) * 100).toFixed(0)}%` : "—";
+
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -323,26 +320,18 @@ function ChannelTable({
           <Users className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-md border border-primary/10 p-0.5 bg-muted/30">
-            {tabBtn("todas", "Todas")}
-            {tabBtn("realizadas", "Realizadas")}
-            {tabBtn("vendas", "Vendas")}
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={exporting || rows.length === 0}
-            className="h-7 px-2 text-xs gap-1"
-          >
-            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            Exportar
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          disabled={exporting || rows.length === 0}
+          className="h-7 px-2 text-xs gap-1"
+        >
+          {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          Exportar
+        </Button>
       </div>
-
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -350,53 +339,70 @@ function ChannelTable({
             <tr className="border-b border-primary/10 text-muted-foreground">
               <th className="text-left py-2 px-2 font-medium text-xs">#</th>
               <th className="text-left py-2 px-2 font-medium text-xs">Canal</th>
-              <th className="text-right py-2 px-2 font-medium text-xs">
-                {mode === "vendas" ? "Vendas" : "Qtd"}
-              </th>
-              {mode === "vendas" && (
-                <th className="text-right py-2 px-2 font-medium text-xs">Valor</th>
-              )}
-              {showTaxa && (
-                <th className="text-right py-2 px-2 font-medium text-xs">Taxa</th>
-              )}
+              <th className="text-right py-2 px-2 font-medium text-xs">Agendadas</th>
+              <th className="text-right py-2 px-2 font-medium text-xs">Realizadas</th>
+              <th className="text-right py-2 px-2 font-medium text-xs">Vendas</th>
+              <th className="text-right py-2 px-2 font-medium text-xs">Conversão</th>
+              <th className="text-right py-2 px-2 font-medium text-xs">Coletado</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={3 + (mode === "vendas" ? 1 : 0) + (showTaxa ? 1 : 0)} className="text-center text-muted-foreground py-4 text-xs">
+                <td colSpan={7} className="text-center text-muted-foreground py-4 text-xs">
                   Nenhum registro
                 </td>
               </tr>
             )}
-            {rows.map((row) => (
-              <tr
-                key={row.canal}
-                className={cn(
-                  "border-b border-primary/5",
-                  onRowClick && "cursor-pointer hover:bg-primary/5 transition-colors",
-                )}
-                onClick={onRowClick ? () => onRowClick({ canal: row.canal, ids: row.currentIds, mode }) : undefined}
-              >
-                <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
-                <td className="py-2 px-2 font-medium">{row.canal}</td>
-                <td className="py-2 px-2 text-right font-bold">{row.currentQtd}</td>
-                {mode === "vendas" && (
-                  <td className="py-2 px-2 text-right tabular-nums font-semibold">
-                    {row.valorVendas > 0
-                      ? row.valorVendas.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 })
-                      : "—"}
+            {rows.map((row) => {
+              const clickCell = (mode: "todas" | "realizadas" | "vendas", ids: string[]) =>
+                onRowClick && ids.length > 0
+                  ? () => onRowClick({ canal: row.canal, ids, mode })
+                  : undefined;
+              return (
+                <tr key={row.canal} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
+                  <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
+                  <td className="py-2 px-2 font-medium">{row.canal}</td>
+                  <td
+                    className={cn("py-2 px-2 text-right font-bold tabular-nums", clickCell("todas", row.ids) && "cursor-pointer")}
+                    onClick={clickCell("todas", row.ids)}
+                  >
+                    {row.qtd}
                   </td>
-                )}
-                {showTaxa && (
+                  <td
+                    className={cn("py-2 px-2 text-right tabular-nums", clickCell("realizadas", row.idsRealizadas) && "cursor-pointer")}
+                    onClick={clickCell("realizadas", row.idsRealizadas)}
+                  >
+                    {row.qtdRealizadas}
+                  </td>
+                  <td
+                    className={cn("py-2 px-2 text-right tabular-nums font-semibold", clickCell("vendas", row.idsVendas) && "cursor-pointer")}
+                    onClick={clickCell("vendas", row.idsVendas)}
+                  >
+                    {row.qtdVendas}
+                  </td>
                   <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
-                    {row.qtd > 0
-                      ? `${(((mode === "realizadas" ? row.qtdRealizadas : row.qtdVendas) / row.qtd) * 100).toFixed(0)}%`
-                      : "—"}
+                    {pct(row.qtdVendas, row.qtd)}
                   </td>
-                )}
+                  <td className="py-2 px-2 text-right tabular-nums font-semibold">
+                    {fmtMoney(row.valorVendas)}
+                  </td>
+                </tr>
+              );
+            })}
+            {rows.length > 0 && (
+              <tr className="border-t border-primary/20 bg-muted/20 font-semibold">
+                <td className="py-2 px-2"></td>
+                <td className="py-2 px-2 text-xs uppercase text-muted-foreground">Total</td>
+                <td className="py-2 px-2 text-right tabular-nums">{totals.qtd}</td>
+                <td className="py-2 px-2 text-right tabular-nums">{totals.qtdRealizadas}</td>
+                <td className="py-2 px-2 text-right tabular-nums">{totals.qtdVendas}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                  {pct(totals.qtdVendas, totals.qtd)}
+                </td>
+                <td className="py-2 px-2 text-right tabular-nums">{fmtMoney(totals.valorVendas)}</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
