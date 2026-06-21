@@ -402,6 +402,9 @@ function ChannelTable({
                 <td className="py-2 px-2 text-right tabular-nums">{totals.qtdRealizadas}</td>
                 <td className="py-2 px-2 text-right tabular-nums">{totals.qtdVendas}</td>
                 <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                  {totals.qtdVendas > 0 ? fmtMoney(totals.valorVendas / totals.qtdVendas) : "—"}
+                </td>
+                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
                   {pct(totals.qtdVendas, totals.qtd)}
                 </td>
                 <td className="py-2 px-2 text-right tabular-nums">{fmtMoney(totals.valorVendas)}</td>
