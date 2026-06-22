@@ -1,63 +1,17 @@
-# Agendamento sem Closer + Fila de Atribuição
+## Ajustes na página "Aguardando atribuição"
 
-## Objetivo
-SDRs deixam de escolher Closer ao agendar. O agendamento é criado "sem closer" e fica numa fila para a Head de SDR (gestor/moderador) revisar e atribuir o Closer. Integrações (DataCrazy / Google Calendar) só disparam após a atribuição.
+### 1. Considerar apenas reuniões de hoje em diante (sem seletor de data)
+Em `src/pages/AguardandoAtribuicaoPage.tsx`, adicionar filtro fixo `.gte("scheduled_date", hoje)` (data local de São Paulo, formato `YYYY-MM-DD`) na query `pending-closer-assignment`. Não há UI de seleção de data — o corte é automático e sempre considera o dia atual em diante. Reuniões passadas sem closer somem da fila.
 
-## Mudanças no fluxo de Agendar (`AgendarPage` + `TimeSlotPicker`)
+O badge no menu lateral (contador em `AppLayout.tsx`) também passa a contar só de hoje em diante, para ficar consistente com a página.
 
-- Remover `CloserSelector` da página para SDR.
-- Regras por papel:
-  - **SDR**: nunca escolhe closer. Cria sempre com `closer_id = null`.
-  - **Gestor / Moderador**: continua podendo escolher closer no ato (opcional). Se não escolherem, também cai na fila.
-  - **Closer**: não usa mais "Agendar" para 1ª reunião. 2ª reunião continua só via Follow-up ou página de Resultado da Reunião (resultado = "não vendeu"). Sem alterações nesses fluxos.
-- `TimeSlotPicker` em **modo global**: união dos horários em que pelo menos 1 closer ativo está livre na data (respeitando `closer_blocks`, agendamentos vigentes e horas passadas em America/Sao_Paulo). Não exibe nome de closer.
+### 2. Remover Amanda Padilha da lista de Closers atribuíveis
+Na mesma página, na query `closers-active`, excluir Amanda Padilha do dropdown com `.not("name", "ilike", "%amanda padilha%")`. Assim, a reunião continua "solta" até que outro Closer seja selecionado manualmente — só então o webhook do DataCrazy e o Google Calendar/Meet são disparados (fluxo atual já faz isso na atribuição).
 
-### Validação de capacidade no submit (limite por horário)
+### Fora de escopo
+- Não mexer no cadastro da Amanda (segue ativa como closer no banco para histórico/relatórios).
+- Não mexer no fluxo de criação do SDR (já cria com `closer_id = null`).
 
-- Usar o **limite por horário definido no Admin** (já existente — `useSlotLimit` / `app_settings`, conforme o print).
-- Regra:
-  - Contar agendamentos ativos (não excluídos, status `agendada|confirmada|reagendada`) no slot `(scheduled_date, scheduled_time)`.
-  - Se `count >= limite`:
-    - **SDR**: bloqueia submit com mensagem "Limite de X agendas atingido nesse horário."
-    - **Gestor / Moderador**: permite forçar (mantém comportamento atual).
-- Aplicar a mesma checagem em duas camadas:
-  1. UI: desabilitar slots cheios no `TimeSlotPicker` para SDR (já existe via `useSlotCounts` + `useSlotLimit` — confirmar e reaproveitar).
-  2. Submit: recontar imediatamente antes do INSERT (anti-corrida) e abortar se estourou.
-
-## Nova área "Aguardando atribuição"
-
-- Novo item no menu lateral (`AppSidebar`) **Aguardando atribuição**, visível só para `gestor` e `moderador`, com badge de contagem.
-- Rota `/aguardando-atribuicao` lista agendamentos com `closer_id IS NULL` e `deleted_at IS NULL`, ordenados por `scheduled_date`/`scheduled_time`.
-- Cada linha mostra: lead, telefone, data/hora, canal, SDR responsável, briefing resumido, seletor de Closer + botão **Atribuir**.
-  - Seletor mostra apenas closers ativos com slot livre no horário (mesma lógica do `CloserSelector`).
-  - Atribuir = `UPDATE agendamentos SET closer_id = ?` — gatilho dos webhooks/Calendar (ver abaixo).
-
-## Integrações: só após atribuição
-
-- **Google Calendar**: `google-create-event` passa a ser chamado no momento da atribuição (página nova), não mais no submit do SDR.
-- **DataCrazy webhook** (`notify_status_change_webhook`): adicionar guarda no início — `IF NEW.closer_id IS NULL THEN RETURN NEW; END IF;` para INSERT e para mudanças de status. Detectar `OLD.closer_id IS NULL AND NEW.closer_id IS NOT NULL` e disparar como "Agendado" (ou "Reagendada" se houver `original_agendamento_id`).
-
-## Banco / regras
-
-- `closer_id` já é `NULL`-permitido. Sem alteração de schema.
-- RLS de `agendamentos`: confirmar que SDR consegue inserir com `closer_id = null`; ajustar policy se hoje exigir closer.
-- Migration: ajustes em `notify_status_change_webhook`, `notify_status_change`, RLS (se necessário) e seed de nova permissão `assign_closer` (gestor + moderador).
-- Notificação "Novo agendamento aguardando atribuição" → insert em `notifications` para gestor/moderador quando INSERT vem com `closer_id IS NULL`.
-
-## Detalhes técnicos
-
-- Reaproveitar `useSlotCounts`, `useSlotLimit` e `CloserSelector` na nova página.
-- Nova chave em `usePermissions`: `assign_closer` controla acesso à rota.
-- A criação de evento no Calendar migra do `AgendarPage` para a página de atribuição.
-
-## Arquivos a tocar
-- `src/pages/AgendarPage.tsx` — remover seleção de closer p/ SDR, ajustar payload, recontagem anti-corrida no submit.
-- `src/components/agendar/TimeSlotPicker.tsx` — modo global (sem closer), desabilitar slots cheios via limite do Admin.
-- `src/components/AppLayout.tsx` (sidebar) — novo item de menu com badge.
-- `src/pages/AguardandoAtribuicaoPage.tsx` (novo) + rota em `src/App.tsx`.
-- `src/hooks/usePermissions.ts` — chave `assign_closer`.
-- Migration: trigger webhook, notificação, RLS, permissão.
-
-## Fora de escopo
-- Atribuição em massa / round-robin automático.
-- Mudanças no fluxo de 2ª reunião (Follow-up / Resultado da Reunião).
+### Arquivos
+- `src/pages/AguardandoAtribuicaoPage.tsx` — filtro de data + exclusão da Amanda Padilha do dropdown.
+- `src/components/AppLayout.tsx` — mesmo filtro `gte hoje` no count do badge.
