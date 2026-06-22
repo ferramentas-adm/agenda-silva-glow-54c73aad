@@ -67,14 +67,27 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
     refetchInterval: 2 * 60 * 1000,
   });
 
+  // Unifica fontes (vendas.sdr_error + agendamentos.sdr_error) deduplicando por agendamento_id
+  const unified = useMemo(() => {
+    const map = new Map<string, { sdrId: string | null }>();
+    vendas.forEach((v) => {
+      const sdrId = v.agendamentos?.sdr_responsavel_id ?? v.agendamentos?.created_by ?? null;
+      map.set(v.agendamento_id, { sdrId });
+    });
+    agendErrs.forEach((a) => {
+      if (map.has(a.id)) return;
+      map.set(a.id, { sdrId: a.sdr_responsavel_id ?? a.created_by ?? null });
+    });
+    return Array.from(map.values());
+  }, [vendas, agendErrs]);
+
   const sdrIds = useMemo(() => {
     const ids = new Set<string>();
-    vendas.forEach((v) => {
-      const id = v.agendamentos?.sdr_responsavel_id ?? v.agendamentos?.created_by;
-      if (id) ids.add(id);
+    unified.forEach((u) => {
+      if (u.sdrId) ids.add(u.sdrId);
     });
     return Array.from(ids);
-  }, [vendas]);
+  }, [unified]);
 
   const { data: profiles = [] } = useQuery<{ user_id: string; full_name: string }[]>({
     queryKey: ["sdr-error-profiles", sdrIds.sort().join(",")],
@@ -90,19 +103,18 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
 
   const ranking = useMemo(() => {
     const counts = new Map<string, number>();
-    vendas.forEach((v) => {
-      const id = v.agendamentos?.sdr_responsavel_id ?? v.agendamentos?.created_by;
-      if (!id) return;
-      counts.set(id, (counts.get(id) ?? 0) + 1);
+    unified.forEach((u) => {
+      if (!u.sdrId) return;
+      counts.set(u.sdrId, (counts.get(u.sdrId) ?? 0) + 1);
     });
     const nameOf = (id: string) =>
       profiles.find((p) => p.user_id === id)?.full_name ?? "—";
     return Array.from(counts.entries())
       .map(([id, qtd]) => ({ id, name: nameOf(id), qtd }))
       .sort((a, b) => b.qtd - a.qtd);
-  }, [vendas, profiles]);
+  }, [unified, profiles]);
 
-  const total = vendas.length;
+  const total = unified.length;
   const periodLabel = `${format(new Date(fromStr), "dd/MM/yyyy")} a ${format(new Date(toStr), "dd/MM/yyyy")}`;
 
   return (
