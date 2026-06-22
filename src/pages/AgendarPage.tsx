@@ -61,16 +61,20 @@ export default function AgendarPage() {
   
 
   const isReschedule = !!editId;
+  const isSdrRole = role === "sdr";
+  const isAdmin = role === "gestor" || role === "moderador";
+  // SDR nunca pode escolher Closer ao agendar — sempre cai na fila "Aguardando atribuição".
+  const canPickCloser = !isSdrRole;
   // Determine initial step based on URL params
   const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
 
-  const [step, setStep] = useState<Step>(isReschedule ? "closer" : hasPreselection ? "lead" : "lead");
+  const [step, setStep] = useState<Step>(isReschedule ? (canPickCloser ? "closer" : "datetime") : hasPreselection ? "lead" : "lead");
   const [lead, setLead] = useState<Lead | null>(
     isReschedule && rescheduleLeadName
       ? { id: "reschedule", name: decodeURIComponent(rescheduleLeadName), phone: decodeURIComponent(rescheduleLeadPhone || "") }
       : null
   );
-  const [closerId, setCloserId] = useState<string | null>(preCloserId || null);
+  const [closerId, setCloserId] = useState<string | null>(canPickCloser ? (preCloserId || null) : null);
   const [date, setDate] = useState<Date | undefined>(
     preDateStr ? new Date(preDateStr + "T12:00:00") : undefined
   );
@@ -88,7 +92,6 @@ export default function AgendarPage() {
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
   const [adminAsSecondMeeting, setAdminAsSecondMeeting] = useState(false);
 
-  const isAdmin = role === "gestor" || role === "moderador";
 
 
 
