@@ -711,8 +711,47 @@ export function CalendarContent() {
     setSavingEdit(false);
   };
 
+  // Reagendar: cria nova agenda em outra data/horário, sem closer (vai para
+  // "Aguardando atribuição"). A trigger `detect_and_mark_reschedule` marca a
+  // original como `reagendada` (via original_agendamento_id), disparando o
+  // webhook "Reagendada" para a original. A nova só dispara webhook ("Agendado")
+  // quando o gestor atribuir o Closer.
+  const handleReschedule = async () => {
+    if (!detailAg || !rescheduleDate || !rescheduleTime) return;
+    setRescheduling(true);
+    try {
+      const newDateStr = `${rescheduleDate.getFullYear()}-${String(rescheduleDate.getMonth() + 1).padStart(2, "0")}-${String(rescheduleDate.getDate()).padStart(2, "0")}`;
+      const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
+      const { error } = await supabase.from("agendamentos").insert({
+        lead_name: detailAg.lead_name,
+        lead_phone: detailAg.lead_phone,
+        scheduled_date: newDateStr,
+        scheduled_time: rescheduleTime,
+        status: "agendada",
+        closer_id: null,
+        original_agendamento_id: detailAg.id,
+        briefing: detailAg.briefing,
+        meeting_reason: detailAg.meeting_reason,
+        channel_type: detailAg.channel_type,
+        duration_minutes: detailAg.duration_minutes,
+        sdr_responsavel_id: sdrId,
+        created_by: user?.id,
+      } as any);
+      if (error) throw error;
+      toast.success("Reagendamento criado. Reunião enviada para Aguardando atribuição.");
+      setRescheduleOpen(false);
+      setRescheduleDate(null);
+      setRescheduleTime(null);
+      setDetailAg(null);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-assignments"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao reagendar");
+    }
+    setRescheduling(false);
+  };
 
-  return (
+
     <>
       <div className="animate-fade-in space-y-4">
         
