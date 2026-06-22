@@ -52,6 +52,7 @@ import { useSlotLimit } from "@/hooks/useSlotLimit";
 export default function AgendarPage() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
+  const { limit: slotLimit } = useSlotLimit();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
   const rescheduleLeadName = searchParams.get("lead_name");
