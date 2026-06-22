@@ -132,6 +132,81 @@ export default function AguardandoAtribuicaoPage() {
   const profileName = (id: string | null) =>
     (profiles as any[]).find((p) => p.user_id === id)?.full_name ?? "—";
 
+  // Datas das reuniões originais (para indicador de reagendamento)
+  const originalIds = Array.from(
+    new Set(pending.map((p) => p.original_agendamento_id).filter(Boolean) as string[]),
+  );
+  const { data: originals = [] } = useQuery({
+    queryKey: ["pending-originals", originalIds.join(",")],
+    enabled: originalIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, scheduled_date, scheduled_time")
+        .in("id", originalIds);
+      return data ?? [];
+    },
+  });
+  const originalById = (id: string | null) =>
+    (originals as any[]).find((o) => o.id === id);
+
+  // Histórico do lead por telefone (reuniões anteriores)
+  const phones = Array.from(
+    new Set(
+      pending
+        .map((p) => (p.lead_phone || "").replace(/\D/g, ""))
+        .filter((p) => p.length > 0),
+    ),
+  );
+  const { data: history = [] } = useQuery({
+    queryKey: ["pending-lead-history", phones.join(",")],
+    enabled: phones.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, lead_phone, status, scheduled_date, vendas(vendeu)")
+        .in("id", pending.map((p) => p.id))
+        .or(`lead_phone.in.(${phones.map((p) => `"${p}"`).join(",")})`);
+      // Fallback: simpler query — get all with these phones
+      const { data: all } = await supabase
+        .from("agendamentos")
+        .select("id, lead_phone, status, scheduled_date, vendas(vendeu)")
+        .is("deleted_at", null);
+      return all ?? [];
+    },
+  });
+
+  function leadHistory(phone: string, currentId: string) {
+    const norm = (phone || "").replace(/\D/g, "");
+    if (!norm) return { count: 0, lastLabel: null as string | null };
+    const prior = (history as any[])
+      .filter(
+        (h) =>
+          h.id !== currentId &&
+          (h.lead_phone || "").replace(/\D/g, "") === norm,
+      )
+      .sort((a, b) => (a.scheduled_date < b.scheduled_date ? 1 : -1));
+    if (prior.length === 0) return { count: 0, lastLabel: null };
+    const last = prior[0];
+    const sold = Array.isArray(last.vendas) && last.vendas.some((v: any) => v.vendeu);
+    const statusMap: Record<string, string> = {
+      realizada: sold ? "vendida" : "realizada",
+      agendada: "agendada",
+      confirmada: "confirmada",
+      reagendada: "reagendada",
+      cancelada: "cancelada",
+      no_show: "no-show",
+    };
+    return { count: prior.length, lastLabel: statusMap[last.status] ?? last.status };
+  }
+
+  function meetingReasonLabel(reason: string | null, isReschedule: boolean): string {
+    if (isReschedule) return "Reagendamento";
+    if (!reason || reason === "primeira_reuniao") return "1ª Reunião";
+    if (reason === "segunda_reuniao") return "2ª Reunião";
+    return reason;
+  }
+
   const handleAssign = async (a: Agendamento) => {
     const closerId = selecting[a.id];
     if (!closerId) {
