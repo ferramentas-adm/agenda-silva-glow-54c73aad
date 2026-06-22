@@ -417,6 +417,8 @@ export default function AgendarPage() {
 
       if (meetError) {
         toast.warning("Reunião agendada, mas o link do Meet não foi gerado.");
+      } else if (!closerId) {
+        toast.success("Reunião agendada! Aguardando atribuição de Closer.");
       } else {
         toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
       }
