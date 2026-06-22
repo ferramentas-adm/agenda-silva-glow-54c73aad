@@ -622,6 +622,11 @@ function UsersSection() {
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
                         </span>
+                        {u.isSdrOverride && u.role !== "sdr" && (
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-500" title="Atua também como SDR (override)">
+                            + SDR
+                          </span>
+                        )}
                         {canActOn(u.role) && u.type === "profile" && u.role !== "closer" && (
                           <Button
                             variant="ghost"
