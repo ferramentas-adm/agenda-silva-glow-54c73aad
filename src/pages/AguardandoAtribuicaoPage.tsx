@@ -442,7 +442,20 @@ export default function AguardandoAtribuicaoPage() {
                     </div>
                   )}
 
-
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      variant={a.sdr_error ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleToggleSdrError(a)}
+                      disabled={togglingErrId === a.id}
+                      className={a.sdr_error
+                        ? "bg-amber-500 text-white hover:bg-amber-600"
+                        : "text-amber-600 border-amber-500/40 hover:bg-amber-500/10"}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+                      {a.sdr_error ? "Erro de SDR marcado" : "Marcar erro de SDR"}
+                    </Button>
+                  </div>
                 </div>
               );
             })}
