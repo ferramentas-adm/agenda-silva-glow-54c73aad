@@ -1,74 +1,63 @@
-# Calendário estilo Facebook Ads
+# Agendamento sem Closer + Fila de Atribuição
 
-Criar um seletor de período rico (igual ao print) e usar nos dois dashboards: Comercial e Leads.
+## Objetivo
+SDRs deixam de escolher Closer ao agendar. O agendamento é criado "sem closer" e fica numa fila para a Head de SDR (gestor/moderador) revisar e atribuir o Closer. Integrações (DataCrazy / Google Calendar) só disparam após a atribuição.
 
-## Componente novo
+## Mudanças no fluxo de Agendar (`AgendarPage` + `TimeSlotPicker`)
 
-`src/components/FacebookDateRangePicker.tsx` — Popover com:
+- Remover `CloserSelector` da página para SDR.
+- Regras por papel:
+  - **SDR**: nunca escolhe closer. Cria sempre com `closer_id = null`.
+  - **Gestor / Moderador**: continua podendo escolher closer no ato (opcional). Se não escolherem, também cai na fila.
+  - **Closer**: não usa mais "Agendar" para 1ª reunião. 2ª reunião continua só via Follow-up ou página de Resultado da Reunião (resultado = "não vendeu"). Sem alterações nesses fluxos.
+- `TimeSlotPicker` em **modo global**: união dos horários em que pelo menos 1 closer ativo está livre na data (respeitando `closer_blocks`, agendamentos vigentes e horas passadas em America/Sao_Paulo). Não exibe nome de closer.
 
-**Coluna esquerda — Presets** (radio list, em PT-BR, fuso America/Sao_Paulo):
-- Hoje
-- Ontem
-- Hoje e ontem
-- Últimos 7 dias
-- Últimos 14 dias
-- Últimos 28 dias
-- Últimos 30 dias
-- Esta semana (seg–dom)
-- Semana passada
-- Este mês
-- Mês passado
+### Validação de capacidade no submit (limite por horário)
 
-Seção "Usados recentemente" no topo: até 3 últimos presets escolhidos (persistidos em `localStorage`, chave `fb-date-presets-recent`).
+- Usar o **limite por horário definido no Admin** (já existente — `useSlotLimit` / `app_settings`, conforme o print).
+- Regra:
+  - Contar agendamentos ativos (não excluídos, status `agendada|confirmada|reagendada`) no slot `(scheduled_date, scheduled_time)`.
+  - Se `count >= limite`:
+    - **SDR**: bloqueia submit com mensagem "Limite de X agendas atingido nesse horário."
+    - **Gestor / Moderador**: permite forçar (mantém comportamento atual).
+- Aplicar a mesma checagem em duas camadas:
+  1. UI: desabilitar slots cheios no `TimeSlotPicker` para SDR (já existe via `useSlotCounts` + `useSlotLimit` — confirmar e reaproveitar).
+  2. Submit: recontar imediatamente antes do INSERT (anti-corrida) e abortar se estourou.
 
-**Painel direito — Calendário duplo**:
-- Dois meses lado a lado (`react-day-picker` com `numberOfMonths={2}`, `mode="range"`, locale `ptBR`, semana começando segunda).
-- Selects de mês/ano em cada cabeçalho (navegação rápida estilo print) — overrides via `components.Caption` customizado usando `Select` shadcn.
-- Dias fora do range em cinza, dia selecionado em azul primário, hover azul claro.
+## Nova área "Aguardando atribuição"
 
-**Linha inferior**:
-- Checkbox "Comparar" → quando ligado revela: dropdown ("Período anterior", "Ano anterior", "Personalizado") + dois inputs de data.
-- Dropdown principal com o preset atual + dois campos read-only "DD de mês" mostrando from/to.
-- Texto cinza: "Fuso horário das datas: Horário de São Paulo".
-- Botões `Cancelar` e `Atualizar` (primário). Estado só é commitado ao clicar Atualizar.
+- Novo item no menu lateral (`AppSidebar`) **Aguardando atribuição**, visível só para `gestor` e `moderador`, com badge de contagem.
+- Rota `/aguardando-atribuicao` lista agendamentos com `closer_id IS NULL` e `deleted_at IS NULL`, ordenados por `scheduled_date`/`scheduled_time`.
+- Cada linha mostra: lead, telefone, data/hora, canal, SDR responsável, briefing resumido, seletor de Closer + botão **Atribuir**.
+  - Seletor mostra apenas closers ativos com slot livre no horário (mesma lógica do `CloserSelector`).
+  - Atribuir = `UPDATE agendamentos SET closer_id = ?` — gatilho dos webhooks/Calendar (ver abaixo).
 
-**API**:
-```ts
-type Period = { from: Date; to: Date; presetKey?: string };
-type Comparison = { from: Date; to: Date; mode: "previous" | "year" | "custom" };
-interface Props {
-  value: Period;
-  comparison?: Comparison | null;
-  onChange: (period: Period, comparison: Comparison | null) => void;
-  align?: "start" | "end";
-}
-```
+## Integrações: só após atribuição
 
-Trigger: botão outline mostrando `"20 jun 2026 – 20 jun 2026"` + ícone calendário (igual hoje, mas usando o novo popover).
+- **Google Calendar**: `google-create-event` passa a ser chamado no momento da atribuição (página nova), não mais no submit do SDR.
+- **DataCrazy webhook** (`notify_status_change_webhook`): adicionar guarda no início — `IF NEW.closer_id IS NULL THEN RETURN NEW; END IF;` para INSERT e para mudanças de status. Detectar `OLD.closer_id IS NULL AND NEW.closer_id IS NOT NULL` e disparar como "Agendado" (ou "Reagendada" se houver `original_agendamento_id`).
 
-## Integração
+## Banco / regras
 
-**`src/pages/DashboardComercialPage.tsx`**
-- Substituir o atual `Popover + Calendar` por `<FacebookDateRangePicker />`.
-- Adicionar estado `comparison`. Quando ativo, refazer queries de KPIs principais para o período de comparação e exibir delta % ao lado dos números (badge verde/vermelho).
-- Início (semana atual: 15–19/jun) deixa de ser hardcoded — default = "Este mês".
-
-**`src/pages/DashboardLeadsPage.tsx`**
-- Mesma substituição.
-- Comparação: nos cards de totais (leads iniciados, finalizados, taxa) mostrar delta vs período comparado. Gráfico de linha ganha série tracejada com o período de comparação.
+- `closer_id` já é `NULL`-permitido. Sem alteração de schema.
+- RLS de `agendamentos`: confirmar que SDR consegue inserir com `closer_id = null`; ajustar policy se hoje exigir closer.
+- Migration: ajustes em `notify_status_change_webhook`, `notify_status_change`, RLS (se necessário) e seed de nova permissão `assign_closer` (gestor + moderador).
+- Notificação "Novo agendamento aguardando atribuição" → insert em `notifications` para gestor/moderador quando INSERT vem com `closer_id IS NULL`.
 
 ## Detalhes técnicos
 
-- Datas sempre em America/Sao_Paulo via helpers de `src/lib/timezone.ts` (regra do projeto). `from` = 00:00 BRT, `to` = 23:59:59 BRT antes de enviar para Supabase.
-- Cálculo de comparação:
-  - `previous`: mesmo número de dias imediatamente antes do `from`.
-  - `year`: mesmo intervalo um ano antes.
-  - `custom`: usuário escolhe.
-- Recentes salvos por preset key (não por data absoluta).
-- Calendário com `pointer-events-auto` (regra shadcn).
-- Sem alterações de schema.
+- Reaproveitar `useSlotCounts`, `useSlotLimit` e `CloserSelector` na nova página.
+- Nova chave em `usePermissions`: `assign_closer` controla acesso à rota.
+- A criação de evento no Calendar migra do `AgendarPage` para a página de atribuição.
 
-## Fora do escopo
-- Não muda nenhum outro filtro (canal, SDR, closer).
-- Não adiciona trimestre/ano-até-hoje (usuário pediu igual ao print).
-- Não altera nenhuma edge function.
+## Arquivos a tocar
+- `src/pages/AgendarPage.tsx` — remover seleção de closer p/ SDR, ajustar payload, recontagem anti-corrida no submit.
+- `src/components/agendar/TimeSlotPicker.tsx` — modo global (sem closer), desabilitar slots cheios via limite do Admin.
+- `src/components/AppLayout.tsx` (sidebar) — novo item de menu com badge.
+- `src/pages/AguardandoAtribuicaoPage.tsx` (novo) + rota em `src/App.tsx`.
+- `src/hooks/usePermissions.ts` — chave `assign_closer`.
+- Migration: trigger webhook, notificação, RLS, permissão.
+
+## Fora de escopo
+- Atribuição em massa / round-robin automático.
+- Mudanças no fluxo de 2ª reunião (Follow-up / Resultado da Reunião).
