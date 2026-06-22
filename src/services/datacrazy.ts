@@ -152,13 +152,10 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
     return [];
   }
 
-  // DataCrazy `/leads` endpoint pagination:
-  //  - `limit` controla page size (default 100, max 100)
-  //  - `skip` controla offset
-  //  - resposta `{ count: <total>, data: [...] }`
+  // DataCrazy `/leads`: `limit` page size (max 100), `skip` offset, resposta `{ count, data }`.
   const PAGE_SIZE = 100;
-  const MAX_LEADS = Number.POSITIVE_INFINITY; // sem teto — traz todos os leads com a tag
-  const REQUEST_DELAY_MS = 350; // gap entre chamadas para evitar 429 do DataCrazy
+  const CONCURRENCY = 3; // páginas em paralelo por lote
+  const MAX_PAGES_FALLBACK = 30; // segurança caso `count` não venha
   const MAX_RETRIES = 4;
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -183,7 +180,7 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
         const is429 = msg.includes("429") || /too many requests/i.test(msg);
         if (is429 && attempt < MAX_RETRIES) {
           attempt += 1;
-          await sleep(800 * Math.pow(2, attempt)); // 1.6s, 3.2s, 6.4s, 12.8s
+          await sleep(600 * Math.pow(2, attempt)); // 1.2s, 2.4s, 4.8s, 9.6s
           continue;
         }
         throw err;
@@ -191,7 +188,7 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
     }
   };
 
-  // 1ª chamada serve para descobrir o `count`
+  // 1ª chamada descobre o `count` (quando o backend devolver).
   const first = await fetchPage(0);
   const all: DataCrazyLead[] = [];
   const seen = new Set<string>();
@@ -202,37 +199,41 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
     }
   }
 
-  const total = first.count ?? Number.POSITIVE_INFINITY;
-  const cap = Math.min(total, MAX_LEADS);
-  // Se a primeira página não encheu, não há mais nada para buscar.
   if (first.pageLeads.length < PAGE_SIZE) return all;
 
-  // Continua paginando enquanto vier página cheia (o DataCrazy nem sempre
-  // devolve o campo `count`, então não dá para confiar só nele).
-  let skip = PAGE_SIZE;
-  while (skip < cap) {
-    await sleep(REQUEST_DELAY_MS);
-    let pageLeads: DataCrazyLead[] = [];
-    try {
-      ({ pageLeads } = await fetchPage(skip));
-    } catch {
-      pageLeads = [];
-    }
-    let addedAny = false;
-    for (const lead of pageLeads) {
-      if (lead?.id && !seen.has(lead.id)) {
-        seen.add(lead.id);
-        all.push(lead);
-        addedAny = true;
-      }
-    }
-    // Para quando a página vier menor que PAGE_SIZE (fim) ou sem novidades.
-    if (pageLeads.length < PAGE_SIZE) break;
-    if (!addedAny) break;
-    skip += PAGE_SIZE;
+  // Determina quantas páginas adicionais buscar.
+  const remainingPages = first.count
+    ? Math.max(0, Math.ceil(first.count / PAGE_SIZE) - 1)
+    : MAX_PAGES_FALLBACK;
+
+  const skips: number[] = [];
+  for (let i = 1; i <= remainingPages; i += 1) {
+    skips.push(i * PAGE_SIZE);
   }
 
-
+  // Dispara em lotes paralelos. Se uma página vier vazia, encerra.
+  let shouldStop = false;
+  for (let i = 0; i < skips.length && !shouldStop; i += CONCURRENCY) {
+    const batch = skips.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(batch.map((s) => fetchPage(s)));
+    for (const r of results) {
+      if (r.status !== "fulfilled") continue;
+      const { pageLeads } = r.value;
+      if (pageLeads.length === 0) {
+        shouldStop = true;
+        continue;
+      }
+      for (const lead of pageLeads) {
+        if (lead?.id && !seen.has(lead.id)) {
+          seen.add(lead.id);
+          all.push(lead);
+        }
+      }
+      if (pageLeads.length < PAGE_SIZE) {
+        shouldStop = true;
+      }
+    }
+  }
 
   return all;
 }
