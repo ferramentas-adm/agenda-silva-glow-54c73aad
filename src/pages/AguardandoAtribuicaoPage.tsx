@@ -307,11 +307,33 @@ export default function AguardandoAtribuicaoPage() {
             {pending.map((a) => {
               const dateObj = new Date(`${a.scheduled_date}T12:00:00`);
               const sdrLabel = profileName(a.sdr_responsavel_id ?? a.created_by);
+              const isReschedule = !!a.original_agendamento_id;
+              const original = isReschedule ? originalById(a.original_agendamento_id) : null;
+              const hist = leadHistory(a.lead_phone, a.id);
               return (
                 <div key={a.id} className="card-meeting p-4 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="text-base font-semibold">{a.lead_name}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-semibold">{a.lead_name}</span>
+                        {a.is_5k && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                            <Sparkles className="h-3 w-3" /> Projeto 5K
+                          </span>
+                        )}
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                          {meetingReasonLabel(a.meeting_reason, isReschedule)}
+                        </span>
+                        {isReschedule && original && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground"
+                            title={`Original: ${format(new Date(`${original.scheduled_date}T12:00:00`), "dd/MM/yyyy", { locale: ptBR })} às ${String(original.scheduled_time).slice(0, 5)}`}
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            de {format(new Date(`${original.scheduled_date}T12:00:00`), "dd/MM", { locale: ptBR })}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Phone className="h-3.5 w-3.5" /> {a.lead_phone || "—"}
@@ -319,10 +341,20 @@ export default function AguardandoAtribuicaoPage() {
                         <span>
                           {format(dateObj, "EEE, dd/MM/yyyy", { locale: ptBR })} · {a.scheduled_time.slice(0, 5)}
                         </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" /> {a.duration_minutes ?? 60} min
+                        </span>
                         {a.channel_type && (
                           <span className="rounded-full bg-secondary px-2 py-0.5">{a.channel_type}</span>
                         )}
                         <span>SDR: <strong className="text-foreground">{sdrLabel}</strong></span>
+                        {hist.count > 0 && (
+                          <span className="flex items-center gap-1">
+                            <History className="h-3.5 w-3.5" />
+                            {hist.count} reunião{hist.count > 1 ? "ões" : ""} anterior{hist.count > 1 ? "es" : ""}
+                            {hist.lastLabel ? ` · última: ${hist.lastLabel}` : ""}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-end gap-2">
