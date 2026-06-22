@@ -650,6 +650,20 @@ function UsersSection() {
                             <ArrowRightLeft className="h-3.5 w-3.5" />
                           </Button>
                         )}
+                        {canActOn(u.role) && u.type === "profile" && u.role !== "sdr" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title={u.isSdrOverride ? "Atua como SDR (ativo) — clique para remover" : "Marcar como SDR (incluir em Métricas/Ranking/Produtividade/Erros SDR)"}
+                            onClick={() => handleToggleSdrOverride(u)}
+                            disabled={togglingSdrOverrideId === u.userId}
+                          >
+                            {togglingSdrOverrideId === u.userId
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <UserCog className={`h-3.5 w-3.5 ${u.isSdrOverride ? 'text-primary' : 'text-muted-foreground'}`} />}
+                          </Button>
+                        )}
                         {u.role === "closer" && u.closerId && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Horário de trabalho"
                             onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, ranges: u.ranges }); setEditRanges([...u.ranges]); }}>
