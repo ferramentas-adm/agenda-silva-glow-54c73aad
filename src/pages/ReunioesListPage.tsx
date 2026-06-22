@@ -217,7 +217,7 @@ export default function ReunioesListPage() {
 
   // Only profiles with SDR role for SDR filter
   const sdrProfiles = useMemo(
-    () => profiles.filter((p) => roleMap[p.user_id] === "sdr" || isSdrOverrideName(p.full_name)),
+    () => profiles.filter((p: any) => roleMap[p.user_id] === "sdr" || p.is_sdr_override === true || isSdrOverrideName(p.full_name)),
     [profiles, roleMap],
   );
 
