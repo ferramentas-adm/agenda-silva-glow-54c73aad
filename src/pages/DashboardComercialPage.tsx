@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
+import { isSdrOverrideName } from "@/lib/sdrOverrides";
 import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
 
 type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr";
