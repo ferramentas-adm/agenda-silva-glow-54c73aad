@@ -450,6 +450,26 @@ function UsersSection() {
     setTogglingSchedulingId(null);
   };
 
+  const [togglingSdrOverrideId, setTogglingSdrOverrideId] = useState<string | null>(null);
+  const handleToggleSdrOverride = async (user: any) => {
+    setTogglingSdrOverrideId(user.userId);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_sdr_override: !user.isSdrOverride } as any)
+        .eq("user_id", user.userId);
+      if (error) throw error;
+      toast.success(!user.isSdrOverride ? "Marcado como SDR" : "Override SDR removido");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["user-roles-map"] });
+      queryClient.invalidateQueries({ queryKey: ["sdr-profiles-ranking"] });
+      queryClient.invalidateQueries({ queryKey: ["profiles-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar override SDR");
+    }
+    setTogglingSdrOverrideId(null);
+  };
+
   const roleLabel = (r: string) => {
     switch (r) {
       case "gestor": return "Admin";
