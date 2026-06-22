@@ -20,6 +20,13 @@ interface VendaRow {
   } | null;
 }
 
+interface AgendamentoErrRow {
+  id: string;
+  sdr_responsavel_id: string | null;
+  created_by: string | null;
+  scheduled_date: string;
+}
+
 export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
   const isRange = !!(dateRange?.from && dateRange?.to);
   const fromStr = isRange
@@ -40,6 +47,22 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
         .lte("agendamentos.scheduled_date", toStr);
       if (error) throw error;
       return (data ?? []) as unknown as VendaRow[];
+    },
+    refetchInterval: 2 * 60 * 1000,
+  });
+
+  const { data: agendErrs = [] } = useQuery<AgendamentoErrRow[]>({
+    queryKey: ["sdr-errors-agendamentos", fromStr, toStr],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .select("id, sdr_responsavel_id, created_by, scheduled_date")
+        .eq("sdr_error", true)
+        .is("deleted_at", null)
+        .gte("scheduled_date", fromStr)
+        .lte("scheduled_date", toStr);
+      if (error) throw error;
+      return (data ?? []) as AgendamentoErrRow[];
     },
     refetchInterval: 2 * 60 * 1000,
   });
