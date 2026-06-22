@@ -16,7 +16,7 @@ import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { Users } from "lucide-react";
 
 interface TimeSlotPickerProps {
-  closerId: string;
+  closerId: string | null;
   date: Date;
   selectedTime: string | null;
   onSelect: (time: string, durationMinutes?: number) => void;
