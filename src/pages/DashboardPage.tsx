@@ -32,7 +32,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
-import { resendAgendamentoWebhook } from "@/services/datacrazyAgendamento";
+// resendAgendamentoWebhook removido: edição de horário agora limpa o closer e o
+// webhook é disparado naturalmente ao reatribuir via Aguardando atribuição.
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
@@ -172,10 +173,16 @@ export function CalendarContent() {
   const [viewBriefing, setViewBriefing] = useState(false);
   const [viewJustification, setViewJustification] = useState(false);
   const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
-  // Transfer lead between closers
+  // Transfer lead between closers (mantido em código; botão escondido na UI)
   const [transferTarget, setTransferTarget] = useState<string>("");
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
+
+  // Reagendar (cria nova agenda em outro dia/horário, marca original como "reagendada")
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | null>(null);
+  const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
@@ -669,7 +676,11 @@ export function CalendarContent() {
     setEditMode(true);
   };
 
-  // Handle edit save — same day only, just update time
+  // Handle edit save — same day, novo horário.
+  // Edição de horário NÃO conta como reagendamento (mesmo dia → não afeta
+  // "Não comparecimento"). Porém o agendamento volta para "Aguardando atribuição":
+  // o closer_id é zerado para que o gestor reavalie a alocação. O webhook do
+  // CRM será disparado como "Agendado" quando o novo closer for atribuído.
   const handleEditSave = async () => {
     if (!detailAg || !editTime) return;
 
@@ -680,11 +691,9 @@ export function CalendarContent() {
 
     setSavingEdit(true);
     try {
-      // Edição de horário NO MESMO DIA: apenas move o card, mantém o status atual
-      // (não vira 'reagendada' — reagendamento só ocorre quando muda de DIA, via /agendar).
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ scheduled_time: editTime } as any)
+        .update({ scheduled_time: editTime, closer_id: null } as any)
         .eq("id", detailAg.id)
         .select("id");
       if (error) throw error;
@@ -692,20 +701,55 @@ export function CalendarContent() {
         throw new Error("Você não tem permissão para editar este agendamento.");
       }
       // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
-      // Reenvia ao DataCrazy com status "Confirmado" (mesmo dia, novo horário).
-      void resendAgendamentoWebhook({
-        agendamentoId: detailAg.id,
-        statusDisplay: "Confirmado",
-      });
-      toast.success("Horário atualizado!");
-      setDetailAg({ ...detailAg, scheduled_time: editTime });
-      patchAgendamentosCache(detailAg.id, (ag) => ({ ...ag, scheduled_time: editTime }));
+      toast.success("Horário atualizado. Agendamento enviado para Aguardando atribuição.");
+      setDetailAg(null);
       setEditMode(false);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-assignments"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar horário");
     }
     setSavingEdit(false);
+  };
+
+  // Reagendar: cria nova agenda em outra data/horário, sem closer (vai para
+  // "Aguardando atribuição"). A trigger `detect_and_mark_reschedule` marca a
+  // original como `reagendada` (via original_agendamento_id), disparando o
+  // webhook "Reagendada" para a original. A nova só dispara webhook ("Agendado")
+  // quando o gestor atribuir o Closer.
+  const handleReschedule = async () => {
+    if (!detailAg || !rescheduleDate || !rescheduleTime) return;
+    setRescheduling(true);
+    try {
+      const newDateStr = `${rescheduleDate.getFullYear()}-${String(rescheduleDate.getMonth() + 1).padStart(2, "0")}-${String(rescheduleDate.getDate()).padStart(2, "0")}`;
+      const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
+      const { error } = await supabase.from("agendamentos").insert({
+        lead_name: detailAg.lead_name,
+        lead_phone: detailAg.lead_phone,
+        scheduled_date: newDateStr,
+        scheduled_time: rescheduleTime,
+        status: "agendada",
+        closer_id: null,
+        original_agendamento_id: detailAg.id,
+        briefing: detailAg.briefing,
+        meeting_reason: detailAg.meeting_reason,
+        channel_type: detailAg.channel_type,
+        duration_minutes: detailAg.duration_minutes,
+        sdr_responsavel_id: sdrId,
+        created_by: user?.id,
+      } as any);
+      if (error) throw error;
+      toast.success("Reagendamento criado. Reunião enviada para Aguardando atribuição.");
+      setRescheduleOpen(false);
+      setRescheduleDate(null);
+      setRescheduleTime(null);
+      setDetailAg(null);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-assignments"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao reagendar");
+    }
+    setRescheduling(false);
   };
 
 
@@ -1125,24 +1169,28 @@ export function CalendarContent() {
                 </Button>
               )}
 
-              {/* Botão "Reagendar para outro dia" removido — o sistema agora
-                  detecta reagendamento automaticamente quando uma nova agenda
-                  do mesmo lead é criada em até 7 dias. */}
-
-              {/* Transfer lead — apenas dono atual (closer) ou gestor/moderador */}
-              {canTransfer && (
+              {/* Reagendar — cria nova agenda em outro dia/horário.
+                  A nova reunião vai para "Aguardando atribuição" (sem Closer)
+                  e a original é marcada como "Reagendada" (entra em
+                  "Não comparecimento" e dispara webhook "Reagendada" no CRM). */}
+              {canChangeStatus && detailAg.status !== "realizada" && detailAg.status !== "reagendada" && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 text-xs w-full border-primary/30 text-primary hover:bg-primary/10"
+                  className="gap-1.5 text-xs w-full border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
                   onClick={() => {
-                    setTransferTarget("");
-                    setTransferOpen(true);
+                    setRescheduleDate(null);
+                    setRescheduleTime(null);
+                    setRescheduleOpen(true);
                   }}
                 >
-                  <Users className="h-3.5 w-3.5" />Transferir lead para outro closer
+                  <RotateCcw className="h-3.5 w-3.5" />Reagendar
                 </Button>
               )}
+
+              {/* Botão "Transferir lead para outro closer" escondido por solicitação.
+                  Lógica de transferência preservada (handleTransferLead + dialog). */}
+
 
               {/* Registrar venda — gestor/moderador podem registrar/atualizar venda
                   mesmo quando o closer já marcou como realizada sem preencher. */}
@@ -1316,7 +1364,89 @@ export function CalendarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule offer dialog removido — botão Reagendar foi descontinuado. */}
+      {/* Reagendar dialog — cria nova agenda em outra data/horário.
+          A original vira "Reagendada" via trigger; a nova nasce sem closer e
+          entra em "Aguardando atribuição". */}
+      <Dialog
+        open={rescheduleOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setRescheduleOpen(false);
+            setRescheduleDate(null);
+            setRescheduleTime(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-amber-500" />
+              Reagendar reunião
+            </DialogTitle>
+            <DialogDescription>
+              Escolha a nova data e horário para <strong>{detailAg?.lead_name}</strong>.
+              O agendamento original será marcado como <strong>Reagendada</strong> e a
+              nova reunião entrará em <strong>Aguardando atribuição</strong> para o
+              gestor reavaliar o Closer. Canal e duração são herdados do original.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Nova data</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {rescheduleDate ? format(rescheduleDate, "dd/MM/yyyy") : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={rescheduleDate ?? undefined}
+                    onSelect={(d) => {
+                      if (d) {
+                        setRescheduleDate(d);
+                        setRescheduleTime(null);
+                      }
+                    }}
+                    locale={ptBR}
+                    disabled={(d) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return d < today;
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            {rescheduleDate && detailAg && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Novo horário</label>
+                <EditTimeSlots
+                  closerId={detailAg.closer_id}
+                  date={rescheduleDate}
+                  selectedTime={rescheduleTime}
+                  onSelect={setRescheduleTime}
+                  currentAgId={detailAg.id}
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setRescheduleOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleReschedule}
+              disabled={!rescheduleDate || !rescheduleTime || rescheduling}
+            >
+              {rescheduling ? "Reagendando..." : "Confirmar reagendamento"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Justificativa do reagendamento (closer) — janela dedicada similar ao briefing */}
       <Dialog open={viewJustification} onOpenChange={setViewJustification}>
