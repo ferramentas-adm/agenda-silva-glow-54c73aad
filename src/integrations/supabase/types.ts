@@ -40,6 +40,9 @@ export type Database = {
           original_agendamento_id: string | null
           scheduled_date: string
           scheduled_time: string
+          sdr_error: boolean
+          sdr_error_at: string | null
+          sdr_error_by: string | null
           sdr_handoff_at: string | null
           sdr_responsavel_id: string | null
           status: Database["public"]["Enums"]["appointment_status"]
@@ -70,6 +73,9 @@ export type Database = {
           original_agendamento_id?: string | null
           scheduled_date: string
           scheduled_time: string
+          sdr_error?: boolean
+          sdr_error_at?: string | null
+          sdr_error_by?: string | null
           sdr_handoff_at?: string | null
           sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
@@ -100,6 +106,9 @@ export type Database = {
           original_agendamento_id?: string | null
           scheduled_date?: string
           scheduled_time?: string
+          sdr_error?: boolean
+          sdr_error_at?: string | null
+          sdr_error_by?: string | null
           sdr_handoff_at?: string | null
           sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
