@@ -125,7 +125,7 @@ export default function ReunioesListPage() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name, email").eq("active", true).order("full_name");
+      const { data } = await supabase.from("profiles").select("user_id, full_name, email, is_sdr_override").eq("active", true).order("full_name");
       return data || [];
     },
   });
