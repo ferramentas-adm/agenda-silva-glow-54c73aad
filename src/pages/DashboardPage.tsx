@@ -1233,7 +1233,7 @@ export function CalendarContent() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="gap-1.5 text-xs border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                            className="gap-1.5 text-xs border-purple-500/30 text-purple-500 hover:bg-purple-500/10"
                             disabled={updatingStatus}
                             onClick={() => {
                               setRescheduleDate(null);
