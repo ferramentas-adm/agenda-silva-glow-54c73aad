@@ -135,6 +135,11 @@ export default function AguardandoAtribuicaoPage() {
       return;
     }
 
+    if (isCloserBlocked(closerId, a.scheduled_date, a.scheduled_time)) {
+      toast.error("Esse Closer está com a agenda bloqueada nesse horário.");
+      return;
+    }
+
     // Limite de 2 reuniões por Closer no mesmo horário
     const { count, error: countErr } = await supabase
       .from("agendamentos")
