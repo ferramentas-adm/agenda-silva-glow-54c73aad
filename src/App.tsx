@@ -47,13 +47,6 @@ const PageSpinner = () => (
   </div>
 );
 
-const HomeRoute = () => {
-  const { role, loading } = useAuth() as any;
-  if (loading) return <PageSpinner />;
-  if (role === "sdr") return <Navigate to="/agendar" replace />;
-  return <DashboardPage />;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -65,7 +58,7 @@ const App = () => (
               <Route path="/login" element={<LoginPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/alterar-senha" element={<ProtectedRoute><ForceChangePasswordPage /></ProtectedRoute>} />
-              <Route path="/" element={<ProtectedRoute><HomeRoute /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/agendar" element={<ProtectedRoute><AgendarPage /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
               <Route path="/audit-logs" element={<ProtectedRoute requireAdmin><AuditLogsPage /></ProtectedRoute>} />
