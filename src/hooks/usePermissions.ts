@@ -16,7 +16,8 @@ export type PermissionKey =
   | "view_admin"
   | "view_audit_logs"
   | "create_appointment"
-  | "edit_appointment_time";
+  | "edit_appointment_time"
+  | "assign_closer";
 
 export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string }> = {
   view_calendar:           { label: "Calendário",            description: "Acesso à página de calendário e agendamentos" },
