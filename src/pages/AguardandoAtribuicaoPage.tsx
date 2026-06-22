@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Navigate } from "react-router-dom";
-import LeadAIAnalysis from "@/components/aguardando/LeadAIAnalysis";
+
 
 interface Agendamento {
   id: string;
@@ -257,10 +257,6 @@ export default function AguardandoAtribuicaoPage() {
                     </div>
                   )}
 
-                  <LeadAIAnalysis
-                    agendamentoId={a.id}
-                    onSugerirCloser={(closerId) => setSelecting((s) => ({ ...s, [a.id]: closerId }))}
-                  />
 
                 </div>
               );

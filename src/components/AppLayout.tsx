@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users, UserPlus } from "lucide-react";
+import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users, UserPlus, CalendarPlus } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { buscarLeadsComTagId } from "@/services/datacrazy";
@@ -102,7 +102,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   const navItems = [
-    ...(can("view_calendar") ? [{ to: "/", label: "Calendário", icon: CalendarDays, badge: 0 }] : []),
+    ...(role === "sdr"
+      ? [{ to: "/agendar", label: "Novo Agendamento", icon: CalendarPlus, badge: 0 }]
+      : can("view_calendar") ? [{ to: "/", label: "Calendário", icon: CalendarDays, badge: 0 }] : []),
     ...(can("assign_closer") ? [{ to: "/aguardando-atribuicao", label: "Aguardando atribuição", icon: UserPlus, badge: pendingAssignmentCount }] : []),
     ...(can("view_meetings") ? [{ to: "/reunioes", label: "Reuniões", icon: List, badge: 0 }] : []),
     ...(can("view_follow_ups") ? [{ to: "/follow-ups", label: "Follow-ups", icon: CalendarClock, badge: 0 }] : []),
