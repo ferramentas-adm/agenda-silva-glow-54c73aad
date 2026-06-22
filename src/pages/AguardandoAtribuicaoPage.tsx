@@ -40,8 +40,13 @@ export default function AguardandoAtribuicaoPage() {
   const [selecting, setSelecting] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+
   const { data: pending = [], isLoading } = useQuery<Agendamento[]>({
-    queryKey: ["pending-closer-assignment"],
+    queryKey: ["pending-closer-assignment", todayStr],
     enabled: can("assign_closer"),
     refetchInterval: 30_000,
     queryFn: async () => {
@@ -51,6 +56,7 @@ export default function AguardandoAtribuicaoPage() {
         .is("closer_id", null)
         .is("deleted_at", null)
         .neq("status", "cancelada")
+        .gte("scheduled_date", todayStr)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
       if (error) throw error;
@@ -59,12 +65,13 @@ export default function AguardandoAtribuicaoPage() {
   });
 
   const { data: closers = [] } = useQuery<Closer[]>({
-    queryKey: ["closers-active"],
+    queryKey: ["closers-active-assignable"],
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
         .select("id, name")
         .eq("active", true)
+        .not("name", "ilike", "%amanda padilha%")
         .order("name");
       return data ?? [];
     },

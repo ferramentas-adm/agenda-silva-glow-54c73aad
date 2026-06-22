@@ -88,12 +88,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: can("assign_closer"),
     refetchInterval: 30_000,
     queryFn: async () => {
+      const d = new Date();
+      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const { count } = await supabase
         .from("agendamentos")
         .select("id", { count: "exact", head: true })
         .is("closer_id", null)
         .is("deleted_at", null)
-        .neq("status", "cancelada");
+        .neq("status", "cancelada")
+        .gte("scheduled_date", todayStr);
       return count ?? 0;
     },
   });
