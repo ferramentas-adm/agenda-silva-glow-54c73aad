@@ -56,10 +56,11 @@ export default function AguardandoAtribuicaoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id")
         .is("closer_id", null)
         .is("deleted_at", null)
         .neq("status", "cancelada")
+        .neq("meeting_reason", "segunda_reuniao")
         .gte("scheduled_date", todayStr)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
