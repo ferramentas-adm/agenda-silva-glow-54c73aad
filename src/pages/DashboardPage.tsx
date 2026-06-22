@@ -172,10 +172,16 @@ export function CalendarContent() {
   const [viewBriefing, setViewBriefing] = useState(false);
   const [viewJustification, setViewJustification] = useState(false);
   const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
-  // Transfer lead between closers
+  // Transfer lead between closers (mantido em código; botão escondido na UI)
   const [transferTarget, setTransferTarget] = useState<string>("");
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
+
+  // Reagendar (cria nova agenda em outro dia/horário, marca original como "reagendada")
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | null>(null);
+  const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
 
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
