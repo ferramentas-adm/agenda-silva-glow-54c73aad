@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Navigate } from "react-router-dom";
+import LeadAIAnalysis from "@/components/aguardando/LeadAIAnalysis";
 
 interface Agendamento {
   id: string;
@@ -94,6 +95,25 @@ export default function AguardandoAtribuicaoPage() {
       toast.error("Selecione um Closer.");
       return;
     }
+
+    // Limite de 2 reuniões por Closer no mesmo horário
+    const { count, error: countErr } = await supabase
+      .from("agendamentos")
+      .select("id", { count: "exact", head: true })
+      .eq("closer_id", closerId)
+      .eq("scheduled_date", a.scheduled_date)
+      .eq("scheduled_time", a.scheduled_time)
+      .is("deleted_at", null)
+      .neq("status", "cancelada");
+    if (countErr) {
+      toast.error("Erro ao validar disponibilidade do Closer.");
+      return;
+    }
+    if ((count ?? 0) >= 2) {
+      toast.error("Esse Closer já tem 2 reuniões nesse horário. Escolha outro.");
+      return;
+    }
+
     setSavingId(a.id);
     try {
       // Cria evento no Google Calendar do closer escolhido (Meet)
@@ -236,6 +256,12 @@ export default function AguardandoAtribuicaoPage() {
                       )}
                     </div>
                   )}
+
+                  <LeadAIAnalysis
+                    agendamentoId={a.id}
+                    onSugerirCloser={(closerId) => setSelecting((s) => ({ ...s, [a.id]: closerId }))}
+                  />
+
                 </div>
               );
             })}
