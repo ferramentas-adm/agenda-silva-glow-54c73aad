@@ -262,10 +262,14 @@ export default function AgendarPage() {
   const channelTypeRequired = (role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
-    if (!lead || !closerId || !date || !time || !user) return;
+    if (!lead || !date || !time || !user) return;
     // Closer continua precisando justificar (vai para `observation`).
     if (isCloser && !meetingReasonCustom.trim()) {
       toast.error("Informe a justificativa do agendamento.");
+      return;
+    }
+    if (isCloser && !closerId) {
+      toast.error("Closer não identificado.");
       return;
     }
     if (isAdmin && !adminAsSecondMeeting && !selectedSdrId) {
@@ -282,34 +286,50 @@ export default function AgendarPage() {
     const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
-      // Reagendamento: o NOVO agendamento entra como 'confirmada' na nova data.
-      // O ORIGINAL é marcado como 'reagendada' para que o card no dia antigo
-      // apareça como "Reagendada" e seja contabilizado no board.
-
-      // Try to create Google Calendar event + Meet link
-      let meetLink: string | null = null;
-      let meetError = false;
-
-      const googleResult = await createGoogleCalendarEvent({
-        closer_id: closerId,
-        lead_name: lead.name,
-        lead_phone: lead.phone,
-        sdr_name: sdrName,
-        scheduled_date: dateStr,
-        scheduled_time: time,
-        duration_minutes: durationMinutes,
-      });
-
-      if (googleResult.success && googleResult.meet_link) {
-        meetLink = googleResult.meet_link;
-      } else {
-        meetError = true;
-        console.warn("Google Calendar event creation failed:", googleResult.error);
+      // Validação anti-corrida: reconta o slot imediatamente antes do INSERT.
+      // SDR é bloqueado se o limite for atingido. Gestor/moderador segue (pode forçar).
+      if (isSdrRole) {
+        const { count: slotCount, error: countError } = await supabase
+          .from("agendamentos")
+          .select("id", { count: "exact", head: true })
+          .eq("scheduled_date", dateStr)
+          .eq("scheduled_time", time)
+          .is("deleted_at", null)
+          .neq("status", "cancelada");
+        if (countError) throw countError;
+        if ((slotCount ?? 0) >= slotLimit) {
+          toast.error(`Limite de ${slotLimit} agendas atingido nesse horário. Escolha outro.`);
+          setSubmitting(false);
+          return;
+        }
       }
 
-      // Always create the agendamento, with or without meet link
-      // Para closer, anexamos a justificativa em `observation` (já que o campo
-      // "Motivo da reunião" foi removido); meeting_reason fica fixo em 'segunda_reuniao'.
+      // Google Calendar / Meet só é criado quando há Closer definido.
+      // Sem Closer (SDR ou admin que deixou em aberto), evento é criado depois,
+      // na atribuição em "Aguardando atribuição".
+      let meetLink: string | null = null;
+      let meetError = false;
+      let googleEventId: string | null = null;
+
+      if (closerId) {
+        const googleResult = await createGoogleCalendarEvent({
+          closer_id: closerId,
+          lead_name: lead.name,
+          lead_phone: lead.phone,
+          sdr_name: sdrName,
+          scheduled_date: dateStr,
+          scheduled_time: time,
+          duration_minutes: durationMinutes,
+        });
+        if (googleResult.success && googleResult.meet_link) {
+          meetLink = googleResult.meet_link;
+          googleEventId = googleResult.event_id ?? null;
+        } else {
+          meetError = true;
+          console.warn("Google Calendar event creation failed:", googleResult.error);
+        }
+      }
+
       const closerJustification = isCloser ? meetingReasonCustom.trim() : "";
       const finalObservation = isCloser
         ? [closerJustification, observation.trim()].filter(Boolean).join(" — ") || null
@@ -324,19 +344,14 @@ export default function AgendarPage() {
         duration_minutes: durationMinutes,
         observation: finalObservation,
         briefing: briefingText.trim() || null,
-        // Todo novo registro entra como 'agendada' — inclusive reagendamentos,
-        // que precisam passar pelo fluxo de confirmação novamente.
-        // (O trigger envia "Reagendada" ao DataCrazy quando original_agendamento_id está setado.)
         status: "agendada",
         meet_link: meetLink,
-        google_event_id: googleResult.success ? (googleResult.event_id ?? null) : null,
+        google_event_id: googleEventId,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && !adminAsSecondMeeting && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
-        // Canal vem da lista "Tipos de canal"; em 2ª reunião é herdado do 1º agendamento.
         channel_type: channelType || null,
-
         is_5k: is5k,
       } as any).select("id").single();
 
