@@ -8,6 +8,13 @@ const corsHeaders = {
 
 const WEBHOOK_PATH_FRAGMENT = "/api/crm/flows/webhooks/";
 
+// Cache em memória por instância do edge runtime.
+// TTL curto (60s) para GETs idempotentes em /leads e /tags.
+type CacheEntry = { expiresAt: number; status: number; body: string };
+const responseCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60_000;
+const CACHEABLE_PREFIXES = ["/leads", "/tags"];
+
 function normalizeDataCrazyApiUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim();
   let parsed: URL;
@@ -20,7 +27,6 @@ function normalizeDataCrazyApiUrl(rawUrl: string): string {
 
   const pathname = parsed.pathname.replace(/\/+$/, "");
 
-  // If someone configures the webhook URL by mistake, force the base API URL.
   if (pathname.includes(WEBHOOK_PATH_FRAGMENT)) {
     const [basePath] = pathname.split(WEBHOOK_PATH_FRAGMENT);
     return `${parsed.origin}${basePath}`;
@@ -53,7 +59,6 @@ function buildProxyUrl(baseUrl: string, path: string): string {
   if (/^https?:\/\//i.test(path)) {
     throw new Error("Proxy path must be relative");
   }
-
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${baseUrl}${normalizedPath}`;
 }
@@ -63,6 +68,29 @@ function buildG1FallbackUrl(url: string): string | null {
   if (parsed.hostname !== "api.datacrazy.io") return null;
   parsed.hostname = "api.g1.datacrazy.io";
   return parsed.toString();
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
+  let attempt = 0;
+  let lastResponse: Response | null = null;
+  while (attempt <= maxRetries) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    lastResponse = res;
+    const retryAfter = res.headers.get("Retry-After");
+    let waitMs = 1500 * Math.pow(2, attempt);
+    if (retryAfter) {
+      const parsed = parseInt(retryAfter, 10);
+      if (!isNaN(parsed)) waitMs = Math.min(parsed * 1000, 8000);
+    }
+    // Descarta o body para liberar a conexão.
+    try { await res.text(); } catch { /* noop */ }
+    await sleep(waitMs);
+    attempt += 1;
+  }
+  return lastResponse!;
 }
 
 serve(async (req) => {
@@ -78,7 +106,6 @@ serve(async (req) => {
     const DATACRAZY_API_TOKEN = Deno.env.get("DATACRAZY_API_TOKEN");
     if (!DATACRAZY_API_TOKEN) throw new Error("DATACRAZY_API_TOKEN is not configured");
 
-    // Verify JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -120,7 +147,20 @@ serve(async (req) => {
       });
     }
 
-    // Build URL
+    // Cache check (apenas GETs em rotas idempotentes).
+    const isCacheable =
+      method === "GET" && CACHEABLE_PREFIXES.some((p) => normalizedPath.startsWith(p));
+    const cacheKey = `${method} ${normalizedPath}`;
+    if (isCacheable) {
+      const hit = responseCache.get(cacheKey);
+      if (hit && hit.expiresAt > Date.now()) {
+        return new Response(hit.body, {
+          status: hit.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json", "X-Proxy-Cache": "HIT" },
+        });
+      }
+    }
+
     const url = buildProxyUrl(DATACRAZY_API_URL, path);
 
     const fetchOptions: RequestInit = {
@@ -136,13 +176,13 @@ serve(async (req) => {
     }
 
     let requestUrl = url;
-    let response = await fetch(requestUrl, fetchOptions);
+    let response = await fetchWithRetry(requestUrl, fetchOptions);
 
     if (response.status === 404) {
       const fallbackUrl = buildG1FallbackUrl(requestUrl);
       if (fallbackUrl) {
         requestUrl = fallbackUrl;
-        response = await fetch(requestUrl, fetchOptions);
+        response = await fetchWithRetry(requestUrl, fetchOptions);
       }
     }
 
@@ -164,9 +204,27 @@ serve(async (req) => {
       parsed = { raw: responseData };
     }
 
-    return new Response(JSON.stringify(parsed), {
-      status: response.ok ? 200 : response.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const responseBody = JSON.stringify(parsed);
+    const responseStatus = response.ok ? 200 : response.status;
+
+    if (isCacheable && response.ok) {
+      responseCache.set(cacheKey, {
+        expiresAt: Date.now() + CACHE_TTL_MS,
+        status: responseStatus,
+        body: responseBody,
+      });
+      // Limpeza barata
+      if (responseCache.size > 500) {
+        const now = Date.now();
+        for (const [k, v] of responseCache) {
+          if (v.expiresAt <= now) responseCache.delete(k);
+        }
+      }
+    }
+
+    return new Response(responseBody, {
+      status: responseStatus,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "X-Proxy-Cache": "MISS" },
     });
   } catch (error: unknown) {
     console.error("DataCrazy proxy error:", error);
