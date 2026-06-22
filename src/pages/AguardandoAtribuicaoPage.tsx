@@ -27,6 +27,9 @@ interface Agendamento {
   channel_type: string | null;
   sdr_responsavel_id: string | null;
   created_by: string;
+  meeting_reason: string | null;
+  is_5k: boolean | null;
+  original_agendamento_id: string | null;
 }
 
 interface Closer {
