@@ -151,28 +151,19 @@ export default function AguardandoAtribuicaoPage() {
     (originals as any[]).find((o) => o.id === id);
 
   // Histórico do lead por telefone (reuniões anteriores)
-  const phones = Array.from(
-    new Set(
-      pending
-        .map((p) => (p.lead_phone || "").replace(/\D/g, ""))
-        .filter((p) => p.length > 0),
-    ),
+  const rawPhones = Array.from(
+    new Set(pending.map((p) => p.lead_phone).filter((p): p is string => !!p)),
   );
   const { data: history = [] } = useQuery({
-    queryKey: ["pending-lead-history", phones.join(",")],
-    enabled: phones.length > 0,
+    queryKey: ["pending-lead-history", rawPhones.join(",")],
+    enabled: rawPhones.length > 0,
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
         .select("id, lead_phone, status, scheduled_date, vendas(vendeu)")
-        .in("id", pending.map((p) => p.id))
-        .or(`lead_phone.in.(${phones.map((p) => `"${p}"`).join(",")})`);
-      // Fallback: simpler query — get all with these phones
-      const { data: all } = await supabase
-        .from("agendamentos")
-        .select("id, lead_phone, status, scheduled_date, vendas(vendeu)")
-        .is("deleted_at", null);
-      return all ?? [];
+        .is("deleted_at", null)
+        .in("lead_phone", rawPhones);
+      return data ?? [];
     },
   });
 
