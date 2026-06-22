@@ -258,7 +258,7 @@ export default function ProdutividadeSDRTab({
     const compareceu = dia.filter((a) => getEffectiveStatus(a) === "realizada").length;
     const naoCompareceu = dia.filter((a) => {
       const eff = getEffectiveStatus(a);
-      return eff === "no_show" || eff === "cancelada";
+      return eff === "no_show" || eff === "cancelada" || eff === "reagendada";
     }).length;
     return { criadas, para, compareceu, naoCompareceu };
   }, [agendamentos, createdAgs, sdrIds, range]);
