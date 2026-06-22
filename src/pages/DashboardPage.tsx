@@ -32,7 +32,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
-import { resendAgendamentoWebhook } from "@/services/datacrazyAgendamento";
+// resendAgendamentoWebhook removido: edição de horário agora limpa o closer e o
+// webhook é disparado naturalmente ao reatribuir via Aguardando atribuição.
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
