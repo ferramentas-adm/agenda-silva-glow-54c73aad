@@ -403,7 +403,7 @@ export default function AgendarPage() {
       setSuccess({
         lead,
         closerId,
-        closerName,
+        closerName: closerId ? closerName : "A definir (fila de atribuição)",
         date,
         time,
         observation,
