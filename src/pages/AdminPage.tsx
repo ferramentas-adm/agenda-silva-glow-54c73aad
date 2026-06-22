@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck, UserCog,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -201,6 +201,7 @@ function UsersSection() {
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
           availableForScheduling: p.available_for_scheduling ?? false,
+          isSdrOverride: (p as any).is_sdr_override === true,
         };
       });
 
@@ -449,6 +450,26 @@ function UsersSection() {
     setTogglingSchedulingId(null);
   };
 
+  const [togglingSdrOverrideId, setTogglingSdrOverrideId] = useState<string | null>(null);
+  const handleToggleSdrOverride = async (user: any) => {
+    setTogglingSdrOverrideId(user.userId);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_sdr_override: !user.isSdrOverride } as any)
+        .eq("user_id", user.userId);
+      if (error) throw error;
+      toast.success(!user.isSdrOverride ? "Marcado como SDR" : "Override SDR removido");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["user-roles-map"] });
+      queryClient.invalidateQueries({ queryKey: ["sdr-profiles-ranking"] });
+      queryClient.invalidateQueries({ queryKey: ["profiles-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar override SDR");
+    }
+    setTogglingSdrOverrideId(null);
+  };
+
   const roleLabel = (r: string) => {
     switch (r) {
       case "gestor": return "Admin";
@@ -601,6 +622,11 @@ function UsersSection() {
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
                         </span>
+                        {u.isSdrOverride && u.role !== "sdr" && (
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-500" title="Atua também como SDR (override)">
+                            + SDR
+                          </span>
+                        )}
                         {canActOn(u.role) && u.type === "profile" && u.role !== "closer" && (
                           <Button
                             variant="ghost"
@@ -627,6 +653,20 @@ function UsersSection() {
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
                             onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
                             <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {canActOn(u.role) && u.type === "profile" && u.role !== "sdr" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title={u.isSdrOverride ? "Atua como SDR (ativo) — clique para remover" : "Marcar como SDR (incluir em Métricas/Ranking/Produtividade/Erros SDR)"}
+                            onClick={() => handleToggleSdrOverride(u)}
+                            disabled={togglingSdrOverrideId === u.userId}
+                          >
+                            {togglingSdrOverrideId === u.userId
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <UserCog className={`h-3.5 w-3.5 ${u.isSdrOverride ? 'text-primary' : 'text-muted-foreground'}`} />}
                           </Button>
                         )}
                         {u.role === "closer" && u.closerId && (

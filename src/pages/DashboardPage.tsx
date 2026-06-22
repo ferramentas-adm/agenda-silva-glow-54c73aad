@@ -242,11 +242,15 @@ export function CalendarContent() {
         .select("user_id, role");
       const map = new Map<string, string>();
       (data ?? []).forEach((r: { user_id: string; role: string }) => map.set(r.user_id, r.role));
-      // Override: moderadores que atuam como SDR devem ser tratados como SDR
-      // para fins de métricas/listas (Métricas SDRs, Ranking, Produtividade, Erros).
+      // Override "Atua como SDR" (configurável no /admin via profiles.is_sdr_override).
+      // Trata esses usuários como SDR para fins de métricas/listas (Métricas SDRs,
+      // Ranking, Produtividade, Erros). Fallback adicional por nome para casos
+      // legados antes do flag ser propagado.
       const { data: profiles } = await supabase.rpc("get_public_profiles");
-      (profiles ?? []).forEach((p: { user_id: string; full_name: string }) => {
-        if (isSdrOverrideName(p.full_name)) map.set(p.user_id, "sdr");
+      (profiles ?? []).forEach((p: any) => {
+        if (p.is_sdr_override === true || isSdrOverrideName(p.full_name)) {
+          map.set(p.user_id, "sdr");
+        }
       });
       return map;
     },

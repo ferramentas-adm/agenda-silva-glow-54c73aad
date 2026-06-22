@@ -125,7 +125,7 @@ export default function ReunioesListPage() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name, email").eq("active", true).order("full_name");
+      const { data } = await supabase.from("profiles").select("user_id, full_name, email, is_sdr_override").eq("active", true).order("full_name");
       return data || [];
     },
   });
@@ -217,7 +217,7 @@ export default function ReunioesListPage() {
 
   // Only profiles with SDR role for SDR filter
   const sdrProfiles = useMemo(
-    () => profiles.filter((p) => roleMap[p.user_id] === "sdr" || isSdrOverrideName(p.full_name)),
+    () => profiles.filter((p: any) => roleMap[p.user_id] === "sdr" || p.is_sdr_override === true || isSdrOverrideName(p.full_name)),
     [profiles, roleMap],
   );
 

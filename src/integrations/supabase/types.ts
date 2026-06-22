@@ -535,6 +535,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          is_sdr_override: boolean
           must_change_password: boolean
           updated_at: string
           user_id: string
@@ -547,6 +548,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          is_sdr_override?: boolean
           must_change_password?: boolean
           updated_at?: string
           user_id: string
@@ -559,6 +561,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          is_sdr_override?: boolean
           must_change_password?: boolean
           updated_at?: string
           user_id?: string
@@ -753,6 +756,7 @@ export type Database = {
         Args: never
         Returns: {
           full_name: string
+          is_sdr_override: boolean
           user_id: string
         }[]
       }
