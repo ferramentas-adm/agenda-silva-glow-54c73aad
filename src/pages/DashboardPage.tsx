@@ -669,7 +669,11 @@ export function CalendarContent() {
     setEditMode(true);
   };
 
-  // Handle edit save — same day only, just update time
+  // Handle edit save — same day, novo horário.
+  // Edição de horário NÃO conta como reagendamento (mesmo dia → não afeta
+  // "Não comparecimento"). Porém o agendamento volta para "Aguardando atribuição":
+  // o closer_id é zerado para que o gestor reavalie a alocação. O webhook do
+  // CRM será disparado como "Agendado" quando o novo closer for atribuído.
   const handleEditSave = async () => {
     if (!detailAg || !editTime) return;
 
@@ -680,11 +684,9 @@ export function CalendarContent() {
 
     setSavingEdit(true);
     try {
-      // Edição de horário NO MESMO DIA: apenas move o card, mantém o status atual
-      // (não vira 'reagendada' — reagendamento só ocorre quando muda de DIA, via /agendar).
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ scheduled_time: editTime } as any)
+        .update({ scheduled_time: editTime, closer_id: null } as any)
         .eq("id", detailAg.id)
         .select("id");
       if (error) throw error;
@@ -692,16 +694,11 @@ export function CalendarContent() {
         throw new Error("Você não tem permissão para editar este agendamento.");
       }
       // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
-      // Reenvia ao DataCrazy com status "Confirmado" (mesmo dia, novo horário).
-      void resendAgendamentoWebhook({
-        agendamentoId: detailAg.id,
-        statusDisplay: "Confirmado",
-      });
-      toast.success("Horário atualizado!");
-      setDetailAg({ ...detailAg, scheduled_time: editTime });
-      patchAgendamentosCache(detailAg.id, (ag) => ({ ...ag, scheduled_time: editTime }));
+      toast.success("Horário atualizado. Agendamento enviado para Aguardando atribuição.");
+      setDetailAg(null);
       setEditMode(false);
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-assignments"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar horário");
     }
