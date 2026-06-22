@@ -62,7 +62,7 @@ export default function AguardandoAtribuicaoPage() {
         .is("closer_id", null)
         .is("deleted_at", null)
         .neq("status", "cancelada")
-        .neq("meeting_reason", "segunda_reuniao")
+        .or("meeting_reason.is.null,meeting_reason.neq.segunda_reuniao")
         .gte("scheduled_date", todayStr)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
