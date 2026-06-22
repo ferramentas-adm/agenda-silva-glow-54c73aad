@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { UserPlus, Phone, FileText, MessageSquare, Clock, Sparkles, RotateCcw, History } from "lucide-react";
+import { UserPlus, Phone, FileText, MessageSquare, Clock, Sparkles, RotateCcw, History, AlertTriangle } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,7 @@ interface Agendamento {
   meeting_reason: string | null;
   is_5k: boolean | null;
   original_agendamento_id: string | null;
+  sdr_error: boolean | null;
 }
 
 interface Closer {
@@ -43,6 +44,7 @@ export default function AguardandoAtribuicaoPage() {
   const queryClient = useQueryClient();
   const [selecting, setSelecting] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [togglingErrId, setTogglingErrId] = useState<string | null>(null);
 
   const todayStr = (() => {
     const d = new Date();
@@ -56,7 +58,7 @@ export default function AguardandoAtribuicaoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id, sdr_error")
         .is("closer_id", null)
         .is("deleted_at", null)
         .neq("status", "cancelada")
@@ -272,6 +274,29 @@ export default function AguardandoAtribuicaoPage() {
     }
   };
 
+  const handleToggleSdrError = async (a: Agendamento) => {
+    setTogglingErrId(a.id);
+    try {
+      const newVal = !a.sdr_error;
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({
+          sdr_error: newVal,
+          sdr_error_at: newVal ? new Date().toISOString() : null,
+          sdr_error_by: newVal ? user?.id ?? null : null,
+        } as any)
+        .eq("id", a.id);
+      if (error) throw error;
+      toast.success(newVal ? "Erro de SDR marcado." : "Erro de SDR desmarcado.");
+      queryClient.invalidateQueries({ queryKey: ["pending-closer-assignment"] });
+      queryClient.invalidateQueries({ queryKey: ["sdr-errors"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao marcar erro de SDR.");
+    } finally {
+      setTogglingErrId(null);
+    }
+  };
+
   if (permLoading) {
     return (
       <AppLayout>
@@ -417,7 +442,20 @@ export default function AguardandoAtribuicaoPage() {
                     </div>
                   )}
 
-
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      variant={a.sdr_error ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleToggleSdrError(a)}
+                      disabled={togglingErrId === a.id}
+                      className={a.sdr_error
+                        ? "bg-amber-500 text-white hover:bg-amber-600"
+                        : "text-amber-600 border-amber-500/40 hover:bg-amber-500/10"}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+                      {a.sdr_error ? "Erro de SDR marcado" : "Marcar erro de SDR"}
+                    </Button>
+                  </div>
                 </div>
               );
             })}
