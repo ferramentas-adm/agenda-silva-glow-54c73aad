@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { UserPlus, Phone, FileText, MessageSquare } from "lucide-react";
+import { UserPlus, Phone, FileText, MessageSquare, Clock, Sparkles, RotateCcw, History } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,9 @@ interface Agendamento {
   channel_type: string | null;
   sdr_responsavel_id: string | null;
   created_by: string;
+  meeting_reason: string | null;
+  is_5k: boolean | null;
+  original_agendamento_id: string | null;
 }
 
 interface Closer {
@@ -53,10 +56,11 @@ export default function AguardandoAtribuicaoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id")
         .is("closer_id", null)
         .is("deleted_at", null)
         .neq("status", "cancelada")
+        .neq("meeting_reason", "segunda_reuniao")
         .gte("scheduled_date", todayStr)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
@@ -127,6 +131,72 @@ export default function AguardandoAtribuicaoPage() {
   });
   const profileName = (id: string | null) =>
     (profiles as any[]).find((p) => p.user_id === id)?.full_name ?? "—";
+
+  // Datas das reuniões originais (para indicador de reagendamento)
+  const originalIds = Array.from(
+    new Set(pending.map((p) => p.original_agendamento_id).filter(Boolean) as string[]),
+  );
+  const { data: originals = [] } = useQuery({
+    queryKey: ["pending-originals", originalIds.join(",")],
+    enabled: originalIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, scheduled_date, scheduled_time")
+        .in("id", originalIds);
+      return data ?? [];
+    },
+  });
+  const originalById = (id: string | null) =>
+    (originals as any[]).find((o) => o.id === id);
+
+  // Histórico do lead por telefone (reuniões anteriores)
+  const rawPhones = Array.from(
+    new Set(pending.map((p) => p.lead_phone).filter((p): p is string => !!p)),
+  );
+  const { data: history = [] } = useQuery({
+    queryKey: ["pending-lead-history", rawPhones.join(",")],
+    enabled: rawPhones.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, lead_phone, status, scheduled_date, vendas(vendeu)")
+        .is("deleted_at", null)
+        .in("lead_phone", rawPhones);
+      return data ?? [];
+    },
+  });
+
+  function leadHistory(phone: string, currentId: string) {
+    const norm = (phone || "").replace(/\D/g, "");
+    if (!norm) return { count: 0, lastLabel: null as string | null };
+    const prior = (history as any[])
+      .filter(
+        (h) =>
+          h.id !== currentId &&
+          (h.lead_phone || "").replace(/\D/g, "") === norm,
+      )
+      .sort((a, b) => (a.scheduled_date < b.scheduled_date ? 1 : -1));
+    if (prior.length === 0) return { count: 0, lastLabel: null };
+    const last = prior[0];
+    const sold = Array.isArray(last.vendas) && last.vendas.some((v: any) => v.vendeu);
+    const statusMap: Record<string, string> = {
+      realizada: sold ? "vendida" : "realizada",
+      agendada: "agendada",
+      confirmada: "confirmada",
+      reagendada: "reagendada",
+      cancelada: "cancelada",
+      no_show: "no-show",
+    };
+    return { count: prior.length, lastLabel: statusMap[last.status] ?? last.status };
+  }
+
+  function meetingReasonLabel(reason: string | null, isReschedule: boolean): string {
+    if (isReschedule) return "Reagendamento";
+    if (!reason || reason === "primeira_reuniao") return "1ª Reunião";
+    if (reason === "segunda_reuniao") return "2ª Reunião";
+    return reason;
+  }
 
   const handleAssign = async (a: Agendamento) => {
     const closerId = selecting[a.id];
@@ -237,11 +307,33 @@ export default function AguardandoAtribuicaoPage() {
             {pending.map((a) => {
               const dateObj = new Date(`${a.scheduled_date}T12:00:00`);
               const sdrLabel = profileName(a.sdr_responsavel_id ?? a.created_by);
+              const isReschedule = !!a.original_agendamento_id;
+              const original = isReschedule ? originalById(a.original_agendamento_id) : null;
+              const hist = leadHistory(a.lead_phone, a.id);
               return (
                 <div key={a.id} className="card-meeting p-4 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="text-base font-semibold">{a.lead_name}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-semibold">{a.lead_name}</span>
+                        {a.is_5k && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                            <Sparkles className="h-3 w-3" /> Projeto 5K
+                          </span>
+                        )}
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                          {meetingReasonLabel(a.meeting_reason, isReschedule)}
+                        </span>
+                        {isReschedule && original && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground"
+                            title={`Original: ${format(new Date(`${original.scheduled_date}T12:00:00`), "dd/MM/yyyy", { locale: ptBR })} às ${String(original.scheduled_time).slice(0, 5)}`}
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            de {format(new Date(`${original.scheduled_date}T12:00:00`), "dd/MM", { locale: ptBR })}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Phone className="h-3.5 w-3.5" /> {a.lead_phone || "—"}
@@ -249,10 +341,20 @@ export default function AguardandoAtribuicaoPage() {
                         <span>
                           {format(dateObj, "EEE, dd/MM/yyyy", { locale: ptBR })} · {a.scheduled_time.slice(0, 5)}
                         </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" /> {a.duration_minutes ?? 60} min
+                        </span>
                         {a.channel_type && (
                           <span className="rounded-full bg-secondary px-2 py-0.5">{a.channel_type}</span>
                         )}
                         <span>SDR: <strong className="text-foreground">{sdrLabel}</strong></span>
+                        {hist.count > 0 && (
+                          <span className="flex items-center gap-1">
+                            <History className="h-3.5 w-3.5" />
+                            {hist.count} reunião{hist.count > 1 ? "ões" : ""} anterior{hist.count > 1 ? "es" : ""}
+                            {hist.lastLabel ? ` · última: ${hist.lastLabel}` : ""}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-end gap-2">
