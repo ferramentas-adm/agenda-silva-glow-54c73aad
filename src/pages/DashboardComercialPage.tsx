@@ -4,7 +4,7 @@ import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfW
 import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
-  Play, Pause, ChevronLeft, ChevronRight, CalendarDays,
+  Play, Pause, ChevronLeft, ChevronRight, ChevronDown, CalendarDays,
   TrendingUp, RefreshCw, Trophy, Users, Wifi, Eye, EyeOff,
   LayoutGrid,
 } from "lucide-react";
