@@ -1169,24 +1169,9 @@ export function CalendarContent() {
                 </Button>
               )}
 
-              {/* Reagendar — cria nova agenda em outro dia/horário.
-                  A nova reunião vai para "Aguardando atribuição" (sem Closer)
-                  e a original é marcada como "Reagendada" (entra em
-                  "Não comparecimento" e dispara webhook "Reagendada" no CRM). */}
-              {canChangeStatus && detailAg.status !== "realizada" && detailAg.status !== "reagendada" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs w-full border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
-                  onClick={() => {
-                    setRescheduleDate(null);
-                    setRescheduleTime(null);
-                    setRescheduleOpen(true);
-                  }}
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />Reagendar
-                </Button>
-              )}
+              {/* Botão "Reagendar" foi movido para a seção "Alterar status"
+                  abaixo, junto de Confirmar / Realizada / Cancelar / No-show. */}
+
 
               {/* Botão "Transferir lead para outro closer" escondido por solicitação.
                   Lógica de transferência preservada (handleTransferLead + dialog). */}
