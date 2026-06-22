@@ -51,12 +51,12 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
       return dcLeads.map(mapToLead);
     },
     enabled: !!tagAgendamentoId,
-    // Sempre re-buscar ao abrir a tela / focar a aba, para que leads
-    // recém-tagueados no DataCrazy apareçam imediatamente.
-    staleTime: 0,
+    // Cache de 60s alinhado ao cache do edge proxy. Botão "Atualizar"
+    // permite refresh manual sob demanda.
+    staleTime: 60_000,
     gcTime: 30 * 60_000,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     placeholderData: (prev) => prev,
   });
 
