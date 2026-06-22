@@ -29,6 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { isSdrOverrideName } from "@/lib/sdrOverrides";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
@@ -241,6 +242,12 @@ export function CalendarContent() {
         .select("user_id, role");
       const map = new Map<string, string>();
       (data ?? []).forEach((r: { user_id: string; role: string }) => map.set(r.user_id, r.role));
+      // Override: moderadores que atuam como SDR devem ser tratados como SDR
+      // para fins de métricas/listas (Métricas SDRs, Ranking, Produtividade, Erros).
+      const { data: profiles } = await supabase.rpc("get_public_profiles");
+      (profiles ?? []).forEach((p: { user_id: string; full_name: string }) => {
+        if (isSdrOverrideName(p.full_name)) map.set(p.user_id, "sdr");
+      });
       return map;
     },
     // Lista de papéis muda raramente — evita refetches de minuto em minuto.

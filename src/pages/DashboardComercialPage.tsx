@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
+import { isSdrOverrideName } from "@/lib/sdrOverrides";
 import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
 
 type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr";
@@ -298,14 +299,16 @@ export default function DashboardComercialPage() {
         .from("user_roles")
         .select("user_id")
         .eq("role", "sdr");
-      if (!roles?.length) return [];
-      const userIds = roles.map(r => r.user_id);
+      const userIds = (roles ?? []).map(r => r.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name")
-        .in("user_id", userIds)
         .eq("active", true);
-      return (profiles ?? []) as SDRProfile[];
+      const sdrSet = new Set(userIds);
+      // Inclui moderadores que atuam como SDR (override por nome).
+      return ((profiles ?? []) as SDRProfile[]).filter(
+        (p) => sdrSet.has(p.user_id) || isSdrOverrideName(p.full_name),
+      );
     },
     staleTime: 5 * 60 * 1000,
   });

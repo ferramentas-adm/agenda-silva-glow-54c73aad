@@ -11,6 +11,7 @@ import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
+import { isSdrOverrideName } from "@/lib/sdrOverrides";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -215,7 +216,10 @@ export default function ReunioesListPage() {
   }, [isCloser, user, profiles, closers]);
 
   // Only profiles with SDR role for SDR filter
-  const sdrProfiles = useMemo(() => profiles.filter((p) => roleMap[p.user_id] === "sdr"), [profiles, roleMap]);
+  const sdrProfiles = useMemo(
+    () => profiles.filter((p) => roleMap[p.user_id] === "sdr" || isSdrOverrideName(p.full_name)),
+    [profiles, roleMap],
+  );
 
   // Helper: resolve effective SDR for an agendamento
   const sdrIdOf = (ag: any): string | null => ag.sdr_responsavel_id || ag.created_by || null;
