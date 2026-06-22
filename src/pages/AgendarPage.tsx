@@ -571,7 +571,7 @@ export default function AgendarPage() {
                   className={cn("p-3 pointer-events-auto rounded-md border")}
                 />
 
-                {date && closerId && (
+                {date && (canPickCloser ? closerId : true) && (
                   <TimeSlotPicker
                     closerId={closerId}
                     date={date}
@@ -583,7 +583,7 @@ export default function AgendarPage() {
                   />
                 )}
 
-                {date && !closerId && (
+                {date && canPickCloser && !closerId && (
                   <p className="text-sm text-muted-foreground">
                     Selecione um closer primeiro (etapa anterior).
                   </p>
@@ -592,13 +592,17 @@ export default function AgendarPage() {
             </>
           )}
 
-          {step === "confirm" && lead && closerId && date && time && (
+          {step === "confirm" && lead && date && time && (
             <>
               <h2 className="text-lg font-semibold">Confirmar Agendamento</h2>
 
               <div className="space-y-3">
                 <SummaryRow label="Lead" value={`${lead.name} · ${lead.phone}`} />
-                <SummaryRow label="Closer" value={closerName} />
+                {closerId ? (
+                  <SummaryRow label="Closer" value={closerName} />
+                ) : (
+                  <SummaryRow label="Closer" value="A definir (fila de atribuição)" />
+                )}
                 <SummaryRow label="Data" value={format(date, "dd/MM/yyyy")} />
                 <SummaryRow
                   label="Horário"
