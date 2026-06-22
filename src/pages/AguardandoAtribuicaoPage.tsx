@@ -30,6 +30,7 @@ interface Agendamento {
   meeting_reason: string | null;
   is_5k: boolean | null;
   original_agendamento_id: string | null;
+  sdr_error: boolean | null;
 }
 
 interface Closer {
