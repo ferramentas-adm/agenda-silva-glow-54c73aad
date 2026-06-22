@@ -78,6 +78,45 @@ export default function AguardandoAtribuicaoPage() {
     },
   });
 
+  // Bloqueios de agenda dos closers (data específica + recorrentes)
+  const pendingDates = Array.from(new Set(pending.map((p) => p.scheduled_date)));
+  const pendingWeekdays = Array.from(
+    new Set(pendingDates.map((d) => new Date(`${d}T12:00:00`).getDay())),
+  );
+  const { data: blocks = [] } = useQuery({
+    queryKey: ["closer-blocks-pending", pendingDates.join(","), pendingWeekdays.join(",")],
+    enabled: pendingDates.length > 0,
+    queryFn: async () => {
+      const orParts: string[] = [];
+      if (pendingDates.length > 0) {
+        orParts.push(`and(is_recurring.eq.false,block_date.in.(${pendingDates.join(",")}))`);
+      }
+      if (pendingWeekdays.length > 0) {
+        orParts.push(`and(is_recurring.eq.true,recurrence_weekday.in.(${pendingWeekdays.join(",")}))`);
+      }
+      const { data } = await supabase
+        .from("closer_blocks")
+        .select("closer_id, start_time, end_time, is_recurring, recurrence_weekday, block_date")
+        .or(orParts.join(","));
+      return data ?? [];
+    },
+  });
+
+  function isCloserBlocked(closerId: string, date: string, time: string): boolean {
+    const slotH = parseInt(time.slice(0, 2), 10);
+    const weekday = new Date(`${date}T12:00:00`).getDay();
+    return (blocks as any[]).some((b) => {
+      if (b.closer_id !== closerId) return false;
+      const matchesDate = b.is_recurring
+        ? b.recurrence_weekday === weekday
+        : b.block_date === date;
+      if (!matchesDate) return false;
+      const startH = parseInt(b.start_time.slice(0, 2), 10);
+      const endH = parseInt(b.end_time.slice(0, 2), 10);
+      return slotH >= startH && slotH < endH;
+    });
+  }
+
   // Map de SDR (created_by/sdr_responsavel_id) → nome
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-for-pending-list"],
