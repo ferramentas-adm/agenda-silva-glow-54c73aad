@@ -1,37 +1,54 @@
-## Acelerar a busca de leads do DataCrazy
+## 1. Limite de 2 reuniões/horário por Closer
 
-A busca por leads com a tag `agendamento` ainda é lenta porque cada abertura/foco da tela refaz toda a paginação sequencial no DataCrazy (6+ requisições com gap de 350ms + jitter, sem cache compartilhado entre montagens/abas/usuários). Mesmo com menos leads, isso custa 3-5s a cada clique.
+Validação no `handleAssign` da `AguardandoAtribuicaoPage`:
+- Antes de atribuir, contar agendamentos do Closer escolhido no mesmo `scheduled_date` + `scheduled_time` (ativos, `deleted_at IS NULL`, status ≠ `cancelada`).
+- Se ≥ 2 → toast de erro bloqueando ("Esse Closer já tem 2 reuniões nesse horário"). Sem override.
+- Aplicar somente nessa tela (atribuição manual do gestor), como solicitado.
 
-### O que vamos fazer (4 mudanças combinadas)
+## 2. Análise IA do lead (nota + justificativa) + sugestão de Closer
 
-#### 1. Cache no edge `datacrazy-proxy` (maior ganho)
-- Cache em memória por instância (Map com TTL de **60s**) para respostas de `GET /leads*` e `GET /tags`.
-- Chave: `method + path`. Hits servem 200 sem chamar DataCrazy → 2º clique é instantâneo e a janela cobre múltiplos usuários/abas.
-- Em 429 do upstream, ler `Retry-After` e tentar até 2x dentro da própria edge antes de devolver erro.
+**UX:** botão "Analisar com IA" em cada card da tela Aguardando Atribuição. Resultado aparece inline no card (nota 0-100, badge de qualidade, parágrafo curto explicando o porquê, e sugestão de Closer com motivo). Cache em React Query por `agendamento.id` durante a sessão pra não regerar a cada render.
 
-#### 2. Paginação concorrente no client
-Em `src/services/datacrazy.ts → buscarLeadsComTagId`:
-- 1ª página descobre `count` (quando vier).
-- Demais páginas disparam em **lotes de 3 em paralelo** (com pequeno jitter), em vez de 1 em 1.
-- Mantém o backoff exponencial para 429.
-- Resultado: para 600 leads (6 páginas), cai de ~6×700ms ≈ 4,2s para ~2 lotes ≈ 1,5s.
+**Backend:** nova edge function `analisar-lead-ia` (`supabase/functions/analisar-lead-ia/index.ts`) que recebe `{ agendamento_id }` e:
 
-#### 3. Cache do React Query mais agressivo + sem refetch agressivo
-Em `src/components/agendar/LeadSearch.tsx` e em `AppLayout.tsx`:
-- `staleTime: 60_000` (estava `0`).
-- Remover `refetchOnMount: "always"` e `refetchOnWindowFocus: true`.
-- Manter o botão "Atualizar" para refresh manual sob demanda.
-- Resultado: abrir/voltar para a tela usa dados em cache instantaneamente; revalidação só quando expira ou pelo botão.
+1. Carrega dados do lead/agendamento: `lead_name`, `lead_phone`, `briefing`, `observation`, `channel_type`, `meeting_reason`, `sdr_responsavel_id`.
+2. Consulta DataCrazy (reaproveitando `datacrazy-proxy`) pra buscar tags, faturamento, segmento, origem e observações do lead pelo telefone normalizado.
+3. Monta **contexto histórico** a partir do banco:
+   - Histórico do próprio lead (telefone): agendamentos anteriores, no-shows, reagendamentos.
+   - Padrão de vendas fechadas (últimos 90 dias): `vendas` join `agendamentos` onde `vendeu = true` — extrai perfis (faturamento médio, segmentos, origens, tags mais comuns).
+   - Por Closer ativo (excluindo Amanda Padilha): taxa de conversão geral (vendas/realizadas), ticket médio, perfil de leads que mais converte (faturamento/segmento dominante), no-show rate, carga atual no dia do agendamento.
+4. Chama Lovable AI (`google/gemini-3-flash-preview`) com `Output.object` (zod) retornando:
+   ```ts
+   {
+     score: number,           // 0-100
+     qualidade: "alta"|"media"|"baixa",
+     justificativa: string,   // pt-BR, 2-4 frases
+     pontos_fortes: string[],
+     pontos_atencao: string[],
+     closer_sugerido: { id: string, nome: string, motivo: string } | null
+   }
+   ```
+   Sistema prompt em pt-BR explicando regras e que match deve combinar perfil do lead + histórico do Closer + disponibilidade.
 
-#### 4. Pré-carregar em background no login (warm cache)
-- Em `AppLayout.tsx`, disparar `prefetchQuery(["datacrazy-leads-agendamento"])` logo após o login, em background. Quando o usuário entrar em "Agendar", os leads já estão prontos.
+**Frontend:** novo componente `LeadAIAnalysis.tsx` consumindo a edge function via `useMutation`. Mostra loading, nota colorida (verde/amarelo/vermelho), justificativa, e botão "Usar [Closer sugerido]" que pré-seleciona no `<Select>` existente.
 
-### Arquivos
-- `supabase/functions/datacrazy-proxy/index.ts` — cache 60s + retry em 429 com `Retry-After`.
-- `src/services/datacrazy.ts` — paginação concorrente em lotes de 3.
-- `src/components/agendar/LeadSearch.tsx` — `staleTime` + remover refetch agressivo.
-- `src/components/AppLayout.tsx` — prefetch em background + mesmo `staleTime`.
+## 3. Arquivos afetados
 
-### Fora de escopo (posso fazer depois se precisar)
-- Trocar paginação por busca server-side (`/leads?search=`) — exige confirmar se o DataCrazy retorna apenas leads com a tag `agendamento` no `search`, e mudaria a UX (busca on-type direto no servidor).
-- Persistir cache em `localStorage` (PersistQueryClient) — só vale se quiser carregamento instantâneo entre recargas de página.
+- `src/pages/AguardandoAtribuicaoPage.tsx` — validação 2/horário; integração do componente de análise; preencher Select via sugestão.
+- `src/components/aguardando/LeadAIAnalysis.tsx` (novo) — UI da análise.
+- `supabase/functions/analisar-lead-ia/index.ts` (novo) — coleta contexto + chamada Lovable AI.
+- `supabase/config.toml` — registrar a função (verify_jwt = true).
+
+## 4. Pontos técnicos
+
+- LOVABLE_API_KEY já existe no projeto.
+- Tratar erros 429/402 da Lovable AI com toast claro.
+- Limitar contexto enviado ao modelo (top 20 vendas recentes + resumo agregado por Closer) pra controlar custo/latência.
+- Não persiste a análise (on-demand, conforme escolha do usuário). Cache em React Query (`staleTime: 10min`).
+- Sem mudanças de schema, sem migração.
+
+## 5. Fora de escopo
+
+- Limite em outros fluxos (SDR agendando, edição) — mantido como hoje.
+- Persistir score no banco.
+- Retreinar/aprender automaticamente.
