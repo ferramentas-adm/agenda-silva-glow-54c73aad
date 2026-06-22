@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { UserPlus, Phone, FileText, MessageSquare, Clock, Sparkles, RotateCcw, History } from "lucide-react";
+import { UserPlus, Phone, FileText, MessageSquare, Clock, Sparkles, RotateCcw, History, AlertTriangle } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
