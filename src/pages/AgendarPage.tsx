@@ -226,12 +226,16 @@ export default function AgendarPage() {
 
   const canGoNext: Record<Step, boolean> = {
     lead: !!lead,
-    closer: !!closerId,
+    // Closer é opcional para gestor/moderador (podem deixar para a fila de atribuição).
+    closer: canPickCloser ? true : !!closerId,
     datetime: !!date && !!time,
     confirm: true,
   };
 
-  const steps: Step[] = isReschedule ? ["closer", "datetime", "confirm"] : ["lead", "closer", "datetime", "confirm"];
+  const baseSteps: Step[] = canPickCloser
+    ? ["lead", "closer", "datetime", "confirm"]
+    : ["lead", "datetime", "confirm"];
+  const steps: Step[] = isReschedule ? baseSteps.filter((s) => s !== "lead") : baseSteps;
   const stepIndex = steps.indexOf(step);
 
   const goNext = () => {
