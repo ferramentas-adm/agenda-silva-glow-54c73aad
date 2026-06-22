@@ -302,13 +302,14 @@ export default function DashboardComercialPage() {
       const userIds = (roles ?? []).map(r => r.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, full_name")
+        .select("user_id, full_name, is_sdr_override")
         .eq("active", true);
       const sdrSet = new Set(userIds);
-      // Inclui moderadores que atuam como SDR (override por nome).
-      return ((profiles ?? []) as SDRProfile[]).filter(
-        (p) => sdrSet.has(p.user_id) || isSdrOverrideName(p.full_name),
-      );
+      // Inclui usuários marcados com "Atua como SDR" no /admin (override DB)
+      // ou em fallback por nome (legado).
+      return ((profiles ?? []) as any[])
+        .filter((p) => sdrSet.has(p.user_id) || p.is_sdr_override === true || isSdrOverrideName(p.full_name))
+        .map((p) => ({ user_id: p.user_id, full_name: p.full_name })) as SDRProfile[];
     },
     staleTime: 5 * 60 * 1000,
   });
