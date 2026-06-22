@@ -373,18 +373,42 @@ export default function DashboardComercialPage() {
 
     const sc = (list: AgendamentoMetric[], s: string) => list.filter(a => a.status === s).length;
 
+    // Mapa user_id -> nome do SDR (já filtrado em sdrProfiles para incluir overrides).
+    const sdrNameMap = new Map(sdrProfiles.map((p) => [p.user_id, p.full_name]));
+    const sdrIdOf = (a: AgendamentoMetric): string | null =>
+      a.sdr_responsavel_id || a.created_by || null;
+
+    type ChannelAgg = {
+      ids: string[]; idsRealizadas: string[]; idsVendas: string[]; valorVendas: number;
+      bySdr: Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[]; valorVendas: number }>;
+    };
+
     const byChannel = (list: AgendamentoMetric[]) => {
-      const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[]; valorVendas: number }>();
+      const map = new Map<string, ChannelAgg>();
       list.forEach(a => {
         const ch = a.channel_type || "Sem canal";
-        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
+        let cur = map.get(ch);
+        if (!cur) {
+          cur = { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0, bySdr: new Map() };
+          map.set(ch, cur);
+        }
         cur.ids.push(a.id);
         if (a.status === "realizada") cur.idsRealizadas.push(a.id);
-        if (soldSet.has(a.id)) {
-          cur.idsVendas.push(a.id);
-          cur.valorVendas += soldValueMap.get(a.id) || 0;
+        const sold = soldSet.has(a.id);
+        const valor = sold ? (soldValueMap.get(a.id) || 0) : 0;
+        if (sold) { cur.idsVendas.push(a.id); cur.valorVendas += valor; }
+
+        const sdrId = sdrIdOf(a);
+        if (sdrId && sdrNameMap.has(sdrId)) {
+          let bucket = cur.bySdr.get(sdrId);
+          if (!bucket) {
+            bucket = { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
+            cur.bySdr.set(sdrId, bucket);
+          }
+          bucket.ids.push(a.id);
+          if (a.status === "realizada") bucket.idsRealizadas.push(a.id);
+          if (sold) { bucket.idsVendas.push(a.id); bucket.valorVendas += valor; }
         }
-        map.set(ch, cur);
       });
       return Array.from(map.entries())
         .sort((a, b) => b[1].ids.length - a[1].ids.length)
@@ -398,6 +422,19 @@ export default function DashboardComercialPage() {
           qtdVendas: v.idsVendas.length,
           idsVendas: v.idsVendas,
           valorVendas: v.valorVendas,
+          sdrBreakdown: Array.from(v.bySdr.entries())
+            .map(([sdrId, b]) => ({
+              sdrId,
+              sdrName: sdrNameMap.get(sdrId) || "—",
+              qtd: b.ids.length,
+              ids: b.ids,
+              qtdRealizadas: b.idsRealizadas.length,
+              idsRealizadas: b.idsRealizadas,
+              qtdVendas: b.idsVendas.length,
+              idsVendas: b.idsVendas,
+              valorVendas: b.valorVendas,
+            }))
+            .sort((a, b) => b.qtd - a.qtd),
         }));
     };
 
