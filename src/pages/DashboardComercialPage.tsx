@@ -805,16 +805,49 @@ function FullSlotsTodayCard() {
 
 
 // ─── Channel Table ───────────────────────────────────────────────
+type SdrBreakdownRow = {
+  sdrId: string;
+  sdrName: string;
+  qtd: number;
+  ids: string[];
+  qtdRealizadas: number;
+  idsRealizadas: string[];
+  qtdVendas: number;
+  idsVendas: string[];
+  valorVendas: number;
+};
+
+type ChannelRow = {
+  num: number;
+  canal: string;
+  qtd: number;
+  ids: string[];
+  qtdRealizadas: number;
+  idsRealizadas: string[];
+  qtdVendas: number;
+  idsVendas: string[];
+  valorVendas: number;
+  sdrBreakdown?: SdrBreakdownRow[];
+};
+
 function ChannelTable({
   title,
   data,
   onRowClick,
 }: {
   title: string;
-  data: { num: number; canal: string; qtd: number; ids: string[]; qtdRealizadas: number; idsRealizadas: string[]; qtdVendas: number; idsVendas: string[]; valorVendas: number }[];
+  data: ChannelRow[];
   onRowClick?: (row: { canal: string; ids: string[]; mode: "todas" | "realizadas" | "vendas" }) => void;
 }) {
   const [mode, setMode] = useState<"todas" | "realizadas" | "vendas">("todas");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (canal: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(canal) ? next.delete(canal) : next.add(canal);
+      return next;
+    });
 
   const rows = useMemo(() => {
     const mapped = data.map((r) => ({
@@ -841,6 +874,13 @@ function ChannelTable({
       {label}
     </button>
   );
+
+  const baseColSpan = 3 + (mode === "vendas" ? 1 : 0) + (showTaxa ? 1 : 0);
+  const fmtMoney = (v: number) =>
+    v > 0
+      ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      : "—";
+  const pct = (num: number, den: number) => (den > 0 ? `${((num / den) * 100).toFixed(1)}%` : "—");
 
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
@@ -876,39 +916,92 @@ function ChannelTable({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={3 + (mode === "vendas" ? 1 : 0) + (showTaxa ? 1 : 0)} className="text-center text-muted-foreground py-4 text-xs">
+                <td colSpan={baseColSpan} className="text-center text-muted-foreground py-4 text-xs">
                   Nenhum registro
                 </td>
               </tr>
             )}
-            {rows.map((row) => (
-              <tr
-                key={row.canal}
-                className={cn(
-                  "border-b border-primary/5",
-                  onRowClick && "cursor-pointer hover:bg-primary/5 transition-colors"
-                )}
-                onClick={onRowClick ? () => onRowClick({ canal: row.canal, ids: row.currentIds, mode }) : undefined}
-              >
-                <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
-                <td className="py-2 px-2 font-medium">{row.canal}</td>
-                <td className="py-2 px-2 text-right font-bold">{row.currentQtd}</td>
-                {mode === "vendas" && (
-                  <td className="py-2 px-2 text-right tabular-nums font-semibold">
-                    {row.valorVendas > 0
-                      ? row.valorVendas.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 })
-                      : "—"}
-                  </td>
-                )}
-                {showTaxa && (
-                  <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
-                    {row.qtd > 0
-                      ? `${(((mode === "realizadas" ? row.qtdRealizadas : row.qtdVendas) / row.qtd) * 100).toFixed(0)}%`
-                      : "—"}
-                  </td>
-                )}
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const isOpen = expanded.has(row.canal);
+              const hasBreakdown = (row.sdrBreakdown?.length ?? 0) > 0;
+              return (
+                <Fragment key={row.canal}>
+                  <tr className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
+                    <td className="py-2 px-2 text-muted-foreground">{row.num}</td>
+                    <td className="py-2 px-2">
+                      <button
+                        type="button"
+                        onClick={() => hasBreakdown && toggleExpand(row.canal)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 font-medium text-left",
+                          hasBreakdown ? "hover:text-primary cursor-pointer" : "cursor-default",
+                        )}
+                        title={hasBreakdown ? (isOpen ? "Recolher SDRs" : "Ver produção por SDR") : undefined}
+                      >
+                        {hasBreakdown && (
+                          isOpen
+                            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                        {row.canal}
+                      </button>
+                    </td>
+                    <td
+                      className={cn("py-2 px-2 text-right font-bold tabular-nums", onRowClick && row.currentIds.length > 0 && "cursor-pointer hover:text-primary")}
+                      onClick={onRowClick && row.currentIds.length > 0 ? () => onRowClick({ canal: row.canal, ids: row.currentIds, mode }) : undefined}
+                    >
+                      {row.currentQtd}
+                    </td>
+                    {mode === "vendas" && (
+                      <td className="py-2 px-2 text-right tabular-nums font-semibold">
+                        {fmtMoney(row.valorVendas)}
+                      </td>
+                    )}
+                    {showTaxa && (
+                      <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                        {row.qtd > 0
+                          ? `${(((mode === "realizadas" ? row.qtdRealizadas : row.qtdVendas) / row.qtd) * 100).toFixed(0)}%`
+                          : "—"}
+                      </td>
+                    )}
+                  </tr>
+                  {isOpen && hasBreakdown && (
+                    <tr key={`${row.canal}-detail`} className="bg-muted/10">
+                      <td colSpan={baseColSpan} className="px-2 py-2">
+                        <div className="rounded-lg border border-primary/10 bg-background/50 overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-muted-foreground border-b border-primary/10">
+                                <th className="text-left py-1.5 px-2 font-medium">SDR</th>
+                                <th className="text-right py-1.5 px-2 font-medium">Agend.</th>
+                                <th className="text-right py-1.5 px-2 font-medium">Realiz.</th>
+                                <th className="text-right py-1.5 px-2 font-medium">Vendas</th>
+                                <th className="text-right py-1.5 px-2 font-medium">Valor (R$)</th>
+                                <th className="text-right py-1.5 px-2 font-medium">Tx. Comparec.</th>
+                                <th className="text-right py-1.5 px-2 font-medium">Tx. Conversão</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {row.sdrBreakdown!.map((s) => (
+                                <tr key={s.sdrId} className="border-b border-primary/5 last:border-b-0">
+                                  <td className="py-1.5 px-2 font-medium">{s.sdrName}</td>
+                                  <td className="py-1.5 px-2 text-right tabular-nums font-semibold">{s.qtd}</td>
+                                  <td className="py-1.5 px-2 text-right tabular-nums text-emerald-500">{s.qtdRealizadas}</td>
+                                  <td className={cn("py-1.5 px-2 text-right tabular-nums", s.qtdVendas > 0 ? "text-primary font-semibold" : "text-muted-foreground")}>{s.qtdVendas}</td>
+                                  <td className="py-1.5 px-2 text-right tabular-nums">{s.valorVendas > 0 ? s.valorVendas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0,00"}</td>
+                                  <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{pct(s.qtdRealizadas, s.qtd)}</td>
+                                  <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{pct(s.qtdVendas, s.qtdRealizadas)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
