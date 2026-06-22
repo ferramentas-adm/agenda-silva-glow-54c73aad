@@ -47,6 +47,13 @@ const PageSpinner = () => (
   </div>
 );
 
+const HomeRoute = () => {
+  const { role, loading } = useAuth() as any;
+  if (loading) return <PageSpinner />;
+  if (role === "sdr") return <Navigate to="/agendar" replace />;
+  return <DashboardPage />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
