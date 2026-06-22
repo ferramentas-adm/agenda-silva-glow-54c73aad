@@ -47,6 +47,7 @@ const DEFAULT_CHANNEL_TYPES = [
 ];
 
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { useSlotLimit } from "@/hooks/useSlotLimit";
 
 export default function AgendarPage() {
   const { user, role } = useAuth();
