@@ -1363,7 +1363,89 @@ export function CalendarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule offer dialog removido — botão Reagendar foi descontinuado. */}
+      {/* Reagendar dialog — cria nova agenda em outra data/horário.
+          A original vira "Reagendada" via trigger; a nova nasce sem closer e
+          entra em "Aguardando atribuição". */}
+      <Dialog
+        open={rescheduleOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setRescheduleOpen(false);
+            setRescheduleDate(null);
+            setRescheduleTime(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-amber-500" />
+              Reagendar reunião
+            </DialogTitle>
+            <DialogDescription>
+              Escolha a nova data e horário para <strong>{detailAg?.lead_name}</strong>.
+              O agendamento original será marcado como <strong>Reagendada</strong> e a
+              nova reunião entrará em <strong>Aguardando atribuição</strong> para o
+              gestor reavaliar o Closer. Canal e duração são herdados do original.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Nova data</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {rescheduleDate ? format(rescheduleDate, "dd/MM/yyyy") : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={rescheduleDate ?? undefined}
+                    onSelect={(d) => {
+                      if (d) {
+                        setRescheduleDate(d);
+                        setRescheduleTime(null);
+                      }
+                    }}
+                    locale={ptBR}
+                    disabled={(d) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return d < today;
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            {rescheduleDate && detailAg && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Novo horário</label>
+                <EditTimeSlots
+                  closerId={detailAg.closer_id}
+                  date={rescheduleDate}
+                  selectedTime={rescheduleTime}
+                  onSelect={setRescheduleTime}
+                  currentAgId={detailAg.id}
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setRescheduleOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleReschedule}
+              disabled={!rescheduleDate || !rescheduleTime || rescheduling}
+            >
+              {rescheduling ? "Reagendando..." : "Confirmar reagendamento"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Justificativa do reagendamento (closer) — janela dedicada similar ao briefing */}
       <Dialog open={viewJustification} onOpenChange={setViewJustification}>
