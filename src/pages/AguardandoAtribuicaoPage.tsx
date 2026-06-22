@@ -265,15 +265,29 @@ export default function AguardandoAtribuicaoPage() {
                             <SelectValue placeholder="Selecionar Closer" />
                           </SelectTrigger>
                           <SelectContent>
-                            {closers.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                            ))}
+                            {closers.map((c) => {
+                              const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
+                              return (
+                                <SelectItem
+                                  key={c.id}
+                                  value={c.id}
+                                  disabled={blocked}
+                                  className={blocked ? "opacity-50" : ""}
+                                >
+                                  {c.name}{blocked ? " · agenda bloqueada" : ""}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
                       <Button
                         onClick={() => handleAssign(a)}
-                        disabled={savingId === a.id || !selecting[a.id]}
+                        disabled={
+                          savingId === a.id ||
+                          !selecting[a.id] ||
+                          (selecting[a.id] ? isCloserBlocked(selecting[a.id], a.scheduled_date, a.scheduled_time) : false)
+                        }
                       >
                         {savingId === a.id ? "Atribuindo…" : "Atribuir"}
                       </Button>
