@@ -1168,24 +1168,28 @@ export function CalendarContent() {
                 </Button>
               )}
 
-              {/* Botão "Reagendar para outro dia" removido — o sistema agora
-                  detecta reagendamento automaticamente quando uma nova agenda
-                  do mesmo lead é criada em até 7 dias. */}
-
-              {/* Transfer lead — apenas dono atual (closer) ou gestor/moderador */}
-              {canTransfer && (
+              {/* Reagendar — cria nova agenda em outro dia/horário.
+                  A nova reunião vai para "Aguardando atribuição" (sem Closer)
+                  e a original é marcada como "Reagendada" (entra em
+                  "Não comparecimento" e dispara webhook "Reagendada" no CRM). */}
+              {canChangeStatus && detailAg.status !== "realizada" && detailAg.status !== "reagendada" && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 text-xs w-full border-primary/30 text-primary hover:bg-primary/10"
+                  className="gap-1.5 text-xs w-full border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
                   onClick={() => {
-                    setTransferTarget("");
-                    setTransferOpen(true);
+                    setRescheduleDate(null);
+                    setRescheduleTime(null);
+                    setRescheduleOpen(true);
                   }}
                 >
-                  <Users className="h-3.5 w-3.5" />Transferir lead para outro closer
+                  <RotateCcw className="h-3.5 w-3.5" />Reagendar
                 </Button>
               )}
+
+              {/* Botão "Transferir lead para outro closer" escondido por solicitação.
+                  Lógica de transferência preservada (handleTransferLead + dialog). */}
+
 
               {/* Registrar venda — gestor/moderador podem registrar/atualizar venda
                   mesmo quando o closer já marcou como realizada sem preencher. */}
