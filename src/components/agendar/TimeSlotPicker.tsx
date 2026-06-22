@@ -16,7 +16,7 @@ import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { Users } from "lucide-react";
 
 interface TimeSlotPickerProps {
-  closerId: string;
+  closerId: string | null;
   date: Date;
   selectedTime: string | null;
   onSelect: (time: string, durationMinutes?: number) => void;
@@ -130,11 +130,14 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
 
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
+  const globalMode = !closerId;
+
   // Fetch closer's individual business hours
   const { data: closerData } = useQuery({
     queryKey: ["closer-hours", closerId],
+    enabled: !!closerId,
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("business_hours_start, business_hours_end, business_hours_ranges").eq("id", closerId).maybeSingle();
+      const { data } = await supabase.from("closers").select("business_hours_start, business_hours_end, business_hours_ranges").eq("id", closerId!).maybeSingle();
       return data;
     },
   });
@@ -145,11 +148,12 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
 
   const { data: bookedTimes = [] } = useQuery<string[]>({
     queryKey: ["booked-slots", closerId, dateStr],
+    enabled: !!closerId,
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
         .select("scheduled_time")
-        .eq("closer_id", closerId)
+        .eq("closer_id", closerId!)
         .eq("scheduled_date", dateStr)
         .is("deleted_at", null)
         .in("status", ["agendada", "confirmada"]);
@@ -161,17 +165,19 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const weekday = date.getDay();
   const { data: closerBlocks = [] } = useQuery({
     queryKey: ["closer-blocks-slots", closerId, dateStr, weekday],
+    enabled: !!closerId,
     queryFn: async () => {
       const { data } = await supabase
         .from("closer_blocks")
         .select("start_time, end_time, block_type, is_recurring, recurrence_weekday, block_date")
-        .eq("closer_id", closerId)
+        .eq("closer_id", closerId!)
         .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`);
       return data ?? [];
     },
   });
 
   function isSlotBlockedByPersonal(slot: string): boolean {
+    if (globalMode) return false;
     const slotH = parseInt(slot.slice(0, 2), 10);
     return closerBlocks.some((b: any) => {
       const startH = parseInt(b.start_time.slice(0, 2), 10);
@@ -180,14 +186,14 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     });
   }
 
-  // Google Calendar events
+  // Google Calendar events (apenas em modo por closer)
   const dateStart = `${dateStr}T00:00:00`;
   const dateEnd = `${dateStr}T23:59:59`;
   const { data: calendarData } = useGoogleCalendarEvents(closerId, dateStart, dateEnd);
 
-  const googleEvents = calendarData?.events ?? [];
-  const calendarExpired = calendarData?.expired ?? false;
-  const calendarConnected = calendarData?.connected ?? false;
+  const googleEvents = globalMode ? [] : (calendarData?.events ?? []);
+  const calendarExpired = !globalMode && (calendarData?.expired ?? false);
+  const calendarConnected = !globalMode && (calendarData?.connected ?? false);
 
   // Slot fill counts (todos os closers somados) + limite global
   const { data: slotCounts } = useSlotCounts(dateStr);

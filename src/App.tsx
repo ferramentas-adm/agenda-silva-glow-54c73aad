@@ -14,6 +14,7 @@ const AgendarPage = lazy(() => import("@/pages/AgendarPage"));
 const AdminPage = lazy(() => import("@/pages/AdminPage"));
 const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
 const ReunioesListPage = lazy(() => import("@/pages/ReunioesListPage"));
+const AguardandoAtribuicaoPage = lazy(() => import("@/pages/AguardandoAtribuicaoPage"));
 const DashboardComercialPage = lazy(() => import("@/pages/DashboardComercialPage"));
 const DashboardLeadsPage = lazy(() => import("@/pages/DashboardLeadsPage"));
 const FollowUpsPage = lazy(() => import("@/pages/FollowUpsPage"));
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="/dashboard-comercial" element={<ProtectedRoute><DashboardComercialPage /></ProtectedRoute>} />
               <Route path="/dashboard-leads" element={<ProtectedRoute><DashboardLeadsPage /></ProtectedRoute>} />
               <Route path="/reunioes" element={<ProtectedRoute><ReunioesListPage /></ProtectedRoute>} />
+              <Route path="/aguardando-atribuicao" element={<ProtectedRoute><AguardandoAtribuicaoPage /></ProtectedRoute>} />
               <Route path="/follow-ups" element={<ProtectedRoute><FollowUpsPage /></ProtectedRoute>} />
               <Route path="/meus-follows" element={<ProtectedRoute><MeusFollowsPage /></ProtectedRoute>} />
               <Route path="/pagamentos" element={<ProtectedRoute><PagamentosPage /></ProtectedRoute>} />

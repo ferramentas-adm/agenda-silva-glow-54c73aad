@@ -29,7 +29,7 @@ type Step = "lead" | "closer" | "datetime" | "confirm";
 
 interface AgendamentoData {
   lead: Lead;
-  closerId: string;
+  closerId: string | null;
   closerName: string;
   date: Date;
   time: string;
@@ -47,10 +47,12 @@ const DEFAULT_CHANNEL_TYPES = [
 ];
 
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { useSlotLimit } from "@/hooks/useSlotLimit";
 
 export default function AgendarPage() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
+  const { limit: slotLimit } = useSlotLimit();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
   const rescheduleLeadName = searchParams.get("lead_name");
@@ -61,16 +63,20 @@ export default function AgendarPage() {
   
 
   const isReschedule = !!editId;
+  const isSdrRole = role === "sdr";
+  const isAdmin = role === "gestor" || role === "moderador";
+  // SDR nunca pode escolher Closer ao agendar — sempre cai na fila "Aguardando atribuição".
+  const canPickCloser = !isSdrRole;
   // Determine initial step based on URL params
   const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
 
-  const [step, setStep] = useState<Step>(isReschedule ? "closer" : hasPreselection ? "lead" : "lead");
+  const [step, setStep] = useState<Step>(isReschedule ? (canPickCloser ? "closer" : "datetime") : hasPreselection ? "lead" : "lead");
   const [lead, setLead] = useState<Lead | null>(
     isReschedule && rescheduleLeadName
       ? { id: "reschedule", name: decodeURIComponent(rescheduleLeadName), phone: decodeURIComponent(rescheduleLeadPhone || "") }
       : null
   );
-  const [closerId, setCloserId] = useState<string | null>(preCloserId || null);
+  const [closerId, setCloserId] = useState<string | null>(canPickCloser ? (preCloserId || null) : null);
   const [date, setDate] = useState<Date | undefined>(
     preDateStr ? new Date(preDateStr + "T12:00:00") : undefined
   );
@@ -88,7 +94,6 @@ export default function AgendarPage() {
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
   const [adminAsSecondMeeting, setAdminAsSecondMeeting] = useState(false);
 
-  const isAdmin = role === "gestor" || role === "moderador";
 
 
 
@@ -223,12 +228,16 @@ export default function AgendarPage() {
 
   const canGoNext: Record<Step, boolean> = {
     lead: !!lead,
-    closer: !!closerId,
+    // Closer é opcional para gestor/moderador (podem deixar para a fila de atribuição).
+    closer: canPickCloser ? true : !!closerId,
     datetime: !!date && !!time,
     confirm: true,
   };
 
-  const steps: Step[] = isReschedule ? ["closer", "datetime", "confirm"] : ["lead", "closer", "datetime", "confirm"];
+  const baseSteps: Step[] = canPickCloser
+    ? ["lead", "closer", "datetime", "confirm"]
+    : ["lead", "datetime", "confirm"];
+  const steps: Step[] = isReschedule ? baseSteps.filter((s) => s !== "lead") : baseSteps;
   const stepIndex = steps.indexOf(step);
 
   const goNext = () => {
@@ -253,10 +262,14 @@ export default function AgendarPage() {
   const channelTypeRequired = (role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
-    if (!lead || !closerId || !date || !time || !user) return;
+    if (!lead || !date || !time || !user) return;
     // Closer continua precisando justificar (vai para `observation`).
     if (isCloser && !meetingReasonCustom.trim()) {
       toast.error("Informe a justificativa do agendamento.");
+      return;
+    }
+    if (isCloser && !closerId) {
+      toast.error("Closer não identificado.");
       return;
     }
     if (isAdmin && !adminAsSecondMeeting && !selectedSdrId) {
@@ -273,34 +286,50 @@ export default function AgendarPage() {
     const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
-      // Reagendamento: o NOVO agendamento entra como 'confirmada' na nova data.
-      // O ORIGINAL é marcado como 'reagendada' para que o card no dia antigo
-      // apareça como "Reagendada" e seja contabilizado no board.
-
-      // Try to create Google Calendar event + Meet link
-      let meetLink: string | null = null;
-      let meetError = false;
-
-      const googleResult = await createGoogleCalendarEvent({
-        closer_id: closerId,
-        lead_name: lead.name,
-        lead_phone: lead.phone,
-        sdr_name: sdrName,
-        scheduled_date: dateStr,
-        scheduled_time: time,
-        duration_minutes: durationMinutes,
-      });
-
-      if (googleResult.success && googleResult.meet_link) {
-        meetLink = googleResult.meet_link;
-      } else {
-        meetError = true;
-        console.warn("Google Calendar event creation failed:", googleResult.error);
+      // Validação anti-corrida: reconta o slot imediatamente antes do INSERT.
+      // SDR é bloqueado se o limite for atingido. Gestor/moderador segue (pode forçar).
+      if (isSdrRole) {
+        const { count: slotCount, error: countError } = await supabase
+          .from("agendamentos")
+          .select("id", { count: "exact", head: true })
+          .eq("scheduled_date", dateStr)
+          .eq("scheduled_time", time)
+          .is("deleted_at", null)
+          .neq("status", "cancelada");
+        if (countError) throw countError;
+        if ((slotCount ?? 0) >= slotLimit) {
+          toast.error(`Limite de ${slotLimit} agendas atingido nesse horário. Escolha outro.`);
+          setSubmitting(false);
+          return;
+        }
       }
 
-      // Always create the agendamento, with or without meet link
-      // Para closer, anexamos a justificativa em `observation` (já que o campo
-      // "Motivo da reunião" foi removido); meeting_reason fica fixo em 'segunda_reuniao'.
+      // Google Calendar / Meet só é criado quando há Closer definido.
+      // Sem Closer (SDR ou admin que deixou em aberto), evento é criado depois,
+      // na atribuição em "Aguardando atribuição".
+      let meetLink: string | null = null;
+      let meetError = false;
+      let googleEventId: string | null = null;
+
+      if (closerId) {
+        const googleResult = await createGoogleCalendarEvent({
+          closer_id: closerId,
+          lead_name: lead.name,
+          lead_phone: lead.phone,
+          sdr_name: sdrName,
+          scheduled_date: dateStr,
+          scheduled_time: time,
+          duration_minutes: durationMinutes,
+        });
+        if (googleResult.success && googleResult.meet_link) {
+          meetLink = googleResult.meet_link;
+          googleEventId = googleResult.event_id ?? null;
+        } else {
+          meetError = true;
+          console.warn("Google Calendar event creation failed:", googleResult.error);
+        }
+      }
+
       const closerJustification = isCloser ? meetingReasonCustom.trim() : "";
       const finalObservation = isCloser
         ? [closerJustification, observation.trim()].filter(Boolean).join(" — ") || null
@@ -315,19 +344,14 @@ export default function AgendarPage() {
         duration_minutes: durationMinutes,
         observation: finalObservation,
         briefing: briefingText.trim() || null,
-        // Todo novo registro entra como 'agendada' — inclusive reagendamentos,
-        // que precisam passar pelo fluxo de confirmação novamente.
-        // (O trigger envia "Reagendada" ao DataCrazy quando original_agendamento_id está setado.)
         status: "agendada",
         meet_link: meetLink,
-        google_event_id: googleResult.success ? (googleResult.event_id ?? null) : null,
+        google_event_id: googleEventId,
         created_by: user.id,
         sdr_responsavel_id: isAdmin && !adminAsSecondMeeting && selectedSdrId ? selectedSdrId : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
-        // Canal vem da lista "Tipos de canal"; em 2ª reunião é herdado do 1º agendamento.
         channel_type: channelType || null,
-
         is_5k: is5k,
       } as any).select("id").single();
 
@@ -379,7 +403,7 @@ export default function AgendarPage() {
       setSuccess({
         lead,
         closerId,
-        closerName,
+        closerName: closerId ? closerName : "A definir (fila de atribuição)",
         date,
         time,
         observation,
@@ -393,6 +417,8 @@ export default function AgendarPage() {
 
       if (meetError) {
         toast.warning("Reunião agendada, mas o link do Meet não foi gerado.");
+      } else if (!closerId) {
+        toast.success("Reunião agendada! Aguardando atribuição de Closer.");
       } else {
         toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
       }
@@ -547,7 +573,7 @@ export default function AgendarPage() {
                   className={cn("p-3 pointer-events-auto rounded-md border")}
                 />
 
-                {date && closerId && (
+                {date && (canPickCloser ? closerId : true) && (
                   <TimeSlotPicker
                     closerId={closerId}
                     date={date}
@@ -559,7 +585,7 @@ export default function AgendarPage() {
                   />
                 )}
 
-                {date && !closerId && (
+                {date && canPickCloser && !closerId && (
                   <p className="text-sm text-muted-foreground">
                     Selecione um closer primeiro (etapa anterior).
                   </p>
@@ -568,13 +594,17 @@ export default function AgendarPage() {
             </>
           )}
 
-          {step === "confirm" && lead && closerId && date && time && (
+          {step === "confirm" && lead && date && time && (
             <>
               <h2 className="text-lg font-semibold">Confirmar Agendamento</h2>
 
               <div className="space-y-3">
                 <SummaryRow label="Lead" value={`${lead.name} · ${lead.phone}`} />
-                <SummaryRow label="Closer" value={closerName} />
+                {closerId ? (
+                  <SummaryRow label="Closer" value={closerName} />
+                ) : (
+                  <SummaryRow label="Closer" value="A definir (fila de atribuição)" />
+                )}
                 <SummaryRow label="Data" value={format(date, "dd/MM/yyyy")} />
                 <SummaryRow
                   label="Horário"
