@@ -256,6 +256,12 @@ export default function AguardandoAtribuicaoPage() {
                       )}
                     </div>
                   )}
+
+                  <LeadAIAnalysis
+                    agendamentoId={a.id}
+                    onSugerirCloser={(closerId) => setSelecting((s) => ({ ...s, [a.id]: closerId }))}
+                  />
+
                 </div>
               );
             })}
