@@ -97,7 +97,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         .is("deleted_at", null)
         .neq("status", "cancelada")
         .gte("scheduled_date", todayStr)
-        .neq("meeting_reason", "segunda_reuniao");
+        .or("meeting_reason.is.null,meeting_reason.neq.segunda_reuniao");
       return count ?? 0;
     },
   });
