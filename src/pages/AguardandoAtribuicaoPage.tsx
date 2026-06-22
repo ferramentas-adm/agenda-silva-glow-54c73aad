@@ -274,6 +274,29 @@ export default function AguardandoAtribuicaoPage() {
     }
   };
 
+  const handleToggleSdrError = async (a: Agendamento) => {
+    setTogglingErrId(a.id);
+    try {
+      const newVal = !a.sdr_error;
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({
+          sdr_error: newVal,
+          sdr_error_at: newVal ? new Date().toISOString() : null,
+          sdr_error_by: newVal ? user?.id ?? null : null,
+        } as any)
+        .eq("id", a.id);
+      if (error) throw error;
+      toast.success(newVal ? "Erro de SDR marcado." : "Erro de SDR desmarcado.");
+      queryClient.invalidateQueries({ queryKey: ["pending-closer-assignment"] });
+      queryClient.invalidateQueries({ queryKey: ["sdr-errors"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao marcar erro de SDR.");
+    } finally {
+      setTogglingErrId(null);
+    }
+  };
+
   if (permLoading) {
     return (
       <AppLayout>
