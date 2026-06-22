@@ -250,7 +250,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <nav className="absolute top-14 left-0 right-0 glass-card-intense flex flex-col gap-1 p-4 sidebar-always-dark">
-            {navItems.map(({ to, label, icon: Icon }) => (
+            {navItems.map(({ to, label, icon: Icon, badge }) => (
               <Link
                 key={to}
                 to={to}
@@ -263,7 +263,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <Icon className="h-5 w-5" />
-                {label}
+                <span className="flex-1">{label}</span>
+                {badge > 0 && (
+                  <span className="min-w-[20px] h-5 rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-5 text-white text-center">
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
               </Link>
             ))}
             {isCloser && closerRecord && (
