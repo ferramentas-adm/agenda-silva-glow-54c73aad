@@ -82,16 +82,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const { can } = usePermissions();
 
+  // Fila de reuniões aguardando atribuição de Closer (badge no menu lateral).
+  const { data: pendingAssignmentCount = 0 } = useQuery({
+    queryKey: ["pending-closer-assignment-count"],
+    enabled: can("assign_closer"),
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("agendamentos")
+        .select("id", { count: "exact", head: true })
+        .is("closer_id", null)
+        .is("deleted_at", null)
+        .neq("status", "cancelada");
+      return count ?? 0;
+    },
+  });
+
   const navItems = [
-    ...(can("view_calendar") ? [{ to: "/", label: "Calendário", icon: CalendarDays }] : []),
-    ...(can("view_meetings") ? [{ to: "/reunioes", label: "Reuniões", icon: List }] : []),
-    ...(can("view_follow_ups") ? [{ to: "/follow-ups", label: "Follow-ups", icon: CalendarClock }] : []),
-    ...(isCloser ? [{ to: "/meus-follows", label: "Meus Follows", icon: Users }] : []),
-    ...(can("view_payments") ? [{ to: "/pagamentos", label: "Pagamentos", icon: Wallet }] : []),
-    ...(can("view_dashboard_comercial") ? [{ to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3 }] : []),
-    ...(can("view_dashboard_leads") && !can("view_dashboard_comercial") ? [{ to: "/dashboard-leads", label: "Dashboard de Formulário", icon: BarChart3 }] : []),
-    ...(can("view_admin") ? [{ to: "/admin", label: "Admin", icon: Settings }] : []),
-    ...(can("view_audit_logs") ? [{ to: "/audit-logs", label: "Logs", icon: ScrollText }] : []),
+    ...(can("view_calendar") ? [{ to: "/", label: "Calendário", icon: CalendarDays, badge: 0 }] : []),
+    ...(can("assign_closer") ? [{ to: "/aguardando-atribuicao", label: "Aguardando atribuição", icon: UserPlus, badge: pendingAssignmentCount }] : []),
+    ...(can("view_meetings") ? [{ to: "/reunioes", label: "Reuniões", icon: List, badge: 0 }] : []),
+    ...(can("view_follow_ups") ? [{ to: "/follow-ups", label: "Follow-ups", icon: CalendarClock, badge: 0 }] : []),
+    ...(isCloser ? [{ to: "/meus-follows", label: "Meus Follows", icon: Users, badge: 0 }] : []),
+    ...(can("view_payments") ? [{ to: "/pagamentos", label: "Pagamentos", icon: Wallet, badge: 0 }] : []),
+    ...(can("view_dashboard_comercial") ? [{ to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3, badge: 0 }] : []),
+    ...(can("view_dashboard_leads") && !can("view_dashboard_comercial") ? [{ to: "/dashboard-leads", label: "Dashboard de Formulário", icon: BarChart3, badge: 0 }] : []),
+    ...(can("view_admin") ? [{ to: "/admin", label: "Admin", icon: Settings, badge: 0 }] : []),
+    ...(can("view_audit_logs") ? [{ to: "/audit-logs", label: "Logs", icon: ScrollText, badge: 0 }] : []),
   ];
 
   const isActive = (path: string) => location.pathname === path;
