@@ -189,7 +189,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   // Google Calendar events (apenas em modo por closer)
   const dateStart = `${dateStr}T00:00:00`;
   const dateEnd = `${dateStr}T23:59:59`;
-  const { data: calendarData } = useGoogleCalendarEvents(closerId ?? "", dateStart, dateEnd);
+  const { data: calendarData } = useGoogleCalendarEvents(closerId, dateStart, dateEnd);
 
   const googleEvents = globalMode ? [] : (calendarData?.events ?? []);
   const calendarExpired = !globalMode && (calendarData?.expired ?? false);
