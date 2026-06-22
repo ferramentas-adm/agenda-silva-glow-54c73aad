@@ -29,7 +29,7 @@ type Step = "lead" | "closer" | "datetime" | "confirm";
 
 interface AgendamentoData {
   lead: Lead;
-  closerId: string;
+  closerId: string | null;
   closerName: string;
   date: Date;
   time: string;
