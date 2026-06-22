@@ -32,6 +32,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   view_audit_logs:         { label: "Logs de Auditoria",     description: "Visualizar histórico de atividades do sistema" },
   create_appointment:      { label: "Criar Agendamento",     description: "Permissão para agendar novas reuniões" },
   edit_appointment_time:   { label: "Editar horário",        description: "Permite ver e usar o botão 'Editar horário' nos detalhes do agendamento" },
+  assign_closer:           { label: "Atribuir Closer",       description: "Acesso à fila 'Aguardando atribuição' e permissão para atribuir um Closer a uma reunião." },
 };
 
 export const ALL_ROLES: AppRole[] = ["gestor", "moderador", "closer", "sdr"];
