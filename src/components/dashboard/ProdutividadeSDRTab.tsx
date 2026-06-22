@@ -183,11 +183,12 @@ export default function ProdutividadeSDRTab({
     if (filter === "compareceu") {
       return byDate.filter((a) => getEffectiveStatus(a) === "realizada");
     }
-    // nao_compareceu = no_show + cancelada (status efetivo — reagendamentos
-    // novos viram "confirmada" e NÃO entram aqui).
+    // nao_compareceu = no_show + cancelada + reagendada.
+    // Reagendamentos contam como não comparecimento porque o lead não esteve
+    // presente na data/horário previamente combinados.
     return byDate.filter((a) => {
       const eff = getEffectiveStatus(a);
-      return eff === "no_show" || eff === "cancelada";
+      return eff === "no_show" || eff === "cancelada" || eff === "reagendada";
     });
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
