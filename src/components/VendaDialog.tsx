@@ -261,7 +261,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (!canSubmit || !user) return;
     setSubmitting(true);
     try {
-      const valorNum = valorValido ? valorNumParsed : null;
+      const valorParsedNum = valorValido ? valorNumParsed : null;
+      // valor só persiste quando vendeu OU (não vendeu e apresentou preço)
+      const valorNum =
+        vendeu === "sim"
+          ? valorParsedNum
+          : apresentouPreco === "sim"
+            ? valorParsedNum
+            : null;
       const fuActive = vendeu === "nao" && acompanhamento === "follow_up";
       const segundaAtiva = vendeu === "nao" && acompanhamento === "segunda_reuniao";
 
@@ -279,8 +286,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
           observacoes: observacoes.trim() || null,
           lead_revenue: leadRevenue || null,
-          sdr_error: vendeu === "nao" ? sdrError : false,
-          produto: vendeu === "sim" ? (produto || null) : null,
+          sdr_error: false,
+          produto: produto || null,
           created_by: user.id,
 
         } as any,
