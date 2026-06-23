@@ -380,10 +380,18 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const pctPrimeiraCall = totalVendas > 0 ? (vendasPrimeiraCall / totalVendas) * 100 : 0;
     const pctFollow = totalVendas > 0 ? (vendasFollowOuSegunda / totalVendas) * 100 : 0;
 
-    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow };
+    // % de calls com oferta de preço: numerador = realizadas (vendasDia) com
+    // valor > 0 OU vendeu (toda venda fechada implica preço apresentado).
+    const ofertasPreco = vendasDia.filter((v) => v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
+    const ofertasPrecoCount = ofertasPreco.length;
+    const ofertasPrecoIds = ofertasPreco.map((v) => v.agendamento_id);
+    const pctOfertaPreco = totalReunioesConv > 0 ? (ofertasPrecoCount / totalReunioesConv) * 100 : 0;
+
+    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
   }, [vendasDia, conversaoData, agMap]);
 
-  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow } = kpis;
+  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco } = kpis;
+
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
   // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
