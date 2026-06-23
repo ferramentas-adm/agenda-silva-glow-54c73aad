@@ -35,6 +35,7 @@ interface VendaRow {
   agendamento_id: string;
   vendeu: boolean;
   valor: number | null;
+  produto: string | null;
   follow_up: boolean;
   follow_up_date: string | null;
   follow_up_time: string | null;
@@ -48,6 +49,7 @@ interface VendaRow {
   updated_at: string;
   agendamentos: AgendamentoRow | null;
 }
+
 
 interface AgendamentoRow {
   id: string;
