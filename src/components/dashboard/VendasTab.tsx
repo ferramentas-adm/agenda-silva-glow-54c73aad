@@ -905,21 +905,43 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         {/* Performance por Closer */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Performance por Closer
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Performance por Closer
+              </CardTitle>
+              <div className="flex items-center gap-1">
+                {(["all", "Social Selling", "Tráfego Pago"] as const).map((opt) => (
+                  <Button
+                    key={opt}
+                    type="button"
+                    size="sm"
+                    variant={closerChannelFilter === opt ? "default" : "outline"}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setCloserChannelFilter(opt)}
+                  >
+                    {opt === "all" ? "Geral" : opt === "Tráfego Pago" ? "Tráfego" : "Social Selling"}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {closerPerf.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
-                Nenhuma venda registrada neste dia.
+                Nenhuma venda registrada neste dia
+                {closerChannelFilter !== "all" ? ` em ${closerChannelFilter}` : ""}.
               </p>
             ) : (
               <div className="space-y-2">
                 {closerPerf.map((c) => {
                   const closerIds = vendasDia
-                    .filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.closer_id === c.closerId)
+                    .filter((v) => {
+                      const ag = agMap.get(v.agendamento_id);
+                      if (!v.vendeu || ag?.closer_id !== c.closerId) return false;
+                      if (closerChannelFilter !== "all" && ag?.channel_type !== closerChannelFilter) return false;
+                      return true;
+                    })
                     .map((v) => v.agendamento_id);
                   return (
                     <button
@@ -950,6 +972,55 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Performance por Produto */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-primary" />
+            Performance por Produto
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {produtoPerf.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic py-4 text-center">
+              Nenhum produto registrado nas calls deste período.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {produtoPerf.map((p) => {
+                const ids = vendasDia
+                  .filter((v) => ((v.produto && v.produto.trim()) || "Sem produto") === p.produto)
+                  .map((v) => v.agendamento_id);
+                return (
+                  <button
+                    key={p.produto}
+                    type="button"
+                    onClick={() => openDrill(`Produto: ${p.produto} — ${dayLabel}`, ids, `${p.vendas} de ${p.ofertas} ofertas · ${p.conversao.toFixed(0)}% conv.`)}
+                    className="w-full flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{p.produto}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.ofertas} oferta{p.ofertas !== 1 ? "s" : ""} · {p.vendas} venda{p.vendas !== 1 ? "s" : ""} · {p.conversao.toFixed(0)}% conv.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-sm text-emerald-500">{fmtBRL(p.receita)}</p>
+                      {p.vendas > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Tíquete médio: {fmtBRL(p.ticketMedio)}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
 
       {/* Agendas por Canal — inclui segundas reuniões */}
       <AgendasPorCanalPanel
