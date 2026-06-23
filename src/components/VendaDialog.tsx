@@ -657,22 +657,57 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 />
               </div>
 
-              <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-                <Checkbox
-                  id="sdr-error"
-                  checked={sdrError}
-                  onCheckedChange={(c) => setSdrError(c === true)}
-                  className="mt-0.5"
-                />
-                <div className="space-y-0.5">
-                  <Label htmlFor="sdr-error" className="cursor-pointer font-medium">
-                    Houve erro do SDR nesta reunião
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Marque se o lead chegou sem perfil, briefing incorreto, etc.
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label>Apresentou o preço? *</Label>
+                <RadioGroup
+                  value={apresentouPreco ?? ""}
+                  onValueChange={(v) => {
+                    const next = v as "sim" | "nao";
+                    setApresentouPreco(next);
+                    if (next === "nao") setValor("");
+                  }}
+                >
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="sim" id="apr-preco-sim" />
+                      <Label htmlFor="apr-preco-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="nao" id="apr-preco-nao" />
+                      <Label htmlFor="apr-preco-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </div>
+                </RadioGroup>
               </div>
+
+              {produtosList.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Produto ofertado *</Label>
+                  <Select value={produto} onValueChange={setProduto}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {produtosList.map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {apresentouPreco === "sim" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="valor-apresentado">Valor apresentado ao cliente *</Label>
+                  <Input
+                    id="valor-apresentado"
+                    inputMode="numeric"
+                    value={formatBRL(valor)}
+                    onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
+                    placeholder="0,00"
+                  />
+                </div>
+              )}
 
               <>
 
