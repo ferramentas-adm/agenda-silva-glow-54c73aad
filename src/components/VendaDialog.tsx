@@ -176,6 +176,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setExplicacaoNaoFechamento((data as { explicacao_nao_fechamento?: string | null }).explicacao_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
         setSdrError(((data as { sdr_error?: boolean | null }).sdr_error) ?? false);
+        if (!data.vendeu) {
+          setApresentouPreco(data.valor != null && Number(data.valor) > 0 ? "sim" : "nao");
+        }
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
       }
       setLoadingExisting(false);
