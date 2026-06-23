@@ -743,6 +743,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
               totalReunioesConv > 0 ? `${pctOfertaPreco.toFixed(0)}% das realizadas` : undefined,
             )
           }
+        />
+
 
         <KpiCard
           icon={DollarSign}
