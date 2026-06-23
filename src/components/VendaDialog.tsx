@@ -82,6 +82,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [explicacaoNaoFechamento, setExplicacaoNaoFechamento] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [sdrError, setSdrError] = useState(false);
+  const [apresentouPreco, setApresentouPreco] = useState<"sim" | "nao" | null>(null);
   const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -124,6 +125,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setExplicacaoNaoFechamento("");
     setObservacoes("");
     setSdrError(false);
+    setApresentouPreco(null);
     setLeadRevenue("");
     setIsEditing(false);
     setHasRecebimento(false);
@@ -174,6 +176,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setExplicacaoNaoFechamento((data as { explicacao_nao_fechamento?: string | null }).explicacao_nao_fechamento ?? "");
         setObservacoes(data.observacoes ?? "");
         setSdrError(((data as { sdr_error?: boolean | null }).sdr_error) ?? false);
+        if (!data.vendeu) {
+          setApresentouPreco(data.valor != null && Number(data.valor) > 0 ? "sim" : "nao");
+        }
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
       }
       setLoadingExisting(false);
@@ -234,6 +239,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (!explicacaoNaoFechamento.trim()) return false;
+      if (apresentouPreco === null) return false;
+      if (produtosList.length > 0 && !produto) return false;
+      if (apresentouPreco === "sim" && !valorValido) return false;
       if (acompanhamento === null) return false;
       if ((acompanhamento === "follow_up" || acompanhamento === "segunda_reuniao") && (!followUpDate || !followUpTime)) return false;
       return true;
@@ -253,7 +261,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (!canSubmit || !user) return;
     setSubmitting(true);
     try {
-      const valorNum = valorValido ? valorNumParsed : null;
+      const valorParsedNum = valorValido ? valorNumParsed : null;
+      // valor só persiste quando vendeu OU (não vendeu e apresentou preço)
+      const valorNum =
+        vendeu === "sim"
+          ? valorParsedNum
+          : apresentouPreco === "sim"
+            ? valorParsedNum
+            : null;
       const fuActive = vendeu === "nao" && acompanhamento === "follow_up";
       const segundaAtiva = vendeu === "nao" && acompanhamento === "segunda_reuniao";
 
@@ -271,8 +286,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
           observacoes: observacoes.trim() || null,
           lead_revenue: leadRevenue || null,
-          sdr_error: vendeu === "nao" ? sdrError : false,
-          produto: vendeu === "sim" ? (produto || null) : null,
+          sdr_error: false,
+          produto: produto || null,
           created_by: user.id,
 
         } as any,
@@ -447,7 +462,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         vendeu: vendeu === "sim",
         resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
         valor: valorNum,
-        produto: vendeu === "sim" ? (produto || null) : null,
+        produto: produto || null,
 
         motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
         explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
@@ -642,22 +657,57 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 />
               </div>
 
-              <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-                <Checkbox
-                  id="sdr-error"
-                  checked={sdrError}
-                  onCheckedChange={(c) => setSdrError(c === true)}
-                  className="mt-0.5"
-                />
-                <div className="space-y-0.5">
-                  <Label htmlFor="sdr-error" className="cursor-pointer font-medium">
-                    Houve erro do SDR nesta reunião
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Marque se o lead chegou sem perfil, briefing incorreto, etc.
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label>Apresentou o preço? *</Label>
+                <RadioGroup
+                  value={apresentouPreco ?? ""}
+                  onValueChange={(v) => {
+                    const next = v as "sim" | "nao";
+                    setApresentouPreco(next);
+                    if (next === "nao") setValor("");
+                  }}
+                >
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="sim" id="apr-preco-sim" />
+                      <Label htmlFor="apr-preco-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="nao" id="apr-preco-nao" />
+                      <Label htmlFor="apr-preco-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </div>
+                </RadioGroup>
               </div>
+
+              {produtosList.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Produto ofertado *</Label>
+                  <Select value={produto} onValueChange={setProduto}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {produtosList.map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {apresentouPreco === "sim" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="valor-apresentado">Valor apresentado ao cliente *</Label>
+                  <Input
+                    id="valor-apresentado"
+                    inputMode="numeric"
+                    value={formatBRL(valor)}
+                    onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
+                    placeholder="0,00"
+                  />
+                </div>
+              )}
 
               <>
 
@@ -734,19 +784,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                   )}
                 </>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="valor-apresentado">Valor apresentado ao cliente (opcional)</Label>
-                <Input
-                  id="valor-apresentado"
-                  inputMode="numeric"
-                  value={formatBRL(valor)}
-                  onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
-                  placeholder="0,00"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Preencha caso o valor tenha sido apresentado durante a reunião.
-                </p>
-              </div>
             </>
           )}
 

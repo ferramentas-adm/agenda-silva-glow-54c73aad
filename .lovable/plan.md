@@ -1,25 +1,24 @@
-## Objetivo
-Mostrar no card de "Aguardando atribuição" todas as informações relevantes coletadas em Novo Agendamento, para a head decidir sem abrir outra tela. Excluir 2ª reuniões da lista (Closer agenda pra si mesmo).
+## Mudanças em `src/components/VendaDialog.tsx` (ramo "Vendeu? = Não")
 
-## Filtro da lista
-- Na query `pending-closer-assignment`, adicionar `.neq("meeting_reason", "segunda_reuniao")` para que 2ª reuniões nunca apareçam aqui.
+1. **Remover** o bloco "Houve erro do SDR nesta reunião" (checkbox `sdrError`). O campo `sdr_error` continua sendo salvo como `false` para não quebrar o `ErrosSDRTab` (registros antigos seguem visíveis).
 
-## Campos a adicionar no card
-Hoje aparece: lead, telefone, data/hora, canal, SDR, briefing, observação.
+2. **Adicionar** novo campo obrigatório `Apresentou o preço? *` (RadioGroup Sim/Não), logo após "Explicação do porque não fechou".
 
-Adicionar:
-- **Badge "Projeto 5K"** quando `is_5k = true`.
-- **Duração** da reunião (ex.: "60 min").
-- **Motivo da reunião** (`meeting_reason`) com rótulo amigável (ex.: "1ª Reunião", "Reagendamento").
-- **Indicador de reagendamento** quando `original_agendamento_id` não é nulo, com tooltip mostrando data da original.
-- **Histórico do lead** (mesmo telefone): contagem de reuniões anteriores + última situação (realizada / no-show / cancelada / vendida).
+3. **Produto ofertado *** — sempre visível no ramo "Não" (independente de ter apresentado preço ou não), usando o mesmo `Select` com `produtosList` do ramo "Vendeu = Sim". Obrigatório quando há produtos cadastrados.
 
-## Onde alterar
-- `src/pages/AguardandoAtribuicaoPage.tsx`
-  - Adicionar filtro `meeting_reason ≠ segunda_reuniao` na query.
-  - Ampliar `interface Agendamento` e o `select(...)` para incluir `meeting_reason`, `is_5k`, `original_agendamento_id`.
-  - Renderizar os novos badges/linhas no header do card.
-  - Query adicional `lead-history-by-phone` para o resumo do histórico.
+4. **Valor apresentado ao cliente *** — exibido **apenas quando "Apresentou o preço? = Sim"**, e passa de opcional para **obrigatório** (campo `valor` já existente, sem o "(opcional)" no label). Quando "Não", esconder e limpar `valor`.
 
-## Fora de escopo
-Edição dos campos, mudança no fluxo de Novo Agendamento, mudança de permissões.
+5. **Validação (`canSubmit`)** no ramo `vendeu === "nao"`:
+   - `apresentouPreco` precisa estar definido.
+   - Se `produtosList.length > 0`: `produto` obrigatório.
+   - Se `apresentouPreco === "sim"`: `valorValido` obrigatório.
+
+6. **Persistência** no `upsert` de `vendas` (sem mudança de schema):
+   - `produto`: salvar sempre que preenchido (inclusive no ramo "não").
+   - `valor`: salvar apenas quando `apresentouPreco === "sim"` (caso contrário `null`).
+   - `sdr_error`: sempre `false`.
+   - Mesmo ajuste no payload do webhook DataCrazy (`produto`, `valor`, `valor_apresentado`).
+
+7. **Estado**: adicionar `apresentouPreco: "sim" | "nao" | null`, incluir em `resetAllFields()` e na carga de venda existente — inferir `"sim"` se houver `valor > 0` salvo, senão `"nao"`.
+
+Sem migrações nem mudanças em outras telas.
