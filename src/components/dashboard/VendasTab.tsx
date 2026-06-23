@@ -540,12 +540,16 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       .sort((a, b) => b.count - a.count);
   }, [vendasDiaParaMotivos]);
 
-  // Performance por Closer
+  // Filtro de canal aplicado à Performance por Closer
+  const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
+
+  // Performance por Closer (com filtro opcional de canal)
   const closerPerf = useMemo(() => {
     const map = new Map<string, { vendas: number; naoFechou: number; receita: number }>();
     vendasDia.forEach((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (!ag?.closer_id) return;
+      if (closerChannelFilter !== "all" && ag.channel_type !== closerChannelFilter) return;
       const cur = map.get(ag.closer_id) || { vendas: 0, naoFechou: 0, receita: 0 };
       if (v.vendeu) {
         cur.vendas += 1;
@@ -564,7 +568,34 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         conversao: stats.vendas + stats.naoFechou > 0 ? (stats.vendas / (stats.vendas + stats.naoFechou)) * 100 : 0,
       }))
       .sort((a, b) => b.receita - a.receita);
-  }, [vendasDia, agMap, closerMap]);
+  }, [vendasDia, agMap, closerMap, closerChannelFilter]);
+
+  // Performance por Produto oferecido
+  const produtoPerf = useMemo(() => {
+    const map = new Map<string, { ofertas: number; vendas: number; receita: number }>();
+    vendasDia.forEach((v) => {
+      // Considera "ofertou" quando há produto registrado (Sim/Não vendeu com produto).
+      const produtoKey = (v.produto && v.produto.trim()) || "Sem produto";
+      const cur = map.get(produtoKey) || { ofertas: 0, vendas: 0, receita: 0 };
+      cur.ofertas += 1;
+      if (v.vendeu) {
+        cur.vendas += 1;
+        cur.receita += v.valor || 0;
+      }
+      map.set(produtoKey, cur);
+    });
+    return Array.from(map.entries())
+      .map(([produto, s]) => ({
+        produto,
+        ofertas: s.ofertas,
+        vendas: s.vendas,
+        receita: s.receita,
+        conversao: s.ofertas > 0 ? (s.vendas / s.ofertas) * 100 : 0,
+        ticketMedio: s.vendas > 0 ? s.receita / s.vendas : 0,
+      }))
+      .sort((a, b) => b.receita - a.receita || b.ofertas - a.ofertas);
+  }, [vendasDia]);
+
 
   // Filtros para "Próximos Follow-ups"
   const { items: motivosList } = useAppSettingList(
