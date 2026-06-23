@@ -731,6 +731,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           }
         />
         <KpiCard
+          icon={Target}
+          label="Oferta de Preço"
+          value={totalReunioesConv > 0 ? `${pctOfertaPreco.toFixed(0)}%` : "—"}
+          sub={`${ofertasPrecoCount} de ${totalReunioesConv} realizadas com preço apresentado`}
+          color="primary"
+          onClick={() =>
+            openDrill(
+              `Calls com oferta de preço — ${dayLabel}`,
+              ofertasPrecoIds,
+              totalReunioesConv > 0 ? `${pctOfertaPreco.toFixed(0)}% das realizadas` : undefined,
+            )
+          }
+
+        <KpiCard
           icon={DollarSign}
           label="Coletado Total"
           value={fmtBRL(coletadoTotal)}
