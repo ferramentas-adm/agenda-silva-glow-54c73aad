@@ -125,6 +125,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setExplicacaoNaoFechamento("");
     setObservacoes("");
     setSdrError(false);
+    setApresentouPreco(null);
     setLeadRevenue("");
     setIsEditing(false);
     setHasRecebimento(false);
