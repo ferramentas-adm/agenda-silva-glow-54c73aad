@@ -35,6 +35,7 @@ interface VendaRow {
   agendamento_id: string;
   vendeu: boolean;
   valor: number | null;
+  produto: string | null;
   follow_up: boolean;
   follow_up_date: string | null;
   follow_up_time: string | null;
@@ -48,6 +49,7 @@ interface VendaRow {
   updated_at: string;
   agendamentos: AgendamentoRow | null;
 }
+
 
 interface AgendamentoRow {
   id: string;
@@ -145,10 +147,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         const { data, error } = await supabase
           .from("vendas")
           .select(`
-            id, agendamento_id, vendeu, valor, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
+            id, agendamento_id, vendeu, valor, produto, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
             motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
             agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason)
           `)
+
           .is("agendamentos.deleted_at", null)
           .gte("agendamentos.scheduled_date", windowRange.start)
           .lte("agendamentos.scheduled_date", windowRange.end)
@@ -377,10 +380,18 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const pctPrimeiraCall = totalVendas > 0 ? (vendasPrimeiraCall / totalVendas) * 100 : 0;
     const pctFollow = totalVendas > 0 ? (vendasFollowOuSegunda / totalVendas) * 100 : 0;
 
-    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow };
+    // % de calls com oferta de preço: numerador = realizadas (vendasDia) com
+    // valor > 0 OU vendeu (toda venda fechada implica preço apresentado).
+    const ofertasPreco = vendasDia.filter((v) => v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
+    const ofertasPrecoCount = ofertasPreco.length;
+    const ofertasPrecoIds = ofertasPreco.map((v) => v.agendamento_id);
+    const pctOfertaPreco = totalReunioesConv > 0 ? (ofertasPrecoCount / totalReunioesConv) * 100 : 0;
+
+    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
   }, [vendasDia, conversaoData, agMap]);
 
-  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow } = kpis;
+  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco } = kpis;
+
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
   // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
@@ -529,12 +540,16 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       .sort((a, b) => b.count - a.count);
   }, [vendasDiaParaMotivos]);
 
-  // Performance por Closer
+  // Filtro de canal aplicado à Performance por Closer
+  const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
+
+  // Performance por Closer (com filtro opcional de canal)
   const closerPerf = useMemo(() => {
     const map = new Map<string, { vendas: number; naoFechou: number; receita: number }>();
     vendasDia.forEach((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (!ag?.closer_id) return;
+      if (closerChannelFilter !== "all" && ag.channel_type !== closerChannelFilter) return;
       const cur = map.get(ag.closer_id) || { vendas: 0, naoFechou: 0, receita: 0 };
       if (v.vendeu) {
         cur.vendas += 1;
@@ -553,7 +568,34 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         conversao: stats.vendas + stats.naoFechou > 0 ? (stats.vendas / (stats.vendas + stats.naoFechou)) * 100 : 0,
       }))
       .sort((a, b) => b.receita - a.receita);
-  }, [vendasDia, agMap, closerMap]);
+  }, [vendasDia, agMap, closerMap, closerChannelFilter]);
+
+  // Performance por Produto oferecido
+  const produtoPerf = useMemo(() => {
+    const map = new Map<string, { ofertas: number; vendas: number; receita: number }>();
+    vendasDia.forEach((v) => {
+      // Considera "ofertou" quando há produto registrado (Sim/Não vendeu com produto).
+      const produtoKey = (v.produto && v.produto.trim()) || "Sem produto";
+      const cur = map.get(produtoKey) || { ofertas: 0, vendas: 0, receita: 0 };
+      cur.ofertas += 1;
+      if (v.vendeu) {
+        cur.vendas += 1;
+        cur.receita += v.valor || 0;
+      }
+      map.set(produtoKey, cur);
+    });
+    return Array.from(map.entries())
+      .map(([produto, s]) => ({
+        produto,
+        ofertas: s.ofertas,
+        vendas: s.vendas,
+        receita: s.receita,
+        conversao: s.ofertas > 0 ? (s.vendas / s.ofertas) * 100 : 0,
+        ticketMedio: s.vendas > 0 ? s.receita / s.vendas : 0,
+      }))
+      .sort((a, b) => b.receita - a.receita || b.ofertas - a.ofertas);
+  }, [vendasDia]);
+
 
   // Filtros para "Próximos Follow-ups"
   const { items: motivosList } = useAppSettingList(
@@ -670,8 +712,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       </div>
 
 
-      {/* KPIs principais (5 cards, todos clicáveis) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* KPIs principais (clicáveis) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+
 
         <KpiCard
           icon={Target}
@@ -687,6 +730,22 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
             )
           }
         />
+        <KpiCard
+          icon={Target}
+          label="Oferta de Preço"
+          value={totalReunioesConv > 0 ? `${pctOfertaPreco.toFixed(0)}%` : "—"}
+          sub={`${ofertasPrecoCount} de ${totalReunioesConv} realizadas com preço apresentado`}
+          color="primary"
+          onClick={() =>
+            openDrill(
+              `Calls com oferta de preço — ${dayLabel}`,
+              ofertasPrecoIds,
+              totalReunioesConv > 0 ? `${pctOfertaPreco.toFixed(0)}% das realizadas` : undefined,
+            )
+          }
+        />
+
+
         <KpiCard
           icon={DollarSign}
           label="Coletado Total"
@@ -846,21 +905,43 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         {/* Performance por Closer */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Performance por Closer
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Performance por Closer
+              </CardTitle>
+              <div className="flex items-center gap-1">
+                {(["all", "Social Selling", "Tráfego Pago"] as const).map((opt) => (
+                  <Button
+                    key={opt}
+                    type="button"
+                    size="sm"
+                    variant={closerChannelFilter === opt ? "default" : "outline"}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setCloserChannelFilter(opt)}
+                  >
+                    {opt === "all" ? "Geral" : opt === "Tráfego Pago" ? "Tráfego" : "Social Selling"}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {closerPerf.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
-                Nenhuma venda registrada neste dia.
+                Nenhuma venda registrada neste dia
+                {closerChannelFilter !== "all" ? ` em ${closerChannelFilter}` : ""}.
               </p>
             ) : (
               <div className="space-y-2">
                 {closerPerf.map((c) => {
                   const closerIds = vendasDia
-                    .filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.closer_id === c.closerId)
+                    .filter((v) => {
+                      const ag = agMap.get(v.agendamento_id);
+                      if (!v.vendeu || ag?.closer_id !== c.closerId) return false;
+                      if (closerChannelFilter !== "all" && ag?.channel_type !== closerChannelFilter) return false;
+                      return true;
+                    })
                     .map((v) => v.agendamento_id);
                   return (
                     <button
@@ -891,6 +972,55 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Performance por Produto */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-primary" />
+            Performance por Produto
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {produtoPerf.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic py-4 text-center">
+              Nenhum produto registrado nas calls deste período.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {produtoPerf.map((p) => {
+                const ids = vendasDia
+                  .filter((v) => ((v.produto && v.produto.trim()) || "Sem produto") === p.produto)
+                  .map((v) => v.agendamento_id);
+                return (
+                  <button
+                    key={p.produto}
+                    type="button"
+                    onClick={() => openDrill(`Produto: ${p.produto} — ${dayLabel}`, ids, `${p.vendas} de ${p.ofertas} ofertas · ${p.conversao.toFixed(0)}% conv.`)}
+                    className="w-full flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{p.produto}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.ofertas} oferta{p.ofertas !== 1 ? "s" : ""} · {p.vendas} venda{p.vendas !== 1 ? "s" : ""} · {p.conversao.toFixed(0)}% conv.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-sm text-emerald-500">{fmtBRL(p.receita)}</p>
+                      {p.vendas > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Tíquete médio: {fmtBRL(p.ticketMedio)}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
 
       {/* Agendas por Canal — inclui segundas reuniões */}
       <AgendasPorCanalPanel
