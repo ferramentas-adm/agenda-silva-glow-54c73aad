@@ -178,13 +178,11 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sdr-errors", fromStr, toStr] });
       queryClient.invalidateQueries({ queryKey: ["sdr-errors-agendamentos", fromStr, toStr] });
-      toast({ title: "Erro validado", description: "Movido para Revisados." });
+      toast.success("Erro validado", { description: "Movido para Revisados." });
     },
     onError: (e: unknown) => {
-      toast({
-        title: "Erro ao validar",
+      toast.error("Erro ao validar", {
         description: e instanceof Error ? e.message : "Tente novamente.",
-        variant: "destructive",
       });
     },
   });
