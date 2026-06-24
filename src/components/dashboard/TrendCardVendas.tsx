@@ -6,8 +6,6 @@ import { TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import TrendChart, { type TrendDatum, type TrendWindow } from "./TrendChart";
 
-const fmtBRL = (n: number) =>
-  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
 /**
  * Painel de tendência de vendas e taxa de conversão.
