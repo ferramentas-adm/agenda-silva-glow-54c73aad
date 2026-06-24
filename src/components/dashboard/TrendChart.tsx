@@ -61,6 +61,10 @@ interface TrendChartProps {
   /** Eixo Y direito é necessário? Define o range/formatter dele. */
   rightAxisFormatter?: (v: number) => string;
   emptyMessage?: string;
+  /** Toggle de métrica exibida no card (opcional). */
+  metricOptions?: { value: string; label: string }[];
+  currentMetric?: string;
+  onMetricChange?: (v: string) => void;
 }
 
 const MM_KEY = "__mm7";
@@ -104,6 +108,9 @@ export default function TrendChart({
   onWindowChange,
   rightAxisFormatter,
   emptyMessage = "Sem dados no período.",
+  metricOptions,
+  currentMetric,
+  onMetricChange,
 }: TrendChartProps) {
   // Anexa MM da série primária aos dados (janela adaptativa)
   const mmWindow = data.length >= 30 ? 7 : data.length >= 14 ? 5 : 3;
