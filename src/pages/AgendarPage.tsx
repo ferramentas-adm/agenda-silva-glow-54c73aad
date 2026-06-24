@@ -55,7 +55,7 @@ export default function AgendarPage() {
   // o formulário. Sem isso, os `useState` iniciais usam um `canPickCloser` calculado
   // sem o override e SDRs (override) acabam vendo a etapa de Closer.
   const { data: gateProfile, isLoading: gateLoading } = useQuery({
-    queryKey: ["current-profile-sdr-override-gate", user?.id],
+    queryKey: ["current-profile-sdr-override", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
       const { data } = await supabase
