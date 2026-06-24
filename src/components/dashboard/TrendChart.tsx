@@ -50,8 +50,12 @@ interface TrendChartProps {
   series: TrendSeries[];
   /** Chave da série usada para badge de variação e detecção de queda. */
   primaryKey: string;
-  /** Mostra média móvel 7d da série primária como linha tracejada. */
+  /** Mostra média móvel da série primária como linha tracejada. */
   showMovingAverage?: boolean;
+  /** Mostra linha de tendência (regressão linear) da série primária. */
+  showTrendline?: boolean;
+  /** Mostra badge de comparação metade-recente vs metade-anterior. */
+  showComparison?: boolean;
   windowDays: TrendWindow;
   onWindowChange: (w: TrendWindow) => void;
   /** Eixo Y direito é necessário? Define o range/formatter dele. */
@@ -60,6 +64,24 @@ interface TrendChartProps {
 }
 
 const MM_KEY = "__mm7";
+const TREND_KEY = "__trend";
+
+function linearRegression(values: number[]): { a: number; b: number } | null {
+  const n = values.length;
+  if (n < 2) return null;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (let i = 0; i < n; i++) {
+    sx += i;
+    sy += values[i];
+    sxx += i * i;
+    sxy += i * values[i];
+  }
+  const denom = n * sxx - sx * sx;
+  if (denom === 0) return null;
+  const a = (n * sxy - sx * sy) / denom;
+  const b = (sy - a * sx) / n;
+  return { a, b };
+}
 
 function movingAverage(values: number[], window: number): (number | null)[] {
   return values.map((_, i) => {
@@ -81,6 +103,10 @@ export default function TrendChart({
   rightAxisFormatter,
   emptyMessage = "Sem dados no período.",
 }: TrendChartProps) {
+  const showComparison = props_showComparison_default(arguments);
+  // (compat) read optional props with defaults
+  const showTrendline = (arguments[0] as TrendChartProps).showTrendline ?? false;
+  const _showComparison = (arguments[0] as TrendChartProps).showComparison ?? true;
   // Anexa MM da série primária aos dados (janela adaptativa)
   const mmWindow = data.length >= 30 ? 7 : data.length >= 14 ? 5 : 3;
   const useMM = showMovingAverage && data.length >= 8;
