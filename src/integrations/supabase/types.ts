@@ -43,6 +43,7 @@ export type Database = {
           sdr_error: boolean
           sdr_error_at: string | null
           sdr_error_by: string | null
+          sdr_error_outcome: string | null
           sdr_error_reviewed_at: string | null
           sdr_error_reviewed_by: string | null
           sdr_handoff_at: string | null
@@ -78,6 +79,7 @@ export type Database = {
           sdr_error?: boolean
           sdr_error_at?: string | null
           sdr_error_by?: string | null
+          sdr_error_outcome?: string | null
           sdr_error_reviewed_at?: string | null
           sdr_error_reviewed_by?: string | null
           sdr_handoff_at?: string | null
@@ -113,6 +115,7 @@ export type Database = {
           sdr_error?: boolean
           sdr_error_at?: string | null
           sdr_error_by?: string | null
+          sdr_error_outcome?: string | null
           sdr_error_reviewed_at?: string | null
           sdr_error_reviewed_by?: string | null
           sdr_handoff_at?: string | null
@@ -696,6 +699,7 @@ export type Database = {
           produto: string | null
           resumo_venda: string | null
           sdr_error: boolean
+          sdr_error_outcome: string | null
           sdr_error_reviewed_at: string | null
           sdr_error_reviewed_by: string | null
           segunda_reuniao: boolean
@@ -719,6 +723,7 @@ export type Database = {
           produto?: string | null
           resumo_venda?: string | null
           sdr_error?: boolean
+          sdr_error_outcome?: string | null
           sdr_error_reviewed_at?: string | null
           sdr_error_reviewed_by?: string | null
           segunda_reuniao?: boolean
@@ -742,6 +747,7 @@ export type Database = {
           produto?: string | null
           resumo_venda?: string | null
           sdr_error?: boolean
+          sdr_error_outcome?: string | null
           sdr_error_reviewed_at?: string | null
           sdr_error_reviewed_by?: string | null
           segunda_reuniao?: boolean
