@@ -50,6 +50,35 @@ import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 
 export default function AgendarPage() {
+  const { user } = useAuth();
+  // Gate de profile: garante que `is_sdr_override` esteja carregado antes de montar
+  // o formulário. Sem isso, os `useState` iniciais usam um `canPickCloser` calculado
+  // sem o override e SDRs (override) acabam vendo a etapa de Closer.
+  const { data: gateProfile, isLoading: gateLoading } = useQuery({
+    queryKey: ["current-profile-sdr-override-gate", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_sdr_override")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data ?? { is_sdr_override: false };
+    },
+  });
+  if (user && (gateLoading || gateProfile === undefined)) {
+    return (
+      <AppLayout>
+        <div className="animate-fade-in max-w-2xl mx-auto p-8 text-sm text-muted-foreground">
+          Carregando…
+        </div>
+      </AppLayout>
+    );
+  }
+  return <AgendarPageInner />;
+}
+
+function AgendarPageInner() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const { limit: slotLimit } = useSlotLimit();
