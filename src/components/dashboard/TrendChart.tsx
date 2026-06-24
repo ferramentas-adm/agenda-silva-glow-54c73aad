@@ -230,7 +230,7 @@ export default function TrendChart({
         </div>
       </div>
 
-      {downtrend && (
+      {showComparison && downtrend && (
         <div className="flex items-center gap-2 text-xs rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-2">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
@@ -308,6 +308,20 @@ export default function TrendChart({
                   strokeWidth={1.5}
                   strokeDasharray="5 5"
                   dot={false}
+                />
+              )}
+
+              {showTrendline && (
+                <Line
+                  yAxisId={primarySeries?.yAxis ?? "left"}
+                  type="linear"
+                  dataKey={TREND_KEY}
+                  name="Tendência"
+                  stroke={trendColor}
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  dot={false}
+                  isAnimationActive={false}
                 />
               )}
             </ComposedChart>
