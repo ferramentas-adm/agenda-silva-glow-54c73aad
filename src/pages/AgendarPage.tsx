@@ -265,7 +265,8 @@ export default function AgendarPage() {
     if (stepIndex > 0) setStep(steps[stepIndex - 1]);
   };
 
-  const isCloser = role === "closer";
+  // Closer com is_sdr_override atua como SDR (não como Closer) ao agendar.
+  const isCloser = role === "closer" && !isSdrOverride;
   // Campo "Motivo da reunião" foi removido do fluxo:
   // - Closer: meeting_reason gravado automaticamente como 'segunda_reuniao'.
   // - SDR / Gestor / Moderador: nenhum motivo é coletado/gravado (campo aposentado na UI).
