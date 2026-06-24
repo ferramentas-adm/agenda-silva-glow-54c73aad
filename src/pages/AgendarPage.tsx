@@ -50,6 +50,35 @@ import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 
 export default function AgendarPage() {
+  const { user } = useAuth();
+  // Gate de profile: garante que `is_sdr_override` esteja carregado antes de montar
+  // o formulário. Sem isso, os `useState` iniciais usam um `canPickCloser` calculado
+  // sem o override e SDRs (override) acabam vendo a etapa de Closer.
+  const { data: gateProfile, isLoading: gateLoading } = useQuery({
+    queryKey: ["current-profile-sdr-override", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_sdr_override")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data ?? { is_sdr_override: false };
+    },
+  });
+  if (user && (gateLoading || gateProfile === undefined)) {
+    return (
+      <AppLayout>
+        <div className="animate-fade-in max-w-2xl mx-auto p-8 text-sm text-muted-foreground">
+          Carregando…
+        </div>
+      </AppLayout>
+    );
+  }
+  return <AgendarPageInner />;
+}
+
+function AgendarPageInner() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const { limit: slotLimit } = useSlotLimit();
@@ -68,7 +97,7 @@ export default function AgendarPage() {
   // Verifica se o usuário atual atua como SDR via override (profiles.is_sdr_override),
   // mesmo que tenha role 'closer'/'moderador'. SDRs por override seguem as MESMAS
   // regras de SDR: não escolhem Closer e respeitam limite de slot.
-  const { data: currentProfile } = useQuery({
+  const { data: currentProfile, isLoading: profileLoading } = useQuery({
     queryKey: ["current-profile-sdr-override", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
@@ -77,10 +106,13 @@ export default function AgendarPage() {
         .select("is_sdr_override")
         .eq("user_id", user!.id)
         .maybeSingle();
-      return data;
+      return data ?? { is_sdr_override: false };
     },
   });
-  const isSdrOverride = currentProfile?.is_sdr_override === true;
+  // Enquanto não soubermos o override, tratamos como SDR por padrão (fail-safe):
+  // impede que role='closer' com override veja a etapa de Closer no primeiro render.
+  const profileReady = !!user?.id && !profileLoading && currentProfile !== undefined;
+  const isSdrOverride = profileReady ? currentProfile?.is_sdr_override === true : true;
   const isSdrRole = role === "sdr" || (role !== "gestor" && role !== "moderador" && isSdrOverride);
   // SDR (incluindo overrides) nunca pode escolher Closer — sempre cai na fila "Aguardando atribuição".
   // Apenas gestor/moderador e closer (para 2ª reunião própria) seguem escolhendo.

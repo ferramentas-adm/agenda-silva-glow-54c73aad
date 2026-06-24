@@ -1,14 +1,34 @@
-## Badge "Preço ofertado / Sem oferta" em todas as listas de reuniões
+# Bug: SDR consegue agendar direto na agenda de um Closer
 
-Adicionar uma nova badge ao lado do status indicando se houve apresentação de preço, usando a mesma regra do KPI "Oferta de Preço":
+## Causa raiz
 
-- **Preço ofertado** (verde, sutil) — `venda.vendeu === true` **ou** `Number(venda.valor) > 0`
-- **Sem oferta** (outline cinza) — caso contrário, **apenas para reuniões `realizada`** (em `agendada`/`cancelada`/`no_show` a badge não aparece para não poluir).
+No `src/pages/AgendarPage.tsx`, a flag `isSdrOverride` depende de uma `useQuery` que busca `profiles.is_sdr_override`. Enquanto essa query não resolve, `currentProfile` é `undefined` e portanto:
 
-### Locais afetados
+- `isSdrOverride = false`
+- `canPickCloser = isAdmin || (role === "closer" && !isSdrOverride)` → para um usuário com role `closer` + override SDR, isso vira **`true`** no primeiro render.
 
-1. **`src/components/dashboard/MetricDrilldownDialog.tsx`** — drilldown dos cards do Dashboard Comercial (ex.: "Reuniões com resultado — Hoje"). Adicionar a badge no cabeçalho de cada card, ao lado de "Follow ativo / Sem follow". Campo `valor` já está no `select` da query `drilldown-vendas`.
+Os estados iniciais do componente são definidos via `useState(...)` usando esse `canPickCloser` do primeiro render:
 
-2. **`src/pages/ReunioesListPage.tsx`** — tabela principal de Reuniões. Estender a query de vendas (linha ~110/185) para trazer `agendamento_id` + `valor` + `vendeu` de todas as reuniões `realizada` visíveis, montar um `Map<agendamento_id, { vendeu, valor }>`, e renderizar a badge na célula de Status (logo abaixo ou ao lado do badge de status existente, linha ~653).
+- `const [step, setStep] = useState<Step>(isReschedule ? (canPickCloser ? "closer" : "datetime") : ...)`
+- `const [closerId, setCloserId] = useState<string | null>(canPickCloser ? (preCloserId || null) : null)`
 
-Sem mudanças no schema/backend. Nenhuma outra alteração de comportamento.
+Quando a query resolve e `canPickCloser` vira `false`, esses `useState` **não são reavaliados** — o componente continua exibindo a tela de seleção de Closer e mantém o `closerId` pré-selecionado vindo da URL (`?closer=...`). Resultado: SDRs com override (closers reclassificados como SDR pelo Admin) conseguem agendar diretamente na agenda de um Closer.
+
+A mesma janela permite uso direto de URLs `/agendar?closer=...&date=...&time=...` por SDRs override.
+
+## Correção
+
+No `src/pages/AgendarPage.tsx`:
+
+1. Tornar a query `current-profile-sdr-override` bloqueante para a renderização:
+   - Expor `isLoading` da `useQuery`.
+   - Antes do `return` do JSX, se `user` existir e o profile ainda estiver carregando (`isLoading || currentProfile === undefined`), renderizar um placeholder simples ("Carregando…") em vez do formulário.
+   - Isso garante que `isSdrOverride`, `isSdrRole`, `canPickCloser`, `isCloser` e `channelTypeRequired` já estejam corretos antes de qualquer `useState` inicializar.
+
+2. Como defesa adicional, sanear os params da URL quando `canPickCloser` for `false`:
+   - Adicionar um `useEffect` que, ao mudar `canPickCloser` para `false`, force `setCloserId(null)` e, se `step === "closer"`, mova para `"datetime"`. Cobre o caso de algum link antigo persistido em cache.
+
+## Fora de escopo
+
+- Nenhuma mudança em backend, RLS, edge functions ou outras telas.
+- Lógica de `isSdrRole`/`canPickCloser` permanece igual; só corrigimos a ordem em que ela é aplicada.
