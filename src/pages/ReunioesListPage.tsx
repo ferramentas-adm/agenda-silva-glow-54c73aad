@@ -187,6 +187,20 @@ export default function ReunioesListPage() {
     },
   });
 
+  // Map de agendamento_id -> { vendeu, valor } para badge de oferta de preço
+  const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null }>() } = useQuery({
+    queryKey: ["vendas-oferta-map"],
+    queryFn: async () => {
+      const { data } = await supabase.from("vendas").select("agendamento_id, vendeu, valor");
+      const m = new Map<string, { vendeu: boolean; valor: number | null }>();
+      (data || []).forEach((v: any) => {
+        if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor });
+      });
+      return m;
+    },
+  });
+
+
   const closerMap = useMemo(() => {
     const m: Record<string, string> = {};
     closers.forEach((c) => (m[c.id] = c.name));
