@@ -159,6 +159,28 @@ export function CalendarContent() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [selectedSdrId, setSelectedSdrId] = useState<string>("all");
+
+  // SDRs disponíveis para filtragem (somente gestor/moderador veem esse filtro)
+  const { data: sdrUsers = [] } = useQuery({
+    queryKey: ["sdr-users-calendar-filter"],
+    enabled: isAdminLike,
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "sdr");
+      const ids = (roles ?? []).map((r: any) => r.user_id);
+      if (ids.length === 0) return [] as { user_id: string; full_name: string }[];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", ids)
+        .eq("active", true)
+        .order("full_name", { ascending: true });
+      return (profiles ?? []) as { user_id: string; full_name: string }[];
+    },
+  });
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
