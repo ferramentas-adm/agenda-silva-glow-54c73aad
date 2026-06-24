@@ -61,6 +61,10 @@ interface TrendChartProps {
   /** Eixo Y direito é necessário? Define o range/formatter dele. */
   rightAxisFormatter?: (v: number) => string;
   emptyMessage?: string;
+  /** Toggle de métrica exibida no card (opcional). */
+  metricOptions?: { value: string; label: string }[];
+  currentMetric?: string;
+  onMetricChange?: (v: string) => void;
 }
 
 const MM_KEY = "__mm7";
@@ -104,6 +108,9 @@ export default function TrendChart({
   onWindowChange,
   rightAxisFormatter,
   emptyMessage = "Sem dados no período.",
+  metricOptions,
+  currentMetric,
+  onMetricChange,
 }: TrendChartProps) {
   // Anexa MM da série primária aos dados (janela adaptativa)
   const mmWindow = data.length >= 30 ? 7 : data.length >= 14 ? 5 : 3;
@@ -215,18 +222,35 @@ export default function TrendChart({
           </span>
         )}
 
-        <div className="ml-auto flex items-center gap-1">
-          {([7, 15, 30, 60, 90] as TrendWindow[]).map((w) => (
-            <Button
-              key={w}
-              variant={windowDays === w ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs px-2"
-              onClick={() => onWindowChange(w)}
-            >
-              {w}d
-            </Button>
-          ))}
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {metricOptions && metricOptions.length > 1 && (
+            <div className="flex items-center gap-1 border rounded-md p-0.5">
+              {metricOptions.map((opt) => (
+                <Button
+                  key={opt.value}
+                  variant={currentMetric === opt.value ? "default" : "ghost"}
+                  size="sm"
+                  className="h-6 text-xs px-2"
+                  onClick={() => onMetricChange?.(opt.value)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-1">
+            {([7, 15, 30, 60, 90] as TrendWindow[]).map((w) => (
+              <Button
+                key={w}
+                variant={windowDays === w ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs px-2"
+                onClick={() => onWindowChange(w)}
+              >
+                {w}d
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 

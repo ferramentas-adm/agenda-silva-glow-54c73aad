@@ -12,8 +12,32 @@ import TrendChart, { type TrendDatum, type TrendWindow } from "./TrendChart";
  * Usa janela rolante independente do filtro de dia da aba.
  * Considera apenas agendamentos criados por SDRs (created_by ∈ user_roles.sdr).
  */
+type SDRMetric = "criadas" | "realizadas" | "showup";
+
+const SDR_METRICS: Record<SDRMetric, { label: string; color: string; format: (v: number) => string; title: string }> = {
+  criadas: {
+    label: "Agendamentos criados",
+    color: "hsl(var(--primary))",
+    format: (v) => String(Math.round(v)),
+    title: "Tendência de agendamentos criados",
+  },
+  realizadas: {
+    label: "Reuniões realizadas",
+    color: "hsl(142 76% 36%)",
+    format: (v) => String(Math.round(v)),
+    title: "Tendência de reuniões realizadas",
+  },
+  showup: {
+    label: "Taxa de comparecimento (%)",
+    color: "hsl(38 92% 50%)",
+    format: (v) => `${v.toFixed(1)}%`,
+    title: "Tendência de comparecimento",
+  },
+};
+
 export default function TrendCardSDR() {
   const [windowDays, setWindowDays] = useState<TrendWindow>(30);
+  const [metric, setMetric] = useState<SDRMetric>("criadas");
 
   // Conjunto de user_ids com role 'sdr' — para filtrar created_by.
   const { data: sdrIds = new Set<string>() } = useQuery<Set<string>>({
@@ -93,32 +117,42 @@ export default function TrendCardSDR() {
 
     return days.map((d) => {
       const key = format(d, "yyyy-MM-dd");
+      const criadas = criadasMap.get(key) || 0;
+      const realizadas = realizadasMap.get(key) || 0;
+      const showup = criadas > 0 ? (realizadas / criadas) * 100 : 0;
       return {
         date: key,
-        criadas: criadasMap.get(key) || 0,
-        realizadas: realizadasMap.get(key) || 0,
+        criadas,
+        realizadas,
+        showup: Number(showup.toFixed(1)),
       };
     });
   }, [rows, sdrIds, windowDays]);
 
+  const m = SDR_METRICS[metric];
+
   return (
     <TrendChart
-      title={`Tendência de agendamentos — ${windowDays} dias`}
+      title={`${m.title} — ${windowDays} dias`}
       icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
       data={data}
-      primaryKey="criadas"
+      primaryKey={metric}
       series={[
-        { key: "criadas", label: "Criadas", color: "hsl(var(--primary))", type: "line" },
-        {
-          key: "realizadas",
-          label: "Realizadas",
-          color: "hsl(142 76% 36%)",
-          type: "line",
-        },
+        { key: metric, label: m.label, color: m.color, type: "line", format: m.format },
       ]}
       windowDays={windowDays}
       onWindowChange={setWindowDays}
+      showMovingAverage={false}
+      showTrendline
+      showComparison={false}
       emptyMessage="Sem agendamentos no período."
+      metricOptions={[
+        { value: "criadas", label: "Criadas" },
+        { value: "realizadas", label: "Realizadas" },
+        { value: "showup", label: "Comparecimento" },
+      ]}
+      currentMetric={metric}
+      onMetricChange={(v) => setMetric(v as SDRMetric)}
     />
   );
 }

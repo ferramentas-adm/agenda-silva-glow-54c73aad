@@ -11,8 +11,29 @@ import TrendChart, { type TrendDatum, type TrendWindow } from "./TrendChart";
  * Painel de tendência de vendas e taxa de conversão.
  * Janela rolante independente do filtro de dia/intervalo da aba.
  */
+type MetricKey = "conversao" | "ticketMedio";
+
+const METRICS: Record<MetricKey, { label: string; color: string; format: (v: number) => string; title: string; empty: string }> = {
+  conversao: {
+    label: "Taxa de conversão (%)",
+    color: "hsl(38 92% 50%)",
+    format: (v) => `${v.toFixed(1)}%`,
+    title: "Tendência de conversão",
+    empty: "Sem reuniões realizadas no período.",
+  },
+  ticketMedio: {
+    label: "Tíquete médio (R$)",
+    color: "hsl(142 76% 36%)",
+    format: (v) =>
+      v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }),
+    title: "Tendência de tíquete médio",
+    empty: "Sem vendas no período.",
+  },
+};
+
 export default function TrendCardVendas({ closerId }: { closerId?: string | null }) {
   const [windowDays, setWindowDays] = useState<TrendWindow>(30);
+  const [metric, setMetric] = useState<MetricKey>("conversao");
 
   const { data: ags = [] } = useQuery<
     { id: string; scheduled_date: string; status: string; closer_id: string | null }[]
@@ -105,28 +126,32 @@ export default function TrendCardVendas({ closerId }: { closerId?: string | null
       const key = format(d, "yyyy-MM-dd");
       const b = buckets.get(key) || { realizadas: 0, vendas: 0, faturamento: 0 };
       const conversao = b.realizadas > 0 ? (b.vendas / b.realizadas) * 100 : 0;
+      const ticketMedio = b.vendas > 0 ? b.faturamento / b.vendas : 0;
       return {
         date: key,
         vendas: b.vendas,
         faturamento: Math.round(b.faturamento),
         conversao: Number(conversao.toFixed(1)),
+        ticketMedio: Math.round(ticketMedio),
       };
     });
   }, [ags, vendas, windowDays]);
 
+  const m = METRICS[metric];
+
   return (
     <TrendChart
-      title={`Tendência de conversão — ${windowDays} dias`}
+      title={`${m.title} — ${windowDays} dias`}
       icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
       data={data}
-      primaryKey="conversao"
+      primaryKey={metric}
       series={[
         {
-          key: "conversao",
-          label: "Taxa de conversão (%)",
-          color: "hsl(38 92% 50%)",
+          key: metric,
+          label: m.label,
+          color: m.color,
           type: "line",
-          format: (v) => `${v.toFixed(1)}%`,
+          format: m.format,
         },
       ]}
       windowDays={windowDays}
@@ -134,7 +159,13 @@ export default function TrendCardVendas({ closerId }: { closerId?: string | null
       showMovingAverage={false}
       showTrendline
       showComparison={false}
-      emptyMessage="Sem reuniões realizadas no período."
+      emptyMessage={m.empty}
+      metricOptions={[
+        { value: "conversao", label: "Conversão" },
+        { value: "ticketMedio", label: "Tíquete médio" },
+      ]}
+      currentMetric={metric}
+      onMetricChange={(v) => setMetric(v as MetricKey)}
     />
   );
 }
