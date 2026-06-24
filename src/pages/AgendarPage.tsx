@@ -68,7 +68,7 @@ export default function AgendarPage() {
   // Verifica se o usuário atual atua como SDR via override (profiles.is_sdr_override),
   // mesmo que tenha role 'closer'/'moderador'. SDRs por override seguem as MESMAS
   // regras de SDR: não escolhem Closer e respeitam limite de slot.
-  const { data: currentProfile } = useQuery({
+  const { data: currentProfile, isLoading: profileLoading } = useQuery({
     queryKey: ["current-profile-sdr-override", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
@@ -77,10 +77,13 @@ export default function AgendarPage() {
         .select("is_sdr_override")
         .eq("user_id", user!.id)
         .maybeSingle();
-      return data;
+      return data ?? { is_sdr_override: false };
     },
   });
-  const isSdrOverride = currentProfile?.is_sdr_override === true;
+  // Enquanto não soubermos o override, tratamos como SDR por padrão (fail-safe):
+  // impede que role='closer' com override veja a etapa de Closer no primeiro render.
+  const profileReady = !!user?.id && !profileLoading && currentProfile !== undefined;
+  const isSdrOverride = profileReady ? currentProfile?.is_sdr_override === true : true;
   const isSdrRole = role === "sdr" || (role !== "gestor" && role !== "moderador" && isSdrOverride);
   // SDR (incluindo overrides) nunca pode escolher Closer — sempre cai na fila "Aguardando atribuição".
   // Apenas gestor/moderador e closer (para 2ª reunião própria) seguem escolhendo.
