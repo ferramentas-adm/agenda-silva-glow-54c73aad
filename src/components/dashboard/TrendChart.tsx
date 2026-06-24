@@ -81,13 +81,15 @@ export default function TrendChart({
   rightAxisFormatter,
   emptyMessage = "Sem dados no período.",
 }: TrendChartProps) {
-  // Anexa MM7 da série primária aos dados
+  // Anexa MM da série primária aos dados (janela adaptativa)
+  const mmWindow = data.length >= 30 ? 7 : data.length >= 14 ? 5 : 3;
+  const useMM = showMovingAverage && data.length >= 8;
   const enriched = useMemo<TrendDatum[]>(() => {
-    if (!showMovingAverage || data.length === 0) return data;
+    if (!useMM || data.length === 0) return data;
     const values = data.map((d) => Number(d[primaryKey] ?? 0));
-    const mm = movingAverage(values, 7);
+    const mm = movingAverage(values, mmWindow);
     return data.map((d, i) => ({ ...d, [MM_KEY]: mm[i] ?? 0 }));
-  }, [data, primaryKey, showMovingAverage]);
+  }, [data, primaryKey, useMM, mmWindow]);
 
   // Variação metade recente vs metade anterior do período
   const insight = useMemo(() => {
