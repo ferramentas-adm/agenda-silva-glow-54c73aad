@@ -1,41 +1,40 @@
 ## Objetivo
+Simplificar o card **"Tendência de vendas e conversão"** para mostrar só a taxa de conversão diária + uma linha de tendência (subindo/descendo) sobre os últimos N dias selecionados.
 
-Dar aos gestores visão preditiva: identificar quedas em agendamentos, conversões e vendas antes que virem problema. Para isso, adiciono painéis de **tendência temporal** nas abas **Produtividade SDR** e **Vendas**, com séries históricas, média móvel e sinalização visual de queda.
+## Mudanças
 
-## O que será adicionado
+### 1. `src/components/dashboard/TrendCardVendas.tsx`
+- Manter a query atual (agendamentos realizados + vendas no período).
+- Reduzir o dataset a uma única série: `conversao` (já calculada hoje como `vendas / realizadas * 100`).
+- Remover as séries `vendas` e `faturamento` do `series` passado ao `TrendChart`.
+- `primaryKey = "conversao"`.
 
-### 1. Aba Produtividade SDR (`ProdutividadeSDRTab.tsx`)
-Novo card **"Tendência de agendamentos"** logo abaixo dos cards de KPIs, antes do gráfico de barras já existente.
+### 2. `src/components/dashboard/TrendChart.tsx`
+- Adicionar prop opcional `showTrendline?: boolean` (default `false`).
+- Quando `true`: calcular uma **regressão linear simples** sobre a série primária (`y = a*x + b`, x = índice do dia) e desenhar como uma `Line` reta tracejada sobrepondo o gráfico — cor neutra, sem dots, label "Tendência".
+- Adicionar prop opcional `showComparison?: boolean` (default `true`). Quando `false`:
+  - Não renderiza o badge de "−X% (Nd vs Nd)".
+  - Não renderiza o alerta amarelo de queda.
+- No card de Vendas, passar `showTrendline={true}` e `showComparison={false}`.
+- Remover a média móvel quando `showTrendline` estiver ativo (evita poluir o gráfico — a linha de tendência já cumpre o papel).
+- Remover o eixo Y direito (não precisa mais, só uma série).
 
-- **Gráfico de linhas (LineChart recharts)** com séries diárias dos últimos **30 dias** (independente do filtro de dia escolhido — janela rolante para análise de tendência):
-  - Agendamentos criados/dia
-  - Reuniões realizadas/dia
-  - Linha tracejada de **média móvel de 7 dias** sobreposta (suaviza ruído)
-- **Badge de variação** no canto do card: comparação dos últimos 7 dias vs. 7 dias anteriores (`▲ +12%` verde / `▼ -18%` vermelho).
-- Toggle "30d / 60d / 90d" para ajustar a janela.
+### 3. Comportamento da janela
+- Já está correto: `7d/15d/30d/60d/90d` → últimos N dias exibidos. Sem ajustes.
 
-### 2. Aba Vendas (`VendasTab.tsx`)
-Novo card **"Tendência de vendas e conversão"** abaixo dos KPIs principais.
+## Fora de escopo
+- O card **TrendCardSDR** (criadas vs realizadas) fica como está.
+- Drill-down, exports, novos filtros.
 
-- **Gráfico combinado (ComposedChart)** com janela rolante padrão de 30 dias:
-  - Barras: vendas fechadas/dia (R$)
-  - Linha: taxa de conversão diária (vendas / reuniões realizadas, em %)
-  - Linha tracejada: média móvel 7d da taxa de conversão
-- **3 mini-badges** de variação 7d vs 7d anteriores: nº vendas, faturamento, taxa de conversão.
-- Toggle "30d / 60d / 90d".
-
-### 3. Sinalização preditiva
-Em ambos os cards, quando a média móvel atual ficar **≥15% abaixo** da média móvel de 7 dias atrás, mostro um alerta sutil (banner amarelo dentro do card): *"Tendência de queda detectada nos últimos 7 dias"* — assim o gestor age cedo.
-
-## Detalhes técnicos
-
-- **Fonte de dados**: reaproveito `agendamentos` e `vendas` já carregados pela página pai (props existentes). Para a janela de 30/60/90d preciso garantir que o range carregado cubra a janela do gráfico — se hoje o pai só envia o dia atual, adiciono uma query própria dentro de cada componente buscando os últimos N dias por `created_at` (agendamentos) e `agendamentos.scheduled_date` (vendas), com filtros existentes (closer/SDR).
-- **Timezone**: agrego por dia usando os helpers de `src/lib/timezone.ts` (regra core do projeto: America/Sao_Paulo).
-- **Cores**: tokens semânticos do design system (`hsl(var(--primary))`, `--destructive`, `--muted-foreground`) — sem cores hardcoded. Reutilizo `ChartContainer` / `ChartTooltip` de `src/components/ui/chart.tsx` para coerência visual.
-- **Performance**: agregação em `useMemo`; janela máxima 90 dias.
-- **Visibilidade**: apenas para perfis gestor/moderador (mesma regra já aplicada às abas).
-
-## Fora do escopo
-
-- Previsão estatística avançada (ARIMA/ML) — fica para depois; agora entregamos média móvel + variação % + alerta de queda, que já cobre a necessidade descrita.
-- Alterações em lógica de agendamento, cálculo de KPIs existentes ou schema do banco.
+## Detalhes técnicos da linha de tendência
+- Função local em `TrendChart`:
+  ```
+  const n = values.length;
+  const sx = soma(0..n-1); sy = soma(values);
+  const sxx = soma(i*i); sxy = soma(i*values[i]);
+  const a = (n*sxy - sx*sy) / (n*sxx - sx*sx);
+  const b = (sy - a*sx) / n;
+  trendline[i] = a*i + b;
+  ```
+- Anexa ao dataset enriquecido como `__trend` e renderiza como `Line` tracejada (`strokeDasharray="6 4"`, `strokeWidth=2`).
+- Cor: verde se `a > 0`, vermelho se `a < 0`, neutra se `a ≈ 0`.
