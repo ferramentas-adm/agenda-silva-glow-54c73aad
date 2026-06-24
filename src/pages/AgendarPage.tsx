@@ -278,7 +278,7 @@ export default function AgendarPage() {
 
   // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
   // Em 2ª reunião (closer ou admin marcando), o canal é herdado do 1º agendamento.
-  const channelTypeRequired = (role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
+  const channelTypeRequired = (isSdrRole || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
     if (!lead || !date || !time || !user) return;
