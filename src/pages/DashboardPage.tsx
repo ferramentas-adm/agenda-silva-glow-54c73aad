@@ -159,6 +159,28 @@ export function CalendarContent() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [selectedSdrId, setSelectedSdrId] = useState<string>("all");
+
+  // SDRs disponíveis para filtragem (somente gestor/moderador veem esse filtro)
+  const { data: sdrUsers = [] } = useQuery({
+    queryKey: ["sdr-users-calendar-filter"],
+    enabled: isAdminLike,
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "sdr");
+      const ids = (roles ?? []).map((r: any) => r.user_id);
+      if (ids.length === 0) return [] as { user_id: string; full_name: string }[];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", ids)
+        .eq("active", true)
+        .order("full_name", { ascending: true });
+      return (profiles ?? []) as { user_id: string; full_name: string }[];
+    },
+  });
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
@@ -344,10 +366,18 @@ export function CalendarContent() {
     },
   });
 
-  const filtered = useMemo(
-    () => agendamentos.filter((a) => a.closer_id && selectedIds.has(a.closer_id)),
-    [agendamentos, selectedIds]
-  );
+  const filtered = useMemo(() => {
+    return agendamentos.filter((a) => {
+      if (!a.closer_id || !selectedIds.has(a.closer_id)) return false;
+      if (selectedSdrId !== "all") {
+        const ownerSdr =
+          a.sdr_responsavel_id ||
+          (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
+        if (ownerSdr !== selectedSdrId) return false;
+      }
+      return true;
+    });
+  }, [agendamentos, selectedIds, selectedSdrId, userRolesMap]);
 
   const patchAgendamentosCache = useCallback(
     (agendamentoId: string, updater: (agendamento: Agendamento) => Agendamento | null) => {
@@ -966,6 +996,38 @@ export function CalendarContent() {
               <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
             </div>
           )
+        )}
+
+        {/* SDR filter — só para gestor/moderador analisarem distribuição por SDR */}
+        {isAdminLike && sdrUsers.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs font-medium text-muted-foreground shrink-0">SDR:</span>
+            <Select value={selectedSdrId} onValueChange={setSelectedSdrId}>
+              <SelectTrigger className="h-8 w-[220px] text-xs">
+                <SelectValue placeholder="Todos os SDRs" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os SDRs</SelectItem>
+                {sdrUsers.map((s) => (
+                  <SelectItem key={s.user_id} value={s.user_id}>
+                    {s.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedSdrId !== "all" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => setSelectedSdrId("all")}
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
         )}
 
         {/* Content */}
