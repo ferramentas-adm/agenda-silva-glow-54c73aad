@@ -43,6 +43,8 @@ export type Database = {
           sdr_error: boolean
           sdr_error_at: string | null
           sdr_error_by: string | null
+          sdr_error_reviewed_at: string | null
+          sdr_error_reviewed_by: string | null
           sdr_handoff_at: string | null
           sdr_responsavel_id: string | null
           status: Database["public"]["Enums"]["appointment_status"]
@@ -76,6 +78,8 @@ export type Database = {
           sdr_error?: boolean
           sdr_error_at?: string | null
           sdr_error_by?: string | null
+          sdr_error_reviewed_at?: string | null
+          sdr_error_reviewed_by?: string | null
           sdr_handoff_at?: string | null
           sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
@@ -109,6 +113,8 @@ export type Database = {
           sdr_error?: boolean
           sdr_error_at?: string | null
           sdr_error_by?: string | null
+          sdr_error_reviewed_at?: string | null
+          sdr_error_reviewed_by?: string | null
           sdr_handoff_at?: string | null
           sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
@@ -690,6 +696,8 @@ export type Database = {
           produto: string | null
           resumo_venda: string | null
           sdr_error: boolean
+          sdr_error_reviewed_at: string | null
+          sdr_error_reviewed_by: string | null
           segunda_reuniao: boolean
           updated_at: string
           valor: number | null
@@ -711,6 +719,8 @@ export type Database = {
           produto?: string | null
           resumo_venda?: string | null
           sdr_error?: boolean
+          sdr_error_reviewed_at?: string | null
+          sdr_error_reviewed_by?: string | null
           segunda_reuniao?: boolean
           updated_at?: string
           valor?: number | null
@@ -732,6 +742,8 @@ export type Database = {
           produto?: string | null
           resumo_venda?: string | null
           sdr_error?: boolean
+          sdr_error_reviewed_at?: string | null
+          sdr_error_reviewed_by?: string | null
           segunda_reuniao?: boolean
           updated_at?: string
           valor?: number | null
