@@ -753,20 +753,20 @@ function FullSlotsTodayCard() {
   const { limit } = useSlotLimit();
 
   const fullSlots = useMemo(() => {
-    if (!counts) return [] as { time: string; count: number }[];
+    if (!counts) return [] as { time: string; count: number; capacity: number }[];
     return Array.from(counts.entries())
-      .filter(([, n]) => n >= limit)
-      .map(([time, count]) => ({ time, count }))
+      .filter(([, info]) => info.full)
+      .map(([time, info]) => ({ time, count: info.count, capacity: info.capacity }))
       .sort((a, b) => a.time.localeCompare(b.time));
-  }, [counts, limit]);
+  }, [counts]);
 
   const nearlyFull = useMemo(() => {
-    if (!counts) return [] as { time: string; count: number }[];
+    if (!counts) return [] as { time: string; count: number; capacity: number }[];
     return Array.from(counts.entries())
-      .filter(([, n]) => n >= Math.max(1, limit - 2) && n < limit)
-      .map(([time, count]) => ({ time, count }))
+      .filter(([, info]) => !info.full && info.capacity > 0 && info.count >= Math.max(1, info.capacity - 2))
+      .map(([time, info]) => ({ time, count: info.count, capacity: info.capacity }))
       .sort((a, b) => a.time.localeCompare(b.time));
-  }, [counts, limit]);
+  }, [counts]);
 
   if (fullSlots.length === 0 && nearlyFull.length === 0) return null;
 
@@ -774,7 +774,7 @@ function FullSlotsTodayCard() {
     <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-2">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-sm font-semibold text-red-500">
-          Horários cheios hoje (limite {limit}/horário)
+          Horários cheios hoje (todos os closers ocupados)
         </div>
         <div className="text-xs text-muted-foreground">
           SDR não consegue mais agendar nos horários lotados.
@@ -784,7 +784,7 @@ function FullSlotsTodayCard() {
         <div className="flex flex-wrap gap-2">
           {fullSlots.map((s) => (
             <span key={s.time} className="inline-flex items-center gap-1 rounded-full bg-red-500 text-white px-2.5 py-0.5 text-xs font-bold">
-              {s.time} · {s.count}/{limit}
+              {s.time} · {s.count}/{s.capacity}
             </span>
           ))}
         </div>
@@ -794,7 +794,7 @@ function FullSlotsTodayCard() {
           <span className="text-xs text-muted-foreground">Quase lotados:</span>
           {nearlyFull.map((s) => (
             <span key={s.time} className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-white px-2 py-0.5 text-xs font-semibold">
-              {s.time} · {s.count}/{limit}
+              {s.time} · {s.count}/{s.capacity}
             </span>
           ))}
         </div>
