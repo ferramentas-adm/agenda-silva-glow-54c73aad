@@ -337,19 +337,50 @@ function AgendarPageInner() {
     const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
-      // Validação anti-corrida: reconta o slot imediatamente antes do INSERT.
-      // SDR é bloqueado se o limite for atingido. Gestor/moderador segue (pode forçar).
+      // Validação anti-corrida: reconta capacidade real do slot imediatamente antes do INSERT.
+      // Capacidade = closers ativos − closers com bloqueio pessoal cobrindo o horário.
+      // SDR é bloqueado apenas se TODOS os closers ativos disponíveis já estiverem ocupados.
       if (isSdrRole) {
-        const { count: slotCount, error: countError } = await supabase
-          .from("agendamentos")
-          .select("id", { count: "exact", head: true })
-          .eq("scheduled_date", dateStr)
-          .eq("scheduled_time", time)
-          .is("deleted_at", null)
-          .neq("status", "cancelada");
-        if (countError) throw countError;
-        if ((slotCount ?? 0) >= slotLimit) {
-          toast.error(`Limite de ${slotLimit} agendas atingido nesse horário. Escolha outro.`);
+        const slotHour = parseInt(time.slice(0, 2), 10);
+        const weekday = new Date(`${dateStr}T12:00:00-03:00`).getDay();
+        const [agSlotRes, closersRes, blocksRes] = await Promise.all([
+          supabase
+            .from("agendamentos")
+            .select("closer_id")
+            .eq("scheduled_date", dateStr)
+            .eq("scheduled_time", time)
+            .is("deleted_at", null)
+            .neq("status", "cancelada"),
+          supabase.from("closers").select("id").eq("active", true),
+          supabase
+            .from("closer_blocks")
+            .select("start_time, end_time, closer_id")
+            .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`),
+        ]);
+        if (agSlotRes.error) throw agSlotRes.error;
+        if (closersRes.error) throw closersRes.error;
+        if (blocksRes.error) throw blocksRes.error;
+
+        const activeCloserIds = new Set<string>((closersRes.data ?? []).map((c: any) => c.id));
+        const blockedAtSlot = new Set<string>();
+        for (const b of (blocksRes.data ?? []) as any[]) {
+          if (!b.closer_id || !activeCloserIds.has(b.closer_id)) continue;
+          const sH = parseInt(String(b.start_time ?? "00").slice(0, 2), 10);
+          const eH = parseInt(String(b.end_time ?? "00").slice(0, 2), 10);
+          if (slotHour >= sH && slotHour < eH) blockedAtSlot.add(b.closer_id);
+        }
+        const capacity = Math.max(0, activeCloserIds.size - blockedAtSlot.size);
+
+        const closerIdsBooked = new Set<string>();
+        let unassigned = 0;
+        for (const r of (agSlotRes.data ?? []) as any[]) {
+          if (r.closer_id) closerIdsBooked.add(r.closer_id);
+          else unassigned += 1;
+        }
+        const busy = closerIdsBooked.size + unassigned;
+
+        if (capacity === 0 || busy >= capacity) {
+          toast.error(`Horário lotado (${busy}/${capacity}). Todos os closers ativos já estão ocupados nesse horário.`);
           setSubmitting(false);
           return;
         }
