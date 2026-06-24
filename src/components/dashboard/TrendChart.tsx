@@ -98,24 +98,40 @@ export default function TrendChart({
   series,
   primaryKey,
   showMovingAverage = true,
+  showTrendline = false,
+  showComparison = true,
   windowDays,
   onWindowChange,
   rightAxisFormatter,
   emptyMessage = "Sem dados no período.",
 }: TrendChartProps) {
-  const showComparison = props_showComparison_default(arguments);
-  // (compat) read optional props with defaults
-  const showTrendline = (arguments[0] as TrendChartProps).showTrendline ?? false;
-  const _showComparison = (arguments[0] as TrendChartProps).showComparison ?? true;
   // Anexa MM da série primária aos dados (janela adaptativa)
   const mmWindow = data.length >= 30 ? 7 : data.length >= 14 ? 5 : 3;
-  const useMM = showMovingAverage && data.length >= 8;
+  const useMM = showMovingAverage && !showTrendline && data.length >= 8;
   const enriched = useMemo<TrendDatum[]>(() => {
-    if (!useMM || data.length === 0) return data;
+    if (data.length === 0) return data;
     const values = data.map((d) => Number(d[primaryKey] ?? 0));
-    const mm = movingAverage(values, mmWindow);
-    return data.map((d, i) => ({ ...d, [MM_KEY]: mm[i] ?? 0 }));
-  }, [data, primaryKey, useMM, mmWindow]);
+    const mm = useMM ? movingAverage(values, mmWindow) : null;
+    const reg = showTrendline ? linearRegression(values) : null;
+    return data.map((d, i) => {
+      const out: TrendDatum = { ...d };
+      if (mm) out[MM_KEY] = mm[i] ?? 0;
+      if (reg) out[TREND_KEY] = Number((reg.a * i + reg.b).toFixed(2));
+      return out;
+    });
+  }, [data, primaryKey, useMM, mmWindow, showTrendline]);
+
+  const trendSlope = useMemo(() => {
+    if (!showTrendline || data.length < 2) return 0;
+    const values = data.map((d) => Number(d[primaryKey] ?? 0));
+    return linearRegression(values)?.a ?? 0;
+  }, [data, primaryKey, showTrendline]);
+  const trendColor =
+    trendSlope > 0.001
+      ? "hsl(142 76% 36%)"
+      : trendSlope < -0.001
+        ? "hsl(var(--destructive))"
+        : "hsl(var(--muted-foreground))";
 
   // Variação metade recente vs metade anterior do período
   const insight = useMemo(() => {
