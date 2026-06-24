@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
 
 interface AgendamentoMetric {
   id: string;
@@ -118,6 +120,8 @@ export default function ProdutividadeSDRTab({
   currentDate,
   updatedAgo,
 }: Props) {
+  const { role } = useAuth();
+  const isManager = role === "gestor" || role === "moderador";
   const [filter, setFilter] = useState<FilterType>("criadas");
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
@@ -434,6 +438,9 @@ export default function ProdutividadeSDRTab({
           active={filter === "nao_compareceu"}
         />
       </div>
+
+      {/* Tendência preditiva — apenas para gestores/moderadores */}
+      {isManager && <TrendCardSDR />}
 
       {/* Gráfico comparativo */}
       <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
