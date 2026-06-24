@@ -12,8 +12,32 @@ import TrendChart, { type TrendDatum, type TrendWindow } from "./TrendChart";
  * Usa janela rolante independente do filtro de dia da aba.
  * Considera apenas agendamentos criados por SDRs (created_by ∈ user_roles.sdr).
  */
+type SDRMetric = "criadas" | "realizadas" | "showup";
+
+const SDR_METRICS: Record<SDRMetric, { label: string; color: string; format: (v: number) => string; title: string }> = {
+  criadas: {
+    label: "Agendamentos criados",
+    color: "hsl(var(--primary))",
+    format: (v) => String(Math.round(v)),
+    title: "Tendência de agendamentos criados",
+  },
+  realizadas: {
+    label: "Reuniões realizadas",
+    color: "hsl(142 76% 36%)",
+    format: (v) => String(Math.round(v)),
+    title: "Tendência de reuniões realizadas",
+  },
+  showup: {
+    label: "Taxa de comparecimento (%)",
+    color: "hsl(38 92% 50%)",
+    format: (v) => `${v.toFixed(1)}%`,
+    title: "Tendência de comparecimento",
+  },
+};
+
 export default function TrendCardSDR() {
   const [windowDays, setWindowDays] = useState<TrendWindow>(30);
+  const [metric, setMetric] = useState<SDRMetric>("criadas");
 
   // Conjunto de user_ids com role 'sdr' — para filtrar created_by.
   const { data: sdrIds = new Set<string>() } = useQuery<Set<string>>({
