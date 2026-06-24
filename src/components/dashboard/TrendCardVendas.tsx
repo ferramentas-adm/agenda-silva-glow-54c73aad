@@ -6,8 +6,6 @@ import { TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import TrendChart, { type TrendDatum, type TrendWindow } from "./TrendChart";
 
-const fmtBRL = (n: number) =>
-  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
 /**
  * Painel de tendência de vendas e taxa de conversão.
@@ -118,25 +116,11 @@ export default function TrendCardVendas({ closerId }: { closerId?: string | null
 
   return (
     <TrendChart
-      title={`Tendência de vendas e conversão — ${windowDays} dias`}
+      title={`Tendência de conversão — ${windowDays} dias`}
       icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
       data={data}
-      primaryKey="vendas"
+      primaryKey="conversao"
       series={[
-        {
-          key: "faturamento",
-          label: "Faturamento (R$)",
-          color: "hsl(142 76% 36%)",
-          type: "bar",
-          yAxis: "right",
-          format: (v) => fmtBRL(v),
-        },
-        {
-          key: "vendas",
-          label: "Vendas fechadas",
-          color: "hsl(var(--primary))",
-          type: "line",
-        },
         {
           key: "conversao",
           label: "Taxa de conversão (%)",
@@ -147,8 +131,10 @@ export default function TrendCardVendas({ closerId }: { closerId?: string | null
       ]}
       windowDays={windowDays}
       onWindowChange={setWindowDays}
-      rightAxisFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
-      emptyMessage="Sem vendas no período."
+      showMovingAverage={false}
+      showTrendline
+      showComparison={false}
+      emptyMessage="Sem reuniões realizadas no período."
     />
   );
 }

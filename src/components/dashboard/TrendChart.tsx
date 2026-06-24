@@ -50,8 +50,12 @@ interface TrendChartProps {
   series: TrendSeries[];
   /** Chave da série usada para badge de variação e detecção de queda. */
   primaryKey: string;
-  /** Mostra média móvel 7d da série primária como linha tracejada. */
+  /** Mostra média móvel da série primária como linha tracejada. */
   showMovingAverage?: boolean;
+  /** Mostra linha de tendência (regressão linear) da série primária. */
+  showTrendline?: boolean;
+  /** Mostra badge de comparação metade-recente vs metade-anterior. */
+  showComparison?: boolean;
   windowDays: TrendWindow;
   onWindowChange: (w: TrendWindow) => void;
   /** Eixo Y direito é necessário? Define o range/formatter dele. */
@@ -60,6 +64,24 @@ interface TrendChartProps {
 }
 
 const MM_KEY = "__mm7";
+const TREND_KEY = "__trend";
+
+function linearRegression(values: number[]): { a: number; b: number } | null {
+  const n = values.length;
+  if (n < 2) return null;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (let i = 0; i < n; i++) {
+    sx += i;
+    sy += values[i];
+    sxx += i * i;
+    sxy += i * values[i];
+  }
+  const denom = n * sxx - sx * sx;
+  if (denom === 0) return null;
+  const a = (n * sxy - sx * sy) / denom;
+  const b = (sy - a * sx) / n;
+  return { a, b };
+}
 
 function movingAverage(values: number[], window: number): (number | null)[] {
   return values.map((_, i) => {
@@ -76,6 +98,8 @@ export default function TrendChart({
   series,
   primaryKey,
   showMovingAverage = true,
+  showTrendline = false,
+  showComparison = true,
   windowDays,
   onWindowChange,
   rightAxisFormatter,
@@ -83,13 +107,31 @@ export default function TrendChart({
 }: TrendChartProps) {
   // Anexa MM da série primária aos dados (janela adaptativa)
   const mmWindow = data.length >= 30 ? 7 : data.length >= 14 ? 5 : 3;
-  const useMM = showMovingAverage && data.length >= 8;
+  const useMM = showMovingAverage && !showTrendline && data.length >= 8;
   const enriched = useMemo<TrendDatum[]>(() => {
-    if (!useMM || data.length === 0) return data;
+    if (data.length === 0) return data;
     const values = data.map((d) => Number(d[primaryKey] ?? 0));
-    const mm = movingAverage(values, mmWindow);
-    return data.map((d, i) => ({ ...d, [MM_KEY]: mm[i] ?? 0 }));
-  }, [data, primaryKey, useMM, mmWindow]);
+    const mm = useMM ? movingAverage(values, mmWindow) : null;
+    const reg = showTrendline ? linearRegression(values) : null;
+    return data.map((d, i) => {
+      const out: TrendDatum = { ...d };
+      if (mm) out[MM_KEY] = mm[i] ?? 0;
+      if (reg) out[TREND_KEY] = Number((reg.a * i + reg.b).toFixed(2));
+      return out;
+    });
+  }, [data, primaryKey, useMM, mmWindow, showTrendline]);
+
+  const trendSlope = useMemo(() => {
+    if (!showTrendline || data.length < 2) return 0;
+    const values = data.map((d) => Number(d[primaryKey] ?? 0));
+    return linearRegression(values)?.a ?? 0;
+  }, [data, primaryKey, showTrendline]);
+  const trendColor =
+    trendSlope > 0.001
+      ? "hsl(142 76% 36%)"
+      : trendSlope < -0.001
+        ? "hsl(var(--destructive))"
+        : "hsl(var(--muted-foreground))";
 
   // Variação metade recente vs metade anterior do período
   const insight = useMemo(() => {
@@ -126,7 +168,7 @@ export default function TrendChart({
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
 
-        {insight && (
+        {showComparison && insight && (
           <span
             className={cn(
               "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border",
@@ -150,6 +192,29 @@ export default function TrendChart({
           </span>
         )}
 
+        {showTrendline && data.length >= 2 && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border",
+              trendSlope > 0.001
+                ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                : trendSlope < -0.001
+                  ? "text-destructive border-destructive/30 bg-destructive/10"
+                  : "text-muted-foreground border-border bg-muted/40",
+            )}
+            title="Inclinação da linha de tendência sobre o período"
+          >
+            {trendSlope > 0.001 ? (
+              <TrendingUp className="h-3 w-3" />
+            ) : trendSlope < -0.001 ? (
+              <TrendingDown className="h-3 w-3" />
+            ) : (
+              <Minus className="h-3 w-3" />
+            )}
+            {trendSlope > 0.001 ? "Subindo" : trendSlope < -0.001 ? "Caindo" : "Estável"}
+          </span>
+        )}
+
         <div className="ml-auto flex items-center gap-1">
           {([7, 15, 30, 60, 90] as TrendWindow[]).map((w) => (
             <Button
@@ -165,7 +230,7 @@ export default function TrendChart({
         </div>
       </div>
 
-      {downtrend && (
+      {showComparison && downtrend && (
         <div className="flex items-center gap-2 text-xs rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-2">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
@@ -243,6 +308,20 @@ export default function TrendChart({
                   strokeWidth={1.5}
                   strokeDasharray="5 5"
                   dot={false}
+                />
+              )}
+
+              {showTrendline && (
+                <Line
+                  yAxisId={primarySeries?.yAxis ?? "left"}
+                  type="linear"
+                  dataKey={TREND_KEY}
+                  name="Tendência"
+                  stroke={trendColor}
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  dot={false}
+                  isAnimationActive={false}
                 />
               )}
             </ComposedChart>
