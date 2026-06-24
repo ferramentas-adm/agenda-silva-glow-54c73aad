@@ -63,10 +63,28 @@ export default function AgendarPage() {
   
 
   const isReschedule = !!editId;
-  const isSdrRole = role === "sdr";
   const isAdmin = role === "gestor" || role === "moderador";
-  // SDR nunca pode escolher Closer ao agendar — sempre cai na fila "Aguardando atribuição".
-  const canPickCloser = !isSdrRole;
+
+  // Verifica se o usuário atual atua como SDR via override (profiles.is_sdr_override),
+  // mesmo que tenha role 'closer'/'moderador'. SDRs por override seguem as MESMAS
+  // regras de SDR: não escolhem Closer e respeitam limite de slot.
+  const { data: currentProfile } = useQuery({
+    queryKey: ["current-profile-sdr-override", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_sdr_override")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const isSdrOverride = currentProfile?.is_sdr_override === true;
+  const isSdrRole = role === "sdr" || (role !== "gestor" && role !== "moderador" && isSdrOverride);
+  // SDR (incluindo overrides) nunca pode escolher Closer — sempre cai na fila "Aguardando atribuição".
+  // Apenas gestor/moderador e closer (para 2ª reunião própria) seguem escolhendo.
+  const canPickCloser = isAdmin || (role === "closer" && !isSdrOverride);
   // Determine initial step based on URL params
   const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
 
