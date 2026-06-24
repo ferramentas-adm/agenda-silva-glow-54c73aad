@@ -1,34 +1,54 @@
-# Bug: SDR consegue agendar direto na agenda de um Closer
+## Objetivo
 
-## Causa raiz
+Transformar a aba "Erros SDR" numa triagem com duas decisões claras, permitir reabrir um erro já revisado e abrir os detalhes completos do lead (briefing do SDR + dados do Closer) direto da tela.
 
-No `src/pages/AgendarPage.tsx`, a flag `isSdrOverride` depende de uma `useQuery` que busca `profiles.is_sdr_override`. Enquanto essa query não resolve, `currentProfile` é `undefined` e portanto:
+## Renomeações sugeridas
 
-- `isSdrOverride = false`
-- `canPickCloser = isAdmin || (role === "closer" && !isSdrOverride)` → para um usuário com role `closer` + override SDR, isso vira **`true`** no primeiro render.
+- **Novos erros** → "Pendentes de revisão"
+- **Revisados** → some como aba única; passa a virar **duas seções/abas**:
+  - **Erros confirmados** (gestor validou que foi erro do SDR)
+  - **Qualificados corretamente** (gestor concluiu que o SDR acertou — não era erro)
 
-Os estados iniciais do componente são definidos via `useState(...)` usando esse `canPickCloser` do primeiro render:
+Layout final da página de Erros SDR: três abas
+`Pendentes` · `Erros confirmados` · `Qualificados corretamente`
 
-- `const [step, setStep] = useState<Step>(isReschedule ? (canPickCloser ? "closer" : "datetime") : ...)`
-- `const [closerId, setCloserId] = useState<string | null>(canPickCloser ? (preCloserId || null) : null)`
+## Mudanças no banco
 
-Quando a query resolve e `canPickCloser` vira `false`, esses `useState` **não são reavaliados** — o componente continua exibindo a tela de seleção de Closer e mantém o `closerId` pré-selecionado vindo da URL (`?closer=...`). Resultado: SDRs com override (closers reclassificados como SDR pelo Admin) conseguem agendar diretamente na agenda de um Closer.
+Adicionar coluna em `agendamentos` e `vendas`:
 
-A mesma janela permite uso direto de URLs `/agendar?closer=...&date=...&time=...` por SDRs override.
+- `sdr_error_outcome TEXT` com valores possíveis: `confirmed` (erro do SDR confirmado) e `dismissed` (SDR acertou).
+- Mantém `sdr_error_reviewed_at` e `sdr_error_reviewed_by` já existentes para registrar quem revisou.
 
-## Correção
+Reabrir um item = setar os três campos como `NULL` (volta para Pendentes).
 
-No `src/pages/AgendarPage.tsx`:
+## Mudanças na UI — `ErrosSDRTab.tsx`
 
-1. Tornar a query `current-profile-sdr-override` bloqueante para a renderização:
-   - Expor `isLoading` da `useQuery`.
-   - Antes do `return` do JSX, se `user` existir e o profile ainda estiver carregando (`isLoading || currentProfile === undefined`), renderizar um placeholder simples ("Carregando…") em vez do formulário.
-   - Isso garante que `isSdrOverride`, `isSdrRole`, `canPickCloser`, `isCloser` e `channelTypeRequired` já estejam corretos antes de qualquer `useState` inicializar.
+1. **Três abas** com contagem em badge, agrupadas por SDR em acordeão (mantém o padrão atual).
+2. **Aba Pendentes** — cada item ganha **dois botões** (apenas para `gestor`/`moderador`):
+   - `Validar erro` (vermelho/âmbar, ícone Check) → grava `outcome = confirmed`.
+   - `SDR acertou` (verde, ícone ShieldCheck) → grava `outcome = dismissed`.
+3. **Abas Erros confirmados / Qualificados corretamente** — cada item ganha um botão `Reabrir` (ícone Undo2) que limpa a revisão e devolve para Pendentes. Mostra também "Revisado por X em dd/MM".
+4. **Clique no nome do lead** abre um **drawer de detalhes** com duas seções:
+   - **Briefing do SDR** (pré-call) — reusa os campos já mostrados pelo `BriefingDrawer` existente quando aplicável.
+   - **Resultado do Closer** (pós-call) — dados da venda quando existir (origem, status, valor, motivos, observações).
+   
+   Disponível em todas as três abas.
 
-2. Como defesa adicional, sanear os params da URL quando `canPickCloser` for `false`:
-   - Adicionar um `useEffect` que, ao mudar `canPickCloser` para `false`, force `setCloserId(null)` e, se `step === "closer"`, mova para `"datetime"`. Cobre o caso de algum link antigo persistido em cache.
+5. Cards de resumo no topo passam a mostrar 4 números: Pendentes · Confirmados · Qualificados corretamente · SDRs com erros.
+
+## Permissões
+
+- Validar / Marcar SDR acertou / Reabrir: somente `gestor` e `moderador` (mesma regra já existente).
+- Visualização do drawer de detalhes: todos os papéis que já acessam a aba.
+
+## Arquivos afetados
+
+- `supabase/migrations/<new>.sql` — adicionar coluna `sdr_error_outcome` nas duas tabelas.
+- `src/components/dashboard/ErrosSDRTab.tsx` — três abas, dois botões de decisão, botão reabrir, integração com novo drawer.
+- `src/components/dashboard/SDRErrorDetailsDrawer.tsx` (novo) — drawer com briefing + dados do closer, busca os dados do `agendamento` e da `venda` por id.
+- `src/integrations/supabase/types.ts` — regenerado após migration.
 
 ## Fora de escopo
 
-- Nenhuma mudança em backend, RLS, edge functions ou outras telas.
-- Lógica de `isSdrRole`/`canPickCloser` permanece igual; só corrigimos a ordem em que ela é aplicada.
+- Não vou alterar `BriefingDrawer` nem `VendaDialog` existentes; o novo drawer só lê os dados em modo somente-leitura.
+- Sem mudanças em RLS/edge functions; as colunas novas seguem as policies já existentes das tabelas.
