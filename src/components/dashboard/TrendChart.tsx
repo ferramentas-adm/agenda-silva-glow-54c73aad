@@ -168,7 +168,7 @@ export default function TrendChart({
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
 
-        {insight && (
+        {showComparison && insight && (
           <span
             className={cn(
               "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border",
@@ -189,6 +189,29 @@ export default function TrendChart({
             )}
             {insight.delta > 0 ? "+" : ""}
             {insight.delta.toFixed(0)}% ({insight.half}d vs {insight.half}d)
+          </span>
+        )}
+
+        {showTrendline && data.length >= 2 && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border",
+              trendSlope > 0.001
+                ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                : trendSlope < -0.001
+                  ? "text-destructive border-destructive/30 bg-destructive/10"
+                  : "text-muted-foreground border-border bg-muted/40",
+            )}
+            title="Inclinação da linha de tendência sobre o período"
+          >
+            {trendSlope > 0.001 ? (
+              <TrendingUp className="h-3 w-3" />
+            ) : trendSlope < -0.001 ? (
+              <TrendingDown className="h-3 w-3" />
+            ) : (
+              <Minus className="h-3 w-3" />
+            )}
+            {trendSlope > 0.001 ? "Subindo" : trendSlope < -0.001 ? "Caindo" : "Estável"}
           </span>
         )}
 
