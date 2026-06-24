@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ComposedChart,
-  Bar,
   Line,
   XAxis,
   YAxis,
