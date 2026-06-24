@@ -291,7 +291,7 @@ export default function MetricDrilldownDialog({
                       <User className="h-4 w-4 text-primary shrink-0" />
                       <span className="font-semibold truncate">{d.lead_name}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                       {(() => {
                         const v = vendaMap.get(d.id) as any;
                         if (!v) return null;
@@ -302,6 +302,19 @@ export default function MetricDrilldownDialog({
                         ) : (
                           <Badge variant="outline" className="text-muted-foreground">
                             Sem follow
+                          </Badge>
+                        );
+                      })()}
+                      {d.status === "realizada" && (() => {
+                        const v = vendaMap.get(d.id) as any;
+                        const ofertou = !!v && (v.vendeu === true || Number(v.valor) > 0);
+                        return ofertou ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/15">
+                            Preço ofertado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Sem oferta
                           </Badge>
                         );
                       })()}
