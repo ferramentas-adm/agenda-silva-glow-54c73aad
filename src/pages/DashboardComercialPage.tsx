@@ -753,20 +753,20 @@ function FullSlotsTodayCard() {
   const { limit } = useSlotLimit();
 
   const fullSlots = useMemo(() => {
-    if (!counts) return [] as { time: string; count: number }[];
+    if (!counts) return [] as { time: string; count: number; capacity: number }[];
     return Array.from(counts.entries())
-      .filter(([, n]) => n >= limit)
-      .map(([time, count]) => ({ time, count }))
+      .filter(([, info]) => info.full)
+      .map(([time, info]) => ({ time, count: info.count, capacity: info.capacity }))
       .sort((a, b) => a.time.localeCompare(b.time));
-  }, [counts, limit]);
+  }, [counts]);
 
   const nearlyFull = useMemo(() => {
-    if (!counts) return [] as { time: string; count: number }[];
+    if (!counts) return [] as { time: string; count: number; capacity: number }[];
     return Array.from(counts.entries())
-      .filter(([, n]) => n >= Math.max(1, limit - 2) && n < limit)
-      .map(([time, count]) => ({ time, count }))
+      .filter(([, info]) => !info.full && info.capacity > 0 && info.count >= Math.max(1, info.capacity - 2))
+      .map(([time, info]) => ({ time, count: info.count, capacity: info.capacity }))
       .sort((a, b) => a.time.localeCompare(b.time));
-  }, [counts, limit]);
+  }, [counts]);
 
   if (fullSlots.length === 0 && nearlyFull.length === 0) return null;
 

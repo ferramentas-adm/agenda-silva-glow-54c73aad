@@ -195,11 +195,13 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const calendarExpired = !globalMode && (calendarData?.expired ?? false);
   const calendarConnected = !globalMode && (calendarData?.connected ?? false);
 
-  // Slot fill counts (todos os closers somados) + limite global
+  // Lotação dinâmica: capacidade = closers ativos disponíveis no slot.
   const { data: slotCounts } = useSlotCounts(dateStr);
   const { limit: slotLimit } = useSlotLimit();
-  const countFor = (slot: string) => slotCounts?.get(slot) ?? 0;
-  const isSlotFull = (slot: string) => countFor(slot) >= slotLimit;
+  const infoFor = (slot: string) => slotCounts?.get(slot) ?? { count: 0, capacity: 0, full: false };
+  const countFor = (slot: string) => infoFor(slot).count;
+  const capacityFor = (slot: string) => infoFor(slot).capacity;
+  const isSlotFull = (slot: string) => infoFor(slot).full;
 
   // Use São Paulo timezone for "today" checks
   const spNow = useMemo(() => {
@@ -268,15 +270,15 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     }
 
 
-    // Slot lotado globalmente (todos closers somados)
+    // Slot lotado globalmente (todos closers ativos ocupados/bloqueados nesse horário)
     const startSlot = customStart.slice(0, 5);
-    const cnt = countFor(startSlot);
-    if (cnt >= slotLimit) {
+    const info = infoFor(startSlot);
+    if (info.full) {
       if (canForceFullSlot) {
-        setFullSlotInfo({ time: startSlot, count: cnt, duration: endMin - startMin });
+        setFullSlotInfo({ time: startSlot, count: info.count, duration: endMin - startMin });
         return;
       }
-      setCustomError(`Horário lotado (${cnt}/${slotLimit}). Todos os closers já estão ocupados nesse horário.`);
+      setCustomError(`Horário lotado (${info.count}/${info.capacity}). Todos os closers ativos já estão ocupados nesse horário.`);
       return;
     }
 
@@ -289,15 +291,16 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const { fullSlots, nearlyFullSlots } = useMemo(() => {
     const full: { time: string; count: number }[] = [];
     const nearly: { time: string; count: number }[] = [];
-    const threshold = Math.max(1, slotLimit - 2);
     for (const slot of ALL_SLOTS) {
       if (isToday && slot <= spNow.timeStr) continue; // ignora passados
-      const c = countFor(slot);
-      if (c >= slotLimit) full.push({ time: slot, count: c });
-      else if (c >= threshold) nearly.push({ time: slot, count: c });
+      const info = slotCounts?.get(slot) ?? { count: 0, capacity: 0, full: false };
+      if (info.full) full.push({ time: slot, count: info.count });
+      else if (info.capacity > 0 && info.count >= Math.max(1, info.capacity - 2)) {
+        nearly.push({ time: slot, count: info.count });
+      }
     }
     return { fullSlots: full, nearlyFullSlots: nearly };
-  }, [ALL_SLOTS, slotCounts, slotLimit, isToday, spNow.timeStr]);
+  }, [ALL_SLOTS, slotCounts, isToday, spNow.timeStr]);
 
   return (
     <div className="space-y-3">
@@ -356,7 +359,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
         <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3 text-amber-500" /> Agendado (interno)</span>
         <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-blue-500" /> Google Calendar</span>
         <span className="flex items-center gap-1"><Lock className="h-3 w-3 text-rose-400" /> Bloqueio pessoal</span>
-        <span className="flex items-center gap-1"><Users className="h-3 w-3 text-red-500" /> Lotado ({slotLimit}/{slotLimit})</span>
+        <span className="flex items-center gap-1"><Users className="h-3 w-3 text-red-500" /> Lotado (todos os closers ocupados)</span>
       </div>
 
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
@@ -366,9 +369,11 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           const isPersonalBlock = isSlotBlockedByPersonal(slot);
           const isPast = isToday && slot <= spNow.timeStr;
           const isSelected = selectedTime === slot;
-          const slotCount = countFor(slot);
-          const isFull = slotCount >= slotLimit;
-          const isNearlyFull = !isFull && slotCount >= Math.max(1, slotLimit - 2);
+          const slotInfo = infoFor(slot);
+          const slotCount = slotInfo.count;
+          const slotCapacity = slotInfo.capacity;
+          const isFull = slotInfo.full;
+          const isNearlyFull = !isFull && slotCapacity > 0 && slotCount >= Math.max(1, slotCapacity - 2);
 
           // Priority: personal block > FULL > google > internal booking
           let slotStyle = "border-input bg-card hover:border-primary/50 active:scale-[0.97]";
@@ -388,8 +393,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             SlotIcon = Users;
             iconClass = "h-3.5 w-3.5 text-red-500";
             title = canForceFullSlot
-              ? `Lotado (${slotCount}/${slotLimit}) — clique para forçar`
-              : `Lotado (${slotCount}/${slotLimit}) — todos os closers ocupados`;
+              ? `Lotado (${slotCount}/${slotCapacity}) — clique para forçar`
+              : `Lotado (${slotCount}/${slotCapacity}) — todos os closers ocupados`;
           } else if (isGoogleBlocked) {
             slotStyle = "border-blue-400/50 bg-blue-500/10 hover:border-primary/50 active:scale-[0.97]";
             SlotIcon = CalendarDays;
@@ -452,7 +457,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
                     isFull ? "bg-red-500 text-white" : "bg-amber-500 text-white"
                   )}
                 >
-                  {slotCount}/{slotLimit}
+                  {slotCount}/{slotCapacity}
                 </span>
               )}
             </button>
@@ -507,7 +512,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
               {fullSlotInfo && (
                 <>
                   O horário <strong>{fullSlotInfo.time}</strong> já tem <strong>{fullSlotInfo.count}</strong> agendas
-                  marcadas (limite: {slotLimit}). Todos os closers já estão ocupados nesse horário.
+                  marcadas e todos os closers ativos disponíveis ({capacityFor(fullSlotInfo.time)}) já estão ocupados nesse horário.
                   {canForceFullSlot
                     ? " Você pode forçar o agendamento, mas confirme se realmente é necessário."
                     : " Por favor, escolha outro horário."}
