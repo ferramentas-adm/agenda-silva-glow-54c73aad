@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ComposedChart,
-  Bar,
   Line,
   XAxis,
   YAxis,
@@ -16,7 +15,7 @@ import { TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-export type TrendWindow = 30 | 60 | 90;
+export type TrendWindow = 7 | 15 | 30 | 60 | 90;
 
 export interface TrendSeries {
   /** Chave do campo no dataset (ex.: "criadas"). */
@@ -82,30 +81,34 @@ export default function TrendChart({
   rightAxisFormatter,
   emptyMessage = "Sem dados no período.",
 }: TrendChartProps) {
-  // Anexa MM7 da série primária aos dados
+  // Anexa MM da série primária aos dados (janela adaptativa)
+  const mmWindow = data.length >= 30 ? 7 : data.length >= 14 ? 5 : 3;
+  const useMM = showMovingAverage && data.length >= 8;
   const enriched = useMemo<TrendDatum[]>(() => {
-    if (!showMovingAverage || data.length === 0) return data;
+    if (!useMM || data.length === 0) return data;
     const values = data.map((d) => Number(d[primaryKey] ?? 0));
-    const mm = movingAverage(values, 7);
+    const mm = movingAverage(values, mmWindow);
     return data.map((d, i) => ({ ...d, [MM_KEY]: mm[i] ?? 0 }));
-  }, [data, primaryKey, showMovingAverage]);
+  }, [data, primaryKey, useMM, mmWindow]);
 
-  // Variação 7d vs 7d anteriores e detecção de queda
+  // Variação metade recente vs metade anterior do período
   const insight = useMemo(() => {
-    if (data.length < 14) return null;
+    if (data.length < 4) return null;
     const values = data.map((d) => Number(d[primaryKey] ?? 0));
-    const recent = values.slice(-7).reduce((s, n) => s + n, 0);
-    const prior = values.slice(-14, -7).reduce((s, n) => s + n, 0);
+    const half = Math.floor(values.length / 2);
+    const recent = values.slice(-half).reduce((s, n) => s + n, 0);
+    const prior = values.slice(-half * 2, -half).reduce((s, n) => s + n, 0);
     const delta = prior === 0 ? (recent > 0 ? 100 : 0) : ((recent - prior) / prior) * 100;
-    return { recent, prior, delta };
+    return { recent, prior, delta, half };
   }, [data, primaryKey]);
 
   const downtrend = insight ? insight.delta <= -15 : false;
   const primarySeries = series.find((s) => s.key === primaryKey);
   const fmtPrimary = primarySeries?.format ?? ((v: number) => String(Math.round(v)));
 
+  const mmLabel = `Média móvel ${mmWindow}d`;
   const tooltipFormatter = (value: number, name: string) => {
-    if (name === "Média móvel 7d") {
+    if (name === mmLabel) {
       return [fmtPrimary(value), name];
     }
     const s = series.find((sr) => sr.label === name);
@@ -133,7 +136,7 @@ export default function TrendChart({
                   ? "text-destructive border-destructive/30 bg-destructive/10"
                   : "text-muted-foreground border-border bg-muted/40",
             )}
-            title={`Últimos 7 dias: ${fmtPrimary(insight.recent)} · 7 dias anteriores: ${fmtPrimary(insight.prior)}`}
+            title={`Últimos ${insight.half}d: ${fmtPrimary(insight.recent)} · ${insight.half}d anteriores: ${fmtPrimary(insight.prior)}`}
           >
             {insight.delta > 0 ? (
               <TrendingUp className="h-3 w-3" />
@@ -143,12 +146,12 @@ export default function TrendChart({
               <Minus className="h-3 w-3" />
             )}
             {insight.delta > 0 ? "+" : ""}
-            {insight.delta.toFixed(0)}% (7d vs 7d)
+            {insight.delta.toFixed(0)}% ({insight.half}d vs {insight.half}d)
           </span>
         )}
 
         <div className="ml-auto flex items-center gap-1">
-          {([30, 60, 90] as TrendWindow[]).map((w) => (
+          {([7, 15, 30, 60, 90] as TrendWindow[]).map((w) => (
             <Button
               key={w}
               variant={windowDays === w ? "default" : "outline"}
@@ -166,8 +169,8 @@ export default function TrendChart({
         <div className="flex items-center gap-2 text-xs rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-2">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
-            Tendência de queda detectada — últimos 7 dias {insight!.delta.toFixed(0)}% abaixo dos
-            7 dias anteriores. Avalie ações de marketing/vendas.
+            Tendência de queda detectada — últimos {insight!.half}d {insight!.delta.toFixed(0)}% abaixo dos
+            {" "}{insight!.half}d anteriores. Avalie ações de marketing/vendas.
           </span>
         </div>
       )}
@@ -215,39 +218,27 @@ export default function TrendChart({
 
               {series
                 .filter((s) => !s.hidden)
-                .map((s) =>
-                  s.type === "bar" ? (
-                    <Bar
-                      key={s.key}
-                      yAxisId={s.yAxis ?? "left"}
-                      dataKey={s.key}
-                      name={s.label}
-                      fill={s.color}
-                      fillOpacity={0.75}
-                      radius={[4, 4, 0, 0]}
-                    />
-                  ) : (
-                    <Line
-                      key={s.key}
-                      yAxisId={s.yAxis ?? "left"}
-                      type="monotone"
-                      dataKey={s.key}
-                      name={s.label}
-                      stroke={s.color}
-                      strokeWidth={2}
-                      strokeDasharray={s.dashed ? "4 4" : undefined}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  ),
-                )}
+                .map((s) => (
+                  <Line
+                    key={s.key}
+                    yAxisId={s.yAxis ?? "left"}
+                    type="monotone"
+                    dataKey={s.key}
+                    name={s.label}
+                    stroke={s.color}
+                    strokeWidth={2.5}
+                    strokeDasharray={s.dashed ? "4 4" : undefined}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                ))}
 
-              {showMovingAverage && (
+              {useMM && (
                 <Line
                   yAxisId={primarySeries?.yAxis ?? "left"}
                   type="monotone"
                   dataKey={MM_KEY}
-                  name="Média móvel 7d"
+                  name={mmLabel}
                   stroke="hsl(var(--muted-foreground))"
                   strokeWidth={1.5}
                   strokeDasharray="5 5"
