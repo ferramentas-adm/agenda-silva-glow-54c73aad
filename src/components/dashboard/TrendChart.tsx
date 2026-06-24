@@ -106,8 +106,9 @@ export default function TrendChart({
   const primarySeries = series.find((s) => s.key === primaryKey);
   const fmtPrimary = primarySeries?.format ?? ((v: number) => String(Math.round(v)));
 
+  const mmLabel = `Média móvel ${mmWindow}d`;
   const tooltipFormatter = (value: number, name: string) => {
-    if (name === "Média móvel 7d") {
+    if (name === mmLabel) {
       return [fmtPrimary(value), name];
     }
     const s = series.find((sr) => sr.label === name);
@@ -232,12 +233,12 @@ export default function TrendChart({
                   />
                 ))}
 
-              {showMovingAverage && (
+              {useMM && (
                 <Line
                   yAxisId={primarySeries?.yAxis ?? "left"}
                   type="monotone"
                   dataKey={MM_KEY}
-                  name="Média móvel 7d"
+                  name={mmLabel}
                   stroke="hsl(var(--muted-foreground))"
                   strokeWidth={1.5}
                   strokeDasharray="5 5"
