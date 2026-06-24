@@ -169,28 +169,3 @@ export default function TrendCardVendas({ closerId }: { closerId?: string | null
     />
   );
 }
-
-  return (
-    <TrendChart
-      title={`Tendência de conversão — ${windowDays} dias`}
-      icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-      data={data}
-      primaryKey="conversao"
-      series={[
-        {
-          key: "conversao",
-          label: "Taxa de conversão (%)",
-          color: "hsl(38 92% 50%)",
-          type: "line",
-          format: (v) => `${v.toFixed(1)}%`,
-        },
-      ]}
-      windowDays={windowDays}
-      onWindowChange={setWindowDays}
-      showMovingAverage={false}
-      showTrendline
-      showComparison={false}
-      emptyMessage="Sem reuniões realizadas no período."
-    />
-  );
-}
