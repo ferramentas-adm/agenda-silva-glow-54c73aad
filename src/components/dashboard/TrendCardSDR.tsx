@@ -117,32 +117,42 @@ export default function TrendCardSDR() {
 
     return days.map((d) => {
       const key = format(d, "yyyy-MM-dd");
+      const criadas = criadasMap.get(key) || 0;
+      const realizadas = realizadasMap.get(key) || 0;
+      const showup = criadas > 0 ? (realizadas / criadas) * 100 : 0;
       return {
         date: key,
-        criadas: criadasMap.get(key) || 0,
-        realizadas: realizadasMap.get(key) || 0,
+        criadas,
+        realizadas,
+        showup: Number(showup.toFixed(1)),
       };
     });
   }, [rows, sdrIds, windowDays]);
 
+  const m = SDR_METRICS[metric];
+
   return (
     <TrendChart
-      title={`Tendência de agendamentos — ${windowDays} dias`}
+      title={`${m.title} — ${windowDays} dias`}
       icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
       data={data}
-      primaryKey="criadas"
+      primaryKey={metric}
       series={[
-        { key: "criadas", label: "Criadas", color: "hsl(var(--primary))", type: "line" },
-        {
-          key: "realizadas",
-          label: "Realizadas",
-          color: "hsl(142 76% 36%)",
-          type: "line",
-        },
+        { key: metric, label: m.label, color: m.color, type: "line", format: m.format },
       ]}
       windowDays={windowDays}
       onWindowChange={setWindowDays}
+      showMovingAverage={false}
+      showTrendline
+      showComparison={false}
       emptyMessage="Sem agendamentos no período."
+      metricOptions={[
+        { value: "criadas", label: "Criadas" },
+        { value: "realizadas", label: "Realizadas" },
+        { value: "showup", label: "Comparecimento" },
+      ]}
+      currentMetric={metric}
+      onMetricChange={(v) => setMetric(v as SDRMetric)}
     />
   );
 }
