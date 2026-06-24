@@ -1,54 +1,41 @@
 ## Objetivo
 
-Transformar a aba "Erros SDR" numa triagem com duas decisões claras, permitir reabrir um erro já revisado e abrir os detalhes completos do lead (briefing do SDR + dados do Closer) direto da tela.
+Dar aos gestores visão preditiva: identificar quedas em agendamentos, conversões e vendas antes que virem problema. Para isso, adiciono painéis de **tendência temporal** nas abas **Produtividade SDR** e **Vendas**, com séries históricas, média móvel e sinalização visual de queda.
 
-## Renomeações sugeridas
+## O que será adicionado
 
-- **Novos erros** → "Pendentes de revisão"
-- **Revisados** → some como aba única; passa a virar **duas seções/abas**:
-  - **Erros confirmados** (gestor validou que foi erro do SDR)
-  - **Qualificados corretamente** (gestor concluiu que o SDR acertou — não era erro)
+### 1. Aba Produtividade SDR (`ProdutividadeSDRTab.tsx`)
+Novo card **"Tendência de agendamentos"** logo abaixo dos cards de KPIs, antes do gráfico de barras já existente.
 
-Layout final da página de Erros SDR: três abas
-`Pendentes` · `Erros confirmados` · `Qualificados corretamente`
+- **Gráfico de linhas (LineChart recharts)** com séries diárias dos últimos **30 dias** (independente do filtro de dia escolhido — janela rolante para análise de tendência):
+  - Agendamentos criados/dia
+  - Reuniões realizadas/dia
+  - Linha tracejada de **média móvel de 7 dias** sobreposta (suaviza ruído)
+- **Badge de variação** no canto do card: comparação dos últimos 7 dias vs. 7 dias anteriores (`▲ +12%` verde / `▼ -18%` vermelho).
+- Toggle "30d / 60d / 90d" para ajustar a janela.
 
-## Mudanças no banco
+### 2. Aba Vendas (`VendasTab.tsx`)
+Novo card **"Tendência de vendas e conversão"** abaixo dos KPIs principais.
 
-Adicionar coluna em `agendamentos` e `vendas`:
+- **Gráfico combinado (ComposedChart)** com janela rolante padrão de 30 dias:
+  - Barras: vendas fechadas/dia (R$)
+  - Linha: taxa de conversão diária (vendas / reuniões realizadas, em %)
+  - Linha tracejada: média móvel 7d da taxa de conversão
+- **3 mini-badges** de variação 7d vs 7d anteriores: nº vendas, faturamento, taxa de conversão.
+- Toggle "30d / 60d / 90d".
 
-- `sdr_error_outcome TEXT` com valores possíveis: `confirmed` (erro do SDR confirmado) e `dismissed` (SDR acertou).
-- Mantém `sdr_error_reviewed_at` e `sdr_error_reviewed_by` já existentes para registrar quem revisou.
+### 3. Sinalização preditiva
+Em ambos os cards, quando a média móvel atual ficar **≥15% abaixo** da média móvel de 7 dias atrás, mostro um alerta sutil (banner amarelo dentro do card): *"Tendência de queda detectada nos últimos 7 dias"* — assim o gestor age cedo.
 
-Reabrir um item = setar os três campos como `NULL` (volta para Pendentes).
+## Detalhes técnicos
 
-## Mudanças na UI — `ErrosSDRTab.tsx`
+- **Fonte de dados**: reaproveito `agendamentos` e `vendas` já carregados pela página pai (props existentes). Para a janela de 30/60/90d preciso garantir que o range carregado cubra a janela do gráfico — se hoje o pai só envia o dia atual, adiciono uma query própria dentro de cada componente buscando os últimos N dias por `created_at` (agendamentos) e `agendamentos.scheduled_date` (vendas), com filtros existentes (closer/SDR).
+- **Timezone**: agrego por dia usando os helpers de `src/lib/timezone.ts` (regra core do projeto: America/Sao_Paulo).
+- **Cores**: tokens semânticos do design system (`hsl(var(--primary))`, `--destructive`, `--muted-foreground`) — sem cores hardcoded. Reutilizo `ChartContainer` / `ChartTooltip` de `src/components/ui/chart.tsx` para coerência visual.
+- **Performance**: agregação em `useMemo`; janela máxima 90 dias.
+- **Visibilidade**: apenas para perfis gestor/moderador (mesma regra já aplicada às abas).
 
-1. **Três abas** com contagem em badge, agrupadas por SDR em acordeão (mantém o padrão atual).
-2. **Aba Pendentes** — cada item ganha **dois botões** (apenas para `gestor`/`moderador`):
-   - `Validar erro` (vermelho/âmbar, ícone Check) → grava `outcome = confirmed`.
-   - `SDR acertou` (verde, ícone ShieldCheck) → grava `outcome = dismissed`.
-3. **Abas Erros confirmados / Qualificados corretamente** — cada item ganha um botão `Reabrir` (ícone Undo2) que limpa a revisão e devolve para Pendentes. Mostra também "Revisado por X em dd/MM".
-4. **Clique no nome do lead** abre um **drawer de detalhes** com duas seções:
-   - **Briefing do SDR** (pré-call) — reusa os campos já mostrados pelo `BriefingDrawer` existente quando aplicável.
-   - **Resultado do Closer** (pós-call) — dados da venda quando existir (origem, status, valor, motivos, observações).
-   
-   Disponível em todas as três abas.
+## Fora do escopo
 
-5. Cards de resumo no topo passam a mostrar 4 números: Pendentes · Confirmados · Qualificados corretamente · SDRs com erros.
-
-## Permissões
-
-- Validar / Marcar SDR acertou / Reabrir: somente `gestor` e `moderador` (mesma regra já existente).
-- Visualização do drawer de detalhes: todos os papéis que já acessam a aba.
-
-## Arquivos afetados
-
-- `supabase/migrations/<new>.sql` — adicionar coluna `sdr_error_outcome` nas duas tabelas.
-- `src/components/dashboard/ErrosSDRTab.tsx` — três abas, dois botões de decisão, botão reabrir, integração com novo drawer.
-- `src/components/dashboard/SDRErrorDetailsDrawer.tsx` (novo) — drawer com briefing + dados do closer, busca os dados do `agendamento` e da `venda` por id.
-- `src/integrations/supabase/types.ts` — regenerado após migration.
-
-## Fora de escopo
-
-- Não vou alterar `BriefingDrawer` nem `VendaDialog` existentes; o novo drawer só lê os dados em modo somente-leitura.
-- Sem mudanças em RLS/edge functions; as colunas novas seguem as policies já existentes das tabelas.
+- Previsão estatística avançada (ARIMA/ML) — fica para depois; agora entregamos média móvel + variação % + alerta de queda, que já cobre a necessidade descrita.
+- Alterações em lógica de agendamento, cálculo de KPIs existentes ou schema do banco.
