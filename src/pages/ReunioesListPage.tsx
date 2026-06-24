@@ -187,6 +187,20 @@ export default function ReunioesListPage() {
     },
   });
 
+  // Map de agendamento_id -> { vendeu, valor } para badge de oferta de preço
+  const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null }>() } = useQuery({
+    queryKey: ["vendas-oferta-map"],
+    queryFn: async () => {
+      const { data } = await supabase.from("vendas").select("agendamento_id, vendeu, valor");
+      const m = new Map<string, { vendeu: boolean; valor: number | null }>();
+      (data || []).forEach((v: any) => {
+        if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor });
+      });
+      return m;
+    },
+  });
+
+
   const closerMap = useMemo(() => {
     const m: Record<string, string> = {};
     closers.forEach((c) => (m[c.id] = c.name));
@@ -650,7 +664,22 @@ export default function ReunioesListPage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{formatBR(ag.created_at)}</td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
+                          <div className="flex flex-col gap-1 items-start">
+                            <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
+                            {ag.status === "realizada" && (() => {
+                              const v = vendaOfertaMap.get(ag.id);
+                              const ofertou = !!v && (v.vendeu === true || Number(v.valor) > 0);
+                              return ofertou ? (
+                                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/15">
+                                  Preço ofertado
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                                  Sem oferta
+                                </Badge>
+                              );
+                            })()}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">

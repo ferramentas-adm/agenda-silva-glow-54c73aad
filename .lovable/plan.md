@@ -1,47 +1,14 @@
-## O que será feito
+## Badge "Preço ofertado / Sem oferta" em todas as listas de reuniões
 
-### 1. Métrica "% de calls com oferta de preço" (Dashboard Comercial)
+Adicionar uma nova badge ao lado do status indicando se houve apresentação de preço, usando a mesma regra do KPI "Oferta de Preço":
 
-Adicionar um novo card/indicador no topo da aba de Vendas (junto com os totais já existentes) mostrando:
+- **Preço ofertado** (verde, sutil) — `venda.vendeu === true` **ou** `Number(venda.valor) > 0`
+- **Sem oferta** (outline cinza) — caso contrário, **apenas para reuniões `realizada`** (em `agendada`/`cancelada`/`no_show` a badge não aparece para não poluir).
 
-- **Realizadas no dia/intervalo** (já existe)
-- **Calls com oferta de preço** = vendas onde `valor > 0` (inclui vendas fechadas, pois toda venda fechada implica preço apresentado) OU registros marcados como "apresentou preço = sim"
-- **% de oferta** = `calls com oferta ÷ realizadas`
+### Locais afetados
 
-Como detectamos "apresentou preço": usando o que já é gravado hoje em `vendas` — `valor IS NOT NULL AND valor > 0` indica que houve oferta (regra introduzida no ajuste recente do VendaDialog). Não cria coluna nova.
+1. **`src/components/dashboard/MetricDrilldownDialog.tsx`** — drilldown dos cards do Dashboard Comercial (ex.: "Reuniões com resultado — Hoje"). Adicionar a badge no cabeçalho de cada card, ao lado de "Follow ativo / Sem follow". Campo `valor` já está no `select` da query `drilldown-vendas`.
 
-### 2. Conversão por produto oferecido + tíquete médio (aba Vendas)
+2. **`src/pages/ReunioesListPage.tsx`** — tabela principal de Reuniões. Estender a query de vendas (linha ~110/185) para trazer `agendamento_id` + `valor` + `vendeu` de todas as reuniões `realizada` visíveis, montar um `Map<agendamento_id, { vendeu, valor }>`, e renderizar a badge na célula de Status (logo abaixo ou ao lado do badge de status existente, linha ~653).
 
-Novo painel "Performance por Produto" na `VendasTab`, com uma linha por produto (`vendas.produto`):
-
-- Ofertas (qtde de vendas registradas com aquele produto)
-- Vendas fechadas (vendeu = true)
-- Conversão = fechadas ÷ ofertas
-- Tíquete médio = média de `valor` apenas das vendas fechadas
-- Receita total
-
-Ordenado por receita desc. Produtos vazios/null agrupados como "Sem produto".
-
-### 3. Filtro de canal na "Performance por Closer"
-
-Adicionar acima do painel "Performance por Closer" um seletor com 3 opções:
-
-- **Geral** (atual — todos os canais)
-- **Social Selling**
-- **Tráfego**
-
-Ao trocar, recalcula vendas, reuniões realizadas, conversão e tíquete médio por closer considerando apenas agendamentos do canal selecionado (via `agendamentos.channel_type`). Mantém o ranking dinâmico para identificar qual closer performa melhor em cada canal.
-
-A classificação Social Selling vs Tráfego seguirá o mesmo mapeamento já usado em `AgendasPorCanalPanel` / `DashboardComercialPage` (para manter consistência entre painéis).
-
-## Arquivos afetados
-
-- `src/components/dashboard/VendasTab.tsx` — card de % oferta, painel por produto, filtro de canal na Performance por Closer
-- (Possível) pequeno helper para classificar canal em "Social Selling" vs "Tráfego", reutilizando lógica existente
-
-Sem mudança de schema, sem nova migração, sem mexer no fluxo do `VendaDialog`.
-
-## Pontos a confirmar
-
-- "Realizadas" no denominador da % de oferta: considero status `realizada` + `comprou` (toda reunião que de fato aconteceu). OK?
-- Mapeamento canal → Social Selling / Tráfego: usar exatamente o mesmo agrupamento já usado hoje no painel "Agendas por Canal"?
+Sem mudanças no schema/backend. Nenhuma outra alteração de comportamento.
