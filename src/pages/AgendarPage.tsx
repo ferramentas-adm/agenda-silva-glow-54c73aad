@@ -63,10 +63,28 @@ export default function AgendarPage() {
   
 
   const isReschedule = !!editId;
-  const isSdrRole = role === "sdr";
   const isAdmin = role === "gestor" || role === "moderador";
-  // SDR nunca pode escolher Closer ao agendar — sempre cai na fila "Aguardando atribuição".
-  const canPickCloser = !isSdrRole;
+
+  // Verifica se o usuário atual atua como SDR via override (profiles.is_sdr_override),
+  // mesmo que tenha role 'closer'/'moderador'. SDRs por override seguem as MESMAS
+  // regras de SDR: não escolhem Closer e respeitam limite de slot.
+  const { data: currentProfile } = useQuery({
+    queryKey: ["current-profile-sdr-override", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_sdr_override")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const isSdrOverride = currentProfile?.is_sdr_override === true;
+  const isSdrRole = role === "sdr" || (role !== "gestor" && role !== "moderador" && isSdrOverride);
+  // SDR (incluindo overrides) nunca pode escolher Closer — sempre cai na fila "Aguardando atribuição".
+  // Apenas gestor/moderador e closer (para 2ª reunião própria) seguem escolhendo.
+  const canPickCloser = isAdmin || (role === "closer" && !isSdrOverride);
   // Determine initial step based on URL params
   const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
 
@@ -247,7 +265,8 @@ export default function AgendarPage() {
     if (stepIndex > 0) setStep(steps[stepIndex - 1]);
   };
 
-  const isCloser = role === "closer";
+  // Closer com is_sdr_override atua como SDR (não como Closer) ao agendar.
+  const isCloser = role === "closer" && !isSdrOverride;
   // Campo "Motivo da reunião" foi removido do fluxo:
   // - Closer: meeting_reason gravado automaticamente como 'segunda_reuniao'.
   // - SDR / Gestor / Moderador: nenhum motivo é coletado/gravado (campo aposentado na UI).
@@ -259,7 +278,7 @@ export default function AgendarPage() {
 
   // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
   // Em 2ª reunião (closer ou admin marcando), o canal é herdado do 1º agendamento.
-  const channelTypeRequired = (role === "sdr" || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
+  const channelTypeRequired = (isSdrRole || role === "moderador" || role === "gestor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
     if (!lead || !date || !time || !user) return;
