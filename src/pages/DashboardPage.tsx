@@ -998,6 +998,38 @@ export function CalendarContent() {
           )
         )}
 
+        {/* SDR filter — só para gestor/moderador analisarem distribuição por SDR */}
+        {isAdminLike && sdrUsers.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs font-medium text-muted-foreground shrink-0">SDR:</span>
+            <Select value={selectedSdrId} onValueChange={setSelectedSdrId}>
+              <SelectTrigger className="h-8 w-[220px] text-xs">
+                <SelectValue placeholder="Todos os SDRs" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os SDRs</SelectItem>
+                {sdrUsers.map((s) => (
+                  <SelectItem key={s.user_id} value={s.user_id}>
+                    {s.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedSdrId !== "all" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => setSelectedSdrId("all")}
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Content */}
         {isLoading || loadingAgendamentos ? (
           <div className="space-y-3">
