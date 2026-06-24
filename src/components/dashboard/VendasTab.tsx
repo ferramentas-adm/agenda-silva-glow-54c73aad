@@ -25,6 +25,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
+import TrendCardVendas from "@/components/dashboard/TrendCardVendas";
 import AgendasPorCanalPanel from "@/components/dashboard/AgendasPorCanalPanel";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
@@ -814,7 +815,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         />
       </div>
 
+      {/* Tendência preditiva — apenas para gestores/moderadores */}
+      {(role === "gestor" || role === "moderador") && (
+        <TrendCardVendas closerId={isCloserView ? myCloserId : null} />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
         {/* Motivos de não fechamento */}
         <Card>
           <CardHeader className="pb-3">
