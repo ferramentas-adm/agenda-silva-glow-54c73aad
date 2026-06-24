@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import { AlertTriangle, Check, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, Loader2, ShieldCheck, Undo2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import SDRErrorDetailsDrawer from "./SDRErrorDetailsDrawer";
 
 interface Props {
   currentDate: Date;
@@ -22,17 +23,21 @@ interface Props {
 }
 
 type Source = "venda" | "agendamento";
+type Outcome = "confirmed" | "dismissed" | null;
+type TabKey = "pendentes" | "confirmados" | "qualificados";
 
 interface ErrorItem {
-  key: string; // `${source}:${id}`
+  key: string;
   source: Source;
-  id: string; // row id (venda.id or agendamento.id)
+  id: string;
   agendamentoId: string;
   sdrId: string | null;
   leadName: string;
   scheduledDate: string;
   scheduledTime: string | null;
   reviewedAt: string | null;
+  reviewedBy: string | null;
+  outcome: Outcome;
 }
 
 interface VendaRow {
@@ -40,6 +45,8 @@ interface VendaRow {
   agendamento_id: string;
   sdr_error: boolean;
   sdr_error_reviewed_at: string | null;
+  sdr_error_reviewed_by: string | null;
+  sdr_error_outcome: Outcome;
   agendamentos: {
     sdr_responsavel_id: string | null;
     created_by: string | null;
@@ -57,13 +64,16 @@ interface AgendamentoErrRow {
   scheduled_time: string | null;
   lead_name: string;
   sdr_error_reviewed_at: string | null;
+  sdr_error_reviewed_by: string | null;
+  sdr_error_outcome: Outcome;
 }
 
 export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
   const { role } = useAuth();
   const queryClient = useQueryClient();
   const canReview = role === "gestor" || role === "moderador";
-  const [tab, setTab] = useState<"novos" | "revisados">("novos");
+  const [tab, setTab] = useState<TabKey>("pendentes");
+  const [detailsAgendamentoId, setDetailsAgendamentoId] = useState<string | null>(null);
 
   const isRange = !!(dateRange?.from && dateRange?.to);
   const fromStr = isRange
@@ -79,7 +89,7 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
       const { data, error } = await supabase
         .from("vendas")
         .select(
-          "id, agendamento_id, sdr_error, sdr_error_reviewed_at, agendamentos!inner(sdr_responsavel_id, created_by, scheduled_date, scheduled_time, lead_name)"
+          "id, agendamento_id, sdr_error, sdr_error_reviewed_at, sdr_error_reviewed_by, sdr_error_outcome, agendamentos!inner(sdr_responsavel_id, created_by, scheduled_date, scheduled_time, lead_name)"
         )
         .eq("sdr_error", true)
         .gte("agendamentos.scheduled_date", fromStr)
@@ -96,7 +106,7 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
       const { data, error } = await supabase
         .from("agendamentos")
         .select(
-          "id, sdr_responsavel_id, created_by, scheduled_date, scheduled_time, lead_name, sdr_error_reviewed_at"
+          "id, sdr_responsavel_id, created_by, scheduled_date, scheduled_time, lead_name, sdr_error_reviewed_at, sdr_error_reviewed_by, sdr_error_outcome"
         )
         .eq("sdr_error", true)
         .is("deleted_at", null)
@@ -123,6 +133,8 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
         scheduledDate: v.agendamentos?.scheduled_date ?? "",
         scheduledTime: v.agendamentos?.scheduled_time ?? null,
         reviewedAt: v.sdr_error_reviewed_at,
+        reviewedBy: v.sdr_error_reviewed_by,
+        outcome: v.sdr_error_outcome,
       });
     });
     agendErrs.forEach((a) => {
@@ -137,6 +149,8 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
         scheduledDate: a.scheduled_date,
         scheduledTime: a.scheduled_time,
         reviewedAt: a.sdr_error_reviewed_at,
+        reviewedBy: a.sdr_error_reviewed_by,
+        outcome: a.sdr_error_outcome,
       });
     });
     return items;
@@ -146,6 +160,7 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
     const ids = new Set<string>();
     unified.forEach((u) => {
       if (u.sdrId) ids.add(u.sdrId);
+      if (u.reviewedBy) ids.add(u.reviewedBy);
     });
     return Array.from(ids);
   }, [unified]);
@@ -165,30 +180,53 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
   const nameOf = (id: string | null) =>
     (id && profiles.find((p) => p.user_id === id)?.full_name) || "Sem SDR";
 
-  const reviewMutation = useMutation({
-    mutationFn: async (item: ErrorItem) => {
-      const payload = {
-        sdr_error_reviewed_at: new Date().toISOString(),
-        sdr_error_reviewed_by: (await supabase.auth.getUser()).data.user?.id ?? null,
-      };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["sdr-errors", fromStr, toStr] });
+    queryClient.invalidateQueries({ queryKey: ["sdr-errors-agendamentos", fromStr, toStr] });
+  };
+
+  const decideMutation = useMutation({
+    mutationFn: async ({ item, outcome }: { item: ErrorItem; outcome: Outcome }) => {
+      const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+      const payload =
+        outcome === null
+          ? {
+              sdr_error_reviewed_at: null,
+              sdr_error_reviewed_by: null,
+              sdr_error_outcome: null,
+            }
+          : {
+              sdr_error_reviewed_at: new Date().toISOString(),
+              sdr_error_reviewed_by: userId,
+              sdr_error_outcome: outcome,
+            };
       const table = item.source === "venda" ? "vendas" : "agendamentos";
       const { error } = await supabase.from(table).update(payload).eq("id", item.id);
       if (error) throw error;
+      return outcome;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sdr-errors", fromStr, toStr] });
-      queryClient.invalidateQueries({ queryKey: ["sdr-errors-agendamentos", fromStr, toStr] });
-      toast.success("Erro validado", { description: "Movido para Revisados." });
+    onSuccess: (outcome) => {
+      invalidate();
+      if (outcome === "confirmed") toast.success("Erro confirmado", { description: "Movido para Erros confirmados." });
+      else if (outcome === "dismissed") toast.success("SDR acertou", { description: "Movido para Qualificados corretamente." });
+      else toast.success("Item reaberto", { description: "Voltou para Pendentes." });
     },
     onError: (e: unknown) => {
-      toast.error("Erro ao validar", {
+      toast.error("Erro na ação", {
         description: e instanceof Error ? e.message : "Tente novamente.",
       });
     },
   });
 
-  const novos = useMemo(() => unified.filter((u) => !u.reviewedAt), [unified]);
-  const revisados = useMemo(() => unified.filter((u) => !!u.reviewedAt), [unified]);
+  const pendentes = useMemo(() => unified.filter((u) => !u.reviewedAt), [unified]);
+  const confirmados = useMemo(
+    () => unified.filter((u) => !!u.reviewedAt && u.outcome !== "dismissed"),
+    [unified]
+  );
+  const qualificados = useMemo(
+    () => unified.filter((u) => !!u.reviewedAt && u.outcome === "dismissed"),
+    [unified]
+  );
 
   const groupBySdr = (items: ErrorItem[]) => {
     const map = new Map<string, { sdrId: string | null; name: string; items: ErrorItem[] }>();
@@ -200,24 +238,36 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
   };
 
-  const novosGrouped = useMemo(() => groupBySdr(novos), [novos, profiles]);
-  const revisadosGrouped = useMemo(() => groupBySdr(revisados), [revisados, profiles]);
+  const pendentesGrouped = useMemo(() => groupBySdr(pendentes), [pendentes, profiles]);
+  const confirmadosGrouped = useMemo(() => groupBySdr(confirmados), [confirmados, profiles]);
+  const qualificadosGrouped = useMemo(() => groupBySdr(qualificados), [qualificados, profiles]);
 
   const periodLabel = `${format(new Date(fromStr), "dd/MM/yyyy")} a ${format(new Date(toStr), "dd/MM/yyyy")}`;
 
+  const isBusy = (item: ErrorItem) =>
+    decideMutation.isPending && decideMutation.variables?.item.key === item.key;
+
   const renderGroups = (
     groups: { sdrId: string | null; name: string; items: ErrorItem[] }[],
-    isReviewedTab: boolean
+    kind: TabKey
   ) => {
     if (groups.length === 0) {
-      return (
-        <div className="text-center text-muted-foreground py-10 text-sm">
-          {isReviewedTab
-            ? "Nenhum erro revisado no período"
-            : "Nenhum erro pendente no período"}
-        </div>
-      );
+      const msg =
+        kind === "pendentes"
+          ? "Nenhum erro pendente no período"
+          : kind === "confirmados"
+            ? "Nenhum erro confirmado no período"
+            : "Nenhum lead qualificado corretamente no período";
+      return <div className="text-center text-muted-foreground py-10 text-sm">{msg}</div>;
     }
+
+    const badgeClass =
+      kind === "pendentes"
+        ? "border-amber-500/40 text-amber-600"
+        : kind === "confirmados"
+          ? "border-rose-500/40 text-rose-600"
+          : "border-emerald-500/40 text-emerald-600";
+
     return (
       <Accordion type="multiple" className="w-full">
         {groups.map((g) => (
@@ -225,15 +275,15 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center justify-between w-full pr-3">
                 <span className="font-medium">{g.name}</span>
-                <Badge
-                  variant="outline"
-                  className={
-                    isReviewedTab
-                      ? "border-emerald-500/40 text-emerald-600"
-                      : "border-amber-500/40 text-amber-600"
-                  }
-                >
-                  {g.items.length} {g.items.length === 1 ? "erro" : "erros"}
+                <Badge variant="outline" className={badgeClass}>
+                  {g.items.length}{" "}
+                  {kind === "qualificados"
+                    ? g.items.length === 1
+                      ? "lead"
+                      : "leads"
+                    : g.items.length === 1
+                      ? "erro"
+                      : "erros"}
                 </Badge>
               </div>
             </AccordionTrigger>
@@ -245,35 +295,73 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
                     className="flex items-center justify-between gap-3 py-2 px-1"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{item.leadName}</p>
+                      <button
+                        type="button"
+                        onClick={() => setDetailsAgendamentoId(item.agendamentoId)}
+                        className="text-sm font-medium truncate text-left hover:underline focus-visible:underline focus:outline-none"
+                      >
+                        {item.leadName}
+                      </button>
                       <p className="text-xs text-muted-foreground">
                         {item.scheduledDate
                           ? format(new Date(item.scheduledDate), "dd/MM/yyyy")
                           : "—"}
                         {item.scheduledTime ? ` às ${item.scheduledTime}` : ""}
-                        {isReviewedTab && item.reviewedAt
-                          ? ` · Revisado em ${format(new Date(item.reviewedAt), "dd/MM/yyyy")}`
+                        {kind !== "pendentes" && item.reviewedAt
+                          ? ` · Revisado em ${format(new Date(item.reviewedAt), "dd/MM/yyyy")}${item.reviewedBy ? ` por ${nameOf(item.reviewedBy)}` : ""}`
                           : ""}
                       </p>
                     </div>
-                    {!isReviewedTab && canReview && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => reviewMutation.mutate(item)}
-                        disabled={
-                          reviewMutation.isPending &&
-                          reviewMutation.variables?.key === item.key
-                        }
-                      >
-                        {reviewMutation.isPending &&
-                        reviewMutation.variables?.key === item.key ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+
+                    {canReview && (
+                      <div className="flex items-center gap-2">
+                        {kind === "pendentes" ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+                              onClick={() => decideMutation.mutate({ item, outcome: "dismissed" })}
+                              disabled={isBusy(item)}
+                            >
+                              {isBusy(item) && decideMutation.variables?.outcome === "dismissed" ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <ShieldCheck className="h-4 w-4" />
+                              )}
+                              <span className="ml-1">SDR acertou</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
+                              onClick={() => decideMutation.mutate({ item, outcome: "confirmed" })}
+                              disabled={isBusy(item)}
+                            >
+                              {isBusy(item) && decideMutation.variables?.outcome === "confirmed" ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                              <span className="ml-1">Validar erro</span>
+                            </Button>
+                          </>
                         ) : (
-                          <Check className="h-4 w-4" />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => decideMutation.mutate({ item, outcome: null })}
+                            disabled={isBusy(item)}
+                          >
+                            {isBusy(item) ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Undo2 className="h-4 w-4" />
+                            )}
+                            <span className="ml-1">Reabrir</span>
+                          </Button>
                         )}
-                        <span className="ml-1">Validar</span>
-                      </Button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -292,48 +380,64 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
         <h2 className="text-xl font-bold">Erros de SDR — {periodLabel}</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-          <p className="text-xs text-muted-foreground font-medium">Novos erros (pendentes)</p>
-          <p className="text-3xl font-bold mt-1">{novos.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">Aguardando validação</p>
+          <p className="text-xs text-muted-foreground font-medium">Pendentes</p>
+          <p className="text-3xl font-bold mt-1">{pendentes.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">Aguardando triagem</p>
+        </div>
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
+          <p className="text-xs text-muted-foreground font-medium">Erros confirmados</p>
+          <p className="text-3xl font-bold mt-1">{confirmados.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">Validados pelo gestor</p>
         </div>
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-          <p className="text-xs text-muted-foreground font-medium">Revisados</p>
-          <p className="text-3xl font-bold mt-1">{revisados.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">Já validados pelo gestor</p>
+          <p className="text-xs text-muted-foreground font-medium">Qualificados corretamente</p>
+          <p className="text-3xl font-bold mt-1">{qualificados.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">SDR acertou</p>
         </div>
         <div className="rounded-xl border border-primary/10 bg-card p-4">
           <p className="text-xs text-muted-foreground font-medium">SDRs com erros</p>
-          <p className="text-3xl font-bold mt-1">{sdrIds.length}</p>
+          <p className="text-3xl font-bold mt-1">
+            {new Set(unified.filter((u) => u.sdrId).map((u) => u.sdrId)).size}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">SDRs distintos</p>
         </div>
       </div>
 
       <div className="rounded-xl border border-primary/10 bg-card p-4">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "novos" | "revisados")}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
           <TabsList>
-            <TabsTrigger value="novos">
-              Novos erros
-              <Badge variant="secondary" className="ml-2">
-                {novos.length}
-              </Badge>
+            <TabsTrigger value="pendentes">
+              Pendentes
+              <Badge variant="secondary" className="ml-2">{pendentes.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="revisados">
-              Revisados
-              <Badge variant="secondary" className="ml-2">
-                {revisados.length}
-              </Badge>
+            <TabsTrigger value="confirmados">
+              Erros confirmados
+              <Badge variant="secondary" className="ml-2">{confirmados.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="qualificados">
+              Qualificados corretamente
+              <Badge variant="secondary" className="ml-2">{qualificados.length}</Badge>
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="novos" className="mt-3">
-            {renderGroups(novosGrouped, false)}
+          <TabsContent value="pendentes" className="mt-3">
+            {renderGroups(pendentesGrouped, "pendentes")}
           </TabsContent>
-          <TabsContent value="revisados" className="mt-3">
-            {renderGroups(revisadosGrouped, true)}
+          <TabsContent value="confirmados" className="mt-3">
+            {renderGroups(confirmadosGrouped, "confirmados")}
+          </TabsContent>
+          <TabsContent value="qualificados" className="mt-3">
+            {renderGroups(qualificadosGrouped, "qualificados")}
           </TabsContent>
         </Tabs>
       </div>
+
+      <SDRErrorDetailsDrawer
+        open={!!detailsAgendamentoId}
+        onOpenChange={(o) => !o && setDetailsAgendamentoId(null)}
+        agendamentoId={detailsAgendamentoId}
+      />
     </div>
   );
 }
