@@ -118,7 +118,7 @@ export default function MetricDrilldownDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up, closed_at, created_at")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up, closed_at, created_at, produto")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -432,20 +432,30 @@ export default function MetricDrilldownDialog({
                         </div>
                       );
                     })()}
-                    {(d.channel_type || d.meeting_reason) && (
-                      <div className="col-span-2 flex flex-wrap gap-1.5 pt-1">
-                        {d.channel_type && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            Canal: {d.channel_type}
-                          </Badge>
-                        )}
-                        {d.meeting_reason && (
-                          <Badge variant="outline" className="text-[10px]">
-                            Motivo: {d.meeting_reason}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
+                    {(() => {
+                      const vForBadges = vendaMap.get(d.id) as any;
+                      const produto = vForBadges?.produto?.trim() || null;
+                      if (!d.channel_type && !d.meeting_reason && !produto) return null;
+                      return (
+                        <div className="col-span-2 flex flex-wrap gap-1.5 pt-1">
+                          {produto && (
+                            <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/15">
+                              Produto: {produto}
+                            </Badge>
+                          )}
+                          {d.channel_type && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Canal: {d.channel_type}
+                            </Badge>
+                          )}
+                          {d.meeting_reason && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Motivo: {d.meeting_reason}
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {d.status === "cancelada" && d.cancellation_reason && (
                       <div className="col-span-2 mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2">
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
