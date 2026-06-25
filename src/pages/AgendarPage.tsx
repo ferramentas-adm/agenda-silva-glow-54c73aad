@@ -323,10 +323,9 @@ function AgendarPageInner() {
       toast.error("Closer não identificado.");
       return;
     }
-    if (isAdmin && !adminAsSecondMeeting && !selectedSdrId) {
-      toast.error("Selecione o SDR responsável ou marque como 2ª reunião.");
-      return;
-    }
+    // SDR responsável é opcional para gestor/moderador: se não for selecionado
+    // e não for 2ª reunião, o próprio agendador (admin) assume o papel de SDR.
+
     if (channelTypeRequired && !channelType) {
       toast.error("Selecione o Tipo de Canal.");
       return;
@@ -430,7 +429,7 @@ function AgendarPageInner() {
         meet_link: meetLink,
         google_event_id: googleEventId,
         created_by: user.id,
-        sdr_responsavel_id: isAdmin && !adminAsSecondMeeting && selectedSdrId ? selectedSdrId : null,
+        sdr_responsavel_id: isAdmin && !adminAsSecondMeeting ? (selectedSdrId || user.id) : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
@@ -728,11 +727,11 @@ function AgendarPageInner() {
                   {!adminAsSecondMeeting && (
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium">
-                        SDR responsável <span className="text-destructive">*</span>
+                        SDR responsável <span className="text-muted-foreground">(opcional)</span>
                       </label>
                       <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione o SDR" />
+                          <SelectValue placeholder="Selecione o SDR (ou deixe em branco para assumir)" />
                         </SelectTrigger>
                         <SelectContent>
                           {sdrUsers.length === 0 ? (
@@ -749,10 +748,11 @@ function AgendarPageInner() {
                         </SelectContent>
                       </Select>
                       {!selectedSdrId && (
-                        <p className="text-xs text-destructive">Selecione um SDR ou marque como 2ª reunião.</p>
+                        <p className="text-xs text-muted-foreground">Se nenhum SDR for selecionado, você será registrado como o SDR responsável.</p>
                       )}
                     </div>
                   )}
+
 
                   {adminAsSecondMeeting && channelType && (
                     <SummaryRow label="Tipo de canal" value={channelType} />
