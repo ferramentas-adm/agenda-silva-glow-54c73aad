@@ -323,10 +323,9 @@ function AgendarPageInner() {
       toast.error("Closer não identificado.");
       return;
     }
-    if (isAdmin && !adminAsSecondMeeting && !selectedSdrId) {
-      toast.error("Selecione o SDR responsável ou marque como 2ª reunião.");
-      return;
-    }
+    // SDR responsável é opcional para gestor/moderador: se não for selecionado
+    // e não for 2ª reunião, o próprio agendador (admin) assume o papel de SDR.
+
     if (channelTypeRequired && !channelType) {
       toast.error("Selecione o Tipo de Canal.");
       return;
