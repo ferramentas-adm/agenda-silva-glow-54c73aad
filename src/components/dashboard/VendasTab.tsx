@@ -436,6 +436,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Filtros do card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
   const [motivosChannelFilter, setMotivosChannelFilter] = useState<string>("all");
+  const [motivosPrecoFilter, setMotivosPrecoFilter] = useState<"all" | "sim" | "nao">("all");
 
   // Canais disponíveis nas vendas do período (para o filtro)
   const motivosChannels = useMemo(() => {
