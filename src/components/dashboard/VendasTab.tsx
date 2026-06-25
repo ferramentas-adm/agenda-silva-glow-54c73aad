@@ -869,6 +869,16 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                <Select value={motivosPrecoFilter} onValueChange={(v) => setMotivosPrecoFilter(v as "all" | "sim" | "nao")}>
+                  <SelectTrigger className="h-8 w-[170px] text-xs">
+                    <SelectValue placeholder="Oferta de preço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Com e sem oferta</SelectItem>
+                    <SelectItem value="sim">Apenas com preço ofertado</SelectItem>
+                    <SelectItem value="nao">Apenas sem oferta</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   variant="ghost"
                   size="icon"
