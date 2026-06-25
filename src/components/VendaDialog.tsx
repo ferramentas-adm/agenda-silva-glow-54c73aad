@@ -286,7 +286,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
           observacoes: observacoes.trim() || null,
           lead_revenue: leadRevenue || null,
-          sdr_error: false,
+          sdr_error: vendeu === "nao" ? sdrError : false,
           produto: produto || null,
           created_by: user.id,
 
