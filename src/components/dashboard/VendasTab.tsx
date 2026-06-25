@@ -436,6 +436,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Filtros do card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
   const [motivosChannelFilter, setMotivosChannelFilter] = useState<string>("all");
+  const [motivosPrecoFilter, setMotivosPrecoFilter] = useState<"all" | "sim" | "nao">("all");
 
   // Canais disponíveis nas vendas do período (para o filtro)
   const motivosChannels = useMemo(() => {
@@ -468,9 +469,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       const ag = agMap.get(v.agendamento_id);
       if (motivosCloserFilter !== "all" && ag?.closer_id !== motivosCloserFilter) return false;
       if (motivosChannelFilter !== "all" && ag?.channel_type !== motivosChannelFilter) return false;
+      if (motivosPrecoFilter !== "all" && !v.vendeu) {
+        const ofertou = typeof v.valor === "number" && (v.valor || 0) > 0;
+        if (motivosPrecoFilter === "sim" && !ofertou) return false;
+        if (motivosPrecoFilter === "nao" && ofertou) return false;
+      }
       return true;
     });
-  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter]);
+  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter, motivosPrecoFilter]);
 
   const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
 
@@ -861,6 +867,16 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                     {motivosChannels.map((ch) => (
                       <SelectItem key={ch} value={ch}>{ch}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+                <Select value={motivosPrecoFilter} onValueChange={(v) => setMotivosPrecoFilter(v as "all" | "sim" | "nao")}>
+                  <SelectTrigger className="h-8 w-[170px] text-xs">
+                    <SelectValue placeholder="Oferta de preço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Com e sem oferta</SelectItem>
+                    <SelectItem value="sim">Apenas com preço ofertado</SelectItem>
+                    <SelectItem value="nao">Apenas sem oferta</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
