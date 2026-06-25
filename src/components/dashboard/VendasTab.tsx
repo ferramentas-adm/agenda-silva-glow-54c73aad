@@ -365,9 +365,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const totalReunioesComResultado = vendasDia.length;
     const totalVendas = vendasDia.filter((v) => v.vendeu).length;
     const totalNaoFechou = vendasDia.filter((v) => !v.vendeu).length;
-    // Taxa de conversão usa base independente (agendamentos realizados no período)
+    // Taxa de conversão: numerador usa vendas efetivamente fechadas no período
+    // (closed_at/follow-up/data efetiva), enquanto o denominador mantém as
+    // reuniões realizadas do período. Assim vendas de follow-up fechadas hoje
+    // entram na taxa de hoje, mesmo que a reunião original tenha sido ontem.
     const totalReunioesConv = conversaoData?.totalReunioes ?? 0;
-    const totalVendasConv = conversaoData?.totalVendas ?? 0;
+    const totalVendasConv = totalVendas;
     const taxaConversao = totalReunioesConv > 0 ? (totalVendasConv / totalReunioesConv) * 100 : 0;
     const coletadoTotal = vendasDia
       .filter((v) => v.vendeu && v.valor)
@@ -415,15 +418,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const { followUpsAgendados, followUpsHoje, followUpsAtrasados, followUpsAtivosIds } = followUpStats;
 
   // IDs para drill-down
-  const drilldownIds = useMemo(() => ({
-    vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
-    fechadasIds: vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id),
-    fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao && agMap.get(v.agendamento_id)?.meeting_reason !== "segunda_reuniao").map((v) => v.agendamento_id),
-    fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao")).map((v) => v.agendamento_id),
-    naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
-  }), [vendasDia, agMap]);
+  const drilldownIds = useMemo(() => {
+    const fechadasIds = vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id);
+    const conversaoIds = Array.from(new Set([...(conversaoData?.ids ?? []), ...fechadasIds]));
+    return {
+      vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
+      fechadasIds,
+      fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao && agMap.get(v.agendamento_id)?.meeting_reason !== "segunda_reuniao").map((v) => v.agendamento_id),
+      fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao")).map((v) => v.agendamento_id),
+      naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
+      conversaoIds,
+    };
+  }, [vendasDia, agMap, conversaoData]);
 
-  const { vendasDiaIds, fechadasIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds } = drilldownIds;
+  const { vendasDiaIds, fechadasIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds, conversaoIds } = drilldownIds;
 
   // Filtros do card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
@@ -726,7 +734,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           onClick={() =>
             openDrill(
               `Reuniões com resultado — ${dayLabel}`,
-              conversaoData?.ids ?? [],
+              conversaoIds,
               `Taxa de conversão: ${taxaConversao.toFixed(1)}%`,
             )
           }
