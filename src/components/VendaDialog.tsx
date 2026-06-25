@@ -709,7 +709,24 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 </div>
               )}
 
+              <div className="flex items-start gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                <Checkbox
+                  id="sdr-error"
+                  checked={sdrError}
+                  onCheckedChange={(v) => setSdrError(v === true)}
+                />
+                <div className="space-y-1 leading-none">
+                  <Label htmlFor="sdr-error" className="cursor-pointer font-medium">
+                    Houve erro de SDR
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Marque se o lead não foi qualificado corretamente pelo SDR (entra em "Erros SDR" para revisão).
+                  </p>
+                </div>
+              </div>
+
               <>
+
 
                   <div className="space-y-2">
                     <Label>Vai acompanhar esse lead? *</Label>
