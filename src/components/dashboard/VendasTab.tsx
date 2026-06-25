@@ -469,9 +469,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       const ag = agMap.get(v.agendamento_id);
       if (motivosCloserFilter !== "all" && ag?.closer_id !== motivosCloserFilter) return false;
       if (motivosChannelFilter !== "all" && ag?.channel_type !== motivosChannelFilter) return false;
+      if (motivosPrecoFilter !== "all" && !v.vendeu) {
+        const ofertou = typeof v.valor === "number" && (v.valor || 0) > 0;
+        if (motivosPrecoFilter === "sim" && !ofertou) return false;
+        if (motivosPrecoFilter === "nao" && ofertou) return false;
+      }
       return true;
     });
-  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter]);
+  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter, motivosPrecoFilter]);
 
   const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
 
