@@ -429,7 +429,7 @@ function AgendarPageInner() {
         meet_link: meetLink,
         google_event_id: googleEventId,
         created_by: user.id,
-        sdr_responsavel_id: isAdmin && !adminAsSecondMeeting && selectedSdrId ? selectedSdrId : null,
+        sdr_responsavel_id: isAdmin && !adminAsSecondMeeting ? (selectedSdrId || user.id) : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
