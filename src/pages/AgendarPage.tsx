@@ -727,11 +727,11 @@ function AgendarPageInner() {
                   {!adminAsSecondMeeting && (
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium">
-                        SDR responsável <span className="text-destructive">*</span>
+                        SDR responsável <span className="text-muted-foreground">(opcional)</span>
                       </label>
                       <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione o SDR" />
+                          <SelectValue placeholder="Selecione o SDR (ou deixe em branco para assumir)" />
                         </SelectTrigger>
                         <SelectContent>
                           {sdrUsers.length === 0 ? (
@@ -748,10 +748,11 @@ function AgendarPageInner() {
                         </SelectContent>
                       </Select>
                       {!selectedSdrId && (
-                        <p className="text-xs text-destructive">Selecione um SDR ou marque como 2ª reunião.</p>
+                        <p className="text-xs text-muted-foreground">Se nenhum SDR for selecionado, você será registrado como o SDR responsável.</p>
                       )}
                     </div>
                   )}
+
 
                   {adminAsSecondMeeting && channelType && (
                     <SummaryRow label="Tipo de canal" value={channelType} />
