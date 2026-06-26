@@ -42,10 +42,11 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
   const isRange = !!(dateRange?.from && dateRange?.to);
   const fromStr = isRange
     ? format(dateRange!.from!, "yyyy-MM-dd")
-    : format(startOfMonth(currentDate), "yyyy-MM-dd");
+    : format(currentDate, "yyyy-MM-dd");
   const toStr = isRange
     ? format(dateRange!.to!, "yyyy-MM-dd")
-    : format(endOfMonth(currentDate), "yyyy-MM-dd");
+    : format(currentDate, "yyyy-MM-dd");
+
 
   const { data: reviews = [] } = useQuery<ReviewRow[]>({
     queryKey: ["closer-error-reviews", fromStr, toStr],
