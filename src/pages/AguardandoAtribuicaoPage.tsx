@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { UserPlus, Phone, FileText, MessageSquare, Clock, Sparkles, RotateCcw, History, AlertTriangle } from "lucide-react";
+import { UserPlus, Phone, FileText, MessageSquare, Clock, Sparkles, RotateCcw, History, AlertTriangle, Trash2 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Navigate } from "react-router-dom";
 
@@ -31,6 +34,7 @@ interface Agendamento {
   is_5k: boolean | null;
   original_agendamento_id: string | null;
   sdr_error: boolean | null;
+  sdr_error_description?: string | null;
 }
 
 interface Closer {
@@ -44,7 +48,9 @@ export default function AguardandoAtribuicaoPage() {
   const queryClient = useQueryClient();
   const [selecting, setSelecting] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [togglingErrId, setTogglingErrId] = useState<string | null>(null);
+  const [errorDialog, setErrorDialog] = useState<{ agendamento: Agendamento; alsoDelete: boolean } | null>(null);
+  const [errorDescription, setErrorDescription] = useState("");
+  const [submittingError, setSubmittingError] = useState(false);
 
   const todayStr = (() => {
     const d = new Date();
@@ -58,7 +64,7 @@ export default function AguardandoAtribuicaoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id, sdr_error")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id, sdr_error, sdr_error_description")
         .is("closer_id", null)
         .is("deleted_at", null)
         .neq("status", "cancelada")
@@ -274,26 +280,49 @@ export default function AguardandoAtribuicaoPage() {
     }
   };
 
-  const handleToggleSdrError = async (a: Agendamento) => {
-    setTogglingErrId(a.id);
+  const openErrorDialog = (a: Agendamento, alsoDelete: boolean) => {
+    setErrorDescription(alsoDelete ? "" : a.sdr_error_description ?? "");
+    setErrorDialog({ agendamento: a, alsoDelete });
+  };
+
+  const submitErrorDialog = async () => {
+    if (!errorDialog) return;
+    const desc = errorDescription.trim();
+    if (!desc) {
+      toast.error("Descreva qual foi o erro do SDR.");
+      return;
+    }
+    const { agendamento: a, alsoDelete } = errorDialog;
+    setSubmittingError(true);
     try {
-      const newVal = !a.sdr_error;
+      const nowIso = new Date().toISOString();
+      const payload: Record<string, any> = {
+        sdr_error: true,
+        sdr_error_at: nowIso,
+        sdr_error_by: user?.id ?? null,
+        sdr_error_description: desc,
+      };
+      if (alsoDelete) {
+        payload.deleted_at = nowIso;
+        payload.deletion_reason = `Erro de SDR: ${desc}`;
+      }
       const { error } = await supabase
         .from("agendamentos")
-        .update({
-          sdr_error: newVal,
-          sdr_error_at: newVal ? new Date().toISOString() : null,
-          sdr_error_by: newVal ? user?.id ?? null : null,
-        } as any)
+        .update(payload as any)
         .eq("id", a.id);
       if (error) throw error;
-      toast.success(newVal ? "Erro de SDR marcado." : "Erro de SDR desmarcado.");
+      toast.success(alsoDelete ? "Erro marcado e reunião excluída." : "Erro de SDR registrado.");
+      setErrorDialog(null);
+      setErrorDescription("");
       queryClient.invalidateQueries({ queryKey: ["pending-closer-assignment"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-closer-assignment-count"] });
       queryClient.invalidateQueries({ queryKey: ["sdr-errors"] });
+      queryClient.invalidateQueries({ queryKey: ["sdr-errors-agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
-      toast.error(err.message || "Erro ao marcar erro de SDR.");
+      toast.error(err.message || "Erro ao registrar.");
     } finally {
-      setTogglingErrId(null);
+      setSubmittingError(false);
     }
   };
 
@@ -442,18 +471,35 @@ export default function AguardandoAtribuicaoPage() {
                     </div>
                   )}
 
-                  <div className="flex justify-end pt-1">
+                  {a.sdr_error && a.sdr_error_description && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-1">
+                        Erro de SDR registrado
+                      </p>
+                      <p className="text-xs whitespace-pre-wrap break-words">{a.sdr_error_description}</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-1">
                     <Button
                       variant={a.sdr_error ? "default" : "outline"}
                       size="sm"
-                      onClick={() => handleToggleSdrError(a)}
-                      disabled={togglingErrId === a.id}
+                      onClick={() => openErrorDialog(a, false)}
                       className={a.sdr_error
                         ? "bg-amber-500 text-white hover:bg-amber-600"
                         : "text-amber-600 border-amber-500/40 hover:bg-amber-500/10"}
                     >
                       <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-                      {a.sdr_error ? "Erro de SDR marcado" : "Marcar erro de SDR"}
+                      {a.sdr_error ? "Erro de SDR marcado" : "Erro de SDR"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openErrorDialog(a, true)}
+                      className="text-rose-600 border-rose-500/40 hover:bg-rose-500/10"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      Erro SDR + Excluir
                     </Button>
                   </div>
                 </div>
@@ -461,6 +507,43 @@ export default function AguardandoAtribuicaoPage() {
             })}
           </div>
         )}
+
+        <Dialog open={!!errorDialog} onOpenChange={(o) => { if (!o) { setErrorDialog(null); setErrorDescription(""); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {errorDialog?.alsoDelete ? "Erro de SDR + Excluir reunião" : "Marcar erro de SDR"}
+              </DialogTitle>
+              <DialogDescription>
+                Descreva qual foi o erro do SDR neste lead. A descrição aparecerá no relatório de Erros de SDR.
+                {errorDialog?.alsoDelete && " A reunião será excluída e não irá para a agenda."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="sdr-err-desc">Descrição do erro</Label>
+              <Textarea
+                id="sdr-err-desc"
+                value={errorDescription}
+                onChange={(e) => setErrorDescription(e.target.value)}
+                placeholder="Ex.: SDR não validou faturamento, lead fora do ICP, briefing incompleto…"
+                rows={5}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setErrorDialog(null); setErrorDescription(""); }} disabled={submittingError}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={submitErrorDialog}
+                disabled={submittingError || !errorDescription.trim()}
+                className={errorDialog?.alsoDelete ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}
+              >
+                {submittingError ? "Salvando…" : errorDialog?.alsoDelete ? "Registrar e excluir" : "Registrar erro"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

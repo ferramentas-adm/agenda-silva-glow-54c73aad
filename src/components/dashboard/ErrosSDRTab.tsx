@@ -26,6 +26,7 @@ interface ErrorItem {
   leadName: string;
   scheduledDate: string;
   scheduledTime: string | null;
+  description?: string | null;
 }
 
 interface VendaRow {
@@ -47,6 +48,7 @@ interface AgendamentoErrRow {
   scheduled_date: string;
   scheduled_time: string | null;
   lead_name: string;
+  sdr_error_description: string | null;
 }
 
 export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
@@ -84,10 +86,9 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
       const { data, error } = await supabase
         .from("agendamentos")
         .select(
-          "id, sdr_responsavel_id, created_by, scheduled_date, scheduled_time, lead_name"
+          "id, sdr_responsavel_id, created_by, scheduled_date, scheduled_time, lead_name, sdr_error_description"
         )
         .eq("sdr_error", true)
-        .is("deleted_at", null)
         .gte("scheduled_date", fromStr)
         .lte("scheduled_date", toStr);
       if (error) throw error;
@@ -121,6 +122,7 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
         leadName: a.lead_name,
         scheduledDate: a.scheduled_date,
         scheduledTime: a.scheduled_time,
+        description: a.sdr_error_description,
       });
     });
     return items;
@@ -202,10 +204,7 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
                 <AccordionContent>
                   <div className="divide-y divide-primary/5 border-t border-primary/5">
                     {g.items.map((item) => (
-                      <div
-                        key={item.key}
-                        className="flex items-center justify-between gap-3 py-2 px-1"
-                      >
+                      <div key={item.key} className="py-3 px-1 space-y-2">
                         <div className="min-w-0">
                           <button
                             type="button"
@@ -221,6 +220,14 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
                             {item.scheduledTime ? ` às ${item.scheduledTime}` : ""}
                           </p>
                         </div>
+                        {item.description && (
+                          <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-1">
+                              Descrição do erro
+                            </p>
+                            <p className="text-xs whitespace-pre-wrap break-words">{item.description}</p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
