@@ -268,6 +268,69 @@ export type Database = {
           },
         ]
       }
+      closer_error_reviews: {
+        Row: {
+          agendamento_id: string
+          classification: string
+          closer_id: string | null
+          created_at: string
+          error_description: string | null
+          feedback_at: string | null
+          feedback_by: string | null
+          feedback_given: boolean
+          feedback_notes: string | null
+          id: string
+          reviewed_at: string
+          reviewed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          agendamento_id: string
+          classification: string
+          closer_id?: string | null
+          created_at?: string
+          error_description?: string | null
+          feedback_at?: string | null
+          feedback_by?: string | null
+          feedback_given?: boolean
+          feedback_notes?: string | null
+          id?: string
+          reviewed_at?: string
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agendamento_id?: string
+          classification?: string
+          closer_id?: string | null
+          created_at?: string
+          error_description?: string | null
+          feedback_at?: string | null
+          feedback_by?: string | null
+          feedback_given?: boolean
+          feedback_notes?: string | null
+          id?: string
+          reviewed_at?: string
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closer_error_reviews_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: true
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closer_error_reviews_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closer_google_tokens: {
         Row: {
           access_token: string

@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2 } from "lucide-react";
+import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2, ShieldCheck, AlertOctagon } from "lucide-react";
 
 interface AgendamentoRef {
   id: string;
@@ -291,6 +292,62 @@ export default function MetricDrilldownDialog({
     await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
   };
 
+  // ─── Classificação de erros do Closer (gestor) ────────────────
+  const isGestor = role === "gestor";
+  const { data: closerReviews = [] } = useQuery<
+    { id: string; agendamento_id: string; classification: "closer_error" | "acerto"; error_description: string | null; reviewed_by: string | null; reviewed_at: string }[]
+  >({
+    queryKey: ["drilldown-closer-reviews", agendamentoIds.join(",")],
+    enabled: open && agendamentoIds.length > 0,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("closer_error_reviews")
+        .select("id, agendamento_id, classification, error_description, reviewed_by, reviewed_at")
+        .in("agendamento_id", agendamentoIds);
+      return data ?? [];
+    },
+  });
+  const closerReviewMap = new Map(closerReviews.map((r) => [r.agendamento_id, r]));
+
+  const [classifyOpen, setClassifyOpen] = useState(false);
+  const [classifyAg, setClassifyAg] = useState<AgendamentoDetail | null>(null);
+  const [classifyKind, setClassifyKind] = useState<"closer_error" | "acerto">("closer_error");
+  const [classifyDesc, setClassifyDesc] = useState("");
+  const [savingClassify, setSavingClassify] = useState(false);
+
+  const openClassify = (d: AgendamentoDetail, kind: "closer_error" | "acerto") => {
+    setClassifyAg(d);
+    setClassifyKind(kind);
+    setClassifyDesc("");
+    setClassifyOpen(true);
+  };
+
+  const submitClassify = async () => {
+    if (!classifyAg) return;
+    if (classifyKind === "closer_error" && !classifyDesc.trim()) {
+      toast.error("Descreva o erro do Closer");
+      return;
+    }
+    setSavingClassify(true);
+    const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+    const { error } = await (supabase as any).from("closer_error_reviews").insert({
+      agendamento_id: classifyAg.id,
+      closer_id: classifyAg.closer_id,
+      classification: classifyKind,
+      error_description: classifyKind === "closer_error" ? classifyDesc.trim() : null,
+      reviewed_by: userId,
+    });
+    setSavingClassify(false);
+    if (error) {
+      toast.error("Erro ao registrar: " + error.message);
+      return;
+    }
+    toast.success(classifyKind === "closer_error" ? "Erro do Closer registrado" : "Marcado como acerto");
+    setClassifyOpen(false);
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
+    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
+  };
+
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -365,6 +422,64 @@ export default function MetricDrilldownDialog({
 
                     </div>
                   </div>
+
+                  {/* Classificação de erro do Closer (gestor) */}
+                  {d.status === "realizada" && (() => {
+                    const v = vendaMap.get(d.id) as any;
+                    // Aparece só quando há motivo de não fechamento registrado
+                    if (!v || v.vendeu === true || !v.motivo_nao_fechamento) return null;
+                    const review = closerReviewMap.get(d.id);
+                    if (review) {
+                      return (
+                        <div
+                          className={`rounded-md border p-2 text-xs ${
+                            review.classification === "closer_error"
+                              ? "border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400"
+                              : "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
+                          }`}
+                        >
+                          <div className="font-semibold">
+                            {review.classification === "closer_error"
+                              ? "Erro do Closer registrado"
+                              : "Marcado como acerto"}
+                            {" "}
+                            <span className="font-normal opacity-80">
+                              · {format(new Date(review.reviewed_at), "dd/MM/yyyy")}
+                            </span>
+                          </div>
+                          {review.error_description && (
+                            <p className="mt-1 whitespace-pre-wrap text-foreground/80">
+                              {review.error_description}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+                    if (!isGestor) return null;
+                    return (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
+                          onClick={() => openClassify(d, "closer_error")}
+                        >
+                          <AlertOctagon className="h-3.5 w-3.5 mr-1" />
+                          Erro do Closer
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+                          onClick={() => openClassify(d, "acerto")}
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                          Foi acerto
+                        </Button>
+                      </div>
+                    );
+                  })()}
+
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1.5">
@@ -639,6 +754,39 @@ export default function MetricDrilldownDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <Dialog open={classifyOpen} onOpenChange={setClassifyOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {classifyKind === "closer_error" ? "Registrar erro do Closer" : "Confirmar como acerto"}
+          </DialogTitle>
+          <DialogDescription>
+            Lead: <strong>{classifyAg?.lead_name}</strong>
+            {classifyAg?.closer_id && closerMap.get(classifyAg.closer_id)
+              ? ` · Closer: ${closerMap.get(classifyAg.closer_id)}`
+              : ""}
+          </DialogDescription>
+        </DialogHeader>
+        {classifyKind === "closer_error" && (
+          <Textarea
+            placeholder="Descreva qual foi o erro do Closer..."
+            value={classifyDesc}
+            onChange={(e) => setClassifyDesc(e.target.value)}
+            rows={5}
+          />
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setClassifyOpen(false)} disabled={savingClassify}>
+            Cancelar
+          </Button>
+          <Button onClick={submitClassify} disabled={savingClassify}>
+            {savingClassify ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Confirmar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

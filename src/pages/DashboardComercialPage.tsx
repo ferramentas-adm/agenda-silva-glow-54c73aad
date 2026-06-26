@@ -16,7 +16,7 @@ import VendasTab from "@/components/dashboard/VendasTab";
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import CargaClosersTab from "@/components/dashboard/CargaClosersTab";
-import ErrosSDRTab from "@/components/dashboard/ErrosSDRTab";
+import ErrosTab from "@/components/dashboard/ErrosTab";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -40,7 +40,7 @@ const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "vendas", label: "Vendas" },
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "carga", label: "Follows Closer", gestorOnly: true },
-  { key: "erros_sdr", label: "Erros SDR", gestorOnly: true },
+  { key: "erros_sdr", label: "Erros", gestorOnly: true },
 ];
 const ROTATION_INTERVAL = 30000;
 
@@ -699,7 +699,7 @@ export default function DashboardComercialPage() {
         
         {activeTabKey === "carga" && isAdmin && <CargaClosersTab />}
         {activeTabKey === "erros_sdr" && isAdmin && (
-          <ErrosSDRTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
+          <ErrosTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
         )}
         
       </div>
