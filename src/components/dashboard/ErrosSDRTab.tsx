@@ -48,6 +48,7 @@ interface AgendamentoErrRow {
   scheduled_date: string;
   scheduled_time: string | null;
   lead_name: string;
+  sdr_error_description: string | null;
 }
 
 export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
