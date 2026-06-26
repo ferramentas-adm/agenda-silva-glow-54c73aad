@@ -317,6 +317,7 @@ export default function MetricDrilldownDialog({
   const [classifyDesc, setClassifyDesc] = useState("");
   const [classifyCategory, setClassifyCategory] = useState<string>("");
   const [classifyExistingId, setClassifyExistingId] = useState<string | null>(null);
+  const [classifyType, setClassifyType] = useState<"closer_error" | "acerto">("closer_error");
   const [savingClassify, setSavingClassify] = useState(false);
 
   const openClassify = (d: AgendamentoDetail) => {
@@ -324,6 +325,7 @@ export default function MetricDrilldownDialog({
     setClassifyDesc("");
     setClassifyCategory("");
     setClassifyExistingId(null);
+    setClassifyType("closer_error");
     setClassifyOpen(true);
   };
 
@@ -333,24 +335,34 @@ export default function MetricDrilldownDialog({
     setClassifyDesc(review?.error_description ?? "");
     setClassifyCategory(review?.error_category ?? "");
     setClassifyExistingId(review?.id ?? null);
+    setClassifyType((review?.classification as "closer_error" | "acerto") ?? "closer_error");
     setClassifyOpen(true);
   };
 
   const submitClassify = async () => {
     if (!classifyAg) return;
-    if (!classifyCategory.trim()) {
+    if (classifyType === "closer_error" && !classifyCategory.trim()) {
       toast.error("Selecione a categoria do erro");
       return;
     }
     setSavingClassify(true);
     const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
-    const basePayload = {
-      classification: "closer_error" as const,
-      error_category: classifyCategory.trim(),
-      error_description: classifyDesc.trim() || null,
-      reviewed_by: userId,
-      reviewed_at: new Date().toISOString(),
-    };
+    const basePayload =
+      classifyType === "closer_error"
+        ? {
+            classification: "closer_error" as const,
+            error_category: classifyCategory.trim(),
+            error_description: classifyDesc.trim() || null,
+            reviewed_by: userId,
+            reviewed_at: new Date().toISOString(),
+          }
+        : {
+            classification: "acerto" as const,
+            error_category: null,
+            error_description: null,
+            reviewed_by: userId,
+            reviewed_at: new Date().toISOString(),
+          };
     const { error } = classifyExistingId
       ? await (supabase as any)
           .from("closer_error_reviews")
@@ -366,11 +378,18 @@ export default function MetricDrilldownDialog({
       toast.error("Erro ao registrar: " + error.message);
       return;
     }
-    toast.success(classifyExistingId ? "Erro atualizado" : "Erro do Closer registrado");
+    toast.success(
+      classifyType === "acerto"
+        ? "Marcado como acerto"
+        : classifyExistingId
+        ? "Erro atualizado"
+        : "Erro do Closer registrado"
+    );
     setClassifyOpen(false);
     await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
     await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
   };
+
 
   const removeClassify = async (reviewId: string) => {
     const { error } = await (supabase as any)
