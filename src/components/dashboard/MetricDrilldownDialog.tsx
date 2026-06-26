@@ -798,7 +798,11 @@ export default function MetricDrilldownDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {classifyKind === "closer_error" ? "Registrar erro do Closer" : "Confirmar como acerto"}
+            {classifyExistingId
+              ? "Ajustar classificação"
+              : classifyKind === "closer_error"
+              ? "Registrar erro do Closer"
+              : "Confirmar como acerto"}
           </DialogTitle>
           <DialogDescription>
             Lead: <strong>{classifyAg?.lead_name}</strong>
@@ -807,6 +811,38 @@ export default function MetricDrilldownDialog({
               : ""}
           </DialogDescription>
         </DialogHeader>
+
+        {classifyExistingId && (
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={classifyKind === "closer_error" ? "default" : "outline"}
+              className={
+                classifyKind === "closer_error"
+                  ? "bg-rose-500 hover:bg-rose-500/90 text-white"
+                  : "border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
+              }
+              onClick={() => setClassifyKind("closer_error")}
+            >
+              <AlertOctagon className="h-4 w-4 mr-1" />
+              Erro do Closer
+            </Button>
+            <Button
+              type="button"
+              variant={classifyKind === "acerto" ? "default" : "outline"}
+              className={
+                classifyKind === "acerto"
+                  ? "bg-emerald-500 hover:bg-emerald-500/90 text-white"
+                  : "border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+              }
+              onClick={() => setClassifyKind("acerto")}
+            >
+              <ShieldCheck className="h-4 w-4 mr-1" />
+              Foi acerto
+            </Button>
+          </div>
+        )}
+
         {classifyKind === "closer_error" && (
           <Textarea
             placeholder="Descreva qual foi o erro do Closer..."
