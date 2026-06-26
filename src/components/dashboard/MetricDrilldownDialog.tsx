@@ -484,8 +484,9 @@ export default function MetricDrilldownDialog({
                   {/* Classificação de erro do Closer (gestor) */}
                   {d.status === "realizada" && (() => {
                     const v = vendaMap.get(d.id) as any;
-                    // Aparece só quando há motivo de não fechamento registrado
-                    if (!v || v.vendeu === true || !v.motivo_nao_fechamento) return null;
+                    // Aparece para qualquer reunião realizada que não foi vendida (inclui follow-ups e sem motivo registrado)
+                    if (!v || v.vendeu === true) return null;
+
                     const review = closerReviewMap.get(d.id);
                     if (review && review.classification !== "closer_error") {
                       return null;
