@@ -346,9 +346,23 @@ export default function MetricDrilldownDialog({
                           </Badge>
                         );
                       })()}
+                      {(() => {
+                        const sr = segundaReuniaoMap.get(d.id);
+                        if (!sr) return null;
+                        const dateLabel = format(new Date(sr.scheduled_date + "T12:00:00"), "dd/MM", { locale: ptBR });
+                        return (
+                          <Badge
+                            className="bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 hover:bg-purple-500/15"
+                            title={`2ª reunião marcada para ${dateLabel} às ${sr.scheduled_time}`}
+                          >
+                            2ª reunião {dateLabel}
+                          </Badge>
+                        );
+                      })()}
                       <Badge className={STATUS_COLOR[d.status] || "bg-muted"}>
                         {STATUS_LABEL[d.status] || d.status}
                       </Badge>
+
                     </div>
                   </div>
 
