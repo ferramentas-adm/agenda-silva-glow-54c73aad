@@ -122,6 +122,7 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
         leadName: a.lead_name,
         scheduledDate: a.scheduled_date,
         scheduledTime: a.scheduled_time,
+        description: a.sdr_error_description,
       });
     });
     return items;
