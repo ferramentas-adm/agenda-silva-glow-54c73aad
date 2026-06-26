@@ -233,6 +233,29 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
     },
   });
 
+  const reclassifyMutation = useMutation({
+    mutationFn: async (item: Item) => {
+      const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+      const { error } = await (supabase as any)
+        .from("closer_error_reviews")
+        .update({
+          classification: "acerto",
+          error_description: null,
+          reviewed_by: userId,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Reclassificado como acerto");
+    },
+    onError: (e: unknown) => {
+      toast.error("Erro: " + (e instanceof Error ? e.message : "tente novamente"));
+    },
+  });
+
   const periodLabel = `${format(new Date(fromStr), "dd/MM/yyyy")} a ${format(new Date(toStr), "dd/MM/yyyy")}`;
 
   const renderGroups = (
@@ -292,18 +315,30 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
                       {canFeedback && (
                         <div className="shrink-0">
                           {kind === "pendentes" ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
-                              onClick={() => {
-                                setFeedbackItem(item);
-                                setFeedbackNotes("");
-                              }}
-                            >
-                              <MessageSquare className="h-4 w-4 mr-1" />
-                              Marcar feedback dado
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+                                onClick={() => {
+                                  setFeedbackItem(item);
+                                  setFeedbackNotes("");
+                                }}
+                              >
+                                <MessageSquare className="h-4 w-4 mr-1" />
+                                Marcar feedback dado
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-sky-500/40 text-sky-600 hover:bg-sky-500/10 hover:text-sky-600"
+                                onClick={() => reclassifyMutation.mutate(item)}
+                                disabled={reclassifyMutation.isPending}
+                              >
+                                <Undo2 className="h-4 w-4 mr-1" />
+                                Não foi erro do Closer
+                              </Button>
+                            </div>
                           ) : (
                             <Button
                               size="sm"
