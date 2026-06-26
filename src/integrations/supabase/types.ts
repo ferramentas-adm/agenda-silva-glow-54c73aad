@@ -274,6 +274,7 @@ export type Database = {
           classification: string
           closer_id: string | null
           created_at: string
+          error_category: string | null
           error_description: string | null
           feedback_at: string | null
           feedback_by: string | null
@@ -289,6 +290,7 @@ export type Database = {
           classification: string
           closer_id?: string | null
           created_at?: string
+          error_category?: string | null
           error_description?: string | null
           feedback_at?: string | null
           feedback_by?: string | null
@@ -304,6 +306,7 @@ export type Database = {
           classification?: string
           closer_id?: string | null
           created_at?: string
+          error_category?: string | null
           error_description?: string | null
           feedback_at?: string | null
           feedback_by?: string | null

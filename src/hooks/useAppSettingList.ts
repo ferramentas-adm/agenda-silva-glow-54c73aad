@@ -97,6 +97,7 @@ export const APP_SETTING_KEYS = {
   channel_types: "channel_types",
   block_reasons: "block_reasons",
   produtos: "produtos",
+  closer_error_categories: "closer_error_categories",
 } as const;
 
 export const APP_SETTING_LABELS: Record<string, string> = {
@@ -105,5 +106,6 @@ export const APP_SETTING_LABELS: Record<string, string> = {
   channel_types: "Tipos de canal",
   block_reasons: "Motivos de compromissos pessoais",
   produtos: "Produtos",
+  closer_error_categories: "Categorias de erro do Closer",
 };
 

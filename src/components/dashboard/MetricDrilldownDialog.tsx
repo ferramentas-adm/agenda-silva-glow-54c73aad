@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2, ShieldCheck, AlertOctagon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 
 interface AgendamentoRef {
   id: string;
@@ -294,15 +296,16 @@ export default function MetricDrilldownDialog({
 
   // ─── Classificação de erros do Closer (gestor) ────────────────
   const isGestor = role === "gestor";
+  const { items: errorCategories } = useAppSettingList(APP_SETTING_KEYS.closer_error_categories, []);
   const { data: closerReviews = [] } = useQuery<
-    { id: string; agendamento_id: string; classification: "closer_error" | "acerto"; error_description: string | null; reviewed_by: string | null; reviewed_at: string }[]
+    { id: string; agendamento_id: string; classification: "closer_error" | "acerto"; error_description: string | null; error_category: string | null; reviewed_by: string | null; reviewed_at: string }[]
   >({
     queryKey: ["drilldown-closer-reviews", agendamentoIds.join(",")],
     enabled: open && agendamentoIds.length > 0,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("closer_error_reviews")
-        .select("id, agendamento_id, classification, error_description, reviewed_by, reviewed_at")
+        .select("id, agendamento_id, classification, error_description, error_category, reviewed_by, reviewed_at")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -311,15 +314,15 @@ export default function MetricDrilldownDialog({
 
   const [classifyOpen, setClassifyOpen] = useState(false);
   const [classifyAg, setClassifyAg] = useState<AgendamentoDetail | null>(null);
-  const [classifyKind, setClassifyKind] = useState<"closer_error" | "acerto">("closer_error");
   const [classifyDesc, setClassifyDesc] = useState("");
+  const [classifyCategory, setClassifyCategory] = useState<string>("");
   const [classifyExistingId, setClassifyExistingId] = useState<string | null>(null);
   const [savingClassify, setSavingClassify] = useState(false);
 
-  const openClassify = (d: AgendamentoDetail, kind: "closer_error" | "acerto") => {
+  const openClassify = (d: AgendamentoDetail) => {
     setClassifyAg(d);
-    setClassifyKind(kind);
     setClassifyDesc("");
+    setClassifyCategory("");
     setClassifyExistingId(null);
     setClassifyOpen(true);
   };
@@ -327,23 +330,24 @@ export default function MetricDrilldownDialog({
   const openReclassify = (d: AgendamentoDetail) => {
     const review = closerReviewMap.get(d.id);
     setClassifyAg(d);
-    setClassifyKind(review?.classification ?? "closer_error");
     setClassifyDesc(review?.error_description ?? "");
+    setClassifyCategory(review?.error_category ?? "");
     setClassifyExistingId(review?.id ?? null);
     setClassifyOpen(true);
   };
 
   const submitClassify = async () => {
     if (!classifyAg) return;
-    if (classifyKind === "closer_error" && !classifyDesc.trim()) {
-      toast.error("Descreva o erro do Closer");
+    if (!classifyCategory.trim()) {
+      toast.error("Selecione a categoria do erro");
       return;
     }
     setSavingClassify(true);
     const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
     const basePayload = {
-      classification: classifyKind,
-      error_description: classifyKind === "closer_error" ? classifyDesc.trim() : null,
+      classification: "closer_error" as const,
+      error_category: classifyCategory.trim(),
+      error_description: classifyDesc.trim() || null,
       reviewed_by: userId,
       reviewed_at: new Date().toISOString(),
     };
@@ -362,17 +366,26 @@ export default function MetricDrilldownDialog({
       toast.error("Erro ao registrar: " + error.message);
       return;
     }
-    toast.success(
-      classifyExistingId
-        ? "Classificação atualizada"
-        : classifyKind === "closer_error"
-        ? "Erro do Closer registrado"
-        : "Marcado como acerto",
-    );
+    toast.success(classifyExistingId ? "Erro atualizado" : "Erro do Closer registrado");
     setClassifyOpen(false);
     await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
     await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
   };
+
+  const removeClassify = async (reviewId: string) => {
+    const { error } = await (supabase as any)
+      .from("closer_error_reviews")
+      .delete()
+      .eq("id", reviewId);
+    if (error) {
+      toast.error("Erro ao remover: " + error.message);
+      return;
+    }
+    toast.success("Apontamento removido");
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
+    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
+  };
+
 
   return (
     <>
@@ -457,33 +470,37 @@ export default function MetricDrilldownDialog({
                     const review = closerReviewMap.get(d.id);
                     if (review) {
                       return (
-                        <div
-                          className={`rounded-md border p-2 text-xs ${
-                            review.classification === "closer_error"
-                              ? "border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400"
-                              : "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
-                          }`}
-                        >
+                        <div className="rounded-md border p-2 text-xs border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400">
                           <div className="flex items-start justify-between gap-2">
                             <div className="font-semibold">
-                              {review.classification === "closer_error"
-                                ? "Erro do Closer registrado"
-                                : "Marcado como acerto"}
+                              Erro do Closer
+                              {review.error_category ? ` · ${review.error_category}` : ""}
                               {" "}
                               <span className="font-normal opacity-80">
                                 · {format(new Date(review.reviewed_at), "dd/MM/yyyy")}
                               </span>
                             </div>
                             {isGestor && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => openReclassify(d)}
-                              >
-                                <Pencil className="h-3 w-3 mr-1" />
-                                Ajustar
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => openReclassify(d)}
+                                >
+                                  <Pencil className="h-3 w-3 mr-1" />
+                                  Ajustar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                  onClick={() => removeClassify(review.id)}
+                                  title="Remover apontamento"
+                                >
+                                  <XIcon className="h-3 w-3" />
+                                </Button>
+                              </div>
                             )}
                           </div>
                           {review.error_description && (
@@ -496,24 +513,15 @@ export default function MetricDrilldownDialog({
                     }
                     if (!isGestor) return null;
                     return (
-                      <div className="flex gap-2">
+                      <div>
                         <Button
                           size="sm"
                           variant="outline"
                           className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
-                          onClick={() => openClassify(d, "closer_error")}
+                          onClick={() => openClassify(d)}
                         >
                           <AlertOctagon className="h-3.5 w-3.5 mr-1" />
-                          Erro do Closer
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
-                          onClick={() => openClassify(d, "acerto")}
-                        >
-                          <ShieldCheck className="h-3.5 w-3.5 mr-1" />
-                          Foi acerto
+                          Apontar erro do Closer
                         </Button>
                       </div>
                     );
@@ -798,11 +806,7 @@ export default function MetricDrilldownDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {classifyExistingId
-              ? "Ajustar classificação"
-              : classifyKind === "closer_error"
-              ? "Registrar erro do Closer"
-              : "Confirmar como acerto"}
+            {classifyExistingId ? "Ajustar erro do Closer" : "Apontar erro do Closer"}
           </DialogTitle>
           <DialogDescription>
             Lead: <strong>{classifyAg?.lead_name}</strong>
@@ -812,45 +816,39 @@ export default function MetricDrilldownDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {classifyExistingId && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={classifyKind === "closer_error" ? "default" : "outline"}
-              className={
-                classifyKind === "closer_error"
-                  ? "bg-rose-500 hover:bg-rose-500/90 text-white"
-                  : "border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
-              }
-              onClick={() => setClassifyKind("closer_error")}
-            >
-              <AlertOctagon className="h-4 w-4 mr-1" />
-              Erro do Closer
-            </Button>
-            <Button
-              type="button"
-              variant={classifyKind === "acerto" ? "default" : "outline"}
-              className={
-                classifyKind === "acerto"
-                  ? "bg-emerald-500 hover:bg-emerald-500/90 text-white"
-                  : "border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
-              }
-              onClick={() => setClassifyKind("acerto")}
-            >
-              <ShieldCheck className="h-4 w-4 mr-1" />
-              Foi acerto
-            </Button>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium mb-1 block">Categoria do erro</label>
+            <Select value={classifyCategory} onValueChange={setClassifyCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                {errorCategories.length === 0 ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Cadastre categorias em Admin → Listas dinâmicas
+                  </div>
+                ) : (
+                  errorCategories.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
-        )}
+          <div>
+            <label className="text-xs font-medium mb-1 block">Descrição (opcional)</label>
+            <Textarea
+              placeholder="Detalhes do erro..."
+              value={classifyDesc}
+              onChange={(e) => setClassifyDesc(e.target.value)}
+              rows={4}
+            />
+          </div>
+        </div>
 
-        {classifyKind === "closer_error" && (
-          <Textarea
-            placeholder="Descreva qual foi o erro do Closer..."
-            value={classifyDesc}
-            onChange={(e) => setClassifyDesc(e.target.value)}
-            rows={5}
-          />
-        )}
         <DialogFooter>
           <Button variant="ghost" onClick={() => setClassifyOpen(false)} disabled={savingClassify}>
             Cancelar

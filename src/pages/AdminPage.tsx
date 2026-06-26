@@ -59,6 +59,14 @@ function DynamicListsSection() {
           description="Lista de produtos disponíveis para registro de venda."
           defaults={[]}
         />
+        <DynamicListManager
+          settingKey={APP_SETTING_KEYS.closer_error_categories}
+          title="Categorias de erro do Closer"
+          description="Opções de categoria ao apontar um erro do Closer nos motivos de não fechamento."
+          defaults={["Discovery raso", "Não criou urgência", "Objeção mal contornada", "Quebra de rapport", "Não ofertou preço"]}
+        />
+
+
 
       </div>
       <DeletionReasonsSection />
