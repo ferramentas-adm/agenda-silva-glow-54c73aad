@@ -86,10 +86,9 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
       const { data, error } = await supabase
         .from("agendamentos")
         .select(
-          "id, sdr_responsavel_id, created_by, scheduled_date, scheduled_time, lead_name"
+          "id, sdr_responsavel_id, created_by, scheduled_date, scheduled_time, lead_name, sdr_error_description"
         )
         .eq("sdr_error", true)
-        .is("deleted_at", null)
         .gte("scheduled_date", fromStr)
         .lte("scheduled_date", toStr);
       if (error) throw error;
