@@ -1,10 +1,15 @@
-## Tornar o modal de classificação ajustável
+Gerar um PDF (artefato único, fora do app) com as vendas do mês atual (junho/2026), contendo por linha:
 
-No `MetricDrilldownDialog.tsx`, ao abrir via "Ajustar", o modal hoje só mostra o título fixo (acerto ou erro). Mudar para:
+- Data da venda (closed_at)
+- Closer
+- Lead
+- Produto vendido
+- Valor coletado
+- Resumo informado pelo Closer
 
-1. **Sempre mostrar um seletor de status** no topo do modal (RadioGroup ou dois botões toggle): "Erro do Closer" / "Foi acerto". O valor inicial vem da classificação atual.
-2. **Campo de descrição condicional**: o `Textarea` aparece sempre que `classifyKind === "closer_error"` (já é assim — só passa a reagir ao toggle). Se o usuário trocar de acerto → erro, o campo aparece vazio e exige preenchimento (validação atual já cobre).
-3. **Título dinâmico** muda conforme o toggle ("Registrar erro do Closer" / "Confirmar como acerto").
-4. Lógica de submit (`submitClassify`) já faz UPDATE quando `classifyExistingId` está setado — nada a mudar ali.
+Passos:
+1. Consultar `vendas` (vendeu = true, closed_at no mês atual, agendamento não deletado) juntando `agendamentos` e `closers`.
+2. Gerar PDF em `/mnt/documents/vendas-junho-2026.pdf` com cabeçalho, tabela e total coletado no rodapé.
+3. Entregar via `<presentation-artifact>`.
 
-Sem mudanças no banco, no fluxo de "Erros Closer" ou em outros componentes.
+Confirma que quero usar **mês atual (junho/2026) por `closed_at`**? Se preferir outro período (ex.: mês anterior, ou por data da reunião), me diga antes de gerar.
