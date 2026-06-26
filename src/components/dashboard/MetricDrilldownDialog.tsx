@@ -317,6 +317,7 @@ export default function MetricDrilldownDialog({
   const [classifyDesc, setClassifyDesc] = useState("");
   const [classifyCategory, setClassifyCategory] = useState<string>("");
   const [classifyExistingId, setClassifyExistingId] = useState<string | null>(null);
+  const [classifyType, setClassifyType] = useState<"closer_error" | "acerto">("closer_error");
   const [savingClassify, setSavingClassify] = useState(false);
 
   const openClassify = (d: AgendamentoDetail) => {
@@ -324,6 +325,7 @@ export default function MetricDrilldownDialog({
     setClassifyDesc("");
     setClassifyCategory("");
     setClassifyExistingId(null);
+    setClassifyType("closer_error");
     setClassifyOpen(true);
   };
 
@@ -333,24 +335,34 @@ export default function MetricDrilldownDialog({
     setClassifyDesc(review?.error_description ?? "");
     setClassifyCategory(review?.error_category ?? "");
     setClassifyExistingId(review?.id ?? null);
+    setClassifyType((review?.classification as "closer_error" | "acerto") ?? "closer_error");
     setClassifyOpen(true);
   };
 
   const submitClassify = async () => {
     if (!classifyAg) return;
-    if (!classifyCategory.trim()) {
+    if (classifyType === "closer_error" && !classifyCategory.trim()) {
       toast.error("Selecione a categoria do erro");
       return;
     }
     setSavingClassify(true);
     const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
-    const basePayload = {
-      classification: "closer_error" as const,
-      error_category: classifyCategory.trim(),
-      error_description: classifyDesc.trim() || null,
-      reviewed_by: userId,
-      reviewed_at: new Date().toISOString(),
-    };
+    const basePayload =
+      classifyType === "closer_error"
+        ? {
+            classification: "closer_error" as const,
+            error_category: classifyCategory.trim(),
+            error_description: classifyDesc.trim() || null,
+            reviewed_by: userId,
+            reviewed_at: new Date().toISOString(),
+          }
+        : {
+            classification: "acerto" as const,
+            error_category: null,
+            error_description: null,
+            reviewed_by: userId,
+            reviewed_at: new Date().toISOString(),
+          };
     const { error } = classifyExistingId
       ? await (supabase as any)
           .from("closer_error_reviews")
@@ -366,11 +378,18 @@ export default function MetricDrilldownDialog({
       toast.error("Erro ao registrar: " + error.message);
       return;
     }
-    toast.success(classifyExistingId ? "Erro atualizado" : "Erro do Closer registrado");
+    toast.success(
+      classifyType === "acerto"
+        ? "Marcado como acerto"
+        : classifyExistingId
+        ? "Erro atualizado"
+        : "Erro do Closer registrado"
+    );
     setClassifyOpen(false);
     await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
     await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
   };
+
 
   const removeClassify = async (reviewId: string) => {
     const { error } = await (supabase as any)
@@ -817,37 +836,66 @@ export default function MetricDrilldownDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium mb-1 block">Categoria do erro</label>
-            <Select value={classifyCategory} onValueChange={setClassifyCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {errorCategories.length === 0 ? (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    Cadastre categorias em Admin → Listas dinâmicas
-                  </div>
-                ) : (
-                  errorCategories.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium mb-1 block">Descrição (opcional)</label>
-            <Textarea
-              placeholder="Detalhes do erro..."
-              value={classifyDesc}
-              onChange={(e) => setClassifyDesc(e.target.value)}
-              rows={4}
-            />
-          </div>
+          {classifyExistingId && (
+            <div>
+              <label className="text-xs font-medium mb-1 block">Classificação</label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={classifyType === "closer_error" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setClassifyType("closer_error")}
+                >
+                  Erro do Closer
+                </Button>
+                <Button
+                  type="button"
+                  variant={classifyType === "acerto" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setClassifyType("acerto")}
+                >
+                  Foi acerto
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {classifyType === "closer_error" && (
+            <>
+              <div>
+                <label className="text-xs font-medium mb-1 block">Categoria do erro</label>
+                <Select value={classifyCategory} onValueChange={setClassifyCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {errorCategories.length === 0 ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        Cadastre categorias em Admin → Listas dinâmicas
+                      </div>
+                    ) : (
+                      errorCategories.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block">Descrição (opcional)</label>
+                <Textarea
+                  placeholder="Detalhes do erro..."
+                  value={classifyDesc}
+                  onChange={(e) => setClassifyDesc(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </>
+          )}
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setClassifyOpen(false)} disabled={savingClassify}>
