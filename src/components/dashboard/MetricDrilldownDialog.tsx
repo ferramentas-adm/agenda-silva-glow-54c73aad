@@ -487,6 +487,9 @@ export default function MetricDrilldownDialog({
                     // Aparece só quando há motivo de não fechamento registrado
                     if (!v || v.vendeu === true || !v.motivo_nao_fechamento) return null;
                     const review = closerReviewMap.get(d.id);
+                    if (review && review.classification !== "closer_error") {
+                      return null;
+                    }
                     if (review) {
                       return (
                         <div className="rounded-md border p-2 text-xs border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400">
