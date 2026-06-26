@@ -1,0 +1,1 @@
+ALTER TABLE public.closer_error_reviews ADD COLUMN IF NOT EXISTS error_category text;
