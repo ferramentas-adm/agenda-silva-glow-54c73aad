@@ -754,6 +754,39 @@ export default function MetricDrilldownDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <Dialog open={classifyOpen} onOpenChange={setClassifyOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {classifyKind === "closer_error" ? "Registrar erro do Closer" : "Confirmar como acerto"}
+          </DialogTitle>
+          <DialogDescription>
+            Lead: <strong>{classifyAg?.lead_name}</strong>
+            {classifyAg?.closer_id && closerMap.get(classifyAg.closer_id)
+              ? ` · Closer: ${closerMap.get(classifyAg.closer_id)}`
+              : ""}
+          </DialogDescription>
+        </DialogHeader>
+        {classifyKind === "closer_error" && (
+          <Textarea
+            placeholder="Descreva qual foi o erro do Closer..."
+            value={classifyDesc}
+            onChange={(e) => setClassifyDesc(e.target.value)}
+            rows={5}
+          />
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setClassifyOpen(false)} disabled={savingClassify}>
+            Cancelar
+          </Button>
+          <Button onClick={submitClassify} disabled={savingClassify}>
+            {savingClassify ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Confirmar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
