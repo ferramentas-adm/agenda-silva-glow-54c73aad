@@ -233,6 +233,29 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
     },
   });
 
+  const reclassifyMutation = useMutation({
+    mutationFn: async (item: Item) => {
+      const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+      const { error } = await (supabase as any)
+        .from("closer_error_reviews")
+        .update({
+          classification: "acerto",
+          error_description: null,
+          reviewed_by: userId,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Reclassificado como acerto");
+    },
+    onError: (e: unknown) => {
+      toast.error("Erro: " + (e instanceof Error ? e.message : "tente novamente"));
+    },
+  });
+
   const periodLabel = `${format(new Date(fromStr), "dd/MM/yyyy")} a ${format(new Date(toStr), "dd/MM/yyyy")}`;
 
   const renderGroups = (
