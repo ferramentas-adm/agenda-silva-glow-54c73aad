@@ -292,6 +292,62 @@ export default function MetricDrilldownDialog({
     await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
   };
 
+  // ─── Classificação de erros do Closer (gestor) ────────────────
+  const isGestor = role === "gestor";
+  const { data: closerReviews = [] } = useQuery<
+    { id: string; agendamento_id: string; classification: "closer_error" | "acerto"; error_description: string | null; reviewed_by: string | null; reviewed_at: string }[]
+  >({
+    queryKey: ["drilldown-closer-reviews", agendamentoIds.join(",")],
+    enabled: open && agendamentoIds.length > 0,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("closer_error_reviews")
+        .select("id, agendamento_id, classification, error_description, reviewed_by, reviewed_at")
+        .in("agendamento_id", agendamentoIds);
+      return data ?? [];
+    },
+  });
+  const closerReviewMap = new Map(closerReviews.map((r) => [r.agendamento_id, r]));
+
+  const [classifyOpen, setClassifyOpen] = useState(false);
+  const [classifyAg, setClassifyAg] = useState<AgendamentoDetail | null>(null);
+  const [classifyKind, setClassifyKind] = useState<"closer_error" | "acerto">("closer_error");
+  const [classifyDesc, setClassifyDesc] = useState("");
+  const [savingClassify, setSavingClassify] = useState(false);
+
+  const openClassify = (d: AgendamentoDetail, kind: "closer_error" | "acerto") => {
+    setClassifyAg(d);
+    setClassifyKind(kind);
+    setClassifyDesc("");
+    setClassifyOpen(true);
+  };
+
+  const submitClassify = async () => {
+    if (!classifyAg) return;
+    if (classifyKind === "closer_error" && !classifyDesc.trim()) {
+      toast.error("Descreva o erro do Closer");
+      return;
+    }
+    setSavingClassify(true);
+    const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+    const { error } = await (supabase as any).from("closer_error_reviews").insert({
+      agendamento_id: classifyAg.id,
+      closer_id: classifyAg.closer_id,
+      classification: classifyKind,
+      error_description: classifyKind === "closer_error" ? classifyDesc.trim() : null,
+      reviewed_by: userId,
+    });
+    setSavingClassify(false);
+    if (error) {
+      toast.error("Erro ao registrar: " + error.message);
+      return;
+    }
+    toast.success(classifyKind === "closer_error" ? "Erro do Closer registrado" : "Marcado como acerto");
+    setClassifyOpen(false);
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
+    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
+  };
+
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
