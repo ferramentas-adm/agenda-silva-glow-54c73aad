@@ -699,7 +699,7 @@ export default function DashboardComercialPage() {
         
         {activeTabKey === "carga" && isAdmin && <CargaClosersTab />}
         {activeTabKey === "erros_sdr" && isAdmin && (
-          <ErrosTab currentDate={currentDate} dateRange={isRangeActive ? dateRange : undefined} />
+          <ErrosTab currentDate={currentDate} dateRange={dateRange} />
         )}
         
       </div>
