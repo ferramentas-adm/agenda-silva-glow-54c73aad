@@ -26,6 +26,7 @@ interface ErrorItem {
   leadName: string;
   scheduledDate: string;
   scheduledTime: string | null;
+  description?: string | null;
 }
 
 interface VendaRow {
