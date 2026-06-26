@@ -34,6 +34,7 @@ interface Agendamento {
   is_5k: boolean | null;
   original_agendamento_id: string | null;
   sdr_error: boolean | null;
+  sdr_error_description?: string | null;
 }
 
 interface Closer {
