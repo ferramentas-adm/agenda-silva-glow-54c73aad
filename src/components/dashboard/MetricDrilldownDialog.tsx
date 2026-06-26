@@ -836,37 +836,66 @@ export default function MetricDrilldownDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium mb-1 block">Categoria do erro</label>
-            <Select value={classifyCategory} onValueChange={setClassifyCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {errorCategories.length === 0 ? (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    Cadastre categorias em Admin → Listas dinâmicas
-                  </div>
-                ) : (
-                  errorCategories.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium mb-1 block">Descrição (opcional)</label>
-            <Textarea
-              placeholder="Detalhes do erro..."
-              value={classifyDesc}
-              onChange={(e) => setClassifyDesc(e.target.value)}
-              rows={4}
-            />
-          </div>
+          {classifyExistingId && (
+            <div>
+              <label className="text-xs font-medium mb-1 block">Classificação</label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={classifyType === "closer_error" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setClassifyType("closer_error")}
+                >
+                  Erro do Closer
+                </Button>
+                <Button
+                  type="button"
+                  variant={classifyType === "acerto" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setClassifyType("acerto")}
+                >
+                  Foi acerto
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {classifyType === "closer_error" && (
+            <>
+              <div>
+                <label className="text-xs font-medium mb-1 block">Categoria do erro</label>
+                <Select value={classifyCategory} onValueChange={setClassifyCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {errorCategories.length === 0 ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        Cadastre categorias em Admin → Listas dinâmicas
+                      </div>
+                    ) : (
+                      errorCategories.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block">Descrição (opcional)</label>
+                <Textarea
+                  placeholder="Detalhes do erro..."
+                  value={classifyDesc}
+                  onChange={(e) => setClassifyDesc(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </>
+          )}
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setClassifyOpen(false)} disabled={savingClassify}>
