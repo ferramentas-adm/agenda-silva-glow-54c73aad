@@ -296,15 +296,16 @@ export default function MetricDrilldownDialog({
 
   // ─── Classificação de erros do Closer (gestor) ────────────────
   const isGestor = role === "gestor";
+  const { items: errorCategories } = useAppSettingList(APP_SETTING_KEYS.closer_error_categories, []);
   const { data: closerReviews = [] } = useQuery<
-    { id: string; agendamento_id: string; classification: "closer_error" | "acerto"; error_description: string | null; reviewed_by: string | null; reviewed_at: string }[]
+    { id: string; agendamento_id: string; classification: "closer_error" | "acerto"; error_description: string | null; error_category: string | null; reviewed_by: string | null; reviewed_at: string }[]
   >({
     queryKey: ["drilldown-closer-reviews", agendamentoIds.join(",")],
     enabled: open && agendamentoIds.length > 0,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("closer_error_reviews")
-        .select("id, agendamento_id, classification, error_description, reviewed_by, reviewed_at")
+        .select("id, agendamento_id, classification, error_description, error_category, reviewed_by, reviewed_at")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -313,15 +314,15 @@ export default function MetricDrilldownDialog({
 
   const [classifyOpen, setClassifyOpen] = useState(false);
   const [classifyAg, setClassifyAg] = useState<AgendamentoDetail | null>(null);
-  const [classifyKind, setClassifyKind] = useState<"closer_error" | "acerto">("closer_error");
   const [classifyDesc, setClassifyDesc] = useState("");
+  const [classifyCategory, setClassifyCategory] = useState<string>("");
   const [classifyExistingId, setClassifyExistingId] = useState<string | null>(null);
   const [savingClassify, setSavingClassify] = useState(false);
 
-  const openClassify = (d: AgendamentoDetail, kind: "closer_error" | "acerto") => {
+  const openClassify = (d: AgendamentoDetail) => {
     setClassifyAg(d);
-    setClassifyKind(kind);
     setClassifyDesc("");
+    setClassifyCategory("");
     setClassifyExistingId(null);
     setClassifyOpen(true);
   };
@@ -329,23 +330,24 @@ export default function MetricDrilldownDialog({
   const openReclassify = (d: AgendamentoDetail) => {
     const review = closerReviewMap.get(d.id);
     setClassifyAg(d);
-    setClassifyKind(review?.classification ?? "closer_error");
     setClassifyDesc(review?.error_description ?? "");
+    setClassifyCategory(review?.error_category ?? "");
     setClassifyExistingId(review?.id ?? null);
     setClassifyOpen(true);
   };
 
   const submitClassify = async () => {
     if (!classifyAg) return;
-    if (classifyKind === "closer_error" && !classifyDesc.trim()) {
-      toast.error("Descreva o erro do Closer");
+    if (!classifyCategory.trim()) {
+      toast.error("Selecione a categoria do erro");
       return;
     }
     setSavingClassify(true);
     const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
     const basePayload = {
-      classification: classifyKind,
-      error_description: classifyKind === "closer_error" ? classifyDesc.trim() : null,
+      classification: "closer_error" as const,
+      error_category: classifyCategory.trim(),
+      error_description: classifyDesc.trim() || null,
       reviewed_by: userId,
       reviewed_at: new Date().toISOString(),
     };
@@ -364,17 +366,26 @@ export default function MetricDrilldownDialog({
       toast.error("Erro ao registrar: " + error.message);
       return;
     }
-    toast.success(
-      classifyExistingId
-        ? "Classificação atualizada"
-        : classifyKind === "closer_error"
-        ? "Erro do Closer registrado"
-        : "Marcado como acerto",
-    );
+    toast.success(classifyExistingId ? "Erro atualizado" : "Erro do Closer registrado");
     setClassifyOpen(false);
     await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
     await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
   };
+
+  const removeClassify = async (reviewId: string) => {
+    const { error } = await (supabase as any)
+      .from("closer_error_reviews")
+      .delete()
+      .eq("id", reviewId);
+    if (error) {
+      toast.error("Erro ao remover: " + error.message);
+      return;
+    }
+    toast.success("Apontamento removido");
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
+    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
+  };
+
 
   return (
     <>
