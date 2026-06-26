@@ -139,6 +139,33 @@ export default function MetricDrilldownDialog({
     },
   });
 
+  const leadPhones = Array.from(
+    new Set(details.map((d) => d.lead_phone).filter(Boolean) as string[]),
+  );
+  const { data: segundaReuniaoMap = new Map<string, { scheduled_date: string; scheduled_time: string }>() } = useQuery<
+    Map<string, { scheduled_date: string; scheduled_time: string }>
+  >({
+    queryKey: ["drilldown-segunda-reuniao", leadPhones.join(","), agendamentoIds.join(",")],
+    enabled: open && leadPhones.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("id, lead_phone, scheduled_date, scheduled_time, meeting_reason, created_at")
+        .in("lead_phone", leadPhones)
+        .eq("meeting_reason", "segunda_reuniao")
+        .order("created_at", { ascending: false });
+      const m = new Map<string, { scheduled_date: string; scheduled_time: string }>();
+      for (const r of (data ?? []) as any[]) {
+        for (const d of details) {
+          if (d.lead_phone !== r.lead_phone) continue;
+          if (new Date(r.created_at) <= new Date(d.created_at)) continue;
+          if (!m.has(d.id)) m.set(d.id, { scheduled_date: r.scheduled_date, scheduled_time: r.scheduled_time });
+        }
+      }
+      return m;
+    },
+  });
+
   const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
     queryKey: ["drilldown-fu-closes", agendamentoIds.join(",")],
     enabled: open && agendamentoIds.length > 0,
@@ -161,6 +188,7 @@ export default function MetricDrilldownDialog({
       return m;
     },
   });
+
 
   const closerMap = new Map(closers.map((c: any) => [c.id, c.name]));
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
