@@ -471,18 +471,35 @@ export default function AguardandoAtribuicaoPage() {
                     </div>
                   )}
 
-                  <div className="flex justify-end pt-1">
+                  {a.sdr_error && a.sdr_error_description && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-1">
+                        Erro de SDR registrado
+                      </p>
+                      <p className="text-xs whitespace-pre-wrap break-words">{a.sdr_error_description}</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-1">
                     <Button
                       variant={a.sdr_error ? "default" : "outline"}
                       size="sm"
-                      onClick={() => handleToggleSdrError(a)}
-                      disabled={togglingErrId === a.id}
+                      onClick={() => openErrorDialog(a, false)}
                       className={a.sdr_error
                         ? "bg-amber-500 text-white hover:bg-amber-600"
                         : "text-amber-600 border-amber-500/40 hover:bg-amber-500/10"}
                     >
                       <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-                      {a.sdr_error ? "Erro de SDR marcado" : "Marcar erro de SDR"}
+                      {a.sdr_error ? "Erro de SDR marcado" : "Erro de SDR"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openErrorDialog(a, true)}
+                      className="text-rose-600 border-rose-500/40 hover:bg-rose-500/10"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      Erro SDR + Excluir
                     </Button>
                   </div>
                 </div>
@@ -490,6 +507,43 @@ export default function AguardandoAtribuicaoPage() {
             })}
           </div>
         )}
+
+        <Dialog open={!!errorDialog} onOpenChange={(o) => { if (!o) { setErrorDialog(null); setErrorDescription(""); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {errorDialog?.alsoDelete ? "Erro de SDR + Excluir reunião" : "Marcar erro de SDR"}
+              </DialogTitle>
+              <DialogDescription>
+                Descreva qual foi o erro do SDR neste lead. A descrição aparecerá no relatório de Erros de SDR.
+                {errorDialog?.alsoDelete && " A reunião será excluída e não irá para a agenda."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="sdr-err-desc">Descrição do erro</Label>
+              <Textarea
+                id="sdr-err-desc"
+                value={errorDescription}
+                onChange={(e) => setErrorDescription(e.target.value)}
+                placeholder="Ex.: SDR não validou faturamento, lead fora do ICP, briefing incompleto…"
+                rows={5}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setErrorDialog(null); setErrorDescription(""); }} disabled={submittingError}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={submitErrorDialog}
+                disabled={submittingError || !errorDescription.trim()}
+                className={errorDialog?.alsoDelete ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}
+              >
+                {submittingError ? "Salvando…" : errorDialog?.alsoDelete ? "Registrar e excluir" : "Registrar erro"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
