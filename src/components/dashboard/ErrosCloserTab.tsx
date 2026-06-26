@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
