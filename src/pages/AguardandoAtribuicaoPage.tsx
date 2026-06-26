@@ -48,7 +48,9 @@ export default function AguardandoAtribuicaoPage() {
   const queryClient = useQueryClient();
   const [selecting, setSelecting] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [togglingErrId, setTogglingErrId] = useState<string | null>(null);
+  const [errorDialog, setErrorDialog] = useState<{ agendamento: Agendamento; alsoDelete: boolean } | null>(null);
+  const [errorDescription, setErrorDescription] = useState("");
+  const [submittingError, setSubmittingError] = useState(false);
 
   const todayStr = (() => {
     const d = new Date();
