@@ -280,26 +280,49 @@ export default function AguardandoAtribuicaoPage() {
     }
   };
 
-  const handleToggleSdrError = async (a: Agendamento) => {
-    setTogglingErrId(a.id);
+  const openErrorDialog = (a: Agendamento, alsoDelete: boolean) => {
+    setErrorDescription(alsoDelete ? "" : a.sdr_error_description ?? "");
+    setErrorDialog({ agendamento: a, alsoDelete });
+  };
+
+  const submitErrorDialog = async () => {
+    if (!errorDialog) return;
+    const desc = errorDescription.trim();
+    if (!desc) {
+      toast.error("Descreva qual foi o erro do SDR.");
+      return;
+    }
+    const { agendamento: a, alsoDelete } = errorDialog;
+    setSubmittingError(true);
     try {
-      const newVal = !a.sdr_error;
+      const nowIso = new Date().toISOString();
+      const payload: Record<string, any> = {
+        sdr_error: true,
+        sdr_error_at: nowIso,
+        sdr_error_by: user?.id ?? null,
+        sdr_error_description: desc,
+      };
+      if (alsoDelete) {
+        payload.deleted_at = nowIso;
+        payload.deletion_reason = `Erro de SDR: ${desc}`;
+      }
       const { error } = await supabase
         .from("agendamentos")
-        .update({
-          sdr_error: newVal,
-          sdr_error_at: newVal ? new Date().toISOString() : null,
-          sdr_error_by: newVal ? user?.id ?? null : null,
-        } as any)
+        .update(payload as any)
         .eq("id", a.id);
       if (error) throw error;
-      toast.success(newVal ? "Erro de SDR marcado." : "Erro de SDR desmarcado.");
+      toast.success(alsoDelete ? "Erro marcado e reunião excluída." : "Erro de SDR registrado.");
+      setErrorDialog(null);
+      setErrorDescription("");
       queryClient.invalidateQueries({ queryKey: ["pending-closer-assignment"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-closer-assignment-count"] });
       queryClient.invalidateQueries({ queryKey: ["sdr-errors"] });
+      queryClient.invalidateQueries({ queryKey: ["sdr-errors-agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
-      toast.error(err.message || "Erro ao marcar erro de SDR.");
+      toast.error(err.message || "Erro ao registrar.");
     } finally {
-      setTogglingErrId(null);
+      setSubmittingError(false);
     }
   };
 
