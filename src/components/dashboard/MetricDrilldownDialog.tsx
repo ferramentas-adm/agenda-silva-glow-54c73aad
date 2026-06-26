@@ -423,6 +423,64 @@ export default function MetricDrilldownDialog({
                     </div>
                   </div>
 
+                  {/* Classificação de erro do Closer (gestor) */}
+                  {d.status === "realizada" && (() => {
+                    const v = vendaMap.get(d.id) as any;
+                    // Aparece só quando há motivo de não fechamento registrado
+                    if (!v || v.vendeu === true || !v.motivo_nao_fechamento) return null;
+                    const review = closerReviewMap.get(d.id);
+                    if (review) {
+                      return (
+                        <div
+                          className={`rounded-md border p-2 text-xs ${
+                            review.classification === "closer_error"
+                              ? "border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400"
+                              : "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
+                          }`}
+                        >
+                          <div className="font-semibold">
+                            {review.classification === "closer_error"
+                              ? "Erro do Closer registrado"
+                              : "Marcado como acerto"}
+                            {" "}
+                            <span className="font-normal opacity-80">
+                              · {format(new Date(review.reviewed_at), "dd/MM/yyyy")}
+                            </span>
+                          </div>
+                          {review.error_description && (
+                            <p className="mt-1 whitespace-pre-wrap text-foreground/80">
+                              {review.error_description}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+                    if (!isGestor) return null;
+                    return (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
+                          onClick={() => openClassify(d, "closer_error")}
+                        >
+                          <AlertOctagon className="h-3.5 w-3.5 mr-1" />
+                          Erro do Closer
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+                          onClick={() => openClassify(d, "acerto")}
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                          Foi acerto
+                        </Button>
+                      </div>
+                    );
+                  })()}
+
+
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3 w-3" />
