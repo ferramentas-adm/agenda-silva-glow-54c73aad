@@ -464,14 +464,27 @@ export default function MetricDrilldownDialog({
                               : "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
                           }`}
                         >
-                          <div className="font-semibold">
-                            {review.classification === "closer_error"
-                              ? "Erro do Closer registrado"
-                              : "Marcado como acerto"}
-                            {" "}
-                            <span className="font-normal opacity-80">
-                              · {format(new Date(review.reviewed_at), "dd/MM/yyyy")}
-                            </span>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="font-semibold">
+                              {review.classification === "closer_error"
+                                ? "Erro do Closer registrado"
+                                : "Marcado como acerto"}
+                              {" "}
+                              <span className="font-normal opacity-80">
+                                · {format(new Date(review.reviewed_at), "dd/MM/yyyy")}
+                              </span>
+                            </div>
+                            {isGestor && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => openReclassify(d)}
+                              >
+                                <Pencil className="h-3 w-3 mr-1" />
+                                Ajustar
+                              </Button>
+                            )}
                           </div>
                           {review.error_description && (
                             <p className="mt-1 whitespace-pre-wrap text-foreground/80">
