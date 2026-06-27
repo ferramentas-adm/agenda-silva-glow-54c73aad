@@ -614,6 +614,7 @@ export type Database = {
           full_name: string
           id: string
           is_sdr_override: boolean
+          moderador_tipo: string | null
           must_change_password: boolean
           updated_at: string
           user_id: string
@@ -627,6 +628,7 @@ export type Database = {
           full_name: string
           id?: string
           is_sdr_override?: boolean
+          moderador_tipo?: string | null
           must_change_password?: boolean
           updated_at?: string
           user_id: string
@@ -640,6 +642,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_sdr_override?: boolean
+          moderador_tipo?: string | null
           must_change_password?: boolean
           updated_at?: string
           user_id?: string

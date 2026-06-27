@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS moderador_tipo text CHECK (moderador_tipo IN ('sdr','closer'));
