@@ -164,6 +164,25 @@ function UsersSection() {
   // Scheduling toggle
   const [togglingSchedulingId, setTogglingSchedulingId] = useState<string | null>(null);
 
+  // Moderador subtype toggle (Moderador de SDR / Moderador de Closer)
+  const [savingModTipoId, setSavingModTipoId] = useState<string | null>(null);
+  const cycleModeradorTipo = async (u: any) => {
+    setSavingModTipoId(u.userId);
+    const next = u.moderadorTipo === null ? "sdr" : u.moderadorTipo === "sdr" ? "closer" : null;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ moderador_tipo: next } as any)
+        .eq("user_id", u.userId);
+      if (error) throw error;
+      toast.success(next ? `Definido como Moderador de ${next === "sdr" ? "SDR" : "Closer"}` : "Subtipo de moderador removido");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar subtipo");
+    }
+    setSavingModTipoId(null);
+  };
+
   // Fetch all users (profiles + roles) and closers
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
@@ -210,6 +229,7 @@ function UsersSection() {
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
           availableForScheduling: p.available_for_scheduling ?? false,
           isSdrOverride: (p as any).is_sdr_override === true,
+          moderadorTipo: (p as any).moderador_tipo as ("sdr" | "closer" | null) ?? null,
         };
       });
 
@@ -629,11 +649,30 @@ function UsersSection() {
                       <>
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
+                          {u.role === "moderador" && u.moderadorTipo && (
+                            <span className="ml-1 normal-case opacity-80">
+                              de {u.moderadorTipo === "sdr" ? "SDR" : "Closer"}
+                            </span>
+                          )}
                         </span>
                         {u.isSdrOverride && u.role !== "sdr" && (
                           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-500" title="Atua também como SDR (override)">
                             + SDR
                           </span>
+                        )}
+                        {canActOn(u.role) && u.type === "profile" && u.role === "moderador" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[10px] font-semibold uppercase"
+                            title="Alternar subtipo: Nenhum → Moderador de SDR → Moderador de Closer"
+                            onClick={() => cycleModeradorTipo(u)}
+                            disabled={savingModTipoId === u.userId}
+                          >
+                            {savingModTipoId === u.userId
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : (u.moderadorTipo ? `tipo: ${u.moderadorTipo === "sdr" ? "SDR" : "Closer"}` : "definir tipo")}
+                          </Button>
                         )}
                         {canActOn(u.role) && u.type === "profile" && u.role !== "closer" && (
                           <Button
