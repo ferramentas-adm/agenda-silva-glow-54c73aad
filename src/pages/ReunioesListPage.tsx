@@ -451,7 +451,26 @@ export default function ReunioesListPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-display font-bold tracking-tight">Lista de Reuniões</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            {isGestor && (
+              <div className={cn(
+                "flex items-center gap-2 rounded-full border px-3 py-1.5 transition-colors",
+                sdrGlobalVisibility
+                  ? "border-emerald-500/40 bg-emerald-500/10"
+                  : "border-border bg-muted/30"
+              )}>
+                <Switch
+                  id="sdr-global-visibility"
+                  checked={sdrGlobalVisibility}
+                  disabled={savingSdrGlobalVisibility}
+                  onCheckedChange={(v) => saveSdrGlobalVisibility(!!v)}
+                  className={cn(sdrGlobalVisibility && "data-[state=checked]:bg-emerald-500")}
+                />
+                <Label htmlFor="sdr-global-visibility" className="text-xs cursor-pointer">
+                  Visibilidade Global de SDRs
+                </Label>
+              </div>
+            )}
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportCSV} disabled={filtered.length === 0}>
               <Download className="h-3.5 w-3.5" />
               Exportar CSV
