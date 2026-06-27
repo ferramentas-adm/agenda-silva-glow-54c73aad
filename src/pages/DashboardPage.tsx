@@ -497,13 +497,27 @@ export function CalendarContent() {
     return false;
   }, [detailAg, role, user?.id, myCloserId]);
 
-  // Quem pode editar/transferir o Closer da reunião: APENAS gestor e moderador.
-  // SDRs NÃO podem transferir agendas entre Closers depois de agendado.
+  // Tipo do moderador (sdr | closer | null) — somente "Moderador de SDR" pode transferir agendas.
+  const { data: moderadorTipo = null } = useQuery({
+    queryKey: ["my-moderador-tipo", user?.id],
+    enabled: !!user?.id && role === "moderador",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("moderador_tipo")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return ((data as any)?.moderador_tipo as "sdr" | "closer" | null) ?? null;
+    },
+  });
+
+  // Quem pode editar/transferir o Closer da reunião: gestor sempre; moderador APENAS se for "Moderador de SDR".
   const canEditCloser = useMemo(() => {
     if (!detailAg) return false;
-    if (role === "gestor" || role === "moderador") return true;
+    if (role === "gestor") return true;
+    if (role === "moderador") return moderadorTipo === "sdr";
     return false;
-  }, [detailAg, role]);
+  }, [detailAg, role, moderadorTipo]);
 
   // Quem pode editar o SDR responsável: gestor/moderador (qualquer) ou SDR APENAS no agendamento que ele próprio criou.
   const canEditSdr = useMemo(() => {
@@ -514,14 +528,16 @@ export function CalendarContent() {
   }, [detailAg, role, user?.id]);
 
   // Quem pode TRANSFERIR o lead para outro closer:
-  // - gestor / moderador: sempre
+  // - gestor: sempre
+  // - moderador: apenas "Moderador de SDR"
   // - closer: APENAS se for o dono atual do lead (nunca pode "puxar" lead de outro)
   const canTransfer = useMemo(() => {
     if (!detailAg) return false;
-    if (role === "gestor" || role === "moderador") return true;
+    if (role === "gestor") return true;
+    if (role === "moderador") return moderadorTipo === "sdr";
     if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
     return false;
-  }, [detailAg, role, myCloserId]);
+  }, [detailAg, role, myCloserId, moderadorTipo]);
 
   const handleTransferLead = async () => {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
