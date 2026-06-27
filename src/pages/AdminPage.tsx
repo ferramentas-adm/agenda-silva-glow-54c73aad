@@ -649,11 +649,30 @@ function UsersSection() {
                       <>
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-primary">
                           {roleLabel(u.role)}
+                          {u.role === "moderador" && u.moderadorTipo && (
+                            <span className="ml-1 normal-case opacity-80">
+                              de {u.moderadorTipo === "sdr" ? "SDR" : "Closer"}
+                            </span>
+                          )}
                         </span>
                         {u.isSdrOverride && u.role !== "sdr" && (
                           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-500" title="Atua também como SDR (override)">
                             + SDR
                           </span>
+                        )}
+                        {canActOn(u.role) && u.type === "profile" && u.role === "moderador" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[10px] font-semibold uppercase"
+                            title="Alternar subtipo: Nenhum → Moderador de SDR → Moderador de Closer"
+                            onClick={() => cycleModeradorTipo(u)}
+                            disabled={savingModTipoId === u.userId}
+                          >
+                            {savingModTipoId === u.userId
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : (u.moderadorTipo ? `tipo: ${u.moderadorTipo === "sdr" ? "SDR" : "Closer"}` : "definir tipo")}
+                          </Button>
                         )}
                         {canActOn(u.role) && u.type === "profile" && u.role !== "closer" && (
                           <Button
