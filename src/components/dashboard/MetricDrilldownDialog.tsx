@@ -390,6 +390,27 @@ export default function MetricDrilldownDialog({
     await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
   };
 
+  const markAcerto = async (d: AgendamentoDetail) => {
+    const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+    const { error } = await (supabase as any).from("closer_error_reviews").insert({
+      agendamento_id: d.id,
+      closer_id: d.closer_id,
+      classification: "acerto",
+      error_category: null,
+      error_description: null,
+      reviewed_by: userId,
+      reviewed_at: new Date().toISOString(),
+    });
+    if (error) {
+      toast.error("Erro ao registrar: " + error.message);
+      return;
+    }
+    toast.success("Marcado como acerto");
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
+    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
+  };
+
+
 
   const removeClassify = async (reviewId: string) => {
     const { error } = await (supabase as any)
