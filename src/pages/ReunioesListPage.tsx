@@ -31,6 +31,9 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
+import { useSdrGlobalVisibility } from "@/hooks/useSdrGlobalVisibility";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   agendada: { label: "Agendado", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
@@ -73,6 +76,7 @@ export default function ReunioesListPage() {
     () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
     [deletionReasons, isAdminLike]
   );
+  const { enabled: sdrGlobalVisibility, save: saveSdrGlobalVisibility, isSaving: savingSdrGlobalVisibility } = useSdrGlobalVisibility();
 
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
@@ -249,7 +253,7 @@ export default function ReunioesListPage() {
     return agendamentos.filter((ag) => {
       // Role-based mandatory filter: Closer sees only own meetings, SDR sees only own assigned
       if (isCloser && myCloserId && ag.closer_id !== myCloserId) return false;
-      if (isSDR && user && sdrIdOf(ag) !== user.id) return false;
+      if (isSDR && user && !sdrGlobalVisibility && sdrIdOf(ag) !== user.id) return false;
 
       if (filterCloser !== "all" && ag.closer_id !== filterCloser) return false;
       if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
@@ -272,7 +276,7 @@ export default function ReunioesListPage() {
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, vendaAgendamentoIds]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, vendaAgendamentoIds, sdrGlobalVisibility]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -447,7 +451,26 @@ export default function ReunioesListPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-display font-bold tracking-tight">Lista de Reuniões</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            {isGestor && (
+              <div className={cn(
+                "flex items-center gap-2 rounded-full border px-3 py-1.5 transition-colors",
+                sdrGlobalVisibility
+                  ? "border-emerald-500/40 bg-emerald-500/10"
+                  : "border-border bg-muted/30"
+              )}>
+                <Switch
+                  id="sdr-global-visibility"
+                  checked={sdrGlobalVisibility}
+                  disabled={savingSdrGlobalVisibility}
+                  onCheckedChange={(v) => saveSdrGlobalVisibility(!!v)}
+                  className={cn(sdrGlobalVisibility && "data-[state=checked]:bg-emerald-500")}
+                />
+                <Label htmlFor="sdr-global-visibility" className="text-xs cursor-pointer">
+                  Visibilidade Global de SDRs
+                </Label>
+              </div>
+            )}
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportCSV} disabled={filtered.length === 0}>
               <Download className="h-3.5 w-3.5" />
               Exportar CSV
