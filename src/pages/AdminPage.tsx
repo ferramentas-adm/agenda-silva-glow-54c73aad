@@ -210,6 +210,7 @@ function UsersSection() {
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
           availableForScheduling: p.available_for_scheduling ?? false,
           isSdrOverride: (p as any).is_sdr_override === true,
+          moderadorTipo: (p as any).moderador_tipo as ("sdr" | "closer" | null) ?? null,
         };
       });
 
