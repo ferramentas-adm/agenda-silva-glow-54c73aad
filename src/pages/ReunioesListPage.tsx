@@ -276,7 +276,7 @@ export default function ReunioesListPage() {
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, vendaAgendamentoIds]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, vendaAgendamentoIds, sdrGlobalVisibility]);
 
   // Apply sorting
   const sorted = useMemo(() => {
