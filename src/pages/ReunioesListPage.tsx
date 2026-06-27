@@ -452,7 +452,7 @@ export default function ReunioesListPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-display font-bold tracking-tight">Lista de Reuniões</h1>
           <div className="flex items-center gap-3 flex-wrap">
-            {isGestor && (
+            {(isGestor || isModerador) && (
               <div className={cn(
                 "flex items-center gap-2 rounded-full border px-3 py-1.5 transition-colors",
                 sdrGlobalVisibility
