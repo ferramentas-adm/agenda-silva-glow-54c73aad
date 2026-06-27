@@ -164,6 +164,25 @@ function UsersSection() {
   // Scheduling toggle
   const [togglingSchedulingId, setTogglingSchedulingId] = useState<string | null>(null);
 
+  // Moderador subtype toggle (Moderador de SDR / Moderador de Closer)
+  const [savingModTipoId, setSavingModTipoId] = useState<string | null>(null);
+  const cycleModeradorTipo = async (u: any) => {
+    setSavingModTipoId(u.userId);
+    const next = u.moderadorTipo === null ? "sdr" : u.moderadorTipo === "sdr" ? "closer" : null;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ moderador_tipo: next } as any)
+        .eq("user_id", u.userId);
+      if (error) throw error;
+      toast.success(next ? `Definido como Moderador de ${next === "sdr" ? "SDR" : "Closer"}` : "Subtipo de moderador removido");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao alterar subtipo");
+    }
+    setSavingModTipoId(null);
+  };
+
   // Fetch all users (profiles + roles) and closers
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
