@@ -509,8 +509,28 @@ export default function MetricDrilldownDialog({
                     if (!v || v.vendeu === true) return null;
 
                     const review = closerReviewMap.get(d.id);
-                    if (review && review.classification !== "closer_error") {
-                      return null;
+                    if (review && review.classification === "acerto") {
+                      return (
+                        <div className="rounded-md border p-2 text-xs border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 flex items-center justify-between gap-2">
+                          <span className="font-semibold">
+                            Não teve erro do Closer
+                            <span className="font-normal opacity-80">
+                              {" · "}{format(new Date(review.reviewed_at), "dd/MM/yyyy")}
+                            </span>
+                          </span>
+                          {isGestor && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                              onClick={() => removeClassify(review.id)}
+                              title="Remover apontamento"
+                            >
+                              <XIcon className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      );
                     }
                     if (review) {
                       return (
@@ -557,7 +577,7 @@ export default function MetricDrilldownDialog({
                     }
                     if (!isGestor) return null;
                     return (
-                      <div>
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -567,9 +587,18 @@ export default function MetricDrilldownDialog({
                           <AlertOctagon className="h-3.5 w-3.5 mr-1" />
                           Apontar erro do Closer
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+                          onClick={() => markAcerto(d)}
+                        >
+                          Não teve erro
+                        </Button>
                       </div>
                     );
                   })()}
+
 
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
