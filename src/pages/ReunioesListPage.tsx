@@ -76,6 +76,7 @@ export default function ReunioesListPage() {
     () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
     [deletionReasons, isAdminLike]
   );
+  const { enabled: sdrGlobalVisibility, save: saveSdrGlobalVisibility, isSaving: savingSdrGlobalVisibility } = useSdrGlobalVisibility();
 
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
