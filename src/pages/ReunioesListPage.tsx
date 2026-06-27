@@ -31,6 +31,9 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
+import { useSdrGlobalVisibility } from "@/hooks/useSdrGlobalVisibility";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   agendada: { label: "Agendado", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
