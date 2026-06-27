@@ -238,7 +238,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (vendeu === "sim") return valorValido && (produtosList.length === 0 || !!produto);
     if (vendeu === "nao") {
       if (!motivo) return false;
-      if (!explicacaoNaoFechamento.trim()) return false;
+      if (explicacaoNaoFechamento.trim().length < 200) return false;
       if (apresentouPreco === null) return false;
       if (produtosList.length > 0 && !produto) return false;
       if (apresentouPreco === "sim" && !valorValido) return false;
