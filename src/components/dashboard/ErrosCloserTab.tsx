@@ -177,6 +177,38 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
         </div>
       </div>
 
+      {categorias.length > 0 && (
+        <div className="rounded-xl border border-primary/10 bg-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold">Principais categorias de erro</p>
+            <span className="text-xs text-muted-foreground">{categorias.length} {categorias.length === 1 ? "categoria" : "categorias"}</span>
+          </div>
+          <div className="space-y-2">
+            {categorias.map((c) => {
+              const pct = totalErros > 0 ? (c.count / totalErros) * 100 : 0;
+              return (
+                <div key={c.name} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium truncate pr-2">{c.name}</span>
+                    <span className="text-muted-foreground shrink-0">
+                      {c.count} {c.count === 1 ? "erro" : "erros"} · {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-rose-500/70"
+                      style={{ width: `${Math.max(pct, 4)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+
+
       <div className="rounded-xl border border-primary/10 bg-card p-4">
         {groups.length === 0 ? (
           <div className="text-center text-muted-foreground py-10 text-sm">
