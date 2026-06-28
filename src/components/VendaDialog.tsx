@@ -642,6 +642,20 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                   placeholder="0,00"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="valor-total-projeto">Valor total do projeto *</Label>
+                <Input
+                  id="valor-total-projeto"
+                  inputMode="numeric"
+                  value={formatBRL(valorTotalProjeto)}
+                  onChange={(e) => setValorTotalProjeto(e.target.value.replace(/\D/g, ""))}
+                  placeholder="0,00"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Valor cheio fechado com o cliente (independente do que foi coletado agora).
+                </p>
+              </div>
+
             </>
           )}
 
