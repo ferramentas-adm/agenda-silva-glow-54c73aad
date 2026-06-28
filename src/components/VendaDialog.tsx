@@ -233,6 +233,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const valorNumParsed = digitsToNumber(valor);
   const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
 
+  const valorTotalProjetoNum = digitsToNumber(valorTotalProjeto);
+  const valorTotalProjetoValido = !isNaN(valorTotalProjetoNum) && valorTotalProjetoNum > 0;
+
   const valorPrevistoNum = digitsToNumber(valorPrevisto);
   const valorPrevistoValido = !isNaN(valorPrevistoNum) && valorPrevistoNum > 0;
   const recebimentoValido = !hasRecebimento || (valorPrevistoValido && !!dataPrevista);
@@ -244,7 +247,13 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     // Faturamento do lead é obrigatório em qualquer cenário
     if (!leadRevenue) return false;
     if (!recebimentoValido) return false;
-    if (vendeu === "sim") return valorValido && (produtosList.length === 0 || !!produto);
+    if (vendeu === "sim")
+      return (
+        valorValido &&
+        valorTotalProjetoValido &&
+        (produtosList.length === 0 || !!produto)
+      );
+
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (explicacaoNaoFechamento.trim().length < 200) return false;
