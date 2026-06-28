@@ -166,6 +166,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           const cents = Math.round(Number(data.valor) * 100).toString();
           setValor(cents);
         }
+        const vtp = (data as { valor_total_projeto?: number | null }).valor_total_projeto;
+        if (vtp != null) {
+          setValorTotalProjeto(Math.round(Number(vtp) * 100).toString());
+        }
+
         const reasonIsPending = isPendingStageReason(data.motivo_nao_fechamento);
         if (!data.vendeu && !reasonIsPending) {
           const segunda = (data as { segunda_reuniao?: boolean | null }).segunda_reuniao === true;
