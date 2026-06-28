@@ -296,6 +296,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           vendeu: vendeu === "sim",
           resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
           valor: valorNum,
+          valor_total_projeto: vendeu === "sim" && valorTotalProjetoValido ? valorTotalProjetoNum : null,
+
           follow_up: fuActive,
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
