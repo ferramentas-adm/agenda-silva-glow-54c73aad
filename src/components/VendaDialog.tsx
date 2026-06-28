@@ -119,6 +119,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setResumoVenda("");
     setProduto("");
     setValor("");
+    setValorTotalProjeto("");
+
 
     setAcompanhamento(null);
     setFollowUpDate(undefined);
