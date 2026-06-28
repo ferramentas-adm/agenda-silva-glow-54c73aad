@@ -73,6 +73,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [resumoVenda, setResumoVenda] = useState("");
   const [produto, setProduto] = useState("");
   const [valor, setValor] = useState("");
+  const [valorTotalProjeto, setValorTotalProjeto] = useState("");
+
 
   // Tipo de acompanhamento quando NÃO vendeu: follow_up, segunda_reuniao ou perdeu (sem acompanhamento)
   const [acompanhamento, setAcompanhamento] = useState<"follow_up" | "segunda_reuniao" | "perdeu" | null>(null);
@@ -117,6 +119,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setResumoVenda("");
     setProduto("");
     setValor("");
+    setValorTotalProjeto("");
+
 
     setAcompanhamento(null);
     setFollowUpDate(undefined);
@@ -162,6 +166,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           const cents = Math.round(Number(data.valor) * 100).toString();
           setValor(cents);
         }
+        const vtp = (data as { valor_total_projeto?: number | null }).valor_total_projeto;
+        if (vtp != null) {
+          setValorTotalProjeto(Math.round(Number(vtp) * 100).toString());
+        }
+
         const reasonIsPending = isPendingStageReason(data.motivo_nao_fechamento);
         if (!data.vendeu && !reasonIsPending) {
           const segunda = (data as { segunda_reuniao?: boolean | null }).segunda_reuniao === true;
@@ -224,6 +233,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const valorNumParsed = digitsToNumber(valor);
   const valorValido = !isNaN(valorNumParsed) && valorNumParsed > 0;
 
+  const valorTotalProjetoNum = digitsToNumber(valorTotalProjeto);
+  const valorTotalProjetoValido = !isNaN(valorTotalProjetoNum) && valorTotalProjetoNum > 0;
+
   const valorPrevistoNum = digitsToNumber(valorPrevisto);
   const valorPrevistoValido = !isNaN(valorPrevistoNum) && valorPrevistoNum > 0;
   const recebimentoValido = !hasRecebimento || (valorPrevistoValido && !!dataPrevista);
@@ -235,7 +247,13 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     // Faturamento do lead é obrigatório em qualquer cenário
     if (!leadRevenue) return false;
     if (!recebimentoValido) return false;
-    if (vendeu === "sim") return valorValido && (produtosList.length === 0 || !!produto);
+    if (vendeu === "sim")
+      return (
+        valorValido &&
+        valorTotalProjetoValido &&
+        (produtosList.length === 0 || !!produto)
+      );
+
     if (vendeu === "nao") {
       if (!motivo) return false;
       if (explicacaoNaoFechamento.trim().length < 200) return false;
@@ -278,6 +296,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           vendeu: vendeu === "sim",
           resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
           valor: valorNum,
+          valor_total_projeto: vendeu === "sim" && valorTotalProjetoValido ? valorTotalProjetoNum : null,
+
           follow_up: fuActive,
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
           follow_up_time: fuActive && followUpTime ? followUpTime : null,
@@ -622,6 +642,20 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                   placeholder="0,00"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="valor-total-projeto">Valor total do projeto *</Label>
+                <Input
+                  id="valor-total-projeto"
+                  inputMode="numeric"
+                  value={formatBRL(valorTotalProjeto)}
+                  onChange={(e) => setValorTotalProjeto(e.target.value.replace(/\D/g, ""))}
+                  placeholder="0,00"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Valor cheio fechado com o cliente (independente do que foi coletado agora).
+                </p>
+              </div>
+
             </>
           )}
 

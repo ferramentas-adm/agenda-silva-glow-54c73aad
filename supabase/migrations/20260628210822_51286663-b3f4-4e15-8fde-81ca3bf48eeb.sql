@@ -1,0 +1,1 @@
+ALTER TABLE public.vendas ADD COLUMN IF NOT EXISTS valor_total_projeto numeric(12,2);

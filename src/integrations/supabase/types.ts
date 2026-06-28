@@ -777,6 +777,7 @@ export type Database = {
           segunda_reuniao: boolean
           updated_at: string
           valor: number | null
+          valor_total_projeto: number | null
           vendeu: boolean
         }
         Insert: {
@@ -801,6 +802,7 @@ export type Database = {
           segunda_reuniao?: boolean
           updated_at?: string
           valor?: number | null
+          valor_total_projeto?: number | null
           vendeu: boolean
         }
         Update: {
@@ -825,6 +827,7 @@ export type Database = {
           segunda_reuniao?: boolean
           updated_at?: string
           valor?: number | null
+          valor_total_projeto?: number | null
           vendeu?: boolean
         }
         Relationships: [

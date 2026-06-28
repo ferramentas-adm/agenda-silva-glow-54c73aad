@@ -145,6 +145,18 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
   const totalErros = items.length;
   const closersDistintos = new Set(items.map((i) => i.closer_id).filter(Boolean)).size;
 
+  const categorias = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach((i) => {
+      const k = (i.error_category || "Sem categoria").trim() || "Sem categoria";
+      map.set(k, (map.get(k) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [items]);
+
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -164,6 +176,38 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
           <p className="text-xs text-muted-foreground mt-1">Closers distintos</p>
         </div>
       </div>
+
+      {categorias.length > 0 && (
+        <div className="rounded-xl border border-primary/10 bg-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold">Principais categorias de erro</p>
+            <span className="text-xs text-muted-foreground">{categorias.length} {categorias.length === 1 ? "categoria" : "categorias"}</span>
+          </div>
+          <div className="space-y-2">
+            {categorias.map((c) => {
+              const pct = totalErros > 0 ? (c.count / totalErros) * 100 : 0;
+              return (
+                <div key={c.name} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium truncate pr-2">{c.name}</span>
+                    <span className="text-muted-foreground shrink-0">
+                      {c.count} {c.count === 1 ? "erro" : "erros"} · {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-rose-500/70"
+                      style={{ width: `${Math.max(pct, 4)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+
 
       <div className="rounded-xl border border-primary/10 bg-card p-4">
         {groups.length === 0 ? (
