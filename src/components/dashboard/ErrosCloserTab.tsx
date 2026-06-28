@@ -145,6 +145,18 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
   const totalErros = items.length;
   const closersDistintos = new Set(items.map((i) => i.closer_id).filter(Boolean)).size;
 
+  const categorias = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach((i) => {
+      const k = (i.error_category || "Sem categoria").trim() || "Sem categoria";
+      map.set(k, (map.get(k) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [items]);
+
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
