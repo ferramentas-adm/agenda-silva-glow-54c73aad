@@ -111,10 +111,11 @@ export default function ReunioesListPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("resumo_venda, explicacao_nao_fechamento, vendeu")
+        .select("resumo_venda, explicacao_nao_fechamento, vendeu, valor, produto")
         .eq("agendamento_id", detailTarget!.id)
         .maybeSingle();
       return data;
+
     },
   });
 
