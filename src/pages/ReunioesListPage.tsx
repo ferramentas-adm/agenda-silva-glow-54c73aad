@@ -871,6 +871,25 @@ export default function ReunioesListPage() {
               </p>
             </section>
             <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                {detailVenda?.vendeu === true ? "Valor da venda (Closer)" : "Preço ofertado (Closer)"}
+              </h4>
+              <div className="text-sm rounded-md border border-border bg-muted/30 p-3 space-y-1">
+                {detailVenda?.valor != null ? (
+                  <p className="font-semibold">
+                    {Number(detailVenda.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </p>
+                ) : (
+                  <span className="text-muted-foreground italic">
+                    {detailVenda?.vendeu === false ? "Sem oferta de preço registrada." : "Ainda não preenchido."}
+                  </span>
+                )}
+                {detailVenda?.produto && (
+                  <p className="text-xs text-muted-foreground">Produto: <strong className="text-foreground">{detailVenda.produto}</strong></p>
+                )}
+              </div>
+            </section>
+            <section>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Por que não fechou (Closer)</h4>
               <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
                 {detailVenda?.explicacao_nao_fechamento?.trim()
@@ -879,6 +898,7 @@ export default function ReunioesListPage() {
                      </span>}
               </p>
             </section>
+
             <section>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Resumo do cliente (Closer)</h4>
               <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
