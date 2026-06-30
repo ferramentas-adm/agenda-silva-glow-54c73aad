@@ -91,10 +91,11 @@ function computeEffectiveStatus(p: Pagamento): string {
 }
 
 export default function PagamentosPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const canView = useCan("view_payments");
   const canManage = useCan("manage_payments");
   const queryClient = useQueryClient();
+  const isCloser = role === "closer";
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editTarget, setEditTarget] = useState<Pagamento | null>(null);
@@ -110,14 +111,32 @@ export default function PagamentosPage() {
   const filterFrom = dateRange?.from;
   const filterTo = dateRange?.to ?? dateRange?.from;
 
-  const { data: pagamentos = [], isLoading } = useQuery({
-    queryKey: ["pagamentos"],
-    enabled: canView,
+  // Descobre o closer_id do usuário (se for closer) para restringir visualização
+  const { data: myCloserId } = useQuery({
+    queryKey: ["my-closer-id-pagamentos", user?.email],
+    enabled: isCloser && !!user?.email,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
+        .from("closers")
+        .select("id")
+        .eq("email", user!.email!)
+        .maybeSingle();
+      return data?.id ?? null;
+    },
+  });
+
+  const { data: pagamentos = [], isLoading } = useQuery({
+    queryKey: ["pagamentos", isCloser ? myCloserId : "all"],
+    enabled: canView && (!isCloser || !!myCloserId),
+    queryFn: async () => {
+      let query = supabase
         .from("pagamentos")
         .select("*, closers ( name )")
         .order("data_prevista", { ascending: true });
+      if (isCloser && myCloserId) {
+        query = query.eq("closer_id", myCloserId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as unknown as Pagamento[];
     },
@@ -125,7 +144,7 @@ export default function PagamentosPage() {
 
   const { data: closersList = [] } = useQuery({
     queryKey: ["pagamentos-closers"],
-    enabled: canView,
+    enabled: canView && !isCloser,
     queryFn: async () => {
       const { data } = await supabase.from("closers").select("id, name").eq("active", true).order("name");
       return data ?? [];
