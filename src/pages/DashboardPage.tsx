@@ -582,16 +582,13 @@ export function CalendarContent() {
     setTransferring(false);
   };
 
-  // Lista de usuários (qualquer função) para selecionar como responsável — ordem alfabética
+  // Lista de usuários (qualquer função) para selecionar como responsável — ordem alfabética.
+  // Usa RPC pública para manter Gestor/Moderador/Supervisor com a mesma visão de opções.
   const { data: allUsers = [] } = useQuery({
     queryKey: ["all-users-for-detail"],
     enabled: canEditSdr,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .eq("active", true)
-        .order("full_name", { ascending: true });
+      const { data } = await supabase.rpc("get_public_profiles");
       return data ?? [];
     },
   });

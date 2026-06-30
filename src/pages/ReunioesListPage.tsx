@@ -70,6 +70,7 @@ export default function ReunioesListPage() {
   const isSDR = role === "sdr";
   const canDelete = isGestor || isModerador || isSupervisor || isSDR;
   const canSeeAllPeers = isGestor || isModerador || isSupervisor;
+  const canTransferCloser = isGestor || isModerador || isSupervisor;
   const { data: deletionReasons = [] } = useDeletionReasons();
   const isAdminLike = isGestor || isModerador || isSupervisor;
   const visibleReasons = useMemo(
@@ -663,7 +664,7 @@ export default function ReunioesListPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
-                          {canDelete ? (
+                          {canTransferCloser ? (
                             <Select
                               value={ag.closer_id || ""}
                               onValueChange={(newCloserId) => handleTransferCloser(ag, newCloserId)}
