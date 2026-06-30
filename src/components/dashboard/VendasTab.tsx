@@ -310,6 +310,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           .select("id, closer_id")
           .is("deleted_at", null)
           .eq("status", "realizada")
+          .eq("is_venda_avulsa", false)
           .gte("scheduled_date", convPeriodFrom)
           .lte("scheduled_date", convPeriodTo)
           .range(from, from + PAGE - 1);
