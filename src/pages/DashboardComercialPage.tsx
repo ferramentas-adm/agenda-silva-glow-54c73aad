@@ -1379,11 +1379,9 @@ function RankingSDRsTab({
             <tr className="border-b border-primary/10">
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">#</th>
               <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground italic">Nome</th>
-              {activePeriods.map(p => (
-                <th key={p.key} className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">
-                  {metricLabel} — {periodColumnLabel(p)}
-                </th>
-              ))}
+              <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">
+                {metricLabel} — {activeRange.label}
+              </th>
               {showComparecimento && (
                 <>
                   <th className="text-center py-3 px-4 font-medium text-xs text-emerald-500 font-bold">Realizadas</th>
@@ -1394,25 +1392,20 @@ function RankingSDRsTab({
             </tr>
           </thead>
           <tbody>
-            {(ranking.length === 0 || activePeriods.length === 0) && (
+            {ranking.length === 0 && (
               <tr>
-                <td colSpan={3 + activePeriods.length + (showComparecimento ? 2 : 0)} className="text-center text-muted-foreground py-8 text-xs">
-                  {activePeriods.length === 0 ? "Selecione ao menos um período" : "Nenhum SDR encontrado"}
+                <td colSpan={4 + (showComparecimento ? 2 : 0)} className="text-center text-muted-foreground py-8 text-xs">
+                  Nenhum SDR encontrado
                 </td>
               </tr>
             )}
-            {activePeriods.length > 0 && ranking.map((row, i) => (
+            {ranking.map((row, i) => (
               <tr key={row.user_id} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                 <td className="py-3 px-4 text-muted-foreground">{i + 1}</td>
                 <td className="py-3 px-4 font-semibold">{row.full_name}</td>
-                {activePeriods.map(p => {
-                  const val = row.counts[p.key] ?? 0;
-                  return (
-                    <td key={p.key} className="py-3 px-4 text-center font-bold text-primary">
-                      {val > 0 ? val : "—"}
-                    </td>
-                  );
-                })}
+                <td className="py-3 px-4 text-center font-bold text-primary">
+                  {row.total > 0 ? row.total : "—"}
+                </td>
                 {showComparecimento && (
                   <>
                     <td className="py-3 px-4 text-center font-bold text-emerald-500">
