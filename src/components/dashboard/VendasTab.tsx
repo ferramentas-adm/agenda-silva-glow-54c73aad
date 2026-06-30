@@ -5,7 +5,7 @@ import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
-  Filter, X, CalendarIcon, Pencil, Trash2, Loader2, Download, Phone,
+  Filter, X, CalendarIcon, Pencil, Trash2, Loader2, Download, Phone, PlusCircle,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
