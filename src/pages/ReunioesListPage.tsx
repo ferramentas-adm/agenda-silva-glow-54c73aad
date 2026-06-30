@@ -691,7 +691,12 @@ export default function ReunioesListPage() {
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1 items-start">
                             <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
-                            {ag.status === "realizada" && (() => {
+                            {(ag as any).is_venda_avulsa && (
+                              <Badge className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/15">
+                                Venda avulsa
+                              </Badge>
+                            )}
+                            {ag.status === "realizada" && !(ag as any).is_venda_avulsa && (() => {
                               const v = vendaOfertaMap.get(ag.id);
                               const ofertou = !!v && (v.vendeu === true || Number(v.valor) > 0);
                               return ofertou ? (
