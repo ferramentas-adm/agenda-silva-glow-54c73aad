@@ -511,15 +511,15 @@ export function CalendarContent() {
     },
   });
 
-  // Quem pode editar/transferir o Closer da reunião: gestor sempre; moderador APENAS se for "Moderador de SDR".
+  // Quem pode editar/transferir o Closer da reunião: gestor e supervisor sempre; moderador APENAS se for "Moderador de SDR".
   const canEditCloser = useMemo(() => {
     if (!detailAg) return false;
-    if (role === "gestor") return true;
+    if (role === "gestor" || role === "supervisor") return true;
     if (role === "moderador") return moderadorTipo === "sdr";
     return false;
   }, [detailAg, role, moderadorTipo]);
 
-  // Quem pode editar o SDR responsável: gestor/moderador (qualquer) ou SDR APENAS no agendamento que ele próprio criou.
+  // Quem pode editar o SDR responsável: gestor/moderador/supervisor ou SDR APENAS no agendamento que ele próprio criou.
   const canEditSdr = useMemo(() => {
     if (!detailAg) return false;
     if (role === "gestor" || role === "moderador" || role === "supervisor") return true;
@@ -528,12 +528,12 @@ export function CalendarContent() {
   }, [detailAg, role, user?.id]);
 
   // Quem pode TRANSFERIR o lead para outro closer:
-  // - gestor: sempre
+  // - gestor / supervisor: sempre
   // - moderador: apenas "Moderador de SDR"
   // - closer: APENAS se for o dono atual do lead (nunca pode "puxar" lead de outro)
   const canTransfer = useMemo(() => {
     if (!detailAg) return false;
-    if (role === "gestor") return true;
+    if (role === "gestor" || role === "supervisor") return true;
     if (role === "moderador") return moderadorTipo === "sdr";
     if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
     return false;
