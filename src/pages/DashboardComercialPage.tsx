@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, memo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, parseISO } from "date-fns";
+import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, parseISO, differenceInCalendarDays } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
@@ -1237,9 +1237,11 @@ function RankingSDRsTab({
   const activeRange = useMemo(() => {
     const from = dateRange?.from ?? currentDate;
     const to = dateRange?.to ?? dateRange?.from ?? currentDate;
+    const days = Math.max(1, differenceInCalendarDays(to, from) + 1);
     return {
       from: format(from, "yyyy-MM-dd"),
       to: format(to, "yyyy-MM-dd"),
+      days,
       label: isSameDay(from, to)
         ? format(from, "dd/MM/yyyy")
         : `${format(from, "dd/MM/yyyy")} — ${format(to, "dd/MM/yyyy")}`,
@@ -1382,6 +1384,9 @@ function RankingSDRsTab({
               <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">
                 {metricLabel} — {activeRange.label}
               </th>
+              <th className="text-center py-3 px-4 font-medium text-xs text-sky-400 font-bold">
+                Média/dia ({activeRange.days}d)
+              </th>
               {showComparecimento && (
                 <>
                   <th className="text-center py-3 px-4 font-medium text-xs text-emerald-500 font-bold">Realizadas</th>
@@ -1394,7 +1399,7 @@ function RankingSDRsTab({
           <tbody>
             {ranking.length === 0 && (
               <tr>
-                <td colSpan={4 + (showComparecimento ? 2 : 0)} className="text-center text-muted-foreground py-8 text-xs">
+                <td colSpan={5 + (showComparecimento ? 2 : 0)} className="text-center text-muted-foreground py-8 text-xs">
                   Nenhum SDR encontrado
                 </td>
               </tr>
@@ -1405,6 +1410,9 @@ function RankingSDRsTab({
                 <td className="py-3 px-4 font-semibold">{row.full_name}</td>
                 <td className="py-3 px-4 text-center font-bold text-primary">
                   {row.total > 0 ? row.total : "—"}
+                </td>
+                <td className="py-3 px-4 text-center font-bold text-sky-400">
+                  {row.total > 0 ? (row.total / activeRange.days).toFixed(1) : "—"}
                 </td>
                 {showComparecimento && (
                   <>
