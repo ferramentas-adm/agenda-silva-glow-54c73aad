@@ -1411,23 +1411,6 @@ function RankingSDRsTab({
         ))}
       </div>
 
-      {/* Period toggles */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-muted-foreground font-medium">Períodos:</span>
-        {PERIOD_OPTIONS.map(p => (
-          <Button
-            key={p.key}
-            variant={visiblePeriods.has(p.key) ? "default" : "outline"}
-            size="sm"
-            className="h-7 text-xs gap-1.5"
-            onClick={() => togglePeriod(p.key)}
-          >
-            {visiblePeriods.has(p.key) ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-            {p.label}
-          </Button>
-        ))}
-      </div>
-
       {/* Comparecimento toggle */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground font-medium">Comparecimento:</span>
@@ -1442,66 +1425,6 @@ function RankingSDRsTab({
           Realizadas + Taxa
         </Button>
       </div>
-
-      {/* Specific date picker */}
-      {visiblePeriods.has("data") && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Data específica:</span>
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                <CalendarDays className="h-3 w-3" />
-                {specificDate ? format(specificDate, "dd/MM/yyyy") : "Selecionar data"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={specificDate}
-                onSelect={(date) => { setSpecificDate(date); setDateOpen(false); }}
-                locale={ptBR}
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      )}
-
-      {/* Custom range picker */}
-      {visiblePeriods.has("intervalo") && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Intervalo:</span>
-          <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                <CalendarDays className="h-3 w-3" />
-                {customRange.from && customRange.to
-                  ? `${format(customRange.from, "dd/MM/yyyy")} — ${format(customRange.to, "dd/MM/yyyy")}`
-                  : "Selecionar intervalo"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="range"
-                selected={customRange.from ? { from: customRange.from, to: customRange.to } : undefined}
-                onSelect={(range) => {
-                  if (customRange.from && customRange.to) {
-                    setCustomRange({ from: range?.to || range?.from, to: undefined });
-                  } else if (customRange.from && !customRange.to && range?.to) {
-                    setCustomRange({ from: range.from, to: range.to });
-                    setRangeOpen(false);
-                  } else {
-                    setCustomRange({ from: range?.from, to: undefined });
-                  }
-                }}
-                locale={ptBR}
-                numberOfMonths={2}
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      )}
 
       <div className="rounded-xl border border-primary/10 bg-card overflow-x-auto">
         <table className="w-full text-sm">
