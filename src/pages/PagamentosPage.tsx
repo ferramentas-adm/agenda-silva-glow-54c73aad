@@ -444,15 +444,17 @@ export default function PagamentosPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={filterCloser} onValueChange={setFilterCloser}>
-                <SelectTrigger className="h-9 min-w-[160px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos closers</SelectItem>
-                  {closersList.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!isCloser && (
+                <Select value={filterCloser} onValueChange={setFilterCloser}>
+                  <SelectTrigger className="h-9 min-w-[160px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos closers</SelectItem>
+                    {closersList.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               {(filterCloser !== "all" || filterStatus !== "all" || filterFrom || filterTo) && (
                 <Button
