@@ -559,12 +559,18 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
 
   // Performance por Closer (com filtro opcional de canal)
+  // Exclui Call Interrompida/Interompida e segundas reuniões do total de reuniões.
   const closerPerf = useMemo(() => {
     const map = new Map<string, { vendas: number; naoFechou: number; receita: number }>();
     vendasDia.forEach((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (!ag?.closer_id) return;
       if (closerChannelFilter !== "all" && ag.channel_type !== closerChannelFilter) return;
+      // Excluir segundas reuniões
+      if (v.segunda_reuniao || ag.meeting_reason === "segunda_reuniao") return;
+      // Excluir Call Interrompida do denominador
+      const motivo = (v.motivo_nao_fechamento || "").trim().toLowerCase();
+      if (!v.vendeu && (motivo === "call interompida" || motivo === "call interrompida")) return;
       const cur = map.get(ag.closer_id) || { vendas: 0, naoFechou: 0, receita: 0 };
       if (v.vendeu) {
         cur.vendas += 1;
