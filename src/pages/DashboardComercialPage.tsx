@@ -1237,9 +1237,11 @@ function RankingSDRsTab({
   const activeRange = useMemo(() => {
     const from = dateRange?.from ?? currentDate;
     const to = dateRange?.to ?? dateRange?.from ?? currentDate;
+    const days = Math.max(1, differenceInCalendarDays(to, from) + 1);
     return {
       from: format(from, "yyyy-MM-dd"),
       to: format(to, "yyyy-MM-dd"),
+      days,
       label: isSameDay(from, to)
         ? format(from, "dd/MM/yyyy")
         : `${format(from, "dd/MM/yyyy")} — ${format(to, "dd/MM/yyyy")}`,
