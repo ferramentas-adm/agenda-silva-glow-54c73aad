@@ -1399,7 +1399,7 @@ function RankingSDRsTab({
           <tbody>
             {ranking.length === 0 && (
               <tr>
-                <td colSpan={4 + (showComparecimento ? 2 : 0)} className="text-center text-muted-foreground py-8 text-xs">
+                <td colSpan={5 + (showComparecimento ? 2 : 0)} className="text-center text-muted-foreground py-8 text-xs">
                   Nenhum SDR encontrado
                 </td>
               </tr>
