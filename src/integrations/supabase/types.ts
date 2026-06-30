@@ -32,6 +32,7 @@ export type Database = {
           google_event_id: string | null
           id: string
           is_5k: boolean
+          is_venda_avulsa: boolean
           lead_name: string
           lead_phone: string
           meet_link: string | null
@@ -69,6 +70,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           is_5k?: boolean
+          is_venda_avulsa?: boolean
           lead_name: string
           lead_phone: string
           meet_link?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           google_event_id?: string | null
           id?: string
           is_5k?: boolean
+          is_venda_avulsa?: boolean
           lead_name?: string
           lead_phone?: string
           meet_link?: string | null
