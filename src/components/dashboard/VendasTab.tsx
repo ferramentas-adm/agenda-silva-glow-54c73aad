@@ -5,7 +5,7 @@ import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
-  Filter, X, CalendarIcon, Pencil, Trash2, Loader2, Download, Phone,
+  Filter, X, CalendarIcon, Pencil, Trash2, Loader2, Download, Phone, PlusCircle,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ import {
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import TrendCardVendas from "@/components/dashboard/TrendCardVendas";
 import AgendasPorCanalPanel from "@/components/dashboard/AgendasPorCanalPanel";
+import AvulsaSaleDialog from "@/components/dashboard/AvulsaSaleDialog";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
@@ -66,7 +67,7 @@ interface AgendamentoRow {
   sdr_responsavel_id: string | null;
   status: string;
   meeting_reason: string | null;
-
+  is_venda_avulsa: boolean | null;
 }
 
 interface CloserRow {
@@ -150,7 +151,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           .select(`
             id, agendamento_id, vendeu, valor, produto, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
             motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
-            agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason)
+            agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
           `)
 
           .is("agendamentos.deleted_at", null)
@@ -310,6 +311,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           .select("id, closer_id")
           .is("deleted_at", null)
           .eq("status", "realizada")
+          .eq("is_venda_avulsa", false)
           .gte("scheduled_date", convPeriodFrom)
           .lte("scheduled_date", convPeriodTo)
           .range(from, from + PAGE - 1);
@@ -362,39 +364,47 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // KPIs (memoizados para não recalcular em cada render)
   const kpis = useMemo(() => {
-    const totalReunioesComResultado = vendasDia.length;
+    const isAvulsa = (v: VendaRow) => !!agMap.get(v.agendamento_id)?.is_venda_avulsa;
+    const vendasCalls = vendasDia.filter((v) => !isAvulsa(v));
+    const vendasAvulsas = vendasDia.filter((v) => isAvulsa(v));
+
+    const totalReunioesComResultado = vendasCalls.length;
     const totalVendas = vendasDia.filter((v) => v.vendeu).length;
-    const totalNaoFechou = vendasDia.filter((v) => !v.vendeu).length;
-    // Taxa de conversão: numerador usa vendas efetivamente fechadas no período
-    // (closed_at/follow-up/data efetiva), enquanto o denominador mantém as
-    // reuniões realizadas do período. Assim vendas de follow-up fechadas hoje
-    // entram na taxa de hoje, mesmo que a reunião original tenha sido ontem.
+    const totalVendasCalls = vendasCalls.filter((v) => v.vendeu).length;
+    const totalVendasAvulsas = vendasAvulsas.filter((v) => v.vendeu).length;
+    const totalNaoFechou = vendasCalls.filter((v) => !v.vendeu).length;
+    // Taxa de conversão: numerador e denominador consideram apenas calls reais
+    // (vendas avulsas, registradas retroativamente, NÃO entram nesse cálculo).
     const totalReunioesConv = conversaoData?.totalReunioes ?? 0;
-    const totalVendasConv = totalVendas;
+    const totalVendasConv = totalVendasCalls;
     const taxaConversao = totalReunioesConv > 0 ? (totalVendasConv / totalReunioesConv) * 100 : 0;
-    const coletadoTotal = vendasDia
+
+    const coletadoCalls = vendasCalls
       .filter((v) => v.vendeu && v.valor)
       .reduce((acc, v) => acc + (v.valor || 0), 0);
+    const coletadoAvulsa = vendasAvulsas
+      .filter((v) => v.vendeu && v.valor)
+      .reduce((acc, v) => acc + (v.valor || 0), 0);
+    const coletadoTotal = coletadoCalls + coletadoAvulsa;
     const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
-    // % de vendas em 1a call vs follow-up/2a reuniao
+    // % de vendas em 1a call vs follow-up/2a reuniao (apenas calls reais)
     const isSegunda = (v: VendaRow) => v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao";
-    const vendasPrimeiraCall = vendasDia.filter((v) => v.vendeu && !v.follow_up && !isSegunda(v)).length;
-    const vendasFollowOuSegunda = vendasDia.filter((v) => v.vendeu && (v.follow_up || isSegunda(v))).length;
-    const pctPrimeiraCall = totalVendas > 0 ? (vendasPrimeiraCall / totalVendas) * 100 : 0;
-    const pctFollow = totalVendas > 0 ? (vendasFollowOuSegunda / totalVendas) * 100 : 0;
+    const vendasPrimeiraCall = vendasCalls.filter((v) => v.vendeu && !v.follow_up && !isSegunda(v)).length;
+    const vendasFollowOuSegunda = vendasCalls.filter((v) => v.vendeu && (v.follow_up || isSegunda(v))).length;
+    const pctPrimeiraCall = totalVendasCalls > 0 ? (vendasPrimeiraCall / totalVendasCalls) * 100 : 0;
+    const pctFollow = totalVendasCalls > 0 ? (vendasFollowOuSegunda / totalVendasCalls) * 100 : 0;
 
-    // % de calls com oferta de preço: numerador = realizadas (vendasDia) com
-    // valor > 0 OU vendeu (toda venda fechada implica preço apresentado).
-    const ofertasPreco = vendasDia.filter((v) => v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
+    // % de calls com oferta de preço (apenas calls reais)
+    const ofertasPreco = vendasCalls.filter((v) => v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
     const ofertasPrecoCount = ofertasPreco.length;
     const ofertasPrecoIds = ofertasPreco.map((v) => v.agendamento_id);
     const pctOfertaPreco = totalReunioesConv > 0 ? (ofertasPrecoCount / totalReunioesConv) * 100 : 0;
 
-    return { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
+    return { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
   }, [vendasDia, conversaoData, agMap]);
 
-  const { totalReunioesComResultado, totalVendas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco } = kpis;
+  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco } = kpis;
 
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
@@ -719,6 +729,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // Drill-down state
   const [drill, setDrill] = useState<DrilldownState>({ open: false, title: "", ids: [] });
+  const [avulsaOpen, setAvulsaOpen] = useState(false);
   const openDrill = (title: string, ids: string[], subtitle?: string) =>
     setDrill({ open: true, title, ids, subtitle });
 
@@ -731,10 +742,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
             ({isRange ? `${format(dateRange!.from!, "dd/MM/yyyy")} a ${format(dateRange!.to!, "dd/MM/yyyy")}` : format(currentDate, "dd/MM/yyyy")})
           </span>
         </h2>
-        <p className="text-xs text-muted-foreground">
-          Atualizado em {format(new Date(), "HH:mm")}
-        </p>
+        <div className="flex items-center gap-3">
+          {(role === "gestor" || role === "moderador") && (
+            <Button size="sm" onClick={() => setAvulsaOpen(true)} className="gap-1">
+              <PlusCircle className="h-4 w-4" />
+              Nova venda avulsa
+            </Button>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Atualizado em {format(new Date(), "HH:mm")}
+          </p>
+        </div>
       </div>
+      <AvulsaSaleDialog open={avulsaOpen} onOpenChange={setAvulsaOpen} />
+
 
 
       {/* KPIs principais (clicáveis) */}
@@ -775,7 +796,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={DollarSign}
           label="Coletado Total"
           value={fmtBRL(coletadoTotal)}
-          sub={`${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`}
+          sub={
+            totalVendasAvulsas > 0
+              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas})`
+              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`
+          }
           color="emerald"
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(coletadoTotal))
