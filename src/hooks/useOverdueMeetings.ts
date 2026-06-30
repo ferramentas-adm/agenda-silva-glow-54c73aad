@@ -52,7 +52,7 @@ function meetingEpochMin(date: string, time: string): number {
 export function useOverdueMeetings() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
-  const isManager = role === "gestor" || role === "moderador";
+  const isManager = role === "gestor" || role === "moderador" || role === "supervisor";
 
   // Busca closer record por email — qualquer usuário pode ter um (cobre Vick: SDR+Closer).
   const { data: myCloserId } = useQuery({

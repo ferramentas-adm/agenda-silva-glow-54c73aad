@@ -64,14 +64,14 @@ const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
 const formatBR = (iso: string): string => brDateTimeFmt.format(new Date(iso)).replace(",", "");
 
 export default function ReunioesListPage() {
-  const { user, role, isGestor, isModerador } = useAuth();
+  const { user, role, isGestor, isModerador, isSupervisor } = useAuth();
   const queryClient = useQueryClient();
   const isCloser = role === "closer";
   const isSDR = role === "sdr";
-  const canDelete = isGestor || isModerador || isSDR;
-  const canSeeAllPeers = isGestor || isModerador;
+  const canDelete = isGestor || isModerador || isSupervisor || isSDR;
+  const canSeeAllPeers = isGestor || isModerador || isSupervisor;
   const { data: deletionReasons = [] } = useDeletionReasons();
-  const isAdminLike = isGestor || isModerador;
+  const isAdminLike = isGestor || isModerador || isSupervisor;
   const visibleReasons = useMemo(
     () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
     [deletionReasons, isAdminLike]
@@ -453,7 +453,7 @@ export default function ReunioesListPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-display font-bold tracking-tight">Lista de Reuniões</h1>
           <div className="flex items-center gap-3 flex-wrap">
-            {(isGestor || isModerador) && (
+            {(isGestor || isModerador || isSupervisor) && (
               <div className={cn(
                 "flex items-center gap-2 rounded-full border px-3 py-1.5 transition-colors",
                 sdrGlobalVisibility

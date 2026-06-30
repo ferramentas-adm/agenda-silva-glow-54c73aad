@@ -151,7 +151,7 @@ export function CalendarContent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: deletionReasons = [] } = useDeletionReasons();
-  const isAdminLike = role === "gestor" || role === "moderador";
+  const isAdminLike = role === "gestor" || role === "moderador" || role === "supervisor";
   const visibleReasons = useMemo(
     () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
     [deletionReasons, isAdminLike]
@@ -491,7 +491,7 @@ export function CalendarContent() {
 
   const canChangeStatus = useMemo(() => {
     if (!detailAg) return false;
-    if (role === "gestor" || role === "moderador") return true;
+    if (role === "gestor" || role === "moderador" || role === "supervisor") return true;
     if (role === "sdr") return detailAg.created_by === user?.id || (detailAg as any).sdr_responsavel_id === user?.id;
     if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
     return false;
@@ -522,7 +522,7 @@ export function CalendarContent() {
   // Quem pode editar o SDR responsável: gestor/moderador (qualquer) ou SDR APENAS no agendamento que ele próprio criou.
   const canEditSdr = useMemo(() => {
     if (!detailAg) return false;
-    if (role === "gestor" || role === "moderador") return true;
+    if (role === "gestor" || role === "moderador" || role === "supervisor") return true;
     if (role === "sdr") return detailAg.created_by === user?.id;
     return false;
   }, [detailAg, role, user?.id]);
@@ -1062,7 +1062,7 @@ export function CalendarContent() {
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
-            onDelete={role === "gestor" || role === "moderador" || role === "sdr" ? setDeleteTarget : undefined}
+            onDelete={role === "gestor" || role === "moderador" || role === "supervisor" || role === "sdr" ? setDeleteTarget : undefined}
             onClickAg={setDetailAg}
             onClickEmptySlot={(closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");
@@ -1269,7 +1269,7 @@ export function CalendarContent() {
 
               {/* Registrar venda — gestor/moderador podem registrar/atualizar venda
                   mesmo quando o closer já marcou como realizada sem preencher. */}
-              {(role === "gestor" || role === "moderador") && detailAg.status === "realizada" && (
+              {(role === "gestor" || role === "moderador" || role === "supervisor") && detailAg.status === "realizada" && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1347,6 +1347,7 @@ export function CalendarContent() {
                           const canSeeCancelNoShow =
                             role === "gestor" ||
                             role === "moderador" ||
+                            role === "supervisor" ||
                             isOwnerSDR ||
                             (role === "closer" && detailAg.created_by === user?.id);
                           if (!canSeeCancelNoShow) return null;

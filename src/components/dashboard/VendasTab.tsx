@@ -627,7 +627,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
-  const isManager = role === "gestor" || role === "moderador";
+  const isManager = role === "gestor" || role === "moderador" || role === "supervisor";
   const queryClient = useQueryClient();
 
   const [fuFilterCloser, setFuFilterCloser] = useState<string>("all");
@@ -840,7 +840,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       </div>
 
       {/* Tendência preditiva — apenas para gestores/moderadores */}
-      {(role === "gestor" || role === "moderador") && (
+      {(role === "gestor" || role === "moderador" || role === "supervisor") && (
         <TrendCardVendas closerId={isCloserView ? myCloserId : null} />
       )}
 
