@@ -1384,6 +1384,9 @@ function RankingSDRsTab({
               <th className="text-center py-3 px-4 font-medium text-xs text-primary font-bold">
                 {metricLabel} — {activeRange.label}
               </th>
+              <th className="text-center py-3 px-4 font-medium text-xs text-sky-400 font-bold">
+                Média/dia ({activeRange.days}d)
+              </th>
               {showComparecimento && (
                 <>
                   <th className="text-center py-3 px-4 font-medium text-xs text-emerald-500 font-bold">Realizadas</th>
