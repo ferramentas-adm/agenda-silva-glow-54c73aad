@@ -28,6 +28,7 @@ interface MatrixRow {
 const ROLE_LABELS: Record<AppRole, string> = {
   gestor: "Gestor",
   moderador: "Moderador",
+  supervisor: "Supervisor",
   closer: "Closer",
   sdr: "SDR",
 };

@@ -118,7 +118,7 @@ function UsersSection() {
   const [filterRole, setFilterRole] = useState<string>("all");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"sdr" | "gestor" | "closer" | "moderador">("sdr");
+  const [role, setRole] = useState<"sdr" | "gestor" | "closer" | "moderador" | "supervisor">("sdr");
   const [creating, setCreating] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
@@ -504,6 +504,7 @@ function UsersSection() {
       case "sdr": return "SDR";
       case "closer": return "Closer";
       case "moderador": return "Moderador";
+      case "supervisor": return "Supervisor";
       default: return r;
     }
   };
@@ -530,6 +531,7 @@ function UsersSection() {
                 {isGestor && <SelectItem value="gestor">Administrador</SelectItem>}
                 <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="moderador">Moderador</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -585,6 +587,7 @@ function UsersSection() {
               <SelectItem value="closer">Closer</SelectItem>
               <SelectItem value="gestor">Administrador</SelectItem>
               <SelectItem value="moderador">Moderador</SelectItem>
+              <SelectItem value="supervisor">Supervisor</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -921,6 +924,7 @@ function UsersSection() {
                 {isGestor && <SelectItem value="gestor">Administrador</SelectItem>}
                 <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="moderador">Moderador</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
               </SelectContent>
             </Select>
           </div>
