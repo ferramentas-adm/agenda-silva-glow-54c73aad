@@ -796,7 +796,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={DollarSign}
           label="Coletado Total"
           value={fmtBRL(coletadoTotal)}
-          sub={`${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`}
+          sub={
+            totalVendasAvulsas > 0
+              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas})`
+              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`
+          }
           color="emerald"
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(coletadoTotal))
