@@ -64,7 +64,7 @@ const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
 const formatBR = (iso: string): string => brDateTimeFmt.format(new Date(iso)).replace(",", "");
 
 export default function ReunioesListPage() {
-  const { user, role, isGestor, isModerador } = useAuth();
+  const { user, role, isGestor, isModerador, isSupervisor } = useAuth();
   const queryClient = useQueryClient();
   const isCloser = role === "closer";
   const isSDR = role === "sdr";
