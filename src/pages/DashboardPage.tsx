@@ -1347,6 +1347,7 @@ export function CalendarContent() {
                           const canSeeCancelNoShow =
                             role === "gestor" ||
                             role === "moderador" ||
+                            role === "supervisor" ||
                             isOwnerSDR ||
                             (role === "closer" && detailAg.created_by === user?.id);
                           if (!canSeeCancelNoShow) return null;
