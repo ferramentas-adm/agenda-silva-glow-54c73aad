@@ -1411,6 +1411,9 @@ function RankingSDRsTab({
                 <td className="py-3 px-4 text-center font-bold text-primary">
                   {row.total > 0 ? row.total : "—"}
                 </td>
+                <td className="py-3 px-4 text-center font-bold text-sky-400">
+                  {row.total > 0 ? (row.total / activeRange.days).toFixed(1) : "—"}
+                </td>
                 {showComparecimento && (
                   <>
                     <td className="py-3 px-4 text-center font-bold text-emerald-500">
