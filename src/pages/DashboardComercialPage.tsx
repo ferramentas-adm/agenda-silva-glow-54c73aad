@@ -684,6 +684,7 @@ export default function DashboardComercialPage() {
             createdAgs={createdAgs}
             agendamentos={agendamentos}
             currentDate={currentDate}
+            dateRange={dateRange}
           />
         )}
         {activeTabKey === "vendas" && <VendasTab currentDate={currentDate} dateRange={dateRange} />}
