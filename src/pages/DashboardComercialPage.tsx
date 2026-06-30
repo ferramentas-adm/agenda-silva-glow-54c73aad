@@ -1231,54 +1231,23 @@ function RankingSDRsTab({
   dateRange?: DateRange;
 }) {
   const [metricType, setMetricType] = useState<RankingMetricType>("criadas");
-  const [visiblePeriods, setVisiblePeriods] = useState<Set<RankingPeriodKey>>(new Set(["hoje", "semana", "mes"]));
-  const [specificDate, setSpecificDate] = useState<Date | undefined>(undefined);
-  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
-  const [dateOpen, setDateOpen] = useState(false);
-  const [rangeOpen, setRangeOpen] = useState(false);
   const [showComparecimento, setShowComparecimento] = useState(false);
 
-  const togglePeriod = (key: RankingPeriodKey) => {
-    setVisiblePeriods(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
-  const periodRanges = useMemo(() => {
-    const dateStr = format(currentDate, "yyyy-MM-dd");
-    const yesterdayStr = format(subDays(currentDate, 1), "yyyy-MM-dd");
-    const tomorrowStr = format(addDays(currentDate, 1), "yyyy-MM-dd");
-    const weekStart = format(startOfWeek(currentDate, { locale: ptBR }), "yyyy-MM-dd");
-    const weekEnd = format(endOfWeek(currentDate, { locale: ptBR }), "yyyy-MM-dd");
-    const quinzenaStart = format(subDays(currentDate, 14), "yyyy-MM-dd");
-    const monthStart = format(startOfMonth(currentDate), "yyyy-MM-dd");
-    const monthEnd = format(endOfMonth(currentDate), "yyyy-MM-dd");
-
-    const map: Record<RankingPeriodKey, { from: string; to: string } | null> = {
-      hoje: { from: dateStr, to: dateStr },
-      ontem: { from: yesterdayStr, to: yesterdayStr },
-      amanha: { from: tomorrowStr, to: tomorrowStr },
-      semana: { from: weekStart, to: weekEnd },
-      quinzena: { from: quinzenaStart, to: dateStr },
-      mes: { from: monthStart, to: monthEnd },
-      data: specificDate
-        ? { from: format(specificDate, "yyyy-MM-dd"), to: format(specificDate, "yyyy-MM-dd") }
-        : null,
-      intervalo: customRange.from && customRange.to
-        ? { from: format(customRange.from, "yyyy-MM-dd"), to: format(customRange.to, "yyyy-MM-dd") }
-        : null,
+  // Range único derivado do seletor global de datas; fallback = currentDate.
+  const activeRange = useMemo(() => {
+    const from = dateRange?.from ?? currentDate;
+    const to = dateRange?.to ?? dateRange?.from ?? currentDate;
+    return {
+      from: format(from, "yyyy-MM-dd"),
+      to: format(to, "yyyy-MM-dd"),
+      label: isSameDay(from, to)
+        ? format(from, "dd/MM/yyyy")
+        : `${format(from, "dd/MM/yyyy")} — ${format(to, "dd/MM/yyyy")}`,
     };
-    return map;
-  }, [currentDate, specificDate, customRange]);
+  }, [dateRange, currentDate]);
 
   const sdrOf = (a: AgendamentoMetric) => a.sdr_responsavel_id ?? a.created_by;
 
-  // Normaliza created_at (UTC) para a data local em America/Sao_Paulo,
-  // evitando que reuniões criadas após 21h BRT sejam contabilizadas no
-  // dia seguinte por causa da conversão para UTC.
   const brDateFmt = useMemo(
     () => new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Sao_Paulo",
@@ -1290,12 +1259,10 @@ function RankingSDRsTab({
   );
   const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
 
-  const countFor = (sdrId: string, range: { from: string; to: string } | null) => {
-    if (!range) return 0;
+  const countFor = (sdrId: string, range: { from: string; to: string }) => {
     if (metricType === "criadas") {
       return createdAgs.filter(a => {
         if (sdrOf(a) !== sdrId) return false;
-        // Reagendamentos não contam como agenda nova (alinhado com Produtividade SDR)
         if (a.original_agendamento_id) return false;
         const d = localDateOf(a.created_at);
         return d >= range.from && d <= range.to;
@@ -1316,21 +1283,12 @@ function RankingSDRsTab({
     ).length;
   };
 
-  const activePeriods = PERIOD_OPTIONS.filter(p => visiblePeriods.has(p.key));
-
-  const activeRanges = useMemo(
-    () => activePeriods.map(p => periodRanges[p.key]).filter((r): r is { from: string; to: string } => !!r),
-    [activePeriods, periodRanges],
-  );
-
   const comparecimentoFor = (sdrId: string) => {
-    if (activeRanges.length === 0) return { realizadas: 0, para: 0, taxa: 0 };
-    const inAnyRange = (date: string) => activeRanges.some(r => date >= r.from && date <= r.to);
     let para = 0;
     let realizadas = 0;
     agendamentos.forEach(a => {
       if (sdrOf(a) !== sdrId) return;
-      if (!inAnyRange(a.scheduled_date)) return;
+      if (a.scheduled_date < activeRange.from || a.scheduled_date > activeRange.to) return;
       para += 1;
       if (a.status === "realizada") realizadas += 1;
     });
@@ -1341,19 +1299,13 @@ function RankingSDRsTab({
   const ranking = useMemo(() => {
     return sdrProfiles
       .map(profile => {
-        const counts: Record<string, number> = {};
-        let total = 0;
-        activePeriods.forEach(p => {
-          const v = countFor(profile.user_id, periodRanges[p.key]);
-          counts[p.key] = v;
-          total += v;
-        });
+        const total = countFor(profile.user_id, activeRange);
         const comp = showComparecimento ? comparecimentoFor(profile.user_id) : { realizadas: 0, para: 0, taxa: 0 };
-        return { ...profile, counts, total, comp };
+        return { ...profile, total, comp };
       })
       .sort((a, b) => b.total - a.total);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdrProfiles, createdAgs, agendamentos, metricType, periodRanges, visiblePeriods, showComparecimento]);
+  }, [sdrProfiles, createdAgs, agendamentos, metricType, activeRange, showComparecimento]);
 
   const getPosition = (index: number, total: number) => {
     if (total === 0) {
@@ -1377,14 +1329,6 @@ function RankingSDRsTab({
         {emoji} {pos}º lugar
       </span>
     );
-  };
-
-  const periodColumnLabel = (p: { key: RankingPeriodKey; label: string }) => {
-    if (p.key === "data" && specificDate) return format(specificDate, "dd/MM/yyyy");
-    if (p.key === "intervalo" && customRange.from && customRange.to) {
-      return `${format(customRange.from, "dd/MM")} — ${format(customRange.to, "dd/MM")}`;
-    }
-    return p.label;
   };
 
   const metricLabel = METRIC_OPTIONS.find(m => m.key === metricType)?.label ?? "";
