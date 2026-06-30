@@ -729,6 +729,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // Drill-down state
   const [drill, setDrill] = useState<DrilldownState>({ open: false, title: "", ids: [] });
+  const [avulsaOpen, setAvulsaOpen] = useState(false);
   const openDrill = (title: string, ids: string[], subtitle?: string) =>
     setDrill({ open: true, title, ids, subtitle });
 
