@@ -121,7 +121,7 @@ export default function ProdutividadeSDRTab({
   updatedAgo,
 }: Props) {
   const { role } = useAuth();
-  const isManager = role === "gestor" || role === "moderador";
+  const isManager = role === "gestor" || role === "moderador" || role === "supervisor";
   const [filter, setFilter] = useState<FilterType>("criadas");
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,

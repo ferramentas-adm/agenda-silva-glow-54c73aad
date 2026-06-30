@@ -46,7 +46,7 @@ interface Task {
 export default function TasksSection() {
   const { user, role } = useAuth();
   const isCloser = role === "closer";
-  const isManager = role === "gestor" || role === "moderador";
+  const isManager = role === "gestor" || role === "moderador" || role === "supervisor";
   const canManage = useCan("manage_tasks");
   const queryClient = useQueryClient();
 
