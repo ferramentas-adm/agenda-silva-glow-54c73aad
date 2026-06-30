@@ -15,6 +15,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   isGestor: boolean;
   isModerador: boolean;
+  isSupervisor: boolean;
   clearMustChangePassword: () => void;
 }
 
