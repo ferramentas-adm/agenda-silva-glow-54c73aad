@@ -740,10 +740,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
             ({isRange ? `${format(dateRange!.from!, "dd/MM/yyyy")} a ${format(dateRange!.to!, "dd/MM/yyyy")}` : format(currentDate, "dd/MM/yyyy")})
           </span>
         </h2>
-        <p className="text-xs text-muted-foreground">
-          Atualizado em {format(new Date(), "HH:mm")}
-        </p>
+        <div className="flex items-center gap-3">
+          {(role === "gestor" || role === "moderador") && (
+            <Button size="sm" onClick={() => setAvulsaOpen(true)} className="gap-1">
+              <PlusCircle className="h-4 w-4" />
+              Nova venda avulsa
+            </Button>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Atualizado em {format(new Date(), "HH:mm")}
+          </p>
+        </div>
       </div>
+      <AvulsaSaleDialog open={avulsaOpen} onOpenChange={setAvulsaOpen} />
+
 
 
       {/* KPIs principais (clicáveis) */}
