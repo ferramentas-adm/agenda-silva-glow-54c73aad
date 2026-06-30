@@ -559,23 +559,26 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
 
   // Performance por Closer (com filtro opcional de canal)
-  // Exclui Call Interrompida/Interompida e segundas reuniões do total de reuniões.
+  // Vendas de 2ª reunião CONTAM no numerador/receita; apenas o denominador (reuniões)
+  // exclui segundas reuniões e Call Interrompida.
   const closerPerf = useMemo(() => {
     const map = new Map<string, { vendas: number; naoFechou: number; receita: number }>();
     vendasDia.forEach((v) => {
       const ag = agMap.get(v.agendamento_id);
       if (!ag?.closer_id) return;
       if (closerChannelFilter !== "all" && ag.channel_type !== closerChannelFilter) return;
-      // Excluir segundas reuniões
-      if (v.segunda_reuniao || ag.meeting_reason === "segunda_reuniao") return;
-      // Excluir Call Interrompida do denominador
+
+      const isSegunda = v.segunda_reuniao || ag.meeting_reason === "segunda_reuniao";
       const motivo = (v.motivo_nao_fechamento || "").trim().toLowerCase();
-      if (!v.vendeu && (motivo === "call interompida" || motivo === "call interrompida")) return;
+      const isInterrompida = !v.vendeu && (motivo === "call interompida" || motivo === "call interrompida");
+
       const cur = map.get(ag.closer_id) || { vendas: 0, naoFechou: 0, receita: 0 };
       if (v.vendeu) {
+        // Vendas sempre contam (inclusive segunda reunião)
         cur.vendas += 1;
         cur.receita += v.valor || 0;
-      } else {
+      } else if (!isSegunda && !isInterrompida) {
+        // Não-fechamentos só contam quando NÃO é segunda reunião nem call interrompida
         cur.naoFechou += 1;
       }
       map.set(ag.closer_id, cur);
@@ -590,6 +593,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }))
       .sort((a, b) => b.receita - a.receita);
   }, [vendasDia, agMap, closerMap, closerChannelFilter]);
+
 
   // Performance por Produto oferecido
   const produtoPerf = useMemo(() => {
