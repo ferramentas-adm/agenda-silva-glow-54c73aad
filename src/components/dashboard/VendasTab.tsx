@@ -66,7 +66,7 @@ interface AgendamentoRow {
   sdr_responsavel_id: string | null;
   status: string;
   meeting_reason: string | null;
-
+  is_venda_avulsa: boolean | null;
 }
 
 interface CloserRow {
