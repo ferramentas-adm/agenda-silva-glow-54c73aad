@@ -1221,12 +1221,14 @@ function RankingSDRsTab({
   createdAgs,
   agendamentos,
   currentDate,
+  dateRange,
 }: {
   sdrProfiles: SDRProfile[];
   updatedAgo: string;
   createdAgs: AgendamentoMetric[];
   agendamentos: AgendamentoMetric[];
   currentDate: Date;
+  dateRange?: DateRange;
 }) {
   const [metricType, setMetricType] = useState<RankingMetricType>("criadas");
   const [visiblePeriods, setVisiblePeriods] = useState<Set<RankingPeriodKey>>(new Set(["hoje", "semana", "mes"]));
