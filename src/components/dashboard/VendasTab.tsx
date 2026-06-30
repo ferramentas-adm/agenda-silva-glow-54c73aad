@@ -27,6 +27,7 @@ import {
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import TrendCardVendas from "@/components/dashboard/TrendCardVendas";
 import AgendasPorCanalPanel from "@/components/dashboard/AgendasPorCanalPanel";
+import AvulsaSaleDialog from "@/components/dashboard/AvulsaSaleDialog";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
