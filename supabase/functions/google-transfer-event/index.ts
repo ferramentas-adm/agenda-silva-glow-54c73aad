@@ -112,6 +112,40 @@ serve(async (req) => {
     const finalizedStatuses = ["realizada", "cancelada", "no_show", "reagendada"];
     const skipGoogle = finalizedStatuses.includes(ag.status);
 
+    const userId = claims.claims.sub as string | undefined;
+    const userEmail = (claims.claims.email as string | undefined)?.toLowerCase() ?? "";
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const [{ data: roleRows }, { data: profileRow }] = await Promise.all([
+      supabaseAdmin.from("user_roles").select("role").eq("user_id", userId),
+      supabaseAdmin.from("profiles").select("moderador_tipo").eq("user_id", userId).maybeSingle(),
+    ]);
+    const roles = new Set<string>((roleRows ?? []).map((r: any) => String(r.role)));
+    let isCloserOwner = false;
+    if (roles.has("closer") && oldCloserId && userEmail) {
+      const { data: closerRow } = await supabaseAdmin
+        .from("closers")
+        .select("id")
+        .eq("id", oldCloserId)
+        .ilike("email", userEmail)
+        .maybeSingle();
+      isCloserOwner = !!closerRow;
+    }
+    const canTransfer =
+      roles.has("gestor") ||
+      roles.has("supervisor") ||
+      (roles.has("moderador") && (profileRow?.moderador_tipo ?? null) === "sdr") ||
+      isCloserOwner;
+    if (!canTransfer) {
+      return new Response(JSON.stringify({ success: false, error: "forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Resolve SDR name (best-effort) for description
     let sdrName = "";
     const sdrId = ag.sdr_responsavel_id || ag.created_by;
