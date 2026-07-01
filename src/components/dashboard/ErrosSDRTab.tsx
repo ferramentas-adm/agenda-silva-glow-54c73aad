@@ -177,6 +177,9 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
         <h2 className="text-xl font-bold">Erros de SDR — {periodLabel}</h2>
       </div>
 
+      <SdrTeamFilter value={teamFilter} onChange={setTeamFilter} />
+
+
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
           <p className="text-xs text-muted-foreground font-medium">Total de erros</p>
