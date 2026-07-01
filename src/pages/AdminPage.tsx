@@ -230,6 +230,7 @@ function UsersSection() {
           availableForScheduling: p.available_for_scheduling ?? false,
           isSdrOverride: (p as any).is_sdr_override === true,
           moderadorTipo: (p as any).moderador_tipo as ("sdr" | "closer" | null) ?? null,
+          sdrTeam: ((p as any).sdr_team as ("trafego" | "social_selling" | null)) ?? null,
         };
       });
 
@@ -498,6 +499,24 @@ function UsersSection() {
     setTogglingSdrOverrideId(null);
   };
 
+  const [savingSdrTeamId, setSavingSdrTeamId] = useState<string | null>(null);
+  const handleChangeSdrTeam = async (user: any, team: "trafego" | "social_selling") => {
+    setSavingSdrTeamId(user.userId);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ sdr_team: team } as any)
+        .eq("user_id", user.userId);
+      if (error) throw error;
+      toast.success(`Time definido: ${team === "trafego" ? "Tráfego" : "Social Selling"}`);
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["sdr-teams-map"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao definir time");
+    }
+    setSavingSdrTeamId(null);
+  };
+
   const roleLabel = (r: string) => {
     switch (r) {
       case "gestor": return "Admin";
@@ -662,6 +681,31 @@ function UsersSection() {
                           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-500" title="Atua também como SDR (override)">
                             + SDR
                           </span>
+                        )}
+                        {/* Time do SDR — obrigatório para SDRs (por role) e overrides */}
+                        {canActOn(u.role) && u.type === "profile" && (u.role === "sdr" || u.isSdrOverride) && (
+                          <div className="flex items-center gap-1">
+                            <Select
+                              value={u.sdrTeam ?? ""}
+                              onValueChange={(v) => handleChangeSdrTeam(u, v as "trafego" | "social_selling")}
+                              disabled={savingSdrTeamId === u.userId}
+                            >
+                              <SelectTrigger
+                                className={cn(
+                                  "h-7 w-[130px] text-[11px]",
+                                  !u.sdrTeam && "border-destructive/60 text-destructive",
+                                )}
+                                title={u.sdrTeam ? "Time do SDR" : "Time obrigatório — defina Tráfego ou Social Selling"}
+                              >
+                                <SelectValue placeholder="⚠ Sem time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="trafego">Tráfego</SelectItem>
+                                <SelectItem value="social_selling">Social Selling</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {savingSdrTeamId === u.userId && <Loader2 className="h-3 w-3 animate-spin" />}
+                          </div>
                         )}
                         {canActOn(u.role) && u.type === "profile" && u.role === "moderador" && (
                           <Button

@@ -30,6 +30,8 @@ import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
 import { isSdrOverrideName } from "@/lib/sdrOverrides";
 import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
+import { SdrTeamBadge } from "@/components/sdr/SdrTeamBadge";
+import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
 
 type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr";
 
@@ -59,6 +61,7 @@ interface AgendamentoMetric {
 interface SDRProfile {
   user_id: string;
   full_name: string;
+  sdr_team: "trafego" | "social_selling" | null;
 }
 
 // ─── Visibilidade de Abas (localStorage por usuário) ─────────────
@@ -302,14 +305,14 @@ export default function DashboardComercialPage() {
       const userIds = (roles ?? []).map(r => r.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, full_name, is_sdr_override")
+        .select("user_id, full_name, is_sdr_override, sdr_team")
         .eq("active", true);
       const sdrSet = new Set(userIds);
       // Inclui usuários marcados com "Atua como SDR" no /admin (override DB)
       // ou em fallback por nome (legado).
       return ((profiles ?? []) as any[])
         .filter((p) => sdrSet.has(p.user_id) || p.is_sdr_override === true || isSdrOverrideName(p.full_name))
-        .map((p) => ({ user_id: p.user_id, full_name: p.full_name })) as SDRProfile[];
+        .map((p) => ({ user_id: p.user_id, full_name: p.full_name, sdr_team: p.sdr_team ?? null })) as SDRProfile[];
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -1232,6 +1235,7 @@ function RankingSDRsTab({
 }) {
   const [metricType, setMetricType] = useState<RankingMetricType>("criadas");
   const [showComparecimento, setShowComparecimento] = useState(false);
+  const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
 
   // Range único derivado do seletor global de datas; fallback = currentDate.
   const activeRange = useMemo(() => {
@@ -1300,6 +1304,7 @@ function RankingSDRsTab({
 
   const ranking = useMemo(() => {
     return sdrProfiles
+      .filter(p => teamFilter === "all" ? true : p.sdr_team === teamFilter)
       .map(profile => {
         const total = countFor(profile.user_id, activeRange);
         const comp = showComparecimento ? comparecimentoFor(profile.user_id) : { realizadas: 0, para: 0, taxa: 0 };
@@ -1307,7 +1312,7 @@ function RankingSDRsTab({
       })
       .sort((a, b) => b.total - a.total);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdrProfiles, createdAgs, agendamentos, metricType, activeRange, showComparecimento]);
+  }, [sdrProfiles, createdAgs, agendamentos, metricType, activeRange, showComparecimento, teamFilter]);
 
   const getPosition = (index: number, total: number) => {
     if (total === 0) {
@@ -1375,6 +1380,10 @@ function RankingSDRsTab({
         </Button>
       </div>
 
+      {/* Filtro por time (Tráfego / Social Selling) */}
+      <SdrTeamFilter value={teamFilter} onChange={setTeamFilter} />
+
+
       <div className="rounded-xl border border-primary/10 bg-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -1407,7 +1416,12 @@ function RankingSDRsTab({
             {ranking.map((row, i) => (
               <tr key={row.user_id} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                 <td className="py-3 px-4 text-muted-foreground">{i + 1}</td>
-                <td className="py-3 px-4 font-semibold">{row.full_name}</td>
+                <td className="py-3 px-4 font-semibold">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span>{row.full_name}</span>
+                    <SdrTeamBadge team={row.sdr_team} showEmptyState />
+                  </div>
+                </td>
                 <td className="py-3 px-4 text-center font-bold text-primary">
                   {row.total > 0 ? row.total : "—"}
                 </td>

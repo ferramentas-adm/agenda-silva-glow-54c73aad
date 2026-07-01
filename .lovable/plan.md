@@ -1,40 +1,37 @@
-## Objetivo
+# Time do SDR: Tráfego / Social Selling
 
-Fazer o total do painel **"Agendas Para {dia} — por Canal"** bater com o KPI **"Total agend. dia"** do Dashboard Comercial.
+## Banco
+- Migration: criar enum `sdr_team` (`trafego`, `social_selling`) e coluna `profiles.sdr_team sdr_team NULL`.
+- Trigger `validate_sdr_team_required` em `profiles` (BEFORE INSERT/UPDATE): se o usuário é SDR (via `user_roles.role='sdr'`) OU `is_sdr_override=true`, exigir `sdr_team NOT NULL`. Bloqueia salvar sem time.
+- `get_public_profiles()` passa a retornar também `sdr_team`.
 
-Regra escolhida: **agendas de SDR** (created_by SDR ou sdr_responsavel_id preenchido), **excluindo segundas reuniões**, **mantendo reagendadas** (originais que ficaram no dia).
+## Admin (`src/pages/AdminPage.tsx`)
+- Na linha de cada usuário elegível (SDR ou override), adicionar `Select` com opções **Tráfego** / **Social Selling**.
+- Mutation grava `sdr_team` em `profiles`.
+- Aviso visual "Time obrigatório" quando ainda não definido.
 
-## Diagnóstico
+## Componente compartilhado
+- Novo `src/components/sdr/SdrTeamBadge.tsx`: badge colorido (Tráfego = azul, Social Selling = roxo).
+- Novo `src/components/sdr/SdrTeamFilter.tsx`: botões toggle **Todos | Tráfego | Social Selling** (usa `ToggleGroup`), estado controlado.
+- Novo `src/hooks/useSdrTeams.ts`: retorna `Map<userId, sdr_team>` a partir de `get_public_profiles`.
 
-Hoje os dois números divergem porque usam pools diferentes:
+## Ranking SDR (`RankingSDRsTab`)
+- Renderizar `SdrTeamFilter` acima da tabela.
+- Filtrar as linhas conforme time selecionado.
+- Adicionar coluna/inline `SdrTeamBadge` ao lado do nome do SDR.
 
-- KPI `totalDia` (185) → `sdrAgs` filtrado por `scheduled_date`. Não exclui `meeting_reason = 'segunda_reuniao'`. Se um closer marcou `sdr_responsavel_id` numa segunda reunião, ela entra.
-- Painel `AgendasPorCanalPanel` (156) → query própria em `agendamentos` sem filtro de SDR e sem filtro de segunda reunião.
+## Produtividade SDR (`ProdutividadeSDRTab`)
+- Mesmo padrão: filtro no topo + badge no nome. Aplicar filtro tanto na tabela quanto nos totais/gráficos derivados dos SDRs listados.
 
-Nenhum dos dois aplica a regra combinada.
+## Erros SDR (`ErrosSDRTab` / abas dentro de `ErrosTab`)
+- Filtro toggle no topo + badge no acordeão de cada SDR.
+- Filtra os grupos exibidos.
 
-## Mudanças
+## Fora de escopo
+- Métricas SDRs (dashboard principal) e outras telas não recebem filtro/badge nesta rodada.
+- Sem migração de dados: usuários existentes ficarão sem time até o admin definir (o trigger passa a exigir apenas em novos updates/inserts; **incluir** um passo de UPDATE inicial? Não — apenas alertar no Admin, evitando quebrar signup/handle_new_user).
 
-### 1. `src/pages/DashboardComercialPage.tsx`
-- No `SELECT` do `fetchAllAgendamentos`, adicionar `meeting_reason`.
-- Ajustar `isSdrAg` para também exigir `meeting_reason <> 'segunda_reuniao'` (ou fazer o filtro no `todayAgs`/`monthAgs`/`yesterdayAgs`/`tomorrowAgs`).
-- Resultado: KPI "Total agend. dia" passa a excluir segundas reuniões, mantendo reagendadas (status='reagendada' continua contando).
-
-### 2. `src/components/dashboard/AgendasPorCanalPanel.tsx`
-- Passar a receber do pai (`VendasTab`) a mesma lista já filtrada (`sdrAgs` sem segundas reuniões) em vez de rodar query própria — ou, alternativamente, adicionar no `select` `meeting_reason, created_by, sdr_responsavel_id` e replicar o filtro localmente + carregar a lista de SDRs.
-- Escolha: **passar a lista pronta via prop** (`scheduledAgs` e `createdAgs`) desde o componente pai, para garantir 100% de paridade com o KPI. Fallback para query interna se prop não vier (retrocompat).
-
-### 3. `src/components/dashboard/VendasTab.tsx`
-- Onde `AgendasPorCanalPanel` é renderizado, montar `scheduledAgs`/`createdAgs` a partir do mesmo pool `sdrAgs` já usado nas métricas, aplicando o filtro `meeting_reason !== 'segunda_reuniao'`, e passar como props.
-
-## Impacto
-
-- KPIs "Total agend. dia", "Realizadas", "Canceladas", "No-shows", "Reagendadas" ficam consistentes entre si e com o painel Por Canal.
-- Números vão **cair um pouco** (segundas reuniões saem da conta).
-- Outros módulos (Métricas SDRs, Ranking, Produtividade, Erros) permanecem inalterados — conforme pedido.
-
-## Validação
-
-- Selecionar "Ontem": total do KPI = soma da coluna Qtd do painel Por Canal.
-- Selecionar um intervalo: idem.
-- Conferir que reagendadas continuam somando (card "Reagendadas" mantém valor).
+## Detalhes técnicos
+- Trigger ignora `handle_new_user` (que insere antes da role existir) usando `pg_trigger_depth()` ou condicionando à existência de role já persistida.
+- `sdrOverrides.ts` continua fonte da verdade sobre "quem conta como SDR"; o filtro combina `role='sdr' OR is_sdr_override=true`.
+- Tipos regenerados automaticamente após migration.

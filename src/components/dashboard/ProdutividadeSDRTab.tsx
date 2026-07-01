@@ -29,6 +29,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
+import { SdrTeamBadge, type SdrTeam } from "@/components/sdr/SdrTeamBadge";
+import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
 
 interface AgendamentoMetric {
   id: string;
@@ -53,6 +55,7 @@ function getEffectiveStatus(a: { status: string; original_agendamento_id?: strin
 interface SDRProfile {
   user_id: string;
   full_name: string;
+  sdr_team?: SdrTeam | null;
 }
 
 type FilterType = "criadas" | "para" | "compareceu" | "nao_compareceu";
@@ -123,17 +126,27 @@ export default function ProdutividadeSDRTab({
   const { role } = useAuth();
   const isManager = role === "gestor" || role === "moderador" || role === "supervisor";
   const [filter, setFilter] = useState<FilterType>("criadas");
+  const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined,
   });
   const [dateOpen, setDateOpen] = useState(false);
 
-  // ─── Lookup: somente user_ids de SDRs ─────────────────────────
-  const sdrIds = useMemo(() => new Set(sdrProfiles.map((p) => p.user_id)), [sdrProfiles]);
+  // ─── Lookup: somente user_ids de SDRs (filtrado por time se selecionado) ─
+  const filteredSdrProfiles = useMemo(
+    () => sdrProfiles.filter((p) => teamFilter === "all" ? true : p.sdr_team === teamFilter),
+    [sdrProfiles, teamFilter],
+  );
+  const sdrIds = useMemo(() => new Set(filteredSdrProfiles.map((p) => p.user_id)), [filteredSdrProfiles]);
   const sdrNameById = useMemo(() => {
     const m = new Map<string, string>();
-    sdrProfiles.forEach((p) => m.set(p.user_id, p.full_name));
+    filteredSdrProfiles.forEach((p) => m.set(p.user_id, p.full_name));
+    return m;
+  }, [filteredSdrProfiles]);
+  const sdrTeamById = useMemo(() => {
+    const m = new Map<string, SdrTeam | null>();
+    sdrProfiles.forEach((p) => m.set(p.user_id, p.sdr_team ?? null));
     return m;
   }, [sdrProfiles]);
 
@@ -227,7 +240,7 @@ export default function ProdutividadeSDRTab({
       if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
     });
-    return sdrProfiles
+    return filteredSdrProfiles
       .map((p) => {
         const parts = p.full_name.trim().split(/\s+/);
         const shortName =
@@ -239,7 +252,7 @@ export default function ProdutividadeSDRTab({
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [pool, sdrProfiles, isIntervalMode, range, filter]);
+  }, [pool, filteredSdrProfiles, isIntervalMode, range, filter]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
 
@@ -406,6 +419,9 @@ export default function ProdutividadeSDRTab({
           </Button>
         )}
       </div>
+
+      {/* Filtro por time (Tráfego / Social Selling) */}
+      <SdrTeamFilter value={teamFilter} onChange={setTeamFilter} />
 
       {/* KPIs principais (todos visíveis para referência) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

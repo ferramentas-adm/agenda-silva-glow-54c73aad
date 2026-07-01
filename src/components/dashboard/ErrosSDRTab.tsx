@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import SDRErrorDetailsDrawer from "./SDRErrorDetailsDrawer";
+import { SdrTeamBadge, type SdrTeam } from "@/components/sdr/SdrTeamBadge";
+import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
 
 interface Props {
   currentDate: Date;
@@ -53,6 +55,7 @@ interface AgendamentoErrRow {
 
 export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
   const [detailsAgendamentoId, setDetailsAgendamentoId] = useState<string | null>(null);
+  const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
 
   const isRange = !!(dateRange?.from && dateRange?.to);
   const fromStr = isRange
@@ -134,31 +137,34 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
     return Array.from(ids);
   }, [unified]);
 
-  const { data: profiles = [] } = useQuery<{ user_id: string; full_name: string }[]>({
+  const { data: profiles = [] } = useQuery<{ user_id: string; full_name: string; sdr_team: SdrTeam | null }[]>({
     queryKey: ["sdr-error-profiles", sdrIds.sort().join(",")],
     enabled: sdrIds.length > 0,
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_id, full_name")
+        .select("user_id, full_name, sdr_team")
         .in("user_id", sdrIds);
-      return data ?? [];
+      return (data ?? []) as any[];
     },
   });
 
   const nameOf = (id: string | null) =>
     (id && profiles.find((p) => p.user_id === id)?.full_name) || "Sem SDR";
+  const teamOf = (id: string | null): SdrTeam | null =>
+    (id && profiles.find((p) => p.user_id === id)?.sdr_team) || null;
 
   const groups = useMemo(() => {
-    const map = new Map<string, { sdrId: string | null; name: string; items: ErrorItem[] }>();
+    const map = new Map<string, { sdrId: string | null; name: string; team: SdrTeam | null; items: ErrorItem[] }>();
     unified.forEach((i) => {
       const k = i.sdrId ?? "__none__";
-      if (!map.has(k)) map.set(k, { sdrId: i.sdrId, name: nameOf(i.sdrId), items: [] });
+      if (!map.has(k)) map.set(k, { sdrId: i.sdrId, name: nameOf(i.sdrId), team: teamOf(i.sdrId), items: [] });
       map.get(k)!.items.push(i);
     });
-    return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+    const all = Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+    return teamFilter === "all" ? all : all.filter((g) => g.team === teamFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unified, profiles]);
+  }, [unified, profiles, teamFilter]);
 
   const periodLabel = `${format(new Date(fromStr), "dd/MM/yyyy")} a ${format(new Date(toStr), "dd/MM/yyyy")}`;
   const totalErros = unified.length;
@@ -170,6 +176,9 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
         <AlertTriangle className="h-5 w-5 text-amber-500" />
         <h2 className="text-xl font-bold">Erros de SDR — {periodLabel}</h2>
       </div>
+
+      <SdrTeamFilter value={teamFilter} onChange={setTeamFilter} />
+
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
@@ -195,7 +204,10 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
               <AccordionItem key={g.sdrId ?? "none"} value={g.sdrId ?? "none"}>
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center justify-between w-full pr-3">
-                    <span className="font-medium">{g.name}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{g.name}</span>
+                      <SdrTeamBadge team={g.team} />
+                    </div>
                     <Badge variant="outline" className="border-amber-500/40 text-amber-600">
                       {g.items.length} {g.items.length === 1 ? "erro" : "erros"}
                     </Badge>
