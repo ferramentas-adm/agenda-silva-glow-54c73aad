@@ -277,9 +277,10 @@ export default function ReunioesListPage() {
         if (!ag.lead_name.toLowerCase().includes(s) && !ag.lead_phone.includes(s)) return false;
       }
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
+      if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, vendaAgendamentoIds, sdrGlobalVisibility]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, vendaAgendamentoIds, sdrGlobalVisibility]);
 
   // Apply sorting
   const sorted = useMemo(() => {
