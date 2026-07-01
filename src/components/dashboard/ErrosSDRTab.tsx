@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import SDRErrorDetailsDrawer from "./SDRErrorDetailsDrawer";
+import { SdrTeamBadge, type SdrTeam } from "@/components/sdr/SdrTeamBadge";
+import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
 
 interface Props {
   currentDate: Date;
