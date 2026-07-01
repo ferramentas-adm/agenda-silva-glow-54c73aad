@@ -151,17 +151,20 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
 
   const nameOf = (id: string | null) =>
     (id && profiles.find((p) => p.user_id === id)?.full_name) || "Sem SDR";
+  const teamOf = (id: string | null): SdrTeam | null =>
+    (id && profiles.find((p) => p.user_id === id)?.sdr_team) || null;
 
   const groups = useMemo(() => {
-    const map = new Map<string, { sdrId: string | null; name: string; items: ErrorItem[] }>();
+    const map = new Map<string, { sdrId: string | null; name: string; team: SdrTeam | null; items: ErrorItem[] }>();
     unified.forEach((i) => {
       const k = i.sdrId ?? "__none__";
-      if (!map.has(k)) map.set(k, { sdrId: i.sdrId, name: nameOf(i.sdrId), items: [] });
+      if (!map.has(k)) map.set(k, { sdrId: i.sdrId, name: nameOf(i.sdrId), team: teamOf(i.sdrId), items: [] });
       map.get(k)!.items.push(i);
     });
-    return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+    const all = Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+    return teamFilter === "all" ? all : all.filter((g) => g.team === teamFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unified, profiles]);
+  }, [unified, profiles, teamFilter]);
 
   const periodLabel = `${format(new Date(fromStr), "dd/MM/yyyy")} a ${format(new Date(toStr), "dd/MM/yyyy")}`;
   const totalErros = unified.length;
