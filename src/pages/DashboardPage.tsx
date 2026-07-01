@@ -207,6 +207,12 @@ export function CalendarContent() {
   const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState(false);
 
+  // Drill-down por canal do card "Total agend. dia"
+  const [totalChannelsOpen, setTotalChannelsOpen] = useState(false);
+  const [totalChannelsData, setTotalChannelsData] = useState<{ canal: string; qtd: number }[]>([]);
+  const [totalChannelsTotal, setTotalChannelsTotal] = useState(0);
+
+
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
   // Slot lotação dinâmica (capacidade = closers ativos disponíveis no horário)
