@@ -1304,6 +1304,7 @@ function RankingSDRsTab({
 
   const ranking = useMemo(() => {
     return sdrProfiles
+      .filter(p => teamFilter === "all" ? true : p.sdr_team === teamFilter)
       .map(profile => {
         const total = countFor(profile.user_id, activeRange);
         const comp = showComparecimento ? comparecimentoFor(profile.user_id) : { realizadas: 0, para: 0, taxa: 0 };
@@ -1311,7 +1312,7 @@ function RankingSDRsTab({
       })
       .sort((a, b) => b.total - a.total);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdrProfiles, createdAgs, agendamentos, metricType, activeRange, showComparecimento]);
+  }, [sdrProfiles, createdAgs, agendamentos, metricType, activeRange, showComparecimento, teamFilter]);
 
   const getPosition = (index: number, total: number) => {
     if (total === 0) {
