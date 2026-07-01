@@ -126,17 +126,27 @@ export default function ProdutividadeSDRTab({
   const { role } = useAuth();
   const isManager = role === "gestor" || role === "moderador" || role === "supervisor";
   const [filter, setFilter] = useState<FilterType>("criadas");
+  const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
   const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined,
   });
   const [dateOpen, setDateOpen] = useState(false);
 
-  // ─── Lookup: somente user_ids de SDRs ─────────────────────────
-  const sdrIds = useMemo(() => new Set(sdrProfiles.map((p) => p.user_id)), [sdrProfiles]);
+  // ─── Lookup: somente user_ids de SDRs (filtrado por time se selecionado) ─
+  const filteredSdrProfiles = useMemo(
+    () => sdrProfiles.filter((p) => teamFilter === "all" ? true : p.sdr_team === teamFilter),
+    [sdrProfiles, teamFilter],
+  );
+  const sdrIds = useMemo(() => new Set(filteredSdrProfiles.map((p) => p.user_id)), [filteredSdrProfiles]);
   const sdrNameById = useMemo(() => {
     const m = new Map<string, string>();
-    sdrProfiles.forEach((p) => m.set(p.user_id, p.full_name));
+    filteredSdrProfiles.forEach((p) => m.set(p.user_id, p.full_name));
+    return m;
+  }, [filteredSdrProfiles]);
+  const sdrTeamById = useMemo(() => {
+    const m = new Map<string, SdrTeam | null>();
+    sdrProfiles.forEach((p) => m.set(p.user_id, p.sdr_team ?? null));
     return m;
   }, [sdrProfiles]);
 
