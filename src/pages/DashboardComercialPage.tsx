@@ -1380,6 +1380,10 @@ function RankingSDRsTab({
         </Button>
       </div>
 
+      {/* Filtro por time (Tráfego / Social Selling) */}
+      <SdrTeamFilter value={teamFilter} onChange={setTeamFilter} />
+
+
       <div className="rounded-xl border border-primary/10 bg-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
