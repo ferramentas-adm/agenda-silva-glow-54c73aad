@@ -230,6 +230,7 @@ function UsersSection() {
           availableForScheduling: p.available_for_scheduling ?? false,
           isSdrOverride: (p as any).is_sdr_override === true,
           moderadorTipo: (p as any).moderador_tipo as ("sdr" | "closer" | null) ?? null,
+          sdrTeam: ((p as any).sdr_team as ("trafego" | "social_selling" | null)) ?? null,
         };
       });
 
