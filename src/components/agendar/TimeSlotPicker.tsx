@@ -274,15 +274,21 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     }
 
 
-    // Slot lotado globalmente (todos closers ativos ocupados/bloqueados nesse horário)
+    // SDR/Closer: bloqueia se já existe QUALQUER agenda nesse horário (globalmente)
     const startSlot = customStart.slice(0, 5);
     const info = infoFor(startSlot);
+    if (blockIfAnyBooking && info.count >= 1) {
+      setCustomError(`Já existe agenda neste horário (${info.count}). Escolha outro horário.`);
+      return;
+    }
+
+    // Slot lotado globalmente (todos closers ativos ocupados/bloqueados nesse horário)
     if (info.full) {
       if (canForceFullSlot) {
         setFullSlotInfo({ time: startSlot, count: info.count, duration: endMin - startMin });
         return;
       }
-      setCustomError(`Horário lotado (${info.count}/${info.capacity}). Todos os closers ativos já estão ocupados nesse horário.`);
+      setCustomError(`Horário lotado (${info.count}/${info.capacity}).`);
       return;
     }
 
