@@ -1416,7 +1416,12 @@ function RankingSDRsTab({
             {ranking.map((row, i) => (
               <tr key={row.user_id} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                 <td className="py-3 px-4 text-muted-foreground">{i + 1}</td>
-                <td className="py-3 px-4 font-semibold">{row.full_name}</td>
+                <td className="py-3 px-4 font-semibold">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span>{row.full_name}</span>
+                    <SdrTeamBadge team={row.sdr_team} showEmptyState />
+                  </div>
+                </td>
                 <td className="py-3 px-4 text-center font-bold text-primary">
                   {row.total > 0 ? row.total : "—"}
                 </td>
