@@ -819,20 +819,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           }
         />
         <KpiCard
-          icon={DollarSign}
-          label="Faturado (dia)"
-          value={fmtBRL(faturadoTotal)}
-          sub={
-            totalVendasAvulsas > 0
-              ? `Calls ${fmtBRL(faturadoCalls)} · Avulsas ${fmtBRL(faturadoAvulsa)}`
-              : `Valor total dos projetos vendidos`
-          }
-          color="emerald"
-          onClick={() =>
-            openDrill(`Faturado — ${dayLabel}`, fechadasIds, fmtBRL(faturadoTotal))
-          }
-        />
-        <KpiCard
           icon={Receipt}
           label="Coletado Médio"
           value={fmtBRL(coletadoMedio)}
