@@ -384,8 +384,10 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
           const slotCapacity = slotInfo.capacity;
           const isFull = slotInfo.full;
           const isNearlyFull = !isFull && slotCapacity > 0 && slotCount >= Math.max(1, slotCapacity - 2);
+          // SDR/Closer não podem empilhar: qualquer agenda no slot bloqueia.
+          const isBlockedByAnyBooking = blockIfAnyBooking && slotCount >= 1 && !isFull;
 
-          // Priority: personal block > FULL > google > internal booking
+          // Priority: personal block > FULL > blocked-any-booking (SDR/Closer) > google > internal booking
           let slotStyle = "border-input bg-card hover:border-primary/50 active:scale-[0.97]";
           let SlotIcon: any = Clock;
           let iconClass = "h-3.5 w-3.5";
@@ -405,6 +407,11 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
             title = canForceFullSlot
               ? `Lotado (${slotCount}/${slotCapacity}) — clique para forçar`
               : `Lotado (${slotCount}/${slotCapacity}) — todos os closers ocupados`;
+          } else if (isBlockedByAnyBooking) {
+            slotStyle = "border-amber-500/60 bg-amber-500/15 cursor-not-allowed opacity-70";
+            SlotIcon = AlertTriangle;
+            iconClass = "h-3.5 w-3.5 text-amber-500";
+            title = `Já existe agenda neste horário (${slotCount}). Não é permitido empilhar.`;
           } else if (isGoogleBlocked) {
             slotStyle = "border-blue-400/50 bg-blue-500/10 hover:border-primary/50 active:scale-[0.97]";
             SlotIcon = CalendarDays;
@@ -428,6 +435,10 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
               onClick={() => {
                 if (isPersonalBlock) {
                   setBlockedInfo("Este horário está bloqueado por compromisso pessoal do closer e não pode ser usado para agendamentos.");
+                  return;
+                }
+                if (isBlockedByAnyBooking) {
+                  setBlockedInfo(`Já existe uma agenda neste horário (${slotCount}). SDRs e Closers não podem marcar duas reuniões no mesmo horário — escolha outro.`);
                   return;
                 }
                 if (isSdr && isBooked) {
