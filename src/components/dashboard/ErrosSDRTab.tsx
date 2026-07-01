@@ -137,15 +137,15 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
     return Array.from(ids);
   }, [unified]);
 
-  const { data: profiles = [] } = useQuery<{ user_id: string; full_name: string }[]>({
+  const { data: profiles = [] } = useQuery<{ user_id: string; full_name: string; sdr_team: SdrTeam | null }[]>({
     queryKey: ["sdr-error-profiles", sdrIds.sort().join(",")],
     enabled: sdrIds.length > 0,
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_id, full_name")
+        .select("user_id, full_name, sdr_team")
         .in("user_id", sdrIds);
-      return data ?? [];
+      return (data ?? []) as any[];
     },
   });
 
