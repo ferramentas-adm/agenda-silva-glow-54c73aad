@@ -59,6 +59,7 @@ interface AgendamentoMetric {
 interface SDRProfile {
   user_id: string;
   full_name: string;
+  sdr_team: "trafego" | "social_selling" | null;
 }
 
 // ─── Visibilidade de Abas (localStorage por usuário) ─────────────
