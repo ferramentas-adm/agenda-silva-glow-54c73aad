@@ -888,7 +888,8 @@ export function CalendarContent() {
                       const pool = sourceAgendamentos.filter(
                         (a) =>
                           TOTAL_STATUSES.includes(a.status) &&
-                          (isCloserView || isSdrAgenda(a) || isSecondMeetingAgenda(a)),
+                          !isSecondMeetingAgenda(a) &&
+                          (isCloserView || isSdrAgenda(a)),
                       );
                       const map = new Map<string, number>();
                       pool.forEach((a) => {
