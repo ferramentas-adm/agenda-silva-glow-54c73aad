@@ -37,6 +37,7 @@ interface VendaRow {
   agendamento_id: string;
   vendeu: boolean;
   valor: number | null;
+  valor_total_projeto: number | null;
   produto: string | null;
   follow_up: boolean;
   follow_up_date: string | null;
@@ -149,7 +150,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         const { data, error } = await supabase
           .from("vendas")
           .select(`
-            id, agendamento_id, vendeu, valor, produto, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
+            id, agendamento_id, vendeu, valor, valor_total_projeto, produto, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
             motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
             agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
           `)
@@ -390,6 +391,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const coletadoTotal = coletadoCalls + coletadoAvulsa;
     const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
+    // Faturado = soma do valor total do projeto (valor cheio, não só o coletado)
+    const faturadoCalls = vendasCalls
+      .filter((v) => v.vendeu)
+      .reduce((acc, v) => acc + (v.valor_total_projeto || v.valor || 0), 0);
+    const faturadoAvulsa = vendasAvulsas
+      .filter((v) => v.vendeu)
+      .reduce((acc, v) => acc + (v.valor_total_projeto || v.valor || 0), 0);
+    const faturadoTotal = faturadoCalls + faturadoAvulsa;
+
     // % de vendas em 1a call vs follow-up/2a reuniao (apenas calls reais)
     const isSegunda = (v: VendaRow) => v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao";
     const vendasPrimeiraCall = vendasCalls.filter((v) => v.vendeu && !v.follow_up && !isSegunda(v)).length;
@@ -403,10 +413,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const ofertasPrecoIds = ofertasPreco.map((v) => v.agendamento_id);
     const pctOfertaPreco = totalReunioesConv > 0 ? (ofertasPrecoCount / totalReunioesConv) * 100 : 0;
 
-    return { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
+    return { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
   }, [vendasDia, conversaoData, agMap]);
 
-  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco } = kpis;
+  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco } = kpis;
 
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
@@ -806,6 +816,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           color="emerald"
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(coletadoTotal))
+          }
+        />
+        <KpiCard
+          icon={DollarSign}
+          label="Faturado (dia)"
+          value={fmtBRL(faturadoTotal)}
+          sub={
+            totalVendasAvulsas > 0
+              ? `Calls ${fmtBRL(faturadoCalls)} · Avulsas ${fmtBRL(faturadoAvulsa)}`
+              : `Valor total dos projetos vendidos`
+          }
+          color="emerald"
+          onClick={() =>
+            openDrill(`Faturado — ${dayLabel}`, fechadasIds, fmtBRL(faturadoTotal))
           }
         />
         <KpiCard
