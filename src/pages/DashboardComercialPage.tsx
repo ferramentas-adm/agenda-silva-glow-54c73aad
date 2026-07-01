@@ -1233,6 +1233,7 @@ function RankingSDRsTab({
 }) {
   const [metricType, setMetricType] = useState<RankingMetricType>("criadas");
   const [showComparecimento, setShowComparecimento] = useState(false);
+  const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
 
   // Range único derivado do seletor global de datas; fallback = currentDate.
   const activeRange = useMemo(() => {
