@@ -207,6 +207,12 @@ export function CalendarContent() {
   const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState(false);
 
+  // Drill-down por canal do card "Total agend. dia"
+  const [totalChannelsOpen, setTotalChannelsOpen] = useState(false);
+  const [totalChannelsData, setTotalChannelsData] = useState<{ canal: string; qtd: number }[]>([]);
+  const [totalChannelsTotal, setTotalChannelsTotal] = useState(0);
+
+
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
   // Slot lotação dinâmica (capacidade = closers ativos disponíveis no horário)
@@ -876,13 +882,43 @@ export function CalendarContent() {
                 } else {
                   count = sourceCounts[key] ?? 0;
                 }
+                const isTotalAgend = key === "total_agend";
+                const handleClick = isTotalAgend
+                  ? () => {
+                      const pool = sourceAgendamentos.filter(
+                        (a) =>
+                          TOTAL_STATUSES.includes(a.status) &&
+                          (isCloserView || isSdrAgenda(a) || isSecondMeetingAgenda(a)),
+                      );
+                      const map = new Map<string, number>();
+                      pool.forEach((a) => {
+                        const ch = a.channel_type || "Sem canal";
+                        map.set(ch, (map.get(ch) ?? 0) + 1);
+                      });
+                      const items = Array.from(map.entries())
+                        .map(([canal, qtd]) => ({ canal, qtd }))
+                        .sort((a, b) => b.qtd - a.qtd);
+                      setTotalChannelsData(items);
+                      setTotalChannelsTotal(pool.length);
+                      setTotalChannelsOpen(true);
+                    }
+                  : undefined;
                 return (
-                  <div key={key} className={cn("rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0", bg)}>
+                  <div
+                    key={key}
+                    className={cn(
+                      "rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0",
+                      bg,
+                      isTotalAgend && "cursor-pointer hover:border-primary/30 transition-colors",
+                    )}
+                    onClick={handleClick}
+                  >
                     <Icon className={cn("h-4 w-4 shrink-0", color)} />
                     <p className="text-lg font-bold leading-none">{count}</p>
                     <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
                   </div>
                 );
+
               })}
               {/* Total Closers + Closer Realizada — apenas para Admin / Moderador / SDR */}
               {!isCloserView && (
@@ -1560,6 +1596,51 @@ export function CalendarContent() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Drill-down: canais do "Total agend. dia" */}
+      <Dialog open={totalChannelsOpen} onOpenChange={setTotalChannelsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Total agend. dia — por Canal</DialogTitle>
+            <DialogDescription>
+              {totalChannelsTotal} agendamento{totalChannelsTotal !== 1 ? "s" : ""} em {format(currentDate, "dd/MM/yyyy")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-muted-foreground">
+                <tr>
+                  <th className="text-left py-2 px-3 font-medium text-xs">#</th>
+                  <th className="text-left py-2 px-3 font-medium text-xs">Canal</th>
+                  <th className="text-right py-2 px-3 font-medium text-xs">Qtd</th>
+                </tr>
+              </thead>
+              <tbody>
+                {totalChannelsData.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="text-center text-muted-foreground py-4 text-xs">Nenhum registro</td>
+                  </tr>
+                )}
+                {totalChannelsData.map((r, i) => (
+                  <tr key={r.canal} className="border-t border-border">
+                    <td className="py-2 px-3 text-muted-foreground">{i + 1}</td>
+                    <td className="py-2 px-3">{r.canal}</td>
+                    <td className="py-2 px-3 text-right font-semibold tabular-nums">{r.qtd}</td>
+                  </tr>
+                ))}
+                {totalChannelsData.length > 0 && (
+                  <tr className="border-t border-border bg-muted/30 font-semibold">
+                    <td className="py-2 px-3"></td>
+                    <td className="py-2 px-3 text-xs uppercase text-muted-foreground">Total</td>
+                    <td className="py-2 px-3 text-right tabular-nums">{totalChannelsTotal}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Briefing Drawer */}
       <BriefingDrawer
