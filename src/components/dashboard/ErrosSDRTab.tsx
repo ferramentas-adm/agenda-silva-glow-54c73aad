@@ -55,6 +55,7 @@ interface AgendamentoErrRow {
 
 export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
   const [detailsAgendamentoId, setDetailsAgendamentoId] = useState<string | null>(null);
+  const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
 
   const isRange = !!(dateRange?.from && dateRange?.to);
   const fromStr = isRange
