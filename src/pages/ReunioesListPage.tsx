@@ -589,10 +589,10 @@ export default function ReunioesListPage() {
             </Popover>
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => { setExcludeWithSale((v) => !v); setCurrentPage(1); }}
+              onClick={() => { setExcludeWithSale((v) => { const nv = !v; if (nv) setOnlyWithSale(false); return nv; }); setCurrentPage(1); }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
                 excludeWithSale
@@ -603,8 +603,22 @@ export default function ReunioesListPage() {
               <span className={cn("h-2 w-2 rounded-full", excludeWithSale ? "bg-primary" : "bg-muted-foreground/40")} />
               Excluir reuniões com venda fechada
             </button>
+            <button
+              type="button"
+              onClick={() => { setOnlyWithSale((v) => { const nv = !v; if (nv) setExcludeWithSale(false); return nv; }); setCurrentPage(1); }}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                onlyWithSale
+                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", onlyWithSale ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+              Somente vendas fechadas
+            </button>
           </div>
         </div>
+
 
 
         {/* Table */}
