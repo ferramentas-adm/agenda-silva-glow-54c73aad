@@ -204,7 +204,10 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
               <AccordionItem key={g.sdrId ?? "none"} value={g.sdrId ?? "none"}>
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center justify-between w-full pr-3">
-                    <span className="font-medium">{g.name}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{g.name}</span>
+                      <SdrTeamBadge team={g.team} />
+                    </div>
                     <Badge variant="outline" className="border-amber-500/40 text-amber-600">
                       {g.items.length} {g.items.length === 1 ? "erro" : "erros"}
                     </Badge>
