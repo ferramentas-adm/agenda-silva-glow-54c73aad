@@ -499,6 +499,24 @@ function UsersSection() {
     setTogglingSdrOverrideId(null);
   };
 
+  const [savingSdrTeamId, setSavingSdrTeamId] = useState<string | null>(null);
+  const handleChangeSdrTeam = async (user: any, team: "trafego" | "social_selling") => {
+    setSavingSdrTeamId(user.userId);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ sdr_team: team } as any)
+        .eq("user_id", user.userId);
+      if (error) throw error;
+      toast.success(`Time definido: ${team === "trafego" ? "Tráfego" : "Social Selling"}`);
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      queryClient.invalidateQueries({ queryKey: ["sdr-teams-map"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao definir time");
+    }
+    setSavingSdrTeamId(null);
+  };
+
   const roleLabel = (r: string) => {
     switch (r) {
       case "gestor": return "Admin";
