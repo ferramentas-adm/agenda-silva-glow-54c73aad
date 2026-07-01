@@ -882,13 +882,43 @@ export function CalendarContent() {
                 } else {
                   count = sourceCounts[key] ?? 0;
                 }
+                const isTotalAgend = key === "total_agend";
+                const handleClick = isTotalAgend
+                  ? () => {
+                      const pool = sourceAgendamentos.filter(
+                        (a) =>
+                          TOTAL_STATUSES.includes(a.status) &&
+                          (isCloserView || isSdrAgenda(a) || isSecondMeetingAgenda(a)),
+                      );
+                      const map = new Map<string, number>();
+                      pool.forEach((a) => {
+                        const ch = a.channel_type || "Sem canal";
+                        map.set(ch, (map.get(ch) ?? 0) + 1);
+                      });
+                      const items = Array.from(map.entries())
+                        .map(([canal, qtd]) => ({ canal, qtd }))
+                        .sort((a, b) => b.qtd - a.qtd);
+                      setTotalChannelsData(items);
+                      setTotalChannelsTotal(pool.length);
+                      setTotalChannelsOpen(true);
+                    }
+                  : undefined;
                 return (
-                  <div key={key} className={cn("rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0", bg)}>
+                  <div
+                    key={key}
+                    className={cn(
+                      "rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0",
+                      bg,
+                      isTotalAgend && "cursor-pointer hover:border-primary/30 transition-colors",
+                    )}
+                    onClick={handleClick}
+                  >
                     <Icon className={cn("h-4 w-4 shrink-0", color)} />
                     <p className="text-lg font-bold leading-none">{count}</p>
                     <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
                   </div>
                 );
+
               })}
               {/* Total Closers + Closer Realizada — apenas para Admin / Moderador / SDR */}
               {!isCloserView && (
