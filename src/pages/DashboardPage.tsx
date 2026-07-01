@@ -1597,6 +1597,51 @@ export function CalendarContent() {
         </DialogContent>
       </Dialog>
 
+      {/* Drill-down: canais do "Total agend. dia" */}
+      <Dialog open={totalChannelsOpen} onOpenChange={setTotalChannelsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Total agend. dia — por Canal</DialogTitle>
+            <DialogDescription>
+              {totalChannelsTotal} agendamento{totalChannelsTotal !== 1 ? "s" : ""} em {format(currentDate, "dd/MM/yyyy")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-muted-foreground">
+                <tr>
+                  <th className="text-left py-2 px-3 font-medium text-xs">#</th>
+                  <th className="text-left py-2 px-3 font-medium text-xs">Canal</th>
+                  <th className="text-right py-2 px-3 font-medium text-xs">Qtd</th>
+                </tr>
+              </thead>
+              <tbody>
+                {totalChannelsData.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="text-center text-muted-foreground py-4 text-xs">Nenhum registro</td>
+                  </tr>
+                )}
+                {totalChannelsData.map((r, i) => (
+                  <tr key={r.canal} className="border-t border-border">
+                    <td className="py-2 px-3 text-muted-foreground">{i + 1}</td>
+                    <td className="py-2 px-3">{r.canal}</td>
+                    <td className="py-2 px-3 text-right font-semibold tabular-nums">{r.qtd}</td>
+                  </tr>
+                ))}
+                {totalChannelsData.length > 0 && (
+                  <tr className="border-t border-border bg-muted/30 font-semibold">
+                    <td className="py-2 px-3"></td>
+                    <td className="py-2 px-3 text-xs uppercase text-muted-foreground">Total</td>
+                    <td className="py-2 px-3 text-right tabular-nums">{totalChannelsTotal}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
       {/* Briefing Drawer */}
       <BriefingDrawer
         open={viewBriefing}
