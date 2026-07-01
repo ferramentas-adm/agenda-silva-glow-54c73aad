@@ -55,6 +55,7 @@ function getEffectiveStatus(a: { status: string; original_agendamento_id?: strin
 interface SDRProfile {
   user_id: string;
   full_name: string;
+  sdr_team?: SdrTeam | null;
 }
 
 type FilterType = "criadas" | "para" | "compareceu" | "nao_compareceu";
