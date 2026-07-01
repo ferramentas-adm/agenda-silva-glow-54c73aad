@@ -240,7 +240,7 @@ export default function ProdutividadeSDRTab({
       if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
     });
-    return sdrProfiles
+    return filteredSdrProfiles
       .map((p) => {
         const parts = p.full_name.trim().split(/\s+/);
         const shortName =
@@ -252,7 +252,7 @@ export default function ProdutividadeSDRTab({
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [pool, sdrProfiles, isIntervalMode, range, filter]);
+  }, [pool, filteredSdrProfiles, isIntervalMode, range, filter]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
 
