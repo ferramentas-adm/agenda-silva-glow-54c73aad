@@ -373,10 +373,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const totalVendasCalls = vendasCalls.filter((v) => v.vendeu).length;
     const totalVendasAvulsas = vendasAvulsas.filter((v) => v.vendeu).length;
     const totalNaoFechou = vendasCalls.filter((v) => !v.vendeu).length;
-    // Taxa de conversão: numerador e denominador consideram apenas calls reais
-    // (vendas avulsas, registradas retroativamente, NÃO entram nesse cálculo).
+    // Taxa de conversão: numerador e denominador atribuídos pela DATA DA REUNIÃO
+    // (scheduled_date). Uma venda fechada hoje via follow-up de uma reunião de
+    // outro dia conta para o dia da reunião, não para hoje. Vendas avulsas
+    // (registradas retroativamente) NÃO entram nesse cálculo.
     const totalReunioesConv = conversaoData?.totalReunioes ?? 0;
-    const totalVendasConv = totalVendasCalls;
+    const totalVendasConv = conversaoData?.totalVendas ?? 0;
     const taxaConversao = totalReunioesConv > 0 ? (totalVendasConv / totalReunioesConv) * 100 : 0;
 
     const coletadoCalls = vendasCalls
