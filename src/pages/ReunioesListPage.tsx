@@ -90,6 +90,7 @@ export default function ReunioesListPage() {
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [excludeWithSale, setExcludeWithSale] = useState(false);
+  const [onlyWithSale, setOnlyWithSale] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
@@ -276,9 +277,10 @@ export default function ReunioesListPage() {
         if (!ag.lead_name.toLowerCase().includes(s) && !ag.lead_phone.includes(s)) return false;
       }
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
+      if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, vendaAgendamentoIds, sdrGlobalVisibility]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, vendaAgendamentoIds, sdrGlobalVisibility]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -314,7 +316,7 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale;
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -327,6 +329,7 @@ export default function ReunioesListPage() {
     setFilterCreatedDateTo(undefined);
     setSearchText("");
     setExcludeWithSale(false);
+    setOnlyWithSale(false);
     setCurrentPage(1);
   };
 
@@ -586,10 +589,10 @@ export default function ReunioesListPage() {
             </Popover>
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => { setExcludeWithSale((v) => !v); setCurrentPage(1); }}
+              onClick={() => { setExcludeWithSale((v) => { const nv = !v; if (nv) setOnlyWithSale(false); return nv; }); setCurrentPage(1); }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
                 excludeWithSale
@@ -600,8 +603,22 @@ export default function ReunioesListPage() {
               <span className={cn("h-2 w-2 rounded-full", excludeWithSale ? "bg-primary" : "bg-muted-foreground/40")} />
               Excluir reuniões com venda fechada
             </button>
+            <button
+              type="button"
+              onClick={() => { setOnlyWithSale((v) => { const nv = !v; if (nv) setExcludeWithSale(false); return nv; }); setCurrentPage(1); }}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                onlyWithSale
+                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", onlyWithSale ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+              Somente vendas fechadas
+            </button>
           </div>
         </div>
+
 
 
         {/* Table */}
