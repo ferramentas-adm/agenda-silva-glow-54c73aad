@@ -619,6 +619,7 @@ export type Database = {
           is_sdr_override: boolean
           moderador_tipo: string | null
           must_change_password: boolean
+          sdr_team: Database["public"]["Enums"]["sdr_team"] | null
           updated_at: string
           user_id: string
         }
@@ -633,6 +634,7 @@ export type Database = {
           is_sdr_override?: boolean
           moderador_tipo?: string | null
           must_change_password?: boolean
+          sdr_team?: Database["public"]["Enums"]["sdr_team"] | null
           updated_at?: string
           user_id: string
         }
@@ -647,6 +649,7 @@ export type Database = {
           is_sdr_override?: boolean
           moderador_tipo?: string | null
           must_change_password?: boolean
+          sdr_team?: Database["public"]["Enums"]["sdr_team"] | null
           updated_at?: string
           user_id?: string
         }
@@ -853,6 +856,7 @@ export type Database = {
         Returns: {
           full_name: string
           is_sdr_override: boolean
+          sdr_team: Database["public"]["Enums"]["sdr_team"]
           user_id: string
         }[]
       }
@@ -875,6 +879,7 @@ export type Database = {
         | "no_show"
         | "nao_confirmada"
         | "agendada"
+      sdr_team: "trafego" | "social_selling"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1013,6 +1018,7 @@ export const Constants = {
         "nao_confirmada",
         "agendada",
       ],
+      sdr_team: ["trafego", "social_selling"],
     },
   },
 } as const
