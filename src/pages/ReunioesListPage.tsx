@@ -329,6 +329,7 @@ export default function ReunioesListPage() {
     setFilterCreatedDateTo(undefined);
     setSearchText("");
     setExcludeWithSale(false);
+    setOnlyWithSale(false);
     setCurrentPage(1);
   };
 
