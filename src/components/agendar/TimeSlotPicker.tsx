@@ -119,6 +119,10 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const { role } = useAuth();
   const canForceFullSlot = role === "gestor" || role === "moderador" || role === "supervisor";
   const isSdr = role === "sdr";
+  const isCloser = role === "closer";
+  // Regra: SDR/Closer não podem empilhar agendas no mesmo horário — se já existir
+  // qualquer agenda no slot (de qualquer closer/SDR), o slot fica bloqueado para eles.
+  const blockIfAnyBooking = !canForceFullSlot;
   const [customMode, setCustomMode] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
