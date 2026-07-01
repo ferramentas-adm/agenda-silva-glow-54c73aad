@@ -420,6 +420,9 @@ export default function ProdutividadeSDRTab({
         )}
       </div>
 
+      {/* Filtro por time (Tráfego / Social Selling) */}
+      <SdrTeamFilter value={teamFilter} onChange={setTeamFilter} />
+
       {/* KPIs principais (todos visíveis para referência) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard
