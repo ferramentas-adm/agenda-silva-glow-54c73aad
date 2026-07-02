@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { brDateOf, formatBRDateTime } from "@/lib/timezone";
+import { brDateOf, brTodayYMD, formatBRDateTime } from "@/lib/timezone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -220,6 +220,41 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       const { data } = await supabase.from("closers").select("id, name, email").eq("active", true).order("name");
       return (data ?? []) as (CloserRow & { email: string | null })[];
     },
+  });
+
+  // Vendas SUBIDAS HOJE (independente da data da reunião) — reflete o momento
+  // em que o closer registrou a venda no sistema. Útil para acompanhar o
+  // volume diário de fechamentos, incluindo follow-ups de dias anteriores.
+  const { data: vendasHoje = [] } = useQuery<
+    { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; scheduled_date: string; meeting_reason: string | null; closer_id: string | null }[]
+  >({
+    queryKey: ["vendas-uploaded-today"],
+    queryFn: async () => {
+      const todayBR = brTodayYMD();
+      // BRT = UTC-3 (sem DST). Janela do dia BRT em UTC.
+      const startUtc = `${todayBR}T03:00:00.000Z`;
+      const nextYmd = format(new Date(new Date(todayBR + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
+      const endUtc = `${nextYmd}T03:00:00.000Z`;
+      const { data, error } = await supabase
+        .from("vendas")
+        .select("agendamento_id, valor, follow_up, segunda_reuniao, updated_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
+        .eq("vendeu", true)
+        .gte("updated_at", startUtc)
+        .lt("updated_at", endUtc)
+        .is("agendamentos.deleted_at", null);
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((v) => ({
+        agendamento_id: v.agendamento_id,
+        valor: v.valor,
+        follow_up: v.follow_up,
+        segunda_reuniao: v.segunda_reuniao,
+        scheduled_date: v.agendamentos?.scheduled_date,
+        meeting_reason: v.agendamentos?.meeting_reason ?? null,
+        closer_id: v.agendamentos?.closer_id ?? null,
+      }));
+    },
+    refetchInterval: 2 * 60_000,
+    staleTime: 60_000,
   });
 
   // Mapa user_id -> full_name (para resolver nome do SDR no CSV)
@@ -876,6 +911,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         />
       </div>
 
+      {/* Vendas subidas hoje — independente do filtro de data */}
+      <VendasHojeCard
+        vendas={vendasHoje}
+        closerMap={closerMap}
+        isCloserView={isCloserView}
+        myCloserId={myCloserId}
+        onOpenDrill={openDrill}
+      />
+
       {/* Tendência preditiva — apenas para gestores/moderadores */}
       {(role === "gestor" || role === "moderador" || role === "supervisor") && (
         <TrendCardVendas closerId={isCloserView ? myCloserId : null} />
@@ -1192,5 +1236,119 @@ function KpiCard({
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-xs text-muted-foreground">{sub}</div>
     </button>
+  );
+}
+
+type VendaHojeItem = {
+  agendamento_id: string;
+  valor: number | null;
+  follow_up: boolean;
+  segunda_reuniao: boolean;
+  scheduled_date: string;
+  meeting_reason: string | null;
+  closer_id: string | null;
+};
+
+function VendasHojeCard({
+  vendas,
+  closerMap,
+  isCloserView,
+  myCloserId,
+  onOpenDrill,
+}: {
+  vendas: VendaHojeItem[];
+  closerMap: Map<string, string>;
+  isCloserView: boolean;
+  myCloserId: string | null;
+  onOpenDrill: (title: string, ids: string[], subtitle?: string) => void;
+}) {
+  const todayBR = brTodayYMD();
+  const filtered = useMemo(
+    () => (isCloserView ? vendas.filter((v) => v.closer_id && v.closer_id === myCloserId) : vendas),
+    [vendas, isCloserView, myCloserId],
+  );
+  const isFollow = (v: VendaHojeItem) =>
+    v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || v.scheduled_date !== todayBR;
+  const total = filtered.length;
+  const followItems = filtered.filter(isFollow);
+  const callItems = filtered.filter((v) => !isFollow(v));
+  const receita = filtered.reduce((acc, v) => acc + (v.valor || 0), 0);
+  const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
+
+  const porCloser = useMemo(() => {
+    const m = new Map<string, number>();
+    filtered.forEach((v) => {
+      if (!v.closer_id) return;
+      m.set(v.closer_id, (m.get(v.closer_id) || 0) + 1);
+    });
+    return Array.from(m.entries())
+      .map(([id, count]) => ({ name: closerMap.get(id) || "—", count }))
+      .sort((a, b) => b.count - a.count);
+  }, [filtered, closerMap]);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          Vendas registradas hoje
+          <span className="text-xs font-normal text-muted-foreground">
+            (independente do dia da reunião)
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {total === 0 ? (
+          <p className="text-sm text-muted-foreground italic py-4 text-center">
+            Nenhuma venda registrada hoje.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <button
+              type="button"
+              onClick={() => onOpenDrill("Vendas registradas hoje", filtered.map((v) => v.agendamento_id), fmtBRL(receita))}
+              className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-left hover:shadow-md transition-all"
+            >
+              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Total subidas hoje</div>
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{total}</div>
+              <div className="text-xs text-muted-foreground">{fmtBRL(receita)} coletado</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenDrill("Vendas de 1ª call subidas hoje", callItems.map((v) => v.agendamento_id))}
+              className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
+            >
+              <div className="text-xs font-medium">De call (reunião hoje)</div>
+              <div className="text-2xl font-bold">{callItems.length}</div>
+              <div className="text-xs text-muted-foreground">Fechadas no mesmo dia</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenDrill("Vendas de follow-up subidas hoje", followItems.map((v) => v.agendamento_id))}
+              className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
+            >
+              <div className="text-xs font-medium">De follow-up / 2ª reunião</div>
+              <div className="text-2xl font-bold">{followItems.length}</div>
+              <div className="text-xs text-muted-foreground">Reunião em outro dia</div>
+            </button>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs font-medium mb-1">Por closer</div>
+              {porCloser.length === 0 ? (
+                <div className="text-xs text-muted-foreground">—</div>
+              ) : (
+                <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                  {porCloser.map((c) => (
+                    <div key={c.name} className="flex items-center justify-between text-xs">
+                      <span className="truncate">{c.name}</span>
+                      <Badge variant="secondary" className="h-5 px-1.5">{c.count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
