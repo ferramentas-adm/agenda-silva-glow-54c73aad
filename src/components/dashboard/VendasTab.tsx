@@ -1238,3 +1238,117 @@ function KpiCard({
     </button>
   );
 }
+
+type VendaHojeItem = {
+  agendamento_id: string;
+  valor: number | null;
+  follow_up: boolean;
+  segunda_reuniao: boolean;
+  scheduled_date: string;
+  meeting_reason: string | null;
+  closer_id: string | null;
+};
+
+function VendasHojeCard({
+  vendas,
+  closerMap,
+  isCloserView,
+  myCloserId,
+  onOpenDrill,
+}: {
+  vendas: VendaHojeItem[];
+  closerMap: Map<string, string>;
+  isCloserView: boolean;
+  myCloserId: string | null;
+  onOpenDrill: (title: string, ids: string[], subtitle?: string) => void;
+}) {
+  const todayBR = brTodayYMD();
+  const filtered = useMemo(
+    () => (isCloserView ? vendas.filter((v) => v.closer_id && v.closer_id === myCloserId) : vendas),
+    [vendas, isCloserView, myCloserId],
+  );
+  const isFollow = (v: VendaHojeItem) =>
+    v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || v.scheduled_date !== todayBR;
+  const total = filtered.length;
+  const followItems = filtered.filter(isFollow);
+  const callItems = filtered.filter((v) => !isFollow(v));
+  const receita = filtered.reduce((acc, v) => acc + (v.valor || 0), 0);
+  const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
+
+  const porCloser = useMemo(() => {
+    const m = new Map<string, number>();
+    filtered.forEach((v) => {
+      if (!v.closer_id) return;
+      m.set(v.closer_id, (m.get(v.closer_id) || 0) + 1);
+    });
+    return Array.from(m.entries())
+      .map(([id, count]) => ({ name: closerMap.get(id) || "—", count }))
+      .sort((a, b) => b.count - a.count);
+  }, [filtered, closerMap]);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          Vendas registradas hoje
+          <span className="text-xs font-normal text-muted-foreground">
+            (independente do dia da reunião)
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {total === 0 ? (
+          <p className="text-sm text-muted-foreground italic py-4 text-center">
+            Nenhuma venda registrada hoje.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <button
+              type="button"
+              onClick={() => onOpenDrill("Vendas registradas hoje", filtered.map((v) => v.agendamento_id), fmtBRL(receita))}
+              className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-left hover:shadow-md transition-all"
+            >
+              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Total subidas hoje</div>
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{total}</div>
+              <div className="text-xs text-muted-foreground">{fmtBRL(receita)} coletado</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenDrill("Vendas de 1ª call subidas hoje", callItems.map((v) => v.agendamento_id))}
+              className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
+            >
+              <div className="text-xs font-medium">De call (reunião hoje)</div>
+              <div className="text-2xl font-bold">{callItems.length}</div>
+              <div className="text-xs text-muted-foreground">Fechadas no mesmo dia</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenDrill("Vendas de follow-up subidas hoje", followItems.map((v) => v.agendamento_id))}
+              className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
+            >
+              <div className="text-xs font-medium">De follow-up / 2ª reunião</div>
+              <div className="text-2xl font-bold">{followItems.length}</div>
+              <div className="text-xs text-muted-foreground">Reunião em outro dia</div>
+            </button>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs font-medium mb-1">Por closer</div>
+              {porCloser.length === 0 ? (
+                <div className="text-xs text-muted-foreground">—</div>
+              ) : (
+                <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                  {porCloser.map((c) => (
+                    <div key={c.name} className="flex items-center justify-between text-xs">
+                      <span className="truncate">{c.name}</span>
+                      <Badge variant="secondary" className="h-5 px-1.5">{c.count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
