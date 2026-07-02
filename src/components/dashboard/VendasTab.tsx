@@ -911,6 +911,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         />
       </div>
 
+      {/* Vendas subidas hoje — independente do filtro de data */}
+      <VendasHojeCard
+        vendas={vendasHoje}
+        closerMap={closerMap}
+        isCloserView={isCloserView}
+        myCloserId={myCloserId}
+        onOpenDrill={openDrill}
+      />
+
       {/* Tendência preditiva — apenas para gestores/moderadores */}
       {(role === "gestor" || role === "moderador" || role === "supervisor") && (
         <TrendCardVendas closerId={isCloserView ? myCloserId : null} />
