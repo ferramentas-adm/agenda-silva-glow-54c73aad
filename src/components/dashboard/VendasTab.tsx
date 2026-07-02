@@ -222,6 +222,41 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     },
   });
 
+  // Vendas SUBIDAS HOJE (independente da data da reunião) — reflete o momento
+  // em que o closer registrou a venda no sistema. Útil para acompanhar o
+  // volume diário de fechamentos, incluindo follow-ups de dias anteriores.
+  const { data: vendasHoje = [] } = useQuery<
+    { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; scheduled_date: string; meeting_reason: string | null; closer_id: string | null }[]
+  >({
+    queryKey: ["vendas-uploaded-today"],
+    queryFn: async () => {
+      const todayBR = brTodayYMD();
+      // BRT = UTC-3 (sem DST). Janela do dia BRT em UTC.
+      const startUtc = `${todayBR}T03:00:00.000Z`;
+      const nextYmd = format(new Date(new Date(todayBR + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
+      const endUtc = `${nextYmd}T03:00:00.000Z`;
+      const { data, error } = await supabase
+        .from("vendas")
+        .select("agendamento_id, valor, follow_up, segunda_reuniao, updated_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
+        .eq("vendeu", true)
+        .gte("updated_at", startUtc)
+        .lt("updated_at", endUtc)
+        .is("agendamentos.deleted_at", null);
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((v) => ({
+        agendamento_id: v.agendamento_id,
+        valor: v.valor,
+        follow_up: v.follow_up,
+        segunda_reuniao: v.segunda_reuniao,
+        scheduled_date: v.agendamentos?.scheduled_date,
+        meeting_reason: v.agendamentos?.meeting_reason ?? null,
+        closer_id: v.agendamentos?.closer_id ?? null,
+      }));
+    },
+    refetchInterval: 2 * 60_000,
+    staleTime: 60_000,
+  });
+
   // Mapa user_id -> full_name (para resolver nome do SDR no CSV)
   const { data: profilesMap = new Map<string, string>() } = useQuery<Map<string, string>>({
     queryKey: ["vendas-tab-profiles"],
