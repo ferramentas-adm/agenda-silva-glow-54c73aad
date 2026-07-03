@@ -1,37 +1,53 @@
-# Time do SDR: Tráfego / Social Selling
+## Objetivo
+Expor as vendas do sistema via endpoint autenticado por API key, para consumo externo.
 
-## Banco
-- Migration: criar enum `sdr_team` (`trafego`, `social_selling`) e coluna `profiles.sdr_team sdr_team NULL`.
-- Trigger `validate_sdr_team_required` em `profiles` (BEFORE INSERT/UPDATE): se o usuário é SDR (via `user_roles.role='sdr'`) OU `is_sdr_override=true`, exigir `sdr_team NOT NULL`. Bloqueia salvar sem time.
-- `get_public_profiles()` passa a retornar também `sdr_team`.
+## Componentes
 
-## Admin (`src/pages/AdminPage.tsx`)
-- Na linha de cada usuário elegível (SDR ou override), adicionar `Select` com opções **Tráfego** / **Social Selling**.
-- Mutation grava `sdr_team` em `profiles`.
-- Aviso visual "Time obrigatório" quando ainda não definido.
+### 1. Edge Function `silva-vendas`
+Arquivo: `supabase/functions/silva-vendas/index.ts`
 
-## Componente compartilhado
-- Novo `src/components/sdr/SdrTeamBadge.tsx`: badge colorido (Tráfego = azul, Social Selling = roxo).
-- Novo `src/components/sdr/SdrTeamFilter.tsx`: botões toggle **Todos | Tráfego | Social Selling** (usa `ToggleGroup`), estado controlado.
-- Novo `src/hooks/useSdrTeams.ts`: retorna `Map<userId, sdr_team>` a partir de `get_public_profiles`.
+- Método: `GET` + `OPTIONS` (CORS preflight)
+- CORS aberto: `*`, headers `authorization, x-api-key, content-type`, métodos `GET, OPTIONS`
+- Auth: valida header `X-API-KEY` contra `Deno.env.get("SILVA_VENDAS_API_KEY")`. Não bateu → 401.
+- Query params:
+  - `since` (YYYY-MM-DD) → filtra `agendamentos.scheduled_date >= since`
+  - `vendeu` (`true`/`false`, default `true`)
+  - `limit` (número, default sem limite)
+- Cliente Supabase criado com `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (bypassa RLS)
+- Query: `vendas` com `select` aninhado de `agendamentos(...,closers(name,email))`, ordenada por `created_at desc`
+- Mapeia cada linha para o formato pedido:
+  - `data`: converte `agendamentos.scheduled_date` de YYYY-MM-DD para DD/MM/YYYY; se null, usa `venda.created_at` (também DD/MM/YYYY)
+  - `hora_reuniao`: `agendamentos.scheduled_time` (HH:mm)
+  - Campos diretos: `valor`, `valor_total_projeto`, `is_venda_avulsa` (do agendamento), `is_5k` (do agendamento), `produto`, `resumo_venda`, `segunda_reuniao`, `follow_up`, `motivo_nao_fechamento`, `agendamento_id`
+  - `closer` / `closer_email`: via join
+- `total_faturado`: soma de `valor_total_projeto ?? valor ?? 0`
+- Resposta:
+  ```json
+  { "count", "total_faturado", "sincronizado_em": <ISO>, "vendas": [...] }
+  ```
 
-## Ranking SDR (`RankingSDRsTab`)
-- Renderizar `SdrTeamFilter` acima da tabela.
-- Filtrar as linhas conforme time selecionado.
-- Adicionar coluna/inline `SdrTeamBadge` ao lado do nome do SDR.
+### 2. Config
+Adicionar em `supabase/config.toml`:
+```
+[functions.silva-vendas]
+verify_jwt = false
+```
+(a auth é via X-API-KEY, não JWT)
 
-## Produtividade SDR (`ProdutividadeSDRTab`)
-- Mesmo padrão: filtro no topo + badge no nome. Aplicar filtro tanto na tabela quanto nos totais/gráficos derivados dos SDRs listados.
+### 3. Secret
+Registrar `SILVA_VENDAS_API_KEY = hXLlm0GLvWDGHUA_UAJJTQlC6Dd96GaEmDLzbMhxraw` via `set_secret` (valor já conhecido, sem formulário).
 
-## Erros SDR (`ErrosSDRTab` / abas dentro de `ErrosTab`)
-- Filtro toggle no topo + badge no acordeão de cada SDR.
-- Filtra os grupos exibidos.
+⚠️ Observação: enviar uma API key em texto no chat é considerado exposição. Recomendo trocá-la depois. Posso rotacionar quando quiser.
 
-## Fora de escopo
-- Métricas SDRs (dashboard principal) e outras telas não recebem filtro/badge nesta rodada.
-- Sem migração de dados: usuários existentes ficarão sem time até o admin definir (o trigger passa a exigir apenas em novos updates/inserts; **incluir** um passo de UPDATE inicial? Não — apenas alertar no Admin, evitando quebrar signup/handle_new_user).
+### 4. Deploy + teste
+- Deploy da função via `deploy_edge_functions`
+- Teste com curl:
+  ```
+  curl -H "X-API-KEY: <key>" \
+       "https://jrnyccjhsxcggmgupvzp.supabase.co/functions/v1/silva-vendas?limit=3"
+  ```
 
-## Detalhes técnicos
-- Trigger ignora `handle_new_user` (que insere antes da role existir) usando `pg_trigger_depth()` ou condicionando à existência de role já persistida.
-- `sdrOverrides.ts` continua fonte da verdade sobre "quem conta como SDR"; o filtro combina `role='sdr' OR is_sdr_override=true`.
-- Tipos regenerados automaticamente após migration.
+## URL final
+`https://jrnyccjhsxcggmgupvzp.supabase.co/functions/v1/silva-vendas`
+
+Aprova pra eu implementar?

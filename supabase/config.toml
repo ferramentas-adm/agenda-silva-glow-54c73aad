@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.lead-metrics-webhook]
 verify_jwt = false
+
+[functions.silva-vendas]
+verify_jwt = false
