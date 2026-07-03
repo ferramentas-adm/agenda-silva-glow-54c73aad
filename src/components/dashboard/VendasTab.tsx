@@ -339,8 +339,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         if (!myCloserId || ag?.closer_id !== myCloserId) return false;
       }
       if (v.vendeu) {
-        // Data em que a venda foi subida (BRT).
-        return inRangeYmd(brDateOf(v.updated_at));
+        // Se o usuário editou "Data da venda" (closed_at), respeita esse override.
+        // Caso contrário, usa a data em que o closer subiu a venda (BRT).
+        const effective = v.closed_at ?? brDateOf(v.updated_at);
+        return inRangeYmd(effective);
       }
       const cd = closingDateOf(v);
       if (!cd) return false;
