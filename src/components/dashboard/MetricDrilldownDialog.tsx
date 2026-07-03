@@ -199,9 +199,9 @@ export default function MetricDrilldownDialog({
   const originalMap = new Map(originals.map((o: any) => [o.id, o]));
 
   const { role } = useAuth();
-  const canEditValor = role === "gestor" || role === "moderador" || role === "supervisor";
-  const canDeleteVenda = role === "gestor" || role === "moderador" || role === "supervisor";
-  const canEditDate = role === "gestor" || role === "moderador" || role === "supervisor";
+  const canEditValor = role === "gestor" || role === "moderador" || role === "supervisor" || role === "apresentador";
+  const canDeleteVenda = role === "gestor" || role === "moderador" || role === "supervisor" || role === "apresentador";
+  const canEditDate = role === "gestor" || role === "moderador" || role === "supervisor" || role === "apresentador";
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
