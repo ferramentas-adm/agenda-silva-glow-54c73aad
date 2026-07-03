@@ -513,6 +513,7 @@ export function CalendarContent() {
         .select("moderador_tipo")
         .eq("user_id", user!.id)
         .maybeSingle();
+      if (role === "apresentador") return "sdr" as const;
       return ((data as any)?.moderador_tipo as "sdr" | "closer" | null) ?? null;
     },
   });
