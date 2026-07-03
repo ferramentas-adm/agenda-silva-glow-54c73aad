@@ -94,7 +94,7 @@ export default function DashboardComercialPage() {
   const queryClient = useQueryClient();
   const { user, role } = useAuth();
   const isGestor = role === "gestor";
-  const isAdmin = role === "gestor" || role === "moderador" || role === "apresentador";
+  const isAdmin = role === "gestor" || (role === "moderador" || role === "apresentador");
   const isCloser = role === "closer";
   const allowedTabs = useMemo(
     () => isCloser

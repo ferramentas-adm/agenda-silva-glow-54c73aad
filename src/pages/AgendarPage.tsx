@@ -92,7 +92,7 @@ function AgendarPageInner() {
   
 
   const isReschedule = !!editId;
-  const isAdmin = role === "gestor" || role === "moderador" || role === "supervisor";
+  const isAdmin = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
 
   // Verifica se o usuário atual atua como SDR via override (profiles.is_sdr_override),
   // mesmo que tenha role 'closer'/'moderador'. SDRs por override seguem as MESMAS
@@ -310,7 +310,7 @@ function AgendarPageInner() {
 
   // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
   // Em 2ª reunião (closer ou admin marcando), o canal é herdado do 1º agendamento.
-  const channelTypeRequired = (isSdrRole || role === "moderador" || role === "gestor" || role === "supervisor") && !(isAdmin && adminAsSecondMeeting);
+  const channelTypeRequired = (isSdrRole || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor") && !(isAdmin && adminAsSecondMeeting);
 
   const handleSubmit = async () => {
     if (!lead || !date || !time || !user) return;
@@ -787,7 +787,7 @@ function AgendarPageInner() {
               ) : null}
 
 
-              {(role === "sdr" || role === "moderador" || role === "gestor" || role === "supervisor") && !(isAdmin && adminAsSecondMeeting) && (
+              {(role === "sdr" || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor") && !(isAdmin && adminAsSecondMeeting) && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
                     Tipo de Canal <span className="text-destructive">*</span>

@@ -75,7 +75,7 @@ export default function FollowUpsPage() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const isCloser = role === "closer";
-  const isManager = role === "gestor" || role === "moderador" || role === "supervisor" || role === "apresentador";
+  const isManager = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor" || role === "apresentador";
   const isGestor = role === "gestor";
   const [activeTab, setActiveTab] = useState<"em-acompanhamento" | "nao-acompanhados">("em-acompanhamento");
 

@@ -706,7 +706,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
-  const isManager = role === "gestor" || role === "moderador" || role === "supervisor";
+  const isManager = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
   const queryClient = useQueryClient();
 
   const [fuFilterCloser, setFuFilterCloser] = useState<string>("all");
@@ -812,7 +812,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           </span>
         </h2>
         <div className="flex items-center gap-3">
-          {(role === "gestor" || role === "moderador") && (
+          {(role === "gestor" || (role === "moderador" || role === "apresentador")) && (
             <Button size="sm" onClick={() => setAvulsaOpen(true)} className="gap-1">
               <PlusCircle className="h-4 w-4" />
               Nova venda avulsa
@@ -947,7 +947,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
 
       {/* Tendência preditiva — apenas para gestores/moderadores */}
-      {(role === "gestor" || role === "moderador" || role === "supervisor") && (
+      {(role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor") && (
         <TrendCardVendas closerId={isCloserView ? myCloserId : null} />
       )}
 

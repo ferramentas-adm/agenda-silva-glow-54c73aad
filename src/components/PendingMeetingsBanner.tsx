@@ -44,7 +44,7 @@ export default function PendingMeetingsBanner() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<PendingWithMeta | null>(null);
 
-  const isManager = role === "gestor" || role === "moderador" || role === "supervisor";
+  const isManager = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
   const canResolveInline = role === "sdr" || role === "closer";
 
   const bannerText = useMemo(() => {
