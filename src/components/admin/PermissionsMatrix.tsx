@@ -31,6 +31,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
   supervisor: "Supervisor",
   closer: "Closer",
   sdr: "SDR",
+  apresentador: "Apresentador",
 };
 
 export default function PermissionsMatrix() {
