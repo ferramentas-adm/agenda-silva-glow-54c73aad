@@ -865,8 +865,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           value={fmtBRL(coletadoTotal)}
           sub={
             totalVendasAvulsas > 0
-              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas})`
-              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`
+              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas}) — subido no período`
+              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} subida${totalVendas !== 1 ? "s" : ""} no período`
           }
           color="emerald"
           onClick={() =>
