@@ -20,7 +20,7 @@ import { useTheme } from "@/hooks/useTheme";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
-  const isModerador = role === "moderador" || role === "apresentador";
+  const isModerador = (role === "moderador" || role === "apresentador") || role === "apresentador";
   const location = useLocation();
   const queryClient = useQueryClient();
   const [blocksOpen, setBlocksOpen] = useState(false);
@@ -117,7 +117,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const roleLabel = role === "gestor" ? "Gestor" : role === "closer" ? "Closer" : role === "moderador" ? "Moderador" : role === "supervisor" ? "Supervisor" : "SDR";
+  const roleLabel = role === "gestor" ? "Gestor" : role === "closer" ? "Closer" : (role === "moderador" || role === "apresentador") ? "Moderador" : role === "supervisor" ? "Supervisor" : "SDR";
 
   return (
     <div className="flex min-h-screen">

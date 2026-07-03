@@ -117,7 +117,7 @@ function isCustomTimeConflicting(
 
 export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
   const { role } = useAuth();
-  const canForceFullSlot = role === "gestor" || role === "moderador" || role === "supervisor";
+  const canForceFullSlot = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
   const isSdr = role === "sdr";
   const isCloser = role === "closer";
   // Regra: SDR/Closer só são impedidos quando o slot está de fato lotado
