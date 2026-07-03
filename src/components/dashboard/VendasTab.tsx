@@ -919,14 +919,18 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         />
       </div>
 
-      {/* Vendas subidas hoje — independente do filtro de data */}
+      {/* Vendas subidas no período selecionado — independente do dia da reunião */}
       <VendasHojeCard
         vendas={vendasHoje}
         closerMap={closerMap}
         isCloserView={isCloserView}
         myCloserId={myCloserId}
         onOpenDrill={openDrill}
+        periodFrom={uploadPeriod.from}
+        periodTo={uploadPeriod.to}
+        dayLabel={dayLabel}
       />
+
 
       {/* Tendência preditiva — apenas para gestores/moderadores */}
       {(role === "gestor" || role === "moderador" || role === "supervisor") && (
