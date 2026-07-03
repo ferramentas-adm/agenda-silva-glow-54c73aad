@@ -222,25 +222,33 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     },
   });
 
-  // Vendas SUBIDAS HOJE (independente da data da reunião) — reflete o momento
-  // em que o closer registrou a venda no sistema. Útil para acompanhar o
-  // volume diário de fechamentos, incluindo follow-ups de dias anteriores.
+  // Vendas SUBIDAS no período selecionado (independente da data da reunião) —
+  // reflete o momento em que o closer registrou a venda no sistema.
+  const uploadPeriod = useMemo(() => {
+    const from = isRange && rangeFromStr ? rangeFromStr : dateStr;
+    const to = isRange && rangeToStr ? rangeToStr : dateStr;
+    // BRT = UTC-3. Janela do período em UTC.
+    const nextYmd = (ymd: string) =>
+      format(new Date(new Date(ymd + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
+    return {
+      from,
+      to,
+      startUtc: `${from}T03:00:00.000Z`,
+      endUtc: `${nextYmd(to)}T03:00:00.000Z`,
+    };
+  }, [isRange, rangeFromStr, rangeToStr, dateStr]);
+
   const { data: vendasHoje = [] } = useQuery<
     { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; scheduled_date: string; meeting_reason: string | null; closer_id: string | null }[]
   >({
-    queryKey: ["vendas-uploaded-today"],
+    queryKey: ["vendas-uploaded-period", uploadPeriod.startUtc, uploadPeriod.endUtc],
     queryFn: async () => {
-      const todayBR = brTodayYMD();
-      // BRT = UTC-3 (sem DST). Janela do dia BRT em UTC.
-      const startUtc = `${todayBR}T03:00:00.000Z`;
-      const nextYmd = format(new Date(new Date(todayBR + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
-      const endUtc = `${nextYmd}T03:00:00.000Z`;
       const { data, error } = await supabase
         .from("vendas")
         .select("agendamento_id, valor, follow_up, segunda_reuniao, updated_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
         .eq("vendeu", true)
-        .gte("updated_at", startUtc)
-        .lt("updated_at", endUtc)
+        .gte("updated_at", uploadPeriod.startUtc)
+        .lt("updated_at", uploadPeriod.endUtc)
         .is("agendamentos.deleted_at", null);
       if (error) throw error;
       return ((data ?? []) as any[]).map((v) => ({
