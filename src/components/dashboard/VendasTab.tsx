@@ -320,6 +320,17 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // Vendas do período selecionado (dia único OU intervalo). Para closer logado,
   // aplica filtro adicional para mostrar apenas seus próprios números.
+  //
+  // ATRIBUIÇÃO POR DATA:
+  //  - VENDIDAS: usam a data em que o closer SUBIU a venda no sistema
+  //    (updated_at em BRT). Ou seja, uma venda registrada hoje aparece hoje
+  //    mesmo que a reunião tenha sido outro dia.
+  //  - NÃO FECHOU: continuam atribuídas à data da reunião (scheduled_date),
+  //    pois alimentam Motivos de Não Fechamento (visão operacional da call).
+  const inRangeYmd = (ymd: string) => {
+    if (isRange && rangeFromStr && rangeToStr) return ymd >= rangeFromStr && ymd <= rangeToStr;
+    return ymd === dateStr;
+  };
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
@@ -327,12 +338,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       if (isCloserView) {
         if (!myCloserId || ag?.closer_id !== myCloserId) return false;
       }
+      if (v.vendeu) {
+        // Data em que a venda foi subida (BRT).
+        return inRangeYmd(brDateOf(v.updated_at));
+      }
       const cd = closingDateOf(v);
       if (!cd) return false;
-      if (isRange && rangeFromStr && rangeToStr) {
-        return cd >= rangeFromStr && cd <= rangeToStr;
-      }
-      return cd === dateStr;
+      return inRangeYmd(cd);
     });
   }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId]);
 
@@ -821,7 +833,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={Target}
           label="Taxa de Conversão"
           value={`${taxaConversao.toFixed(1)}%`}
-          sub={`${totalVendasConv} de ${totalReunioesConv} realizadas (excl. interrompidas)`}
+          sub={`${totalVendasConv} de ${totalReunioesConv} realizadas (por data da reunião)`}
           color="primary"
           onClick={() =>
             openDrill(
@@ -853,8 +865,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           value={fmtBRL(coletadoTotal)}
           sub={
             totalVendasAvulsas > 0
-              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas})`
-              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""}`
+              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas}) — subido no período`
+              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} subida${totalVendas !== 1 ? "s" : ""} no período`
           }
           color="emerald"
           onClick={() =>
