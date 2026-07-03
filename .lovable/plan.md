@@ -1,54 +1,33 @@
-## Diagnóstico
+## Objetivo
+Criar uma nova função **Apresentador** com acesso de **somente visualização** a todas as áreas do sistema (Calendário, Reuniões, Follow-ups, Dashboard Comercial, Dashboard Leads, Pagamentos, Auditoria e Configurações). Nenhuma ação de escrita (criar, editar, excluir, atribuir, mover status, etc.) será permitida — nem no UI nem no banco.
 
-Sim, entendi exatamente. Hoje a aba **Vendas** (`src/components/dashboard/VendasTab.tsx`) atribui vendas fechadas ao dia em que o closer subiu a venda (`updated_at` em BRT), ignorando o campo **"Data da venda"** (`vendas.closed_at`) — que é justamente o override manual editado no card do lead (ícone de lápis) via `MetricDrilldownDialog`.
+## Escopo
+- **Somente a função** será criada agora. A criação de usuários Apresentadores será feita depois pela tela de Administração usando a função já existente.
+- Não altera nenhuma função existente (gestor, moderador, supervisor, closer, sdr).
 
-Trecho responsável (linhas 334-349 de `VendasTab.tsx`):
+## Alterações
 
-```ts
-if (v.vendeu) {
-  // Data em que a venda foi subida (BRT).
-  return inRangeYmd(brDateOf(v.updated_at));   // ← ignora closed_at
-}
-const cd = closingDateOf(v);
-return inRangeYmd(cd);
-```
+### 1. Banco de dados (migração)
+- Adicionar `'apresentador'` ao enum `app_role`.
+- Popular `role_permissions` para a nova role: apenas permissões de **visualização** ligadas — `view_calendar`, `view_meetings`, `view_follow_ups`, `view_dashboard_comercial`, `view_dashboard_leads`, `view_payments`, `view_admin` (para conseguir abrir a matriz em modo leitura? — **não**, deixaremos `view_admin=false` para não expor configurações), `view_audit_logs`. Todas as permissões de ação (`manage_tasks`, `manage_payments`, `create_appointment`, `edit_appointment_time`, `assign_closer`) ficam **desligadas**.
+- Ajustar políticas RLS para dar leitura ao apresentador nas tabelas relevantes (`agendamentos`, `vendas`, `pagamentos`, `closers`, `profiles`, `tasks`, `lead_metrics`, `audit_logs`, `notifications`, `closer_error_reviews`, `closer_blocks`) sem permitir INSERT/UPDATE/DELETE. Concretamente: adicionar policies `FOR SELECT USING (has_role(auth.uid(),'apresentador'))` onde a leitura hoje é restrita a gestor/moderador/supervisor.
 
-Por isso a venda da Tamiris, editada para **02/07**, continua caindo em **03/07** (dia do upload).
+### 2. Frontend
+- **`src/contexts/AuthContext.tsx`**: incluir `"apresentador"` no tipo `AppRole` e expor `isApresentador`.
+- **`src/hooks/usePermissions.ts`**: adicionar `"apresentador"` em `AppRole` e em `ALL_ROLES` (para aparecer na matriz).
+- **`src/components/admin/PermissionsMatrix.tsx`**: adicionar rótulo `Apresentador` em `ROLE_LABELS`. A matriz já renderiza dinamicamente a partir de `ALL_ROLES`, então a coluna surge sozinha.
+- **`supabase/functions/create-user/index.ts`**: aceitar `"apresentador"` na lista de roles válidas; bloquear criação de usuários dessa função por não-gestores? Vamos manter a mesma regra: moderador pode criar Apresentador (só gestor não pode ser criado por moderador). Não cria linha em `closers`.
+- **`src/pages/AdminPage.tsx`** (formulário de novo usuário): adicionar `"Apresentador"` como opção do select de função.
+- Revisar componentes que checam role diretamente (`isGestor || isModerador || isSupervisor`) em botões de ação para garantir que o Apresentador **não** veja botões de escrita mesmo se a permissão de visualização estiver ligada. Alvos principais já usam `useCan(...)` da matriz, então a maior parte é automática; ajustes pontuais apenas onde a role é checada "na unha".
 
-Outros pontos do arquivo (motivos de não fechamento, drilldowns) já usam `closingDateOf`, que respeita `closed_at`. Fora daí, `closed_at` é usado corretamente em `AgendasPorCanalPanel`, `MetricDrilldownDialog` e no CSV.
+### 3. Memória do projeto
+Atualizar `mem://auth/roles-and-users` com a nova função Apresentador (somente leitura em toda a ferramenta, sem criar/editar/excluir nada).
 
-## Mudança proposta
+## Fora do escopo
+- Criar um usuário Apresentador específico (será feito pela tela de Administração depois).
+- Alterar permissões das funções existentes.
 
-Em `src/components/dashboard/VendasTab.tsx`, no branch `v.vendeu` do `vendasDia`:
-
-- Se o usuário editou `closed_at`, usar essa data.
-- Caso contrário, manter o comportamento atual (data em que a venda foi subida — `brDateOf(v.updated_at)`).
-
-Ou seja, trocar:
-
-```ts
-if (v.vendeu) {
-  return inRangeYmd(brDateOf(v.updated_at));
-}
-```
-
-por:
-
-```ts
-if (v.vendeu) {
-  const effective = v.closed_at ?? brDateOf(v.updated_at);
-  return inRangeYmd(effective);
-}
-```
-
-## Efeito
-
-- Venda subida hoje sem edição → continua contabilizada hoje (nada muda no fluxo normal).
-- Venda cuja "Data da venda" foi editada para outro dia → passa a contar no dia escolhido, em todos os cards da aba Vendas (Total de vendas, Coletado, Faturado, %1ª call/Follow, drilldowns).
-- Fora do escopo: painéis de "Métricas" do Dashboard Comercial que contam vendas pelo `scheduled_date` do agendamento não são afetados — se você quiser que esses também respeitem `closed_at`, me diga que amplio o escopo.
-
-## Validação
-
-- Recarregar a aba Vendas no dia **02/07** com filtro no closer da Tamiris: a venda de R$ 10.000 deve aparecer.
-- No dia **03/07**: a venda não deve mais aparecer.
-- Rodar `tsgo` para garantir que não quebrou tipos.
+## Verificação
+- Migração aplicada e enum atualizado.
+- Ao logar como Apresentador: menus de todas as áreas visíveis, dados carregam, botões "Novo", "Editar", "Excluir", "Atribuir", "Registrar venda", "Marcar como…" ficam ocultos ou desabilitados.
+- Tentativa direta de INSERT/UPDATE via API falha por RLS.

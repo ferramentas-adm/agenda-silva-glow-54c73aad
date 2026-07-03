@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/services/auditLog";
 import type { User, Session } from "@supabase/supabase-js";
 
-type AppRole = "sdr" | "gestor" | "closer" | "moderador" | "supervisor";
+type AppRole = "sdr" | "gestor" | "closer" | "moderador" | "supervisor" | "apresentador";
 
 interface AuthContextType {
   user: User | null;
@@ -16,6 +16,7 @@ interface AuthContextType {
   isGestor: boolean;
   isModerador: boolean;
   isSupervisor: boolean;
+  isApresentador: boolean;
   clearMustChangePassword: () => void;
 }
 
@@ -116,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, session, role, loading, mustChangePassword,
-      signIn, signOut, isGestor: role === "gestor", isModerador: role === "moderador", isSupervisor: role === "supervisor", clearMustChangePassword,
+      signIn, signOut, isGestor: role === "gestor", isModerador: role === "moderador", isSupervisor: role === "supervisor", isApresentador: role === "apresentador", clearMustChangePassword,
     }}>
       {children}
     </AuthContext.Provider>

@@ -118,7 +118,7 @@ function UsersSection() {
   const [filterRole, setFilterRole] = useState<string>("all");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"sdr" | "gestor" | "closer" | "moderador" | "supervisor">("sdr");
+  const [role, setRole] = useState<"sdr" | "gestor" | "closer" | "moderador" | "supervisor" | "apresentador">("sdr");
   const [creating, setCreating] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
@@ -551,6 +551,7 @@ function UsersSection() {
                 <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="moderador">Moderador</SelectItem>
                 <SelectItem value="supervisor">Supervisor</SelectItem>
+                <SelectItem value="apresentador">Apresentador</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -607,6 +608,7 @@ function UsersSection() {
               <SelectItem value="gestor">Administrador</SelectItem>
               <SelectItem value="moderador">Moderador</SelectItem>
               <SelectItem value="supervisor">Supervisor</SelectItem>
+              <SelectItem value="apresentador">Apresentador</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -969,6 +971,7 @@ function UsersSection() {
                 <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="moderador">Moderador</SelectItem>
                 <SelectItem value="supervisor">Supervisor</SelectItem>
+                <SelectItem value="apresentador">Apresentador</SelectItem>
               </SelectContent>
             </Select>
           </div>

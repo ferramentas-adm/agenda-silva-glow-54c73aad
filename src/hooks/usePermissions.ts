@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type AppRole = "sdr" | "gestor" | "closer" | "moderador" | "supervisor";
+export type AppRole = "sdr" | "gestor" | "closer" | "moderador" | "supervisor" | "apresentador";
 
 export type PermissionKey =
   | "view_calendar"
@@ -35,7 +35,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   assign_closer:           { label: "Atribuir Closer",       description: "Acesso à fila 'Aguardando atribuição' e permissão para atribuir um Closer a uma reunião." },
 };
 
-export const ALL_ROLES: AppRole[] = ["gestor", "moderador", "supervisor", "closer", "sdr"];
+export const ALL_ROLES: AppRole[] = ["gestor", "moderador", "supervisor", "closer", "sdr", "apresentador"];
 
 interface RolePermissionRow {
   role: AppRole;
