@@ -222,25 +222,33 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     },
   });
 
-  // Vendas SUBIDAS HOJE (independente da data da reunião) — reflete o momento
-  // em que o closer registrou a venda no sistema. Útil para acompanhar o
-  // volume diário de fechamentos, incluindo follow-ups de dias anteriores.
+  // Vendas SUBIDAS no período selecionado (independente da data da reunião) —
+  // reflete o momento em que o closer registrou a venda no sistema.
+  const uploadPeriod = useMemo(() => {
+    const from = isRange && rangeFromStr ? rangeFromStr : dateStr;
+    const to = isRange && rangeToStr ? rangeToStr : dateStr;
+    // BRT = UTC-3. Janela do período em UTC.
+    const nextYmd = (ymd: string) =>
+      format(new Date(new Date(ymd + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
+    return {
+      from,
+      to,
+      startUtc: `${from}T03:00:00.000Z`,
+      endUtc: `${nextYmd(to)}T03:00:00.000Z`,
+    };
+  }, [isRange, rangeFromStr, rangeToStr, dateStr]);
+
   const { data: vendasHoje = [] } = useQuery<
     { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; scheduled_date: string; meeting_reason: string | null; closer_id: string | null }[]
   >({
-    queryKey: ["vendas-uploaded-today"],
+    queryKey: ["vendas-uploaded-period", uploadPeriod.startUtc, uploadPeriod.endUtc],
     queryFn: async () => {
-      const todayBR = brTodayYMD();
-      // BRT = UTC-3 (sem DST). Janela do dia BRT em UTC.
-      const startUtc = `${todayBR}T03:00:00.000Z`;
-      const nextYmd = format(new Date(new Date(todayBR + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
-      const endUtc = `${nextYmd}T03:00:00.000Z`;
       const { data, error } = await supabase
         .from("vendas")
         .select("agendamento_id, valor, follow_up, segunda_reuniao, updated_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
         .eq("vendeu", true)
-        .gte("updated_at", startUtc)
-        .lt("updated_at", endUtc)
+        .gte("updated_at", uploadPeriod.startUtc)
+        .lt("updated_at", uploadPeriod.endUtc)
         .is("agendamentos.deleted_at", null);
       if (error) throw error;
       return ((data ?? []) as any[]).map((v) => ({
@@ -911,14 +919,18 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         />
       </div>
 
-      {/* Vendas subidas hoje — independente do filtro de data */}
+      {/* Vendas subidas no período selecionado — independente do dia da reunião */}
       <VendasHojeCard
         vendas={vendasHoje}
         closerMap={closerMap}
         isCloserView={isCloserView}
         myCloserId={myCloserId}
         onOpenDrill={openDrill}
+        periodFrom={uploadPeriod.from}
+        periodTo={uploadPeriod.to}
+        dayLabel={dayLabel}
       />
+
 
       {/* Tendência preditiva — apenas para gestores/moderadores */}
       {(role === "gestor" || role === "moderador" || role === "supervisor") && (
@@ -1255,20 +1267,27 @@ function VendasHojeCard({
   isCloserView,
   myCloserId,
   onOpenDrill,
+  periodFrom,
+  periodTo,
+  dayLabel,
 }: {
   vendas: VendaHojeItem[];
   closerMap: Map<string, string>;
   isCloserView: boolean;
   myCloserId: string | null;
   onOpenDrill: (title: string, ids: string[], subtitle?: string) => void;
+  periodFrom: string;
+  periodTo: string;
+  dayLabel: string;
 }) {
-  const todayBR = brTodayYMD();
   const filtered = useMemo(
     () => (isCloserView ? vendas.filter((v) => v.closer_id && v.closer_id === myCloserId) : vendas),
     [vendas, isCloserView, myCloserId],
   );
+  // Call = reunião foi no mesmo período em que a venda foi registrada e não é follow-up/2ª.
+  const inPeriod = (ymd: string) => ymd >= periodFrom && ymd <= periodTo;
   const isFollow = (v: VendaHojeItem) =>
-    v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || v.scheduled_date !== todayBR;
+    v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || !inPeriod(v.scheduled_date);
   const total = filtered.length;
   const followItems = filtered.filter(isFollow);
   const callItems = filtered.filter((v) => !isFollow(v));
@@ -1291,7 +1310,7 @@ function VendasHojeCard({
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          Vendas registradas hoje
+          Vendas registradas — {dayLabel}
           <span className="text-xs font-normal text-muted-foreground">
             (independente do dia da reunião)
           </span>
@@ -1300,37 +1319,38 @@ function VendasHojeCard({
       <CardContent>
         {total === 0 ? (
           <p className="text-sm text-muted-foreground italic py-4 text-center">
-            Nenhuma venda registrada hoje.
+            Nenhuma venda registrada no período.
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <button
               type="button"
-              onClick={() => onOpenDrill("Vendas registradas hoje", filtered.map((v) => v.agendamento_id), fmtBRL(receita))}
+              onClick={() => onOpenDrill(`Vendas registradas — ${dayLabel}`, filtered.map((v) => v.agendamento_id), fmtBRL(receita))}
               className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-left hover:shadow-md transition-all"
             >
-              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Total subidas hoje</div>
+              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Total subidas no período</div>
               <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{total}</div>
               <div className="text-xs text-muted-foreground">{fmtBRL(receita)} coletado</div>
             </button>
             <button
               type="button"
-              onClick={() => onOpenDrill("Vendas de 1ª call subidas hoje", callItems.map((v) => v.agendamento_id))}
+              onClick={() => onOpenDrill(`Vendas de 1ª call — ${dayLabel}`, callItems.map((v) => v.agendamento_id))}
               className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
             >
-              <div className="text-xs font-medium">De call (reunião hoje)</div>
+              <div className="text-xs font-medium">De call (reunião no período)</div>
               <div className="text-2xl font-bold">{callItems.length}</div>
-              <div className="text-xs text-muted-foreground">Fechadas no mesmo dia</div>
+              <div className="text-xs text-muted-foreground">Fechadas no mesmo dia da call</div>
             </button>
             <button
               type="button"
-              onClick={() => onOpenDrill("Vendas de follow-up subidas hoje", followItems.map((v) => v.agendamento_id))}
+              onClick={() => onOpenDrill(`Vendas de follow-up — ${dayLabel}`, followItems.map((v) => v.agendamento_id))}
               className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
             >
               <div className="text-xs font-medium">De follow-up / 2ª reunião</div>
               <div className="text-2xl font-bold">{followItems.length}</div>
               <div className="text-xs text-muted-foreground">Reunião em outro dia</div>
             </button>
+
             <div className="rounded-lg border p-3">
               <div className="text-xs font-medium mb-1">Por closer</div>
               {porCloser.length === 0 ? (
