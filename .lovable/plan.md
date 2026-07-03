@@ -1,53 +1,54 @@
-## Objetivo
-Expor as vendas do sistema via endpoint autenticado por API key, para consumo externo.
+## Diagnóstico
 
-## Componentes
+Sim, entendi exatamente. Hoje a aba **Vendas** (`src/components/dashboard/VendasTab.tsx`) atribui vendas fechadas ao dia em que o closer subiu a venda (`updated_at` em BRT), ignorando o campo **"Data da venda"** (`vendas.closed_at`) — que é justamente o override manual editado no card do lead (ícone de lápis) via `MetricDrilldownDialog`.
 
-### 1. Edge Function `silva-vendas`
-Arquivo: `supabase/functions/silva-vendas/index.ts`
+Trecho responsável (linhas 334-349 de `VendasTab.tsx`):
 
-- Método: `GET` + `OPTIONS` (CORS preflight)
-- CORS aberto: `*`, headers `authorization, x-api-key, content-type`, métodos `GET, OPTIONS`
-- Auth: valida header `X-API-KEY` contra `Deno.env.get("SILVA_VENDAS_API_KEY")`. Não bateu → 401.
-- Query params:
-  - `since` (YYYY-MM-DD) → filtra `agendamentos.scheduled_date >= since`
-  - `vendeu` (`true`/`false`, default `true`)
-  - `limit` (número, default sem limite)
-- Cliente Supabase criado com `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (bypassa RLS)
-- Query: `vendas` com `select` aninhado de `agendamentos(...,closers(name,email))`, ordenada por `created_at desc`
-- Mapeia cada linha para o formato pedido:
-  - `data`: converte `agendamentos.scheduled_date` de YYYY-MM-DD para DD/MM/YYYY; se null, usa `venda.created_at` (também DD/MM/YYYY)
-  - `hora_reuniao`: `agendamentos.scheduled_time` (HH:mm)
-  - Campos diretos: `valor`, `valor_total_projeto`, `is_venda_avulsa` (do agendamento), `is_5k` (do agendamento), `produto`, `resumo_venda`, `segunda_reuniao`, `follow_up`, `motivo_nao_fechamento`, `agendamento_id`
-  - `closer` / `closer_email`: via join
-- `total_faturado`: soma de `valor_total_projeto ?? valor ?? 0`
-- Resposta:
-  ```json
-  { "count", "total_faturado", "sincronizado_em": <ISO>, "vendas": [...] }
-  ```
-
-### 2. Config
-Adicionar em `supabase/config.toml`:
+```ts
+if (v.vendeu) {
+  // Data em que a venda foi subida (BRT).
+  return inRangeYmd(brDateOf(v.updated_at));   // ← ignora closed_at
+}
+const cd = closingDateOf(v);
+return inRangeYmd(cd);
 ```
-[functions.silva-vendas]
-verify_jwt = false
+
+Por isso a venda da Tamiris, editada para **02/07**, continua caindo em **03/07** (dia do upload).
+
+Outros pontos do arquivo (motivos de não fechamento, drilldowns) já usam `closingDateOf`, que respeita `closed_at`. Fora daí, `closed_at` é usado corretamente em `AgendasPorCanalPanel`, `MetricDrilldownDialog` e no CSV.
+
+## Mudança proposta
+
+Em `src/components/dashboard/VendasTab.tsx`, no branch `v.vendeu` do `vendasDia`:
+
+- Se o usuário editou `closed_at`, usar essa data.
+- Caso contrário, manter o comportamento atual (data em que a venda foi subida — `brDateOf(v.updated_at)`).
+
+Ou seja, trocar:
+
+```ts
+if (v.vendeu) {
+  return inRangeYmd(brDateOf(v.updated_at));
+}
 ```
-(a auth é via X-API-KEY, não JWT)
 
-### 3. Secret
-Registrar `SILVA_VENDAS_API_KEY = hXLlm0GLvWDGHUA_UAJJTQlC6Dd96GaEmDLzbMhxraw` via `set_secret` (valor já conhecido, sem formulário).
+por:
 
-⚠️ Observação: enviar uma API key em texto no chat é considerado exposição. Recomendo trocá-la depois. Posso rotacionar quando quiser.
+```ts
+if (v.vendeu) {
+  const effective = v.closed_at ?? brDateOf(v.updated_at);
+  return inRangeYmd(effective);
+}
+```
 
-### 4. Deploy + teste
-- Deploy da função via `deploy_edge_functions`
-- Teste com curl:
-  ```
-  curl -H "X-API-KEY: <key>" \
-       "https://jrnyccjhsxcggmgupvzp.supabase.co/functions/v1/silva-vendas?limit=3"
-  ```
+## Efeito
 
-## URL final
-`https://jrnyccjhsxcggmgupvzp.supabase.co/functions/v1/silva-vendas`
+- Venda subida hoje sem edição → continua contabilizada hoje (nada muda no fluxo normal).
+- Venda cuja "Data da venda" foi editada para outro dia → passa a contar no dia escolhido, em todos os cards da aba Vendas (Total de vendas, Coletado, Faturado, %1ª call/Follow, drilldowns).
+- Fora do escopo: painéis de "Métricas" do Dashboard Comercial que contam vendas pelo `scheduled_date` do agendamento não são afetados — se você quiser que esses também respeitem `closed_at`, me diga que amplio o escopo.
 
-Aprova pra eu implementar?
+## Validação
+
+- Recarregar a aba Vendas no dia **02/07** com filtro no closer da Tamiris: a venda de R$ 10.000 deve aparecer.
+- No dia **03/07**: a venda não deve mais aparecer.
+- Rodar `tsgo` para garantir que não quebrou tipos.
