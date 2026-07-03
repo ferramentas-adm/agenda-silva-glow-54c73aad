@@ -20,7 +20,7 @@ import { useTheme } from "@/hooks/useTheme";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
-  const isModerador = role === "moderador";
+  const isModerador = role === "moderador" || role === "apresentador";
   const location = useLocation();
   const queryClient = useQueryClient();
   const [blocksOpen, setBlocksOpen] = useState(false);
