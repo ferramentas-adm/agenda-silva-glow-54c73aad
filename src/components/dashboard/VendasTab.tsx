@@ -1267,20 +1267,27 @@ function VendasHojeCard({
   isCloserView,
   myCloserId,
   onOpenDrill,
+  periodFrom,
+  periodTo,
+  dayLabel,
 }: {
   vendas: VendaHojeItem[];
   closerMap: Map<string, string>;
   isCloserView: boolean;
   myCloserId: string | null;
   onOpenDrill: (title: string, ids: string[], subtitle?: string) => void;
+  periodFrom: string;
+  periodTo: string;
+  dayLabel: string;
 }) {
-  const todayBR = brTodayYMD();
   const filtered = useMemo(
     () => (isCloserView ? vendas.filter((v) => v.closer_id && v.closer_id === myCloserId) : vendas),
     [vendas, isCloserView, myCloserId],
   );
+  // Call = reunião foi no mesmo período em que a venda foi registrada e não é follow-up/2ª.
+  const inPeriod = (ymd: string) => ymd >= periodFrom && ymd <= periodTo;
   const isFollow = (v: VendaHojeItem) =>
-    v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || v.scheduled_date !== todayBR;
+    v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || !inPeriod(v.scheduled_date);
   const total = filtered.length;
   const followItems = filtered.filter(isFollow);
   const callItems = filtered.filter((v) => !isFollow(v));
@@ -1303,7 +1310,7 @@ function VendasHojeCard({
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          Vendas registradas hoje
+          Vendas registradas — {dayLabel}
           <span className="text-xs font-normal text-muted-foreground">
             (independente do dia da reunião)
           </span>
@@ -1312,37 +1319,38 @@ function VendasHojeCard({
       <CardContent>
         {total === 0 ? (
           <p className="text-sm text-muted-foreground italic py-4 text-center">
-            Nenhuma venda registrada hoje.
+            Nenhuma venda registrada no período.
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <button
               type="button"
-              onClick={() => onOpenDrill("Vendas registradas hoje", filtered.map((v) => v.agendamento_id), fmtBRL(receita))}
+              onClick={() => onOpenDrill(`Vendas registradas — ${dayLabel}`, filtered.map((v) => v.agendamento_id), fmtBRL(receita))}
               className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-left hover:shadow-md transition-all"
             >
-              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Total subidas hoje</div>
+              <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Total subidas no período</div>
               <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{total}</div>
               <div className="text-xs text-muted-foreground">{fmtBRL(receita)} coletado</div>
             </button>
             <button
               type="button"
-              onClick={() => onOpenDrill("Vendas de 1ª call subidas hoje", callItems.map((v) => v.agendamento_id))}
+              onClick={() => onOpenDrill(`Vendas de 1ª call — ${dayLabel}`, callItems.map((v) => v.agendamento_id))}
               className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
             >
-              <div className="text-xs font-medium">De call (reunião hoje)</div>
+              <div className="text-xs font-medium">De call (reunião no período)</div>
               <div className="text-2xl font-bold">{callItems.length}</div>
-              <div className="text-xs text-muted-foreground">Fechadas no mesmo dia</div>
+              <div className="text-xs text-muted-foreground">Fechadas no mesmo dia da call</div>
             </button>
             <button
               type="button"
-              onClick={() => onOpenDrill("Vendas de follow-up subidas hoje", followItems.map((v) => v.agendamento_id))}
+              onClick={() => onOpenDrill(`Vendas de follow-up — ${dayLabel}`, followItems.map((v) => v.agendamento_id))}
               className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
             >
               <div className="text-xs font-medium">De follow-up / 2ª reunião</div>
               <div className="text-2xl font-bold">{followItems.length}</div>
               <div className="text-xs text-muted-foreground">Reunião em outro dia</div>
             </button>
+
             <div className="rounded-lg border p-3">
               <div className="text-xs font-medium mb-1">Por closer</div>
               {porCloser.length === 0 ? (
