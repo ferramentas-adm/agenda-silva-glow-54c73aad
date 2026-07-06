@@ -1281,6 +1281,8 @@ type VendaHojeItem = {
   scheduled_date: string;
   meeting_reason: string | null;
   closer_id: string | null;
+  closed_at: string | null;
+  updated_at: string;
 };
 
 function VendasHojeCard({
@@ -1302,12 +1304,23 @@ function VendasHojeCard({
   periodTo: string;
   dayLabel: string;
 }) {
+  // Data efetiva de "subida" da venda em BRT:
+  //   - Se houver override manual (closed_at), respeita a data escolhida pelo gestor.
+  //   - Caso contrário, usa updated_at (momento em que a venda foi registrada).
+  const uploadDateOf = (v: VendaHojeItem) => (v.closed_at ? v.closed_at : brDateOf(v.updated_at));
+  const inPeriod = (ymd: string) => ymd >= periodFrom && ymd <= periodTo;
+
   const filtered = useMemo(
-    () => (isCloserView ? vendas.filter((v) => v.closer_id && v.closer_id === myCloserId) : vendas),
-    [vendas, isCloserView, myCloserId],
+    () =>
+      vendas.filter((v) => {
+        if (isCloserView && (!v.closer_id || v.closer_id !== myCloserId)) return false;
+        return inPeriod(uploadDateOf(v));
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vendas, isCloserView, myCloserId, periodFrom, periodTo],
   );
   // Call = reunião foi no mesmo período em que a venda foi registrada e não é follow-up/2ª.
-  const inPeriod = (ymd: string) => ymd >= periodFrom && ymd <= periodTo;
+
   const isFollow = (v: VendaHojeItem) =>
     v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || !inPeriod(v.scheduled_date);
   const total = filtered.length;
