@@ -1,33 +1,28 @@
-## Objetivo
-Criar uma nova função **Apresentador** com acesso de **somente visualização** a todas as áreas do sistema (Calendário, Reuniões, Follow-ups, Dashboard Comercial, Dashboard Leads, Pagamentos, Auditoria e Configurações). Nenhuma ação de escrita (criar, editar, excluir, atribuir, mover status, etc.) será permitida — nem no UI nem no banco.
+## Problema
 
-## Escopo
-- **Somente a função** será criada agora. A criação de usuários Apresentadores será feita depois pela tela de Administração usando a função já existente.
-- Não altera nenhuma função existente (gestor, moderador, supervisor, closer, sdr).
+O card **"Vendas registradas — Total subidas no período"** atribui cada venda à data em que a linha foi atualizada (`vendas.updated_at`). Quando o gestor edita manualmente a "Data da venda" (que grava `vendas.closed_at`), o `updated_at` passa a ser o momento da edição, então a venda continua "subindo" no dia da edição em vez do dia escolhido.
 
-## Alterações
+Foi o que aconteceu com a Tamiris Sousa: o card **Vendas Fechadas** (que já respeita `closed_at`) migrou para 02/07, mas o card **Total subidas no período** manteve a venda em 03/07.
 
-### 1. Banco de dados (migração)
-- Adicionar `'apresentador'` ao enum `app_role`.
-- Popular `role_permissions` para a nova role: apenas permissões de **visualização** ligadas — `view_calendar`, `view_meetings`, `view_follow_ups`, `view_dashboard_comercial`, `view_dashboard_leads`, `view_payments`, `view_admin` (para conseguir abrir a matriz em modo leitura? — **não**, deixaremos `view_admin=false` para não expor configurações), `view_audit_logs`. Todas as permissões de ação (`manage_tasks`, `manage_payments`, `create_appointment`, `edit_appointment_time`, `assign_closer`) ficam **desligadas**.
-- Ajustar políticas RLS para dar leitura ao apresentador nas tabelas relevantes (`agendamentos`, `vendas`, `pagamentos`, `closers`, `profiles`, `tasks`, `lead_metrics`, `audit_logs`, `notifications`, `closer_error_reviews`, `closer_blocks`) sem permitir INSERT/UPDATE/DELETE. Concretamente: adicionar policies `FOR SELECT USING (has_role(auth.uid(),'apresentador'))` onde a leitura hoje é restrita a gestor/moderador/supervisor.
+## Correção
 
-### 2. Frontend
-- **`src/contexts/AuthContext.tsx`**: incluir `"apresentador"` no tipo `AppRole` e expor `isApresentador`.
-- **`src/hooks/usePermissions.ts`**: adicionar `"apresentador"` em `AppRole` e em `ALL_ROLES` (para aparecer na matriz).
-- **`src/components/admin/PermissionsMatrix.tsx`**: adicionar rótulo `Apresentador` em `ROLE_LABELS`. A matriz já renderiza dinamicamente a partir de `ALL_ROLES`, então a coluna surge sozinha.
-- **`supabase/functions/create-user/index.ts`**: aceitar `"apresentador"` na lista de roles válidas; bloquear criação de usuários dessa função por não-gestores? Vamos manter a mesma regra: moderador pode criar Apresentador (só gestor não pode ser criado por moderador). Não cria linha em `closers`.
-- **`src/pages/AdminPage.tsx`** (formulário de novo usuário): adicionar `"Apresentador"` como opção do select de função.
-- Revisar componentes que checam role diretamente (`isGestor || isModerador || isSupervisor`) em botões de ação para garantir que o Apresentador **não** veja botões de escrita mesmo se a permissão de visualização estiver ligada. Alvos principais já usam `useCan(...)` da matriz, então a maior parte é automática; ajustes pontuais apenas onde a role é checada "na unha".
+Fazer o card "Total subidas no período" respeitar a `closed_at` quando ela existir, exatamente como já faz o card "Vendas Fechadas". Se não houver `closed_at`, mantém o comportamento atual (data em que a venda foi registrada no sistema).
 
-### 3. Memória do projeto
-Atualizar `mem://auth/roles-and-users` com a nova função Apresentador (somente leitura em toda a ferramenta, sem criar/editar/excluir nada).
+### Alterações em `src/components/dashboard/VendasTab.tsx`
 
-## Fora do escopo
-- Criar um usuário Apresentador específico (será feito pela tela de Administração depois).
-- Alterar permissões das funções existentes.
+1. **Query `vendas-uploaded-period`** (linhas ~241-266)
+   - Selecionar também `closed_at`.
+   - Trocar o filtro `updated_at BETWEEN ...` por um filtro `OR` que aceite a venda se `closed_at` estiver no período **ou** (na ausência de `closed_at`) o `updated_at` estiver no período. Isso garante que vendas com data editada para dentro/fora do período sejam incluídas/excluídas corretamente.
+   - Retornar `closed_at` no shape do item.
 
-## Verificação
-- Migração aplicada e enum atualizado.
-- Ao logar como Apresentador: menus de todas as áreas visíveis, dados carregam, botões "Novo", "Editar", "Excluir", "Atribuir", "Registrar venda", "Marcar como…" ficam ocultos ou desabilitados.
-- Tentativa direta de INSERT/UPDATE via API falha por RLS.
+2. **Filtro client-side (dentro de `VendasHojeCard`)**
+   - Calcular a "data efetiva de subida" (BRT `yyyy-MM-dd`) como: `closed_at` se presente, senão `brDateOf(updated_at)`.
+   - Manter apenas itens cuja data efetiva caia em `[periodFrom, periodTo]`. Isso corrige tanto falsos-positivos (edição moveu venda para outra data) quanto falsos-negativos (venda editada para dentro do período).
+
+3. **Recalcular métricas derivadas** do card usando o mesmo conjunto filtrado (total, receita, "de call" vs "follow-up", "por closer"). Nenhuma outra tela é afetada.
+
+### Detalhe técnico
+
+- Comparação de datas continua em BRT via `brDateOf` (já usado no arquivo) para evitar deslocamento de fuso.
+- A regra "De call (reunião no período)" continua comparando `scheduled_date` com o período — não muda.
+- Nenhuma alteração no schema, RLS ou em outros cards (o "Vendas Fechadas" já usa `closingDateOf`, que respeita `closed_at`).
