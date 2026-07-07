@@ -286,9 +286,14 @@ export default function ReunioesListPage() {
       }
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
+      if (onlyWithOffer) {
+        const v = vendaOfertaMap.get(ag.id);
+        const hasOffer = !!v && (v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
+        if (!hasOffer) return false;
+      }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, vendaAgendamentoIds, sdrGlobalVisibility]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility]);
 
   // Apply sorting
   const sorted = useMemo(() => {
