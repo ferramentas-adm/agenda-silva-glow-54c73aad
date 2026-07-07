@@ -302,9 +302,15 @@ export default function ReunioesListPage() {
         const hasOffer = !!v && (v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
         if (!hasOffer) return false;
       }
+      if (filterOfferProduct !== "all") {
+        const v = vendaOfertaMap.get(ag.id);
+        const hasOffer = !!v && (v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
+        if (!hasOffer) return false;
+        if ((v!.produto || "").trim() !== filterOfferProduct) return false;
+      }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility]);
 
   // Apply sorting
   const sorted = useMemo(() => {
