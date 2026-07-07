@@ -1001,6 +1001,7 @@ export function CalendarContent() {
                 </>
               )}
             </div>
+            </div>
           );
         })()}
 
