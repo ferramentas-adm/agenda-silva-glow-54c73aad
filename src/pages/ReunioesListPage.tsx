@@ -98,6 +98,7 @@ export default function ReunioesListPage() {
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
   const [excludeWithSale, setExcludeWithSale] = useState(false);
   const [onlyWithSale, setOnlyWithSale] = useState(false);
+  const [onlyWithOffer, setOnlyWithOffer] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
@@ -285,9 +286,14 @@ export default function ReunioesListPage() {
       }
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
+      if (onlyWithOffer) {
+        const v = vendaOfertaMap.get(ag.id);
+        const hasOffer = !!v && (v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
+        if (!hasOffer) return false;
+      }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, vendaAgendamentoIds, sdrGlobalVisibility]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -323,7 +329,7 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer;
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -337,6 +343,7 @@ export default function ReunioesListPage() {
     setSearchText("");
     setExcludeWithSale(false);
     setOnlyWithSale(false);
+    setOnlyWithOffer(false);
     setCurrentPage(1);
   };
 
@@ -705,6 +712,19 @@ export default function ReunioesListPage() {
             >
               <span className={cn("h-2 w-2 rounded-full", onlyWithSale ? "bg-emerald-500" : "bg-muted-foreground/40")} />
               Somente vendas fechadas
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOnlyWithOffer((v) => { const nv = !v; if (nv) { setExcludeWithSale(false); setOnlyWithSale(false); } return nv; }); setCurrentPage(1); }}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                onlyWithOffer
+                  ? "border-amber-500/40 bg-amber-500/15 text-amber-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", onlyWithOffer ? "bg-amber-500" : "bg-muted-foreground/40")} />
+              Somente com oferta de preço
             </button>
           </div>
         </div>
