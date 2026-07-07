@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Search, X, CalendarDays, Filter, Download, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Eye } from "lucide-react";
+import { Phone, Search, X, CalendarDays, Filter, Download, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Eye, Users, Check } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -77,7 +77,14 @@ export default function ReunioesListPage() {
     () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
     [deletionReasons, isAdminLike]
   );
-  const { enabled: sdrGlobalVisibility, save: saveSdrGlobalVisibility, isSaving: savingSdrGlobalVisibility } = useSdrGlobalVisibility();
+  const {
+    enabled: sdrGlobalVisibility,
+    userIds: sdrGlobalVisibilityUserIds,
+    hasGlobalVisibility: sdrHasGlobalVisibility,
+    save: saveSdrGlobalVisibility,
+    saveUsers: saveSdrGlobalVisibilityUsers,
+    isSaving: savingSdrGlobalVisibility,
+  } = useSdrGlobalVisibility();
 
   const [filterCloser, setFilterCloser] = useState<string>("all");
   const [filterSDR, setFilterSDR] = useState<string>("all");
@@ -256,7 +263,7 @@ export default function ReunioesListPage() {
     return agendamentos.filter((ag) => {
       // Role-based mandatory filter: Closer sees only own meetings, SDR sees only own assigned
       if (isCloser && myCloserId && ag.closer_id !== myCloserId) return false;
-      if (isSDR && user && !sdrGlobalVisibility && sdrIdOf(ag) !== user.id) return false;
+      if (isSDR && user && !sdrHasGlobalVisibility(user.id) && sdrIdOf(ag) !== user.id) return false;
 
       if (filterCloser !== "all" && ag.closer_id !== filterCloser) return false;
       if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
@@ -458,22 +465,105 @@ export default function ReunioesListPage() {
           <h1 className="text-2xl font-display font-bold tracking-tight">Lista de Reuniões</h1>
           <div className="flex items-center gap-3 flex-wrap">
             {(isGestor || isModerador || isSupervisor) && (
-              <div className={cn(
-                "flex items-center gap-2 rounded-full border px-3 py-1.5 transition-colors",
-                sdrGlobalVisibility
-                  ? "border-emerald-500/40 bg-emerald-500/10"
-                  : "border-border bg-muted/30"
-              )}>
-                <Switch
-                  id="sdr-global-visibility"
-                  checked={sdrGlobalVisibility}
-                  disabled={savingSdrGlobalVisibility}
-                  onCheckedChange={(v) => saveSdrGlobalVisibility(!!v)}
-                  className={cn(sdrGlobalVisibility && "data-[state=checked]:bg-emerald-500")}
-                />
-                <Label htmlFor="sdr-global-visibility" className="text-xs cursor-pointer">
-                  Visibilidade Global de SDRs
-                </Label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className={cn(
+                  "flex items-center gap-2 rounded-full border px-3 py-1.5 transition-colors",
+                  sdrGlobalVisibility
+                    ? "border-emerald-500/40 bg-emerald-500/10"
+                    : "border-border bg-muted/30"
+                )}>
+                  <Switch
+                    id="sdr-global-visibility"
+                    checked={sdrGlobalVisibility}
+                    disabled={savingSdrGlobalVisibility}
+                    onCheckedChange={(v) => saveSdrGlobalVisibility(!!v)}
+                    className={cn(sdrGlobalVisibility && "data-[state=checked]:bg-emerald-500")}
+                  />
+                  <Label htmlFor="sdr-global-visibility" className="text-xs cursor-pointer">
+                    Visibilidade Global de SDRs
+                  </Label>
+                </div>
+                {sdrGlobalVisibility && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs h-8 rounded-full border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10"
+                        disabled={savingSdrGlobalVisibility}
+                      >
+                        <Users className="h-3.5 w-3.5" />
+                        {sdrGlobalVisibilityUserIds.length === 0
+                          ? "Todos os SDRs"
+                          : `${sdrGlobalVisibilityUserIds.length} SDR${sdrGlobalVisibilityUserIds.length > 1 ? "s" : ""} selecionado${sdrGlobalVisibilityUserIds.length > 1 ? "s" : ""}`}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-72 p-0">
+                      <div className="p-3 border-b">
+                        <p className="text-xs font-medium">Quem terá visibilidade global?</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Deixe vazio para aplicar a todos os SDRs.
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+                        <button
+                          type="button"
+                          className="text-[11px] text-primary hover:underline disabled:opacity-50"
+                          disabled={savingSdrGlobalVisibility || sdrProfiles.length === 0}
+                          onClick={() => saveSdrGlobalVisibilityUsers(sdrProfiles.map((p: any) => p.user_id))}
+                        >
+                          Selecionar todos
+                        </button>
+                        <button
+                          type="button"
+                          className="text-[11px] text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
+                          disabled={savingSdrGlobalVisibility || sdrGlobalVisibilityUserIds.length === 0}
+                          onClick={() => saveSdrGlobalVisibilityUsers([])}
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto py-1">
+                        {sdrProfiles.length === 0 ? (
+                          <p className="text-xs text-muted-foreground p-3 text-center">
+                            Nenhum SDR ativo encontrado.
+                          </p>
+                        ) : (
+                          sdrProfiles.map((p: any) => {
+                            const checked = sdrGlobalVisibilityUserIds.includes(p.user_id);
+                            return (
+                              <button
+                                key={p.user_id}
+                                type="button"
+                                disabled={savingSdrGlobalVisibility}
+                                onClick={() => {
+                                  const next = checked
+                                    ? sdrGlobalVisibilityUserIds.filter((id) => id !== p.user_id)
+                                    : [...sdrGlobalVisibilityUserIds, p.user_id];
+                                  saveSdrGlobalVisibilityUsers(next);
+                                }}
+                                className={cn(
+                                  "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted transition-colors",
+                                  checked && "bg-emerald-500/5"
+                                )}
+                              >
+                                <div className={cn(
+                                  "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                                  checked
+                                    ? "bg-emerald-500 border-emerald-500 text-white"
+                                    : "border-border"
+                                )}>
+                                  {checked && <Check className="h-3 w-3" />}
+                                </div>
+                                <span className="flex-1 truncate">{p.full_name || p.email}</span>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
             )}
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportCSV} disabled={filtered.length === 0}>
