@@ -202,18 +202,28 @@ export default function ReunioesListPage() {
     },
   });
 
-  // Map de agendamento_id -> { vendeu, valor } para badge de oferta de preço
-  const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null }>() } = useQuery({
+  // Map de agendamento_id -> { vendeu, valor, produto } para filtros de oferta
+  const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>() } = useQuery({
     queryKey: ["vendas-oferta-map"],
     queryFn: async () => {
-      const { data } = await supabase.from("vendas").select("agendamento_id, vendeu, valor");
-      const m = new Map<string, { vendeu: boolean; valor: number | null }>();
+      const { data } = await supabase.from("vendas").select("agendamento_id, vendeu, valor, produto");
+      const m = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>();
       (data || []).forEach((v: any) => {
-        if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor });
+        if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor, produto: v.produto ?? null });
       });
       return m;
     },
   });
+
+  // Distinct products offered (vendeu OR valor>0)
+  const offeredProducts = useMemo(() => {
+    const s = new Set<string>();
+    vendaOfertaMap.forEach((v) => {
+      const hasOffer = v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0);
+      if (hasOffer && v.produto && v.produto.trim()) s.add(v.produto.trim());
+    });
+    return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [vendaOfertaMap]);
 
 
   const closerMap = useMemo(() => {
