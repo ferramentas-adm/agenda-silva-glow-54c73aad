@@ -1,45 +1,38 @@
+## Escopo
 
-## Escopo aprovado
-
-Implementar apenas o **item 3** do plano anterior: deixar o rótulo do card "Total agend. dia" da barra de status do Calendário explícito sobre o escopo que está sendo contado.
-
-Como o rótulo depende de um escopo escolhido, isso implica também introduzir o seletor mínimo (item 1) — sem ele o card teria só um rótulo estático. Vou incluir o seletor apenas como suporte ao rótulo, sem os breakdowns visuais do item 2.
+Remover o seletor de escopo (Todos / SDR / 2ª reunião) adicionado recentemente na barra de status do Calendário e, no lugar dele, incluir um card fixo **"Total SDR"** que exibe a quantidade de agendamentos de origem SDR (`totalSdrCount`). Os demais cards voltam a refletir todos os agendamentos do dia (comportamento anterior ao escopo).
 
 ## Alterações
 
-Arquivo único: `src/pages/DashboardPage.tsx` (bloco `Status counters`, ~linha 823).
+Arquivo único: `src/pages/DashboardPage.tsx`.
 
-1. Novo estado local:
-   ```ts
-   const [statusScope, setStatusScope] = useState<"todos" | "sdr" | "segunda">("todos");
-   ```
-   Escondido para `role === "closer"` (mantém visão individual atual).
+1. **Remover estado `statusScope`** (~linha 163):
+   - Excluir `const [statusScope, setStatusScope] = useState<...>("todos");`
 
-2. Segmented control compacto acima da grade dos cards, à direita do título/linha existente:
-   ```
-   [ Todos ]  [ SDR ]  [ 2ª reunião ]
-   ```
-   Usando `ToggleGroup` do shadcn já disponível no projeto.
+2. **Remover o seletor de escopo** do bloco `Status counters` (~linhas 897–922):
+   - Excluir os botões "Todos / SDR / 2ª reunião".
 
-3. `sourceAgendamentos` e `sourceCounts` passam a ser derivados de `statusScope`:
-   - `todos` → `filtered` + `allStatusCounts` (comportamento atual)
-   - `sdr` → `filtered.filter(isSdrAgenda)` + counts recalculados
-   - `segunda` → `filtered.filter(isSecondMeetingAgenda)` + counts recalculados
+3. **Restaurar lógica dos cards ao geral**:
+   - `sourceAgendamentos = filtered`
+   - `sourceCounts = allStatusCounts`
+   - `totalAgend = totalSdrCount + closerCreatedCount`
+   - `totalAgendLabel = "Total agend. dia"`
+   - Remover variáveis intermediárias `scope`, `scopedAgendamentos`, `scopedCounts`.
 
-4. Rótulo dinâmico do card `total_agend`:
-   - `todos` → "Total agend. dia"
-   - `sdr` → "Total agend. dia (SDR)"
-   - `segunda` → "Total 2ª reunião dia"
+4. **Adicionar card "Total SDR"** ao final da grade, junto a "Total Closers" e "Closer Realizada" (visão não-closer):
+   - Valor: `totalSdrCount`
+   - Ícone: `Users` (ou similar já importado)
+   - Cor: tom distinto dos cards existentes (ex.: `text-cyan-400` / `bg-cyan-500/10`)
+   - Sem click handler (apenas exibição)
 
-   E `totalAgend` recalculado conforme escopo:
-   - `todos` → `totalSdrCount + closerCreatedCount` (atual)
-   - `sdr` → `totalSdrCount`
-   - `segunda` → `closerCreatedCount`
+5. **Ajustar grid responsivo**:
+   - Visão não-closer: `xl:grid-cols-12` (9 cards base + Total SDR + Total Closers + Closer Realizada)
+   - Visão closer: manter `xl:grid-cols-9`
+
+6. **Verificação**: rodar `tsgo` para garantir que não há erros de tipo após remover `statusScope`.
 
 ## Fora do escopo
 
-- Breakdown "SDR X · 2ª Y" abaixo do número (item 2 — não será feito).
-- Comentários de paridade no código (item 4 — não será feito).
-- Nenhuma mudança no Dashboard Comercial, em outros painéis, no banco, RLS ou queries.
-
-Aguardo aprovação para implementar.
+- Nenhuma mudança em regras de cálculo de `totalSdrCount`, `closerCreatedCount` ou `allStatusCounts`.
+- Nenhuma alteração no Dashboard Comercial, banco, RLS, queries ou outros painéis.
+- Não adicionar drilldown ao novo card.
