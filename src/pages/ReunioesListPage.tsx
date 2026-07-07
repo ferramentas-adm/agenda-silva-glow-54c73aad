@@ -99,6 +99,7 @@ export default function ReunioesListPage() {
   const [excludeWithSale, setExcludeWithSale] = useState(false);
   const [onlyWithSale, setOnlyWithSale] = useState(false);
   const [onlyWithOffer, setOnlyWithOffer] = useState(false);
+  const [filterOfferProduct, setFilterOfferProduct] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
@@ -202,18 +203,28 @@ export default function ReunioesListPage() {
     },
   });
 
-  // Map de agendamento_id -> { vendeu, valor } para badge de oferta de preço
-  const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null }>() } = useQuery({
+  // Map de agendamento_id -> { vendeu, valor, produto } para filtros de oferta
+  const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>() } = useQuery({
     queryKey: ["vendas-oferta-map"],
     queryFn: async () => {
-      const { data } = await supabase.from("vendas").select("agendamento_id, vendeu, valor");
-      const m = new Map<string, { vendeu: boolean; valor: number | null }>();
+      const { data } = await supabase.from("vendas").select("agendamento_id, vendeu, valor, produto");
+      const m = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>();
       (data || []).forEach((v: any) => {
-        if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor });
+        if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor, produto: v.produto ?? null });
       });
       return m;
     },
   });
+
+  // Distinct products offered (vendeu OR valor>0)
+  const offeredProducts = useMemo(() => {
+    const s = new Set<string>();
+    vendaOfertaMap.forEach((v) => {
+      const hasOffer = v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0);
+      if (hasOffer && v.produto && v.produto.trim()) s.add(v.produto.trim());
+    });
+    return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [vendaOfertaMap]);
 
 
   const closerMap = useMemo(() => {
@@ -291,9 +302,15 @@ export default function ReunioesListPage() {
         const hasOffer = !!v && (v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
         if (!hasOffer) return false;
       }
+      if (filterOfferProduct !== "all") {
+        const v = vendaOfertaMap.get(ag.id);
+        const hasOffer = !!v && (v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
+        if (!hasOffer) return false;
+        if ((v!.produto || "").trim() !== filterOfferProduct) return false;
+      }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -329,7 +346,7 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all";
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -344,6 +361,7 @@ export default function ReunioesListPage() {
     setExcludeWithSale(false);
     setOnlyWithSale(false);
     setOnlyWithOffer(false);
+    setFilterOfferProduct("all");
     setCurrentPage(1);
   };
 
@@ -726,6 +744,29 @@ export default function ReunioesListPage() {
               <span className={cn("h-2 w-2 rounded-full", onlyWithOffer ? "bg-amber-500" : "bg-muted-foreground/40")} />
               Somente com oferta de preço
             </button>
+            <div className="inline-flex items-center gap-2">
+              <Select
+                value={filterOfferProduct}
+                onValueChange={(v) => { setFilterOfferProduct(v); setCurrentPage(1); }}
+              >
+                <SelectTrigger
+                  className={cn(
+                    "h-8 w-[220px] rounded-full border px-3 text-xs",
+                    filterOfferProduct !== "all"
+                      ? "border-amber-500/40 bg-amber-500/15 text-amber-400"
+                      : "border-border bg-transparent text-muted-foreground"
+                  )}
+                >
+                  <SelectValue placeholder="Oferta do produto…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os produtos</SelectItem>
+                  {offeredProducts.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
