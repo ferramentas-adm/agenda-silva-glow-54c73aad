@@ -744,6 +744,29 @@ export default function ReunioesListPage() {
               <span className={cn("h-2 w-2 rounded-full", onlyWithOffer ? "bg-amber-500" : "bg-muted-foreground/40")} />
               Somente com oferta de preço
             </button>
+            <div className="inline-flex items-center gap-2">
+              <Select
+                value={filterOfferProduct}
+                onValueChange={(v) => { setFilterOfferProduct(v); setCurrentPage(1); }}
+              >
+                <SelectTrigger
+                  className={cn(
+                    "h-8 w-[220px] rounded-full border px-3 text-xs",
+                    filterOfferProduct !== "all"
+                      ? "border-amber-500/40 bg-amber-500/15 text-amber-400"
+                      : "border-border bg-transparent text-muted-foreground"
+                  )}
+                >
+                  <SelectValue placeholder="Oferta do produto…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os produtos</SelectItem>
+                  {offeredProducts.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
