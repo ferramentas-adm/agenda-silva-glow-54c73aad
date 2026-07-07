@@ -713,6 +713,18 @@ export default function ReunioesListPage() {
               <span className={cn("h-2 w-2 rounded-full", onlyWithSale ? "bg-emerald-500" : "bg-muted-foreground/40")} />
               Somente vendas fechadas
             </button>
+            <button
+              type="button"
+              onClick={() => { setOnlyWithOffer((v) => { const nv = !v; if (nv) { setExcludeWithSale(false); setOnlyWithSale(false); } return nv; }); setCurrentPage(1); }}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                onlyWithOffer
+                  ? "border-amber-500/40 bg-amber-500/15 text-amber-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", onlyWithOffer ? "bg-amber-500" : "bg-muted-foreground/40")} />
+              Somente com oferta de preço
           </div>
         </div>
 
