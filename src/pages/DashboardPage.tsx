@@ -160,7 +160,6 @@ export function CalendarContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedSdrId, setSelectedSdrId] = useState<string>("all");
-  const [statusScope, setStatusScope] = useState<"todos" | "sdr" | "segunda">("todos");
 
   // SDRs disponíveis para filtragem (somente gestor/moderador veem esse filtro)
   const { data: sdrUsers = [] } = useQuery({
@@ -826,49 +825,17 @@ export function CalendarContent() {
           // Visão de Closer (individual): mostra apenas seus próprios números, sem "Total Closers"
           const isCloserView = role === "closer";
 
-          // Escopo (Todos / SDR / 2ª reunião) — só se aplica fora da visão Closer.
-          // Permite cruzar os cards com "Métricas SDRs" do Dashboard Comercial quando
-          // selecionado "SDR".
-          const scope = isCloserView ? "todos" : statusScope;
-          const scopedAgendamentos = isCloserView
-            ? closerOwnAgendamentos
-            : scope === "sdr"
-              ? filtered.filter(isSdrAgenda)
-              : scope === "segunda"
-                ? filtered.filter(isSecondMeetingAgenda)
-                : filtered;
-          const scopedCounts = isCloserView
-            ? closerOwnStatusCounts
-            : scope === "todos"
-              ? allStatusCounts
-              : scopedAgendamentos.reduce<Record<string, number>>((acc, a) => {
-                  const s = getEffectiveStatus(a);
-                  acc[s] = (acc[s] ?? 0) + 1;
-                  return acc;
-                }, {});
-
-          const sourceCounts = scopedCounts;
-          const sourceAgendamentos = scopedAgendamentos;
+          const sourceCounts = isCloserView ? closerOwnStatusCounts : allStatusCounts;
+          const sourceAgendamentos = isCloserView ? closerOwnAgendamentos : filtered;
           const sourceTotalReal = sourceCounts["realizada"] ?? 0;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
-          // Total agend. dia — depende do escopo escolhido.
+          // Total agend. dia: SDR + 2ª reunião (todos os status válidos)
           const totalAgend = isCloserView
             ? sourceAgendamentos.filter(a => TOTAL_STATUSES.includes(a.status)).length
-            : scope === "sdr"
-              ? totalSdrCount
-              : scope === "segunda"
-                ? closerCreatedCount
-                : totalSdrCount + closerCreatedCount;
+            : totalSdrCount + closerCreatedCount;
 
-          // Rótulo do card "Total agend. dia" reflete o escopo.
-          const totalAgendLabel = isCloserView
-            ? "Total agend. dia"
-            : scope === "sdr"
-              ? "Total agend. dia (SDR)"
-              : scope === "segunda"
-                ? "Total 2ª reunião dia"
-                : "Total agend. dia";
+          const totalAgendLabel = isCloserView ? "Total agend. dia" : "Total agend. dia";
 
           // Ainda a real. dia: agendada + confirmada (sem filtro de horário)
           const aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
@@ -894,35 +861,9 @@ export function CalendarContent() {
 
           return (
             <div className="space-y-2">
-              {!isCloserView && (
-                <div className="flex items-center justify-end gap-2">
-                  <span className="text-[11px] text-muted-foreground">Escopo:</span>
-                  <div className="inline-flex rounded-lg border border-primary/10 bg-muted/40 p-0.5">
-                    {([
-                      { v: "todos", label: "Todos" },
-                      { v: "sdr", label: "SDR" },
-                      { v: "segunda", label: "2ª reunião" },
-                    ] as const).map((opt) => (
-                      <button
-                        key={opt.v}
-                        type="button"
-                        onClick={() => setStatusScope(opt.v)}
-                        className={cn(
-                          "px-2.5 py-1 text-xs rounded-md transition-colors",
-                          statusScope === opt.v
-                            ? "bg-primary/20 text-primary"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div className={cn(
                 "grid grid-cols-2 sm:grid-cols-4 gap-3",
-                isCloserView ? "xl:grid-cols-9" : "xl:grid-cols-11"
+                isCloserView ? "xl:grid-cols-9" : "xl:grid-cols-12"
               )}>
 
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
@@ -985,9 +926,14 @@ export function CalendarContent() {
                 );
 
               })}
-              {/* Total Closers + Closer Realizada — apenas para Admin / Moderador / SDR */}
+              {/* Total SDR + Total Closers + Closer Realizada — apenas para Admin / Moderador / SDR */}
               {!isCloserView && (
                 <>
+                  <div className={cn("rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0 bg-cyan-500/10")}>
+                    <Users className={cn("h-4 w-4 shrink-0 text-cyan-400")} />
+                    <p className="text-lg font-bold leading-none">{totalSdrCount}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Total SDR</p>
+                  </div>
                   <div className={cn("rounded-xl border border-primary/10 p-2 flex flex-col items-center justify-center text-center gap-1 min-w-0 bg-purple-500/10")}>
                     <Users className={cn("h-4 w-4 shrink-0 text-purple-400")} />
                     <p className="text-lg font-bold leading-none">{closerCreatedCount}</p>
