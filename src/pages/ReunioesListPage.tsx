@@ -361,6 +361,7 @@ export default function ReunioesListPage() {
     setExcludeWithSale(false);
     setOnlyWithSale(false);
     setOnlyWithOffer(false);
+    setFilterOfferProduct("all");
     setCurrentPage(1);
   };
 
