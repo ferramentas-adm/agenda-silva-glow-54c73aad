@@ -725,6 +725,7 @@ export default function ReunioesListPage() {
             >
               <span className={cn("h-2 w-2 rounded-full", onlyWithOffer ? "bg-amber-500" : "bg-muted-foreground/40")} />
               Somente com oferta de preço
+            </button>
           </div>
         </div>
 
