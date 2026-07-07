@@ -263,7 +263,7 @@ export default function ReunioesListPage() {
     return agendamentos.filter((ag) => {
       // Role-based mandatory filter: Closer sees only own meetings, SDR sees only own assigned
       if (isCloser && myCloserId && ag.closer_id !== myCloserId) return false;
-      if (isSDR && user && !sdrGlobalVisibility && sdrIdOf(ag) !== user.id) return false;
+      if (isSDR && user && !sdrHasGlobalVisibility(user.id) && sdrIdOf(ag) !== user.id) return false;
 
       if (filterCloser !== "all" && ag.closer_id !== filterCloser) return false;
       if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
