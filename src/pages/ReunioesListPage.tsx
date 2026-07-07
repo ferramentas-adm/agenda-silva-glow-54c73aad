@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import { useSdrGlobalVisibility } from "@/hooks/useSdrGlobalVisibility";
+import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -207,24 +208,38 @@ export default function ReunioesListPage() {
   const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>() } = useQuery({
     queryKey: ["vendas-oferta-map"],
     queryFn: async () => {
-      const { data } = await supabase.from("vendas").select("agendamento_id, vendeu, valor, produto");
+      const PAGE = 1000;
+      const all: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("vendas")
+          .select("agendamento_id, vendeu, valor, produto")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = data || [];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
       const m = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>();
-      (data || []).forEach((v: any) => {
+      all.forEach((v: any) => {
         if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor, produto: v.produto ?? null });
       });
       return m;
     },
   });
 
-  // Distinct products offered (vendeu OR valor>0)
+  // Lista canônica de produtos (app_settings) + fallback dos produtos já ofertados
+  const { items: produtosCadastrados } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
   const offeredProducts = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(produtosCadastrados.map((p) => p.trim()).filter(Boolean));
     vendaOfertaMap.forEach((v) => {
       const hasOffer = v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0);
       if (hasOffer && v.produto && v.produto.trim()) s.add(v.produto.trim());
     });
     return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [vendaOfertaMap]);
+  }, [vendaOfertaMap, produtosCadastrados]);
 
 
   const closerMap = useMemo(() => {
