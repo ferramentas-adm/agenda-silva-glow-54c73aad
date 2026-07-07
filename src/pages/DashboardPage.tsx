@@ -160,6 +160,7 @@ export function CalendarContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedSdrId, setSelectedSdrId] = useState<string>("all");
+  const [statusScope, setStatusScope] = useState<"todos" | "sdr" | "segunda">("todos");
 
   // SDRs disponíveis para filtragem (somente gestor/moderador veem esse filtro)
   const { data: sdrUsers = [] } = useQuery({
