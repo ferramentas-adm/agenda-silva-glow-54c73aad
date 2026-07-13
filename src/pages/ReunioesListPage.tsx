@@ -325,7 +325,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility, sdrGlobalVisibilityUserIds]);
 
   // Apply sorting
   const sorted = useMemo(() => {
