@@ -939,13 +939,19 @@ function UsersSection() {
             ) : (
               <>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleResetPassword} disabled={resettingPassword}>
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleResetPassword();
+                  }}
+                  disabled={resettingPassword}
+                >
                   {resettingPassword ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     "Gerar senha temporária"
                   )}
-                </AlertDialogAction>
+                </Button>
               </>
             )}
           </AlertDialogFooter>
