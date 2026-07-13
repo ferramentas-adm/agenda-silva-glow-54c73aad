@@ -325,7 +325,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility, sdrGlobalVisibilityUserIds]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -631,7 +631,13 @@ export default function ReunioesListPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar lead..." value={searchText} onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }} className="pl-9 glass-input" />
+              <Input
+                placeholder={isSDR && user && sdrHasGlobalVisibility(user.id) ? "Buscar lead (todos os SDRs)..." : "Buscar lead..."}
+                title={isSDR && user && sdrHasGlobalVisibility(user.id) ? "Busca cobre reuniões de todos os SDRs. Reuniões fora da janela de datas atual não entram no resultado — amplie o filtro 'Data da reunião' se necessário." : undefined}
+                value={searchText}
+                onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }}
+                className="pl-9 glass-input"
+              />
             </div>
 
             {canSeeAllPeers && (
