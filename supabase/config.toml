@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.silva-vendas]
 verify_jwt = false
+
+[functions.silva-reunioes]
+verify_jwt = false
