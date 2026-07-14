@@ -220,21 +220,37 @@ export function CalendarContent() {
   const { limit: slotLimit } = useSlotLimit();
   const slotAlerts = useMemo(() => {
     const full: { time: string; count: number }[] = [];
-    const available: { time: string; count: number; capacity: number }[] = [];
+    const available: { time: string; count: number; capacity: number; remaining: number }[] = [];
     const entries = Array.from(slotCounts?.entries() ?? []).sort((a, b) => a[0].localeCompare(b[0]));
+    let maxCapacity = 0;
+    for (const [, info] of entries) {
+      if (info.capacity > maxCapacity) maxCapacity = info.capacity;
+    }
+    // Horário só entra como "vazio" se tiver closers realmente disponíveis
+    // (capacity considera bloqueios pessoais/recorrentes) e ainda houver
+    // pelo menos metade da capacidade máxima do dia livre. Slots com todos
+    // os closers bloqueados (ex.: horário de almoço) têm capacity=0 e são
+    // ignorados aqui — não são "vazios", estão indisponíveis.
+    const minRemaining = Math.max(1, Math.ceil(maxCapacity / 2));
     for (const [time, info] of entries) {
-      if (info.full) full.push({ time, count: info.count });
-      else if (info.capacity > 0) {
-        available.push({ time, count: info.count, capacity: info.capacity });
+      if (info.full) {
+        full.push({ time, count: info.count });
+        continue;
+      }
+      if (info.capacity <= 0) continue;
+      const remaining = info.capacity - info.count;
+      if (remaining >= minRemaining) {
+        available.push({ time, count: info.count, capacity: info.capacity, remaining });
       }
     }
-    // Horários mais vazios: menor ocupação primeiro; empate mantém ordem cronológica.
+    // Ordena por vagas livres (desc), depois por horário — pega top 6 e reordena cronologicamente.
     const emptiest = [...available]
-      .sort((a, b) => a.count - b.count || a.time.localeCompare(b.time))
+      .sort((a, b) => b.remaining - a.remaining || a.time.localeCompare(b.time))
       .slice(0, 6)
       .sort((a, b) => a.time.localeCompare(b.time));
     return { full, emptiest };
   }, [slotCounts]);
+
 
   // Build closer index map for consistent coloring
   const closerIndexMap = useMemo(() => {
