@@ -42,7 +42,7 @@ import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 
 
 interface Agendamento {
