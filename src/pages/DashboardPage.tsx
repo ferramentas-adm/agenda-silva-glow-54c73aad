@@ -220,15 +220,20 @@ export function CalendarContent() {
   const { limit: slotLimit } = useSlotLimit();
   const slotAlerts = useMemo(() => {
     const full: { time: string; count: number }[] = [];
-    const nearly: { time: string; count: number }[] = [];
+    const available: { time: string; count: number; capacity: number }[] = [];
     const entries = Array.from(slotCounts?.entries() ?? []).sort((a, b) => a[0].localeCompare(b[0]));
     for (const [time, info] of entries) {
       if (info.full) full.push({ time, count: info.count });
-      else if (info.capacity > 0 && info.count >= Math.max(1, info.capacity - 2)) {
-        nearly.push({ time, count: info.count });
+      else if (info.capacity > 0) {
+        available.push({ time, count: info.count, capacity: info.capacity });
       }
     }
-    return { full, nearly };
+    // Horários mais vazios: menor ocupação primeiro; empate mantém ordem cronológica.
+    const emptiest = [...available]
+      .sort((a, b) => a.count - b.count || a.time.localeCompare(b.time))
+      .slice(0, 6)
+      .sort((a, b) => a.time.localeCompare(b.time));
+    return { full, emptiest };
   }, [slotCounts]);
 
   // Build closer index map for consistent coloring
