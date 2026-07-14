@@ -956,8 +956,8 @@ export function CalendarContent() {
           );
         })()}
 
-        {/* Faixa de aviso: horários lotados / quase lotados (todos closers somados) */}
-        {role !== "closer" && (slotAlerts.full.length > 0 || slotAlerts.nearly.length > 0) && (
+        {/* Faixa: horários lotados / horários mais vazios (todos closers somados) */}
+        {role !== "closer" && (slotAlerts.full.length > 0 || slotAlerts.emptiest.length > 0) && (
           <div className="space-y-2">
             {slotAlerts.full.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 rounded-lg border-2 border-red-500/60 bg-red-500/15 px-3 py-2.5 text-sm">
@@ -974,15 +974,15 @@ export function CalendarContent() {
                 </div>
               </div>
             )}
-            {slotAlerts.nearly.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-                <span className="font-medium text-amber-700 dark:text-amber-400">
-                  Quase lotado — evite oferecer:
+            {slotAlerts.emptiest.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-sm">
+                <Sparkles className="h-4 w-4 shrink-0 text-emerald-500" />
+                <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                  Ofereça ao lead — horários mais vazios:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {slotAlerts.nearly.map((s) => (
-                    <span key={s.time} className="rounded-md bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                  {slotAlerts.emptiest.map((s) => (
+                    <span key={s.time} className="rounded-md bg-emerald-500 px-2 py-0.5 text-xs font-bold text-white">
                       {s.time}
                     </span>
                   ))}
