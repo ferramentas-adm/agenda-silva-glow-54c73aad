@@ -2206,10 +2206,10 @@ const DayView = memo(function DayView({
       </div>
     </div>
   );
-}
+});
 
 // ─── Edit Time Slots (simplified picker for edit mode) ───────────
-function EditTimeSlots({
+const EditTimeSlots = memo(function EditTimeSlots({
   closerId,
   date,
   selectedTime,
