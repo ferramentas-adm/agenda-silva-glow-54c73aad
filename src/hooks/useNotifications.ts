@@ -73,8 +73,9 @@ export function useNotifications() {
   }, [user, queryClient]);
 
   const markAsRead = async (id: string) => {
+    if (!user) return;
     const now = new Date().toISOString();
-    queryClient.setQueryData<Notification[]>(QUERY_KEY, (old) =>
+    queryClient.setQueryData<Notification[]>([...QUERY_KEY, user.id], (old) =>
       old?.map((n) => (n.id === id ? { ...n, read_at: now } : n)) ?? []
     );
     await supabase.from("notifications").update({ read_at: now }).eq("id", id);
@@ -83,7 +84,7 @@ export function useNotifications() {
   const markAllAsRead = async () => {
     if (!user) return;
     const now = new Date().toISOString();
-    queryClient.setQueryData<Notification[]>(QUERY_KEY, (old) =>
+    queryClient.setQueryData<Notification[]>([...QUERY_KEY, user.id], (old) =>
       old?.map((n) => (n.read_at ? n : { ...n, read_at: now })) ?? []
     );
     await supabase
