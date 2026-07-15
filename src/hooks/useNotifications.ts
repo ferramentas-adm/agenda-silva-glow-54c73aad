@@ -24,12 +24,13 @@ export function useNotifications() {
   const hasMountedRef = useRef(false);
 
   const query = useQuery({
-    queryKey: QUERY_KEY,
+    queryKey: [...QUERY_KEY, user?.id ?? null],
     enabled: !!user,
     queryFn: async (): Promise<Notification[]> => {
       const { data, error } = await supabase
         .from("notifications")
-        .select("*")
+        .select("id,user_id,type,title,message,entity_type,entity_id,read_at,created_at")
+        .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
