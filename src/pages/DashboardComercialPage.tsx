@@ -1127,7 +1127,7 @@ function MetricasSDRsTab({
       {/* Row 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MetricCard title={titlePara} value={metrics.todayScheduled} subtitle={subtitleSelected} highlight onClick={() => openDrill(titlePara, metrics.todayScheduledIds)} />
-        <MetricCard title={titleGeradas} value={metrics.todayCreated} subtitle={subtitleSelected} onClick={() => openDrill(titleGeradas, metrics.todayCreatedIds)} />
+        <MetricCard title={titleGeradas} value={metrics.todayCreated} subtitle={subtitleSelected} onClick={() => openDrill(titleGeradas, metrics.todayCreatedIds)} tooltip="Conta apenas agendas novas criadas por SDRs. Exclui reagendamentos (que herdam o registro original) e agendas criadas por closers/gestores. Para conciliar com a Lista de Reuniões, ative 'Excluir reagendamentos' lá." />
         <MetricCard title={titleDe} value={metrics.yesterdayScheduled} subtitle={subtitlePrev} onClick={() => openDrill(titleDe, metrics.yesterdayScheduledIds)} />
       </div>
 
