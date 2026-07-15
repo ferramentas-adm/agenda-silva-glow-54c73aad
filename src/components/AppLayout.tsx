@@ -25,10 +25,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [blocksOpen, setBlocksOpen] = useState(false);
 
-  // Warm-up + prefetch da lista de leads do DataCrazy assim que o app carrega
-  // (evita cold-start da edge function e ~10s no primeiro acesso a /agendar).
+  // Warm-up + prefetch da lista de leads do DataCrazy apenas ao entrar em /agendar
+  // (evita cold-start da edge function sem custar requisições em toda navegação).
   useEffect(() => {
     if (!user) return;
+    if (location.pathname !== "/agendar") return;
     const tagId = (import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO as string) || "";
     if (!tagId) return;
     queryClient.prefetchQuery({
@@ -45,7 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       },
       staleTime: 5 * 60_000,
     });
-  }, [user, queryClient]);
+  }, [user, queryClient, location.pathname]);
 
   // Sidebar hover-expand state
   const [expanded, setExpanded] = useState(false);
