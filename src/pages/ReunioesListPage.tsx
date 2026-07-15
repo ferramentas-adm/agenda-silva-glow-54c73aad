@@ -328,6 +328,10 @@ export default function ReunioesListPage() {
         const creator = sdrIdOf(ag);
         if (!creator || !sdrUserIdSet.has(creator)) return false;
       }
+      if (onlyCreatedByCloser) {
+        const creator = ag.created_by;
+        if (!creator || !closerUserIdSet.has(creator)) return false;
+      }
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithOffer) {
