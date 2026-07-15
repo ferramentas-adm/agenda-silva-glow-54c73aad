@@ -719,6 +719,7 @@ function MetricCard({
   highlight,
   icon,
   onClick,
+  tooltip,
 }: {
   title: string;
   value: number | string;
@@ -726,12 +727,14 @@ function MetricCard({
   highlight?: boolean;
   icon?: React.ReactNode;
   onClick?: () => void;
+  tooltip?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={!onClick}
+      title={tooltip}
       className={cn(
         "rounded-xl border p-4 space-y-2 transition-all text-left w-full",
         onClick && "hover:border-primary/60 hover:shadow-md cursor-pointer",
