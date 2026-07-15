@@ -218,6 +218,40 @@ export function CalendarContent() {
   // Slot lotação dinâmica (capacidade = closers ativos disponíveis no horário)
   const { data: slotCounts } = useSlotCounts(dateStr);
   const { limit: slotLimit } = useSlotLimit();
+
+  // Horário comercial global = união dos ranges dos closers ativos.
+  const { data: activeHours } = useQuery({
+    queryKey: ["closers-active-hours"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("business_hours_start, business_hours_end, business_hours_ranges")
+        .eq("active", true);
+      return data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const businessRange = useMemo(() => {
+    // Retorna [minStartHour, maxEndHour) em horas inteiras.
+    let minStart = 24;
+    let maxEnd = 0;
+    for (const c of (activeHours ?? []) as any[]) {
+      const ranges =
+        Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
+          ? c.business_hours_ranges
+          : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
+      for (const r of ranges) {
+        const sh = parseInt(String(r.start ?? "09:00").slice(0, 2), 10);
+        const eh = parseInt(String(r.end ?? "23:00").slice(0, 2), 10);
+        if (!Number.isNaN(sh) && sh < minStart) minStart = sh;
+        if (!Number.isNaN(eh) && eh > maxEnd) maxEnd = eh;
+      }
+    }
+    if (minStart === 24 || maxEnd === 0) return { minStart: 9, maxEnd: 23 };
+    return { minStart, maxEnd };
+  }, [activeHours]);
+
   const slotAlerts = useMemo(() => {
     const full: { time: string; count: number }[] = [];
     const available: { time: string; count: number; capacity: number; remaining: number }[] = [];
@@ -226,13 +260,14 @@ export function CalendarContent() {
     for (const [, info] of entries) {
       if (info.capacity > maxCapacity) maxCapacity = info.capacity;
     }
-    // Horário só entra como "vazio" se tiver closers realmente disponíveis
-    // (capacity considera bloqueios pessoais/recorrentes) e ainda houver
-    // pelo menos metade da capacidade máxima do dia livre. Slots com todos
-    // os closers bloqueados (ex.: horário de almoço) têm capacity=0 e são
-    // ignorados aqui — não são "vazios", estão indisponíveis.
     const minRemaining = Math.max(1, Math.ceil(maxCapacity / 2));
     for (const [time, info] of entries) {
+      // Apenas slots inteiros (HH:00) dentro do horário comercial da equipe.
+      const [hh, mm] = time.split(":");
+      const h = parseInt(hh, 10);
+      if (mm !== "00") continue;
+      if (Number.isNaN(h) || h < businessRange.minStart || h >= businessRange.maxEnd) continue;
+
       if (info.full) {
         full.push({ time, count: info.count });
         continue;
@@ -243,13 +278,13 @@ export function CalendarContent() {
         available.push({ time, count: info.count, capacity: info.capacity, remaining });
       }
     }
-    // Ordena por vagas livres (desc), depois por horário — pega top 6 e reordena cronologicamente.
     const emptiest = [...available]
       .sort((a, b) => b.remaining - a.remaining || a.time.localeCompare(b.time))
       .slice(0, 6)
       .sort((a, b) => a.time.localeCompare(b.time));
     return { full, emptiest };
-  }, [slotCounts]);
+  }, [slotCounts, businessRange]);
+
 
 
   // Build closer index map for consistent coloring
