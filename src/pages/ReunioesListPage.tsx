@@ -311,6 +311,7 @@ export default function ReunioesListPage() {
         const s = searchText.toLowerCase();
         if (!ag.lead_name.toLowerCase().includes(s) && !ag.lead_phone.includes(s)) return false;
       }
+      if (excludeReagendamentos && ag.original_agendamento_id) return false;
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithOffer) {
