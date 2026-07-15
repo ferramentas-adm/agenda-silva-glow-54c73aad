@@ -357,23 +357,20 @@ export function CalendarContent() {
   });
 
   // Realtime: ouve mudanças em agendamentos para TODOS os usuários (independente da função).
-  // Channel name único por sessão evita colisões entre múltiplos clientes/abas.
+  // Channel name idempotente por usuário evita acúmulo de canais no servidor Realtime.
   useEffect(() => {
-    const channelName = `agendamentos-realtime-${Math.random().toString(36).slice(2, 10)}`;
+    if (!user?.id) return;
     const channel = supabase
-      .channel(channelName)
+      .channel(`agendamentos-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
         queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-metrics"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-created"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-prev"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
+  }, [queryClient, user?.id]);
 
   // Fetch Google Calendar events for all selected closers
-  const closerIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+  const closerIds = useMemo(() => Array.from(selectedIds).sort(), [selectedIds]);
   const closerIdsKey = closerIds.join(",");
 
   const { data: googleBusyBlocks = [] } = useQuery<GoogleBusyBlock[]>({
@@ -1934,6 +1931,9 @@ function DayView({
   const TIME_COL = 60;
   const MIN_COL = 150;
 
+  const closersLenRef = useRef(closers.length);
+  useEffect(() => { closersLenRef.current = closers.length; }, [closers.length]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -1943,7 +1943,7 @@ function DayView({
       rafId = requestAnimationFrame(() => {
         const available = el.clientWidth - TIME_COL;
         if (available <= 0) return;
-        const fit = Math.max(1, Math.min(closers.length, Math.floor(available / MIN_COL)));
+        const fit = Math.max(1, Math.min(closersLenRef.current, Math.floor(available / MIN_COL)));
         const newWidth = Math.max(MIN_COL, available / fit);
         setColWidth((prev) => (Math.abs(prev - newWidth) > 0.5 ? newWidth : prev));
         setCanScrollLeft(el.scrollLeft > 2);
@@ -1962,7 +1962,7 @@ function DayView({
       window.removeEventListener("resize", update);
       ro.disconnect();
     };
-  }, [closers.length]);
+  }, []);
 
   const scrollByCol = (dir: 1 | -1) => {
     const el = scrollRef.current;

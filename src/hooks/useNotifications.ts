@@ -24,12 +24,13 @@ export function useNotifications() {
   const hasMountedRef = useRef(false);
 
   const query = useQuery({
-    queryKey: QUERY_KEY,
+    queryKey: [...QUERY_KEY, user?.id ?? null],
     enabled: !!user,
     queryFn: async (): Promise<Notification[]> => {
       const { data, error } = await supabase
         .from("notifications")
-        .select("*")
+        .select("id,user_id,type,title,message,entity_type,entity_id,read_at,created_at")
+        .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -56,7 +57,7 @@ export function useNotifications() {
           // Toast no canto da tela
           toast(n.title, { description: n.message });
           // Atualiza cache adicionando no topo
-          queryClient.setQueryData<Notification[]>(QUERY_KEY, (old) => {
+          queryClient.setQueryData<Notification[]>([...QUERY_KEY, user.id], (old) => {
             const next = old ? [n, ...old] : [n];
             return next.slice(0, 50);
           });
@@ -72,8 +73,9 @@ export function useNotifications() {
   }, [user, queryClient]);
 
   const markAsRead = async (id: string) => {
+    if (!user) return;
     const now = new Date().toISOString();
-    queryClient.setQueryData<Notification[]>(QUERY_KEY, (old) =>
+    queryClient.setQueryData<Notification[]>([...QUERY_KEY, user.id], (old) =>
       old?.map((n) => (n.id === id ? { ...n, read_at: now } : n)) ?? []
     );
     await supabase.from("notifications").update({ read_at: now }).eq("id", id);
@@ -82,7 +84,7 @@ export function useNotifications() {
   const markAllAsRead = async () => {
     if (!user) return;
     const now = new Date().toISOString();
-    queryClient.setQueryData<Notification[]>(QUERY_KEY, (old) =>
+    queryClient.setQueryData<Notification[]>([...QUERY_KEY, user.id], (old) =>
       old?.map((n) => (n.read_at ? n : { ...n, read_at: now })) ?? []
     );
     await supabase

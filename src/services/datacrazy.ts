@@ -4,7 +4,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { retryWithBackoff } from "@/lib/retryWithBackoff";
+import { retryWithBackoff, type RetryOptions } from "@/lib/retryWithBackoff";
 
 // ─── Proxy helper ────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ const sleepGlobal = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Dedupe de GETs idênticos em voo (cobre React StrictMode / re-renders).
 const inFlightGets = new Map<string, Promise<unknown>>();
 
-async function api(method: string, path: string, payload?: unknown) {
+async function api(method: string, path: string, payload?: unknown, retryOpts?: RetryOptions) {
   const isGet = method.toUpperCase() === "GET";
   const dedupeKey = isGet ? `GET ${path}` : null;
   if (dedupeKey && inFlightGets.has(dedupeKey)) {
@@ -44,7 +44,7 @@ async function api(method: string, path: string, payload?: unknown) {
         if (data?.error) throw new Error(`DataCrazy API error: ${data.error}`);
         return data;
       },
-      { label: `datacrazy-proxy ${method} ${path}` },
+      { label: `datacrazy-proxy ${method} ${path}`, ...retryOpts },
     );
 
   const chained = apiChain.then(async () => {
@@ -168,6 +168,8 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
         const data = await api(
           "GET",
           `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`,
+          undefined,
+          { timeoutMs: 30_000, maxAttempts: 2 },
         );
         const pageLeads: DataCrazyLead[] = Array.isArray(data) ? data : data?.data || [];
         const count =
