@@ -129,7 +129,8 @@ serve(async (req) => {
       });
     }
 
-    const body = await req.json();
+    const rawBody = await req.clone().text();
+    const body = rawBody ? JSON.parse(rawBody) : {};
     const { method = "GET", path, payload } = body as {
       method: string;
       path: string;
