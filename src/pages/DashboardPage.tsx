@@ -2378,4 +2378,4 @@ const EditTimeSlots = memo(function EditTimeSlots({
       )}
     </div>
   );
-}
+});
