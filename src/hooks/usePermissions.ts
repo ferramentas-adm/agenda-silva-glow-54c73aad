@@ -53,7 +53,11 @@ export function usePermissions() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["role-permissions"],
-    staleTime: 60_000,
+    // Permissões mudam raramente (só via /admin) e o AdminPage invalida essa key
+    // ao salvar. Cachear indefinidamente elimina o hot-spot de leituras repetidas
+    // em role_permissions (era top offender do pg_stat).
+    staleTime: Infinity,
+    gcTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("role_permissions")

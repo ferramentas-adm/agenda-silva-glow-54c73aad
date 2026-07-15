@@ -851,6 +851,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_closer_id: { Args: never; Returns: string }
       get_public_profiles: {
         Args: never
         Returns: {
@@ -867,6 +868,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_closer: { Args: never; Returns: boolean }
+      is_gestor: { Args: never; Returns: boolean }
+      is_manager: { Args: never; Returns: boolean }
+      is_manager_or_apresentador: { Args: never; Returns: boolean }
+      is_manager_or_sdr: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role:
