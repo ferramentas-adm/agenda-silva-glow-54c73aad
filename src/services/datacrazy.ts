@@ -18,7 +18,7 @@ const sleepGlobal = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Dedupe de GETs idênticos em voo (cobre React StrictMode / re-renders).
 const inFlightGets = new Map<string, Promise<unknown>>();
 
-async function api(method: string, path: string, payload?: unknown) {
+async function api(method: string, path: string, payload?: unknown, retryOpts?: RetryOptions) {
   const isGet = method.toUpperCase() === "GET";
   const dedupeKey = isGet ? `GET ${path}` : null;
   if (dedupeKey && inFlightGets.has(dedupeKey)) {
@@ -44,7 +44,7 @@ async function api(method: string, path: string, payload?: unknown) {
         if (data?.error) throw new Error(`DataCrazy API error: ${data.error}`);
         return data;
       },
-      { label: `datacrazy-proxy ${method} ${path}` },
+      { label: `datacrazy-proxy ${method} ${path}`, ...retryOpts },
     );
 
   const chained = apiChain.then(async () => {
