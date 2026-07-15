@@ -24,6 +24,7 @@ const VendaPage = lazy(() => import("@/pages/VendaPage"));
 const LeadDetalhesPage = lazy(() => import("@/pages/LeadDetalhesPage"));
 const CancelarReuniaoPage = lazy(() => import("@/pages/CancelarReuniaoPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const OAuthConsentPage = lazy(() => import("@/pages/OAuthConsentPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,7 @@ const App = () => (
           <Suspense fallback={<PageSpinner />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/alterar-senha" element={<ProtectedRoute><ForceChangePasswordPage /></ProtectedRoute>} />
               <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
