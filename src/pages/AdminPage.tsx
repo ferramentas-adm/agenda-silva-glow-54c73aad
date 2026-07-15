@@ -1131,7 +1131,7 @@ function SettingsSection() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["app-settings"],
     queryFn: async () => {
-      const { data } = await supabase.from("app_settings").select("*");
+      const { data } = await supabase.from("app_settings").select("key, value");
       const map: Record<string, string> = {};
       (data ?? []).forEach((s: any) => { map[s.key] = s.value; });
       return map;
