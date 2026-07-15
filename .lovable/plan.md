@@ -1,94 +1,36 @@
-# Fase 5 — Itens deferidos M1, M2, M4, M9
+## Objetivo
 
-Trabalho de maior escopo em 4 frentes independentes. Ordem sugerida do menor risco ao maior:
+Adicionar um filtro "Apenas criados por SDR" na página `/reunioes` para permitir bater 100% com o card "Agendas Geradas Hoje" do Dashboard Comercial.
 
----
+Combinado com o filtro já existente "Excluir reagendamentos", o total da Lista passará a coincidir exatamente com o card (mesma regra: agendas novas + criador é SDR).
 
-## M9 — `AdminPage.tsx`: reduzir payload de `select("*")`
+## Mudanças
 
-**Onde:** `src/pages/AdminPage.tsx` linhas 190–192 e 1127.
+### `src/pages/ReunioesListPage.tsx`
 
-**O que fazer:**
-- Substituir `profiles.select("*")` por lista explícita de colunas usadas: `id, user_id, full_name, email, active, available_for_scheduling, is_sdr_override, moderador_tipo, sdr_team, datacrazy_id`.
-- Substituir `user_roles.select("*")` por `user_id, role`.
-- Substituir `closers.select("*")` por `id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id`.
-- Substituir `app_settings.select("*")` (linha 1127) por `key, value` (colunas realmente consumidas).
+1. **Novo estado** `onlyCreatedBySdr: boolean` (default `false`).
+2. **Carregar lookup de SDRs** — buscar `user_id` de perfis com role `sdr` via `user_roles` (mesma lógica usada em `ProdutividadeSDRTab`: SDR efetivo = `sdr_responsavel_id || created_by`, precisa pertencer ao conjunto de SDRs).
+   - Reutilizar hook existente se houver; caso contrário, query pontual com cache local via `useMemo`/`useEffect`.
+3. **Nova pill de filtro** ao lado de "Excluir reagendamentos":
+   - Label: "Apenas criados por SDR"
+   - Ícone: `UserCheck` (lucide) ou similar coerente com as outras pills.
+   - Ativa/desativa como as demais.
+4. **Aplicar filtro** na lista renderizada: quando ativo, manter apenas registros cujo SDR efetivo pertence ao conjunto de SDRs conhecidos.
+5. **Badge de contagem** — estender o breakdown atual para refletir também os descartados por não serem de SDR quando o filtro estiver ativo (ex.: tooltip "8 descartados: criados por closer/gestor").
+6. **Tooltip explicativo** curto na pill informando que serve para conciliar com o card do Dashboard Comercial.
 
-**Impacto:** reduz tráfego em ~40–60% na tela Admin, sem alterar UI.
+### Nenhuma mudança de backend
 
----
+Sem alteração de schema, RLS, edge function ou tipos gerados. É filtragem puramente client-side sobre dados já carregados.
 
-## M4 — Virtualização de listas longas
+## Detalhes técnicos
 
-**Dependência nova:** `@tanstack/react-virtual`.
+- SDR efetivo por registro: `sdr_responsavel_id ?? created_by`. Se `null` ou não estiver no set de SDRs → excluir quando filtro ativo.
+- Set de SDRs derivado de `user_roles` onde `role = 'sdr'`. Query única na montagem da página; escopo `authenticated`.
+- Ordem dos filtros no header preservada; nova pill entra imediatamente após "Excluir reagendamentos" para agrupar visualmente os filtros de conciliação com o card.
 
-**Alvos (listas que renderizam >100 itens em DOM):**
-1. `ReunioesListPage.tsx` — lista principal de reuniões.
-2. `AuditLogsPage.tsx` — tabela de auditoria (já paginada, mas render pode ter 100+/página).
-3. `AguardandoAtribuicaoPage.tsx` — quando há muitas pendentes.
+## Fora do escopo
 
-**Estratégia:** wrapper com `useVirtualizer` mantendo o markup atual do card em `estimateSize` ~180px. Só ativa quando `items.length > 30` (fallback para render normal em listas curtas, preservando testes).
-
----
-
-## M2 — `AguardandoAtribuicaoPage` + análise IA server-side com cache
-
-**Problema atual:** cada linha dispara `LeadAIAnalysis` cliente-side; `useQuery` sem paginação; N chamadas paralelas de IA por render.
-
-**O que fazer:**
-1. **Paginação:** adicionar `range()` (25 por página) com botões "Anterior/Próximo". Query mantém `refetchInterval: 30_000`.
-2. **Cache de IA em tabela:**
-
-```text
-CREATE TABLE public.lead_ai_analysis (
-  agendamento_id uuid PK REFERENCES agendamentos ON DELETE CASCADE,
-  analysis jsonb NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
--- GRANT SELECT para authenticated; RLS: quem enxerga o agendamento enxerga a análise
-```
-
-3. **Edge function `analisar-lead-ia`** já existe: alterar para:
-   - Verificar cache antes de chamar o modelo (TTL 24h);
-   - Persistir resultado após inferência;
-   - Aceitar chamada em batch `agendamento_ids: string[]` retornando `{ id: analysis }`.
-4. **Front:** substituir N invocações independentes por 1 chamada em batch por página exibida; renderizar do cache local.
-
-**Impacto:** custo de IA cai drasticamente; render deixa de disparar N requests.
-
----
-
-## M1 — Quebrar `DashboardPage.tsx` (2.381 linhas, 79 hooks)
-
-**Estratégia sem regressões:**
-
-1. **Extrair seções em componentes memoizados** (mesmo arquivo → arquivos irmãos em `src/components/dashboard/sections/`):
-   - `HeaderFilters` (filtros de período/closer/canal)
-   - `KpiCards` (grid de cards de topo)
-   - `TrendCharts` (envolve os `TrendCard*` já existentes)
-   - `TabsPanel` (wrapper dos Tabs — Vendas/SDR/Erros/Carga)
-
-2. **Cada seção**: `React.memo` + props explícitas (`period`, `closerId`, `canal`, …). Os hooks pesados descem para a seção que realmente usa o dado (elimina re-render em cascata pelo state do topo).
-
-3. **Estado compartilhado**: manter `useState` no Dashboard só para filtros; migrar dados derivados para hooks locais das seções.
-
-4. **Nenhuma mudança visual** — apenas topologia de componentes.
-
-**Risco:** médio. Mitigação: extrair uma seção por vez, checar typecheck + preview após cada uma.
-
----
-
-## Ordem de execução proposta
-
-1. **M9** (30 min, zero risco) — select colunas específicas.
-2. **M4** (1h) — instalar `@tanstack/react-virtual`, virtualizar `ReunioesListPage` primeiro.
-3. **M2** (2h) — migration + edge function + paginação da tela.
-4. **M1** (2–3h) — extração incremental das 4 seções do Dashboard.
-
-## Aprovação necessária
-
-Confirme:
-- (a) Ordem acima ou prefere outra?
-- (b) Instalar `@tanstack/react-virtual` (nova dependência)?
-- (c) Criar tabela `lead_ai_analysis` para cache de IA?
-- (d) Alterar edge function `analisar-lead-ia` para batch + cache?
+- Alterar o card do Dashboard Comercial.
+- Persistir preferência do filtro entre sessões.
+- Mudar cálculos do `ProdutividadeSDRTab`.
