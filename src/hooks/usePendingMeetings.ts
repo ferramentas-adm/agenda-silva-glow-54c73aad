@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyCloserId } from "@/hooks/useMyCloserId";
 import { brTodayYMD } from "@/lib/timezone";
 
 export interface PendingMeeting {
@@ -34,20 +35,8 @@ export function usePendingMeetings() {
   const { user, role } = useAuth();
   const today = brTodayYMD();
 
-  // Closer record (para descobrir closer_id quando o usuário é closer)
-  const { data: myCloserId } = useQuery({
-    queryKey: ["pending-meetings-closer-id", user?.email],
-    enabled: role === "closer" && !!user?.email,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id")
-        .eq("email", user!.email!)
-        .maybeSingle();
-      return data?.id ?? null;
-    },
-    staleTime: 10 * 60 * 1000,
-  });
+  // Closer record compartilhado (usa a mesma cache key dos outros banners)
+  const { data: myCloserId } = useMyCloserId();
 
   const enabled =
     !!user &&
