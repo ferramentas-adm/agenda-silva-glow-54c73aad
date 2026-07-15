@@ -1931,6 +1931,9 @@ function DayView({
   const TIME_COL = 60;
   const MIN_COL = 150;
 
+  const closersLenRef = useRef(closers.length);
+  useEffect(() => { closersLenRef.current = closers.length; }, [closers.length]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -1940,7 +1943,7 @@ function DayView({
       rafId = requestAnimationFrame(() => {
         const available = el.clientWidth - TIME_COL;
         if (available <= 0) return;
-        const fit = Math.max(1, Math.min(closers.length, Math.floor(available / MIN_COL)));
+        const fit = Math.max(1, Math.min(closersLenRef.current, Math.floor(available / MIN_COL)));
         const newWidth = Math.max(MIN_COL, available / fit);
         setColWidth((prev) => (Math.abs(prev - newWidth) > 0.5 ? newWidth : prev));
         setCanScrollLeft(el.scrollLeft > 2);
@@ -1959,7 +1962,7 @@ function DayView({
       window.removeEventListener("resize", update);
       ro.disconnect();
     };
-  }, [closers.length]);
+  }, []);
 
   const scrollByCol = (dir: 1 | -1) => {
     const el = scrollRef.current;
