@@ -776,6 +776,20 @@ export default function ReunioesListPage() {
             </button>
             <button
               type="button"
+              onClick={() => { setOnlyCreatedBySdr((v) => !v); setCurrentPage(1); }}
+              title="Mantém apenas agendamentos cujo criador efetivo (sdr_responsavel_id ou created_by) pertence à equipe de SDR. Combine com 'Excluir reagendamentos' para conciliar 100% com o card 'Agendas Geradas' das Métricas SDRs."
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                onlyCreatedBySdr
+                  ? "border-sky-500/40 bg-sky-500/15 text-sky-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", onlyCreatedBySdr ? "bg-sky-500" : "bg-muted-foreground/40")} />
+              Apenas criados por SDR
+            </button>
+            <button
+              type="button"
               onClick={() => { setExcludeWithSale((v) => { const nv = !v; if (nv) setOnlyWithSale(false); return nv; }); setCurrentPage(1); }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
