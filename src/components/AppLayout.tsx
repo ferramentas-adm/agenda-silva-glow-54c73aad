@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users, UserPlus, CalendarPlus } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useMyCloserId } from "@/hooks/useMyCloserId";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { buscarLeadsComTagId } from "@/services/datacrazy";
 import logo from "@/assets/logo.png";
