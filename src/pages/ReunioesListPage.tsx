@@ -621,8 +621,21 @@ export default function ReunioesListPage() {
               <Download className="h-3.5 w-3.5" />
               Exportar CSV
             </Button>
-            <Badge variant="outline" className="text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="text-muted-foreground"
+              title={
+                reagendamentosCount > 0
+                  ? `${filtered.length - reagendamentosCount} agendas novas + ${reagendamentosCount} reagendamento${reagendamentosCount !== 1 ? "s" : ""}.\nO card "Agendas Geradas" das Métricas SDRs exclui reagendamentos e agendas criadas por não-SDRs.`
+                  : undefined
+              }
+            >
               {filtered.length} reuniões
+              {reagendamentosCount > 0 && (
+                <span className="ml-1 text-[10px] opacity-70">
+                  ({filtered.length - reagendamentosCount} novas + {reagendamentosCount} reag.)
+                </span>
+              )}
             </Badge>
           </div>
         </div>
