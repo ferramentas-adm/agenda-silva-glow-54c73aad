@@ -401,6 +401,7 @@ export default function ReunioesListPage() {
     setFilterOfferProduct("all");
     setExcludeReagendamentos(false);
     setOnlyCreatedBySdr(false);
+    setOnlyCreatedByCloser(false);
     setCurrentPage(1);
   };
 
