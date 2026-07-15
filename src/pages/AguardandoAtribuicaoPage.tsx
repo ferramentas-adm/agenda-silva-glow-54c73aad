@@ -52,8 +52,9 @@ export default function AguardandoAtribuicaoPage() {
   const [errorDescription, setErrorDescription] = useState("");
   const [submittingError, setSubmittingError] = useState(false);
   const [page, setPage] = useState(0);
-  const [page, setPage] = useState(0);
   const PAGE_SIZE = 25;
+
+
 
 
   const todayStr = (() => {
