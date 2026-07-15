@@ -72,14 +72,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Fetch closer record (apenas para saber se o usuário tem registro de closer)
-  const { data: closerRecord } = useQuery({
-    queryKey: ["my-closer-record", user?.email],
-    enabled: isCloser && !!user?.email,
-    queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id").eq("email", user!.email!).maybeSingle();
-      return data;
-    },
-  });
+  const { data: myCloserId } = useMyCloserId();
+  const closerRecord = myCloserId ? { id: myCloserId } : null;
 
   const { can } = usePermissions();
 
