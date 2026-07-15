@@ -4,7 +4,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { retryWithBackoff } from "@/lib/retryWithBackoff";
+import { retryWithBackoff, type RetryOptions } from "@/lib/retryWithBackoff";
 
 // ─── Proxy helper ────────────────────────────────────────────────
 
