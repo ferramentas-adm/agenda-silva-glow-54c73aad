@@ -360,7 +360,7 @@ export default function AguardandoAtribuicaoPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {pending.map((a) => {
+            {paged.map((a) => {
               const dateObj = new Date(`${a.scheduled_date}T12:00:00`);
               const sdrLabel = profileName(a.sdr_responsavel_id ?? a.created_by);
               const isReschedule = !!a.original_agendamento_id;
