@@ -112,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setRole(null);
     setMustChangePassword(false);
+    // Evita vazar dados em cache entre contas na mesma aba.
+    queryClient.clear();
   };
 
   const clearMustChangePassword = () => setMustChangePassword(false);
