@@ -363,7 +363,7 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all";
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all" || excludeReagendamentos;
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -379,8 +379,17 @@ export default function ReunioesListPage() {
     setOnlyWithSale(false);
     setOnlyWithOffer(false);
     setFilterOfferProduct("all");
+    setExcludeReagendamentos(false);
     setCurrentPage(1);
   };
+
+  // Breakdown do resultado filtrado — útil quando o usuário filtra por "Criação"
+  // e quer conciliar com o card "Agendas Geradas" das Métricas SDRs (que exclui
+  // reagendamentos e agendas criadas por não-SDRs).
+  const reagendamentosCount = useMemo(
+    () => filtered.filter((ag: any) => ag.original_agendamento_id).length,
+    [filtered],
+  );
 
   const exportCSV = () => {
     const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Canal", "Observação"];
