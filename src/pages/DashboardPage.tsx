@@ -256,11 +256,6 @@ export function CalendarContent() {
     const full: { time: string; count: number }[] = [];
     const available: { time: string; count: number; capacity: number; remaining: number }[] = [];
     const entries = Array.from(slotCounts?.entries() ?? []).sort((a, b) => a[0].localeCompare(b[0]));
-    let maxCapacity = 0;
-    for (const [, info] of entries) {
-      if (info.capacity > maxCapacity) maxCapacity = info.capacity;
-    }
-    const minRemaining = Math.max(1, Math.ceil(maxCapacity / 2));
     for (const [time, info] of entries) {
       // Apenas slots inteiros (HH:00) dentro do horário comercial da equipe.
       const [hh, mm] = time.split(":");
@@ -274,7 +269,7 @@ export function CalendarContent() {
       }
       if (info.capacity <= 0) continue;
       const remaining = info.capacity - info.count;
-      if (remaining >= minRemaining) {
+      if (remaining > 0) {
         available.push({ time, count: info.count, capacity: info.capacity, remaining });
       }
     }
@@ -284,6 +279,7 @@ export function CalendarContent() {
       .sort((a, b) => a.time.localeCompare(b.time));
     return { full, emptiest };
   }, [slotCounts, businessRange]);
+
 
 
 
