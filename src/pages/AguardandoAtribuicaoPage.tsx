@@ -51,6 +51,8 @@ export default function AguardandoAtribuicaoPage() {
   const [errorDialog, setErrorDialog] = useState<{ agendamento: Agendamento; alsoDelete: boolean } | null>(null);
   const [errorDescription, setErrorDescription] = useState("");
   const [submittingError, setSubmittingError] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 25;
 
   const todayStr = (() => {
     const d = new Date();
