@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users, UserPlus, CalendarPlus } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useMyCloserId } from "@/hooks/useMyCloserId";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { buscarLeadsComTagId } from "@/services/datacrazy";
 import logo from "@/assets/logo.png";
@@ -72,14 +73,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Fetch closer record (apenas para saber se o usuário tem registro de closer)
-  const { data: closerRecord } = useQuery({
-    queryKey: ["my-closer-record", user?.email],
-    enabled: isCloser && !!user?.email,
-    queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id").eq("email", user!.email!).maybeSingle();
-      return data;
-    },
-  });
+  const { data: myCloserId } = useMyCloserId();
+  const closerRecord = myCloserId ? { id: myCloserId } : null;
 
   const { can } = usePermissions();
 

@@ -866,6 +866,14 @@ export type Database = {
           qtd_scheduled_realizada: number
         }[]
       }
+      dashboard_conversao_period: {
+        Args: { p_closer_id?: string; p_from: string; p_to: string }
+        Returns: {
+          ids: string[]
+          total_reunioes: number
+          total_vendas: number
+        }[]
+      }
       dashboard_trend_sdr: {
         Args: { _window_days: number }
         Returns: {
