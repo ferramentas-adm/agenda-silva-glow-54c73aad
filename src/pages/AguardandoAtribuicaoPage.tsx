@@ -519,6 +519,21 @@ export default function AguardandoAtribuicaoPage() {
                 </div>
               );
             })}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
+                <span>
+                  {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, pending.length)} de {pending.length}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                    Anterior
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
