@@ -82,6 +82,15 @@ export default function AguardandoAtribuicaoPage() {
     },
   });
 
+  const totalPages = Math.max(1, Math.ceil(pending.length / PAGE_SIZE));
+  useEffect(() => {
+    if (page >= totalPages) setPage(0);
+  }, [totalPages, page]);
+  const paged = useMemo(
+    () => pending.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    [pending, page],
+  );
+
   const { data: closers = [] } = useQuery<Closer[]>({
     queryKey: ["closers-active-assignable"],
     queryFn: async () => {
