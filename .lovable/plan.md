@@ -1,36 +1,39 @@
-## Objetivo
+Texto executivo pronto para colar em e-mail/Slack para a diretoria. Não há mudança de código.
 
-Adicionar um filtro "Apenas criados por SDR" na página `/reunioes` para permitir bater 100% com o card "Agendas Geradas Hoje" do Dashboard Comercial.
+---
 
-Combinado com o filtro já existente "Excluir reagendamentos", o total da Lista passará a coincidir exatamente com o card (mesma regra: agendas novas + criador é SDR).
+**Assunto: Esclarecimento — divergência entre "Agendas Geradas" (Dashboard) e "Lista de Reuniões"**
 
-## Mudanças
+Prezados,
 
-### `src/pages/ReunioesListPage.tsx`
+Recebemos a observação de que os números do card **"Agendas Geradas Hoje"** (Dashboard Comercial) não batem com o total exibido na **Lista de Reuniões** para o mesmo dia. Segue o esclarecimento:
 
-1. **Novo estado** `onlyCreatedBySdr: boolean` (default `false`).
-2. **Carregar lookup de SDRs** — buscar `user_id` de perfis com role `sdr` via `user_roles` (mesma lógica usada em `ProdutividadeSDRTab`: SDR efetivo = `sdr_responsavel_id || created_by`, precisa pertencer ao conjunto de SDRs).
-   - Reutilizar hook existente se houver; caso contrário, query pontual com cache local via `useMemo`/`useEffect`.
-3. **Nova pill de filtro** ao lado de "Excluir reagendamentos":
-   - Label: "Apenas criados por SDR"
-   - Ícone: `UserCheck` (lucide) ou similar coerente com as outras pills.
-   - Ativa/desativa como as demais.
-4. **Aplicar filtro** na lista renderizada: quando ativo, manter apenas registros cujo SDR efetivo pertence ao conjunto de SDRs conhecidos.
-5. **Badge de contagem** — estender o breakdown atual para refletir também os descartados por não serem de SDR quando o filtro estiver ativo (ex.: tooltip "8 descartados: criados por closer/gestor").
-6. **Tooltip explicativo** curto na pill informando que serve para conciliar com o card do Dashboard Comercial.
+**Os dois números estão corretos — respondem a perguntas diferentes.**
 
-### Nenhuma mudança de backend
+| Indicador | O que mede | Exemplo (15/07/2026) |
+|---|---|---|
+| Card "Agendas Geradas" | Produtividade do time de SDR — apenas **agendas novas criadas por SDRs** | **62** |
+| Lista de Reuniões | Visão operacional — **todos os registros do dia**, para gestão de agenda | **113** |
 
-Sem alteração de schema, RLS, edge function ou tipos gerados. É filtragem puramente client-side sobre dados já carregados.
+**Por que a Lista mostra mais:**
 
-## Detalhes técnicos
+1. **Reagendamentos (43 no dia):** quando um lead remarca, o sistema cria um novo registro apontando para o original (preservamos o histórico completo para auditoria). Esses registros aparecem na Lista, pois são reuniões reais a acontecer, mas **não contam como produtividade de prospecção** — o SDR não gerou lead novo, apenas remarcou.
+2. **Agendas criadas por não-SDRs (8 no dia):** gestores e closers também podem lançar reuniões pelo Calendário (encaixes estratégicos, follow-ups). Aparecem na Lista, mas **não contam como produtividade de SDR**.
 
-- SDR efetivo por registro: `sdr_responsavel_id ?? created_by`. Se `null` ou não estiver no set de SDRs → excluir quando filtro ativo.
-- Set de SDRs derivado de `user_roles` onde `role = 'sdr'`. Query única na montagem da página; escopo `authenticated`.
-- Ordem dos filtros no header preservada; nova pill entra imediatamente após "Excluir reagendamentos" para agrupar visualmente os filtros de conciliação com o card.
+**Conta:** 113 − 43 reagendamentos − 8 não-SDR = **62** ✅
 
-## Fora do escopo
+**Como conciliar os números na tela:**
 
-- Alterar o card do Dashboard Comercial.
-- Persistir preferência do filtro entre sessões.
-- Mudar cálculos do `ProdutividadeSDRTab`.
+Na Lista de Reuniões, ative os dois filtros:
+- ☑ **Excluir reagendamentos**
+- ☑ **Apenas criados por SDR**
+
+O total exibido passa a coincidir 100% com o card do Dashboard.
+
+**Por que mantemos as duas visões separadas:**
+- Unificar em 113 inflaria artificialmente a produtividade dos SDRs (contaria remarcações como prospecção nova).
+- Unificar em 62 esconderia 51 reuniões reais da agenda operacional do dia.
+
+Cada tela serve ao seu público: **Dashboard = performance de time**, **Lista = operação da agenda**.
+
+Qualquer dúvida, à disposição.
