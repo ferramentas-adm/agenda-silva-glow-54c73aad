@@ -1816,7 +1816,7 @@ export default function DashboardPage() {
 // ─── Day View ────────────────────────────────────────────────────
 const DAY_HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
 
-function DayView({
+const DayView = memo(function DayView({
   date,
   closers,
   agendamentos,
