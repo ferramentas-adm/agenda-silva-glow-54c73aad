@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "sdk_version": "0.22.2",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://jrnyccjhsxcggmgupvzp.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "grupo-silva-agenda-mcp",
+      "version": "0.1.0",
+      "title": "Painel de Agendamentos — Grupo Silva"
+    },
+    "tools": [
+      {
+        "name": "list_appointments",
+        "title": "Listar reuniões agendadas",
+        "description": "Lista reuniões agendadas do painel (agendamentos) filtradas por data e/ou status. Respeita a permissão do usuário autenticado (RLS).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from_date": {
+              "description": "Data inicial (YYYY-MM-DD). Padrão: hoje.",
+              "type": "string"
+            },
+            "to_date": {
+              "description": "Data final (YYYY-MM-DD, inclusiva). Padrão: 30 dias após from_date.",
+              "type": "string"
+            },
+            "status": {
+              "description": "Filtrar por status.",
+              "type": "string",
+              "enum": [
+                "agendada",
+                "realizada",
+                "cancelada",
+                "no_show"
+              ]
+            },
+            "limit": {
+              "description": "Máximo de resultados (padrão 100, teto 500).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_closers",
+        "title": "Listar closers",
+        "description": "Lista os closers cadastrados no painel, com status ativo/inativo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "only_active": {
+              "description": "Se true, retorna somente closers ativos.",
+              "type": "boolean"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_appointment",
+        "title": "Detalhes da reunião",
+        "description": "Retorna os detalhes completos de uma reunião pelo id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ID (uuid) da reunião."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
