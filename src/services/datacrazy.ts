@@ -168,6 +168,8 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
         const data = await api(
           "GET",
           `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`,
+          undefined,
+          { timeoutMs: 30_000, maxAttempts: 2 },
         );
         const pageLeads: DataCrazyLead[] = Array.isArray(data) ? data : data?.data || [];
         const count =
