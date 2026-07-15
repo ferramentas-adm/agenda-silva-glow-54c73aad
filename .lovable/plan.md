@@ -12,20 +12,24 @@ Recebemos a observação de que os números do card **"Agendas Geradas Hoje"** (
 
 | Indicador | O que mede | Exemplo (15/07/2026) |
 |---|---|---|
-| Card "Agendas Geradas" | Produtividade do time de SDR — apenas **agendas novas criadas por SDRs** | **62** |
-| Lista de Reuniões | Visão operacional — **todos os registros do dia**, para gestão de agenda | **113** |
+| Card "Agendas Geradas" | Produtividade do time de SDR — apenas **agendas NOVAS criadas por SDRs** | **62** |
+| Lista de Reuniões | Visão operacional — **TODOS os registros do dia**, para gestão de agenda | **113** |
+
+**Ponto-chave: reagendamento também aparece com status "Agendada".**
+
+Quando um lead remarca, o sistema cria um **novo registro com status "Agendada"** apontando para a reunião original (preservamos o histórico completo para auditoria). Ou seja, olhando só a coluna "Status" na Lista, **uma agenda nova e um reagendamento parecem idênticos** — ambos aparecem como "Agendada". A diferença é interna: o reagendamento tem vínculo com a reunião anterior e, por isso, **não é contado como prospecção nova** no card do Dashboard.
 
 **Por que a Lista mostra mais:**
 
-1. **Reagendamentos (43 no dia):** quando um lead remarca, o sistema cria um novo registro apontando para o original (preservamos o histórico completo para auditoria). Esses registros aparecem na Lista, pois são reuniões reais a acontecer, mas **não contam como produtividade de prospecção** — o SDR não gerou lead novo, apenas remarcou.
-2. **Agendas criadas por não-SDRs (8 no dia):** gestores e closers também podem lançar reuniões pelo Calendário (encaixes estratégicos, follow-ups). Aparecem na Lista, mas **não contam como produtividade de SDR**.
+1. **Reagendamentos (43 no dia):** aparecem na Lista com status "Agendada" porque são reuniões reais que vão acontecer, mas **não contam como produtividade de prospecção** — o SDR não gerou lead novo, apenas remarcou um contato que já existia.
+2. **Agendas criadas por não-SDRs (8 no dia):** gestores e closers também lançam reuniões pelo Calendário (encaixes estratégicos, follow-ups). Aparecem na Lista, mas **não entram no card de produtividade SDR**.
 
 **Conta:** 113 − 43 reagendamentos − 8 não-SDR = **62** ✅
 
 **Como conciliar os números na tela:**
 
 Na Lista de Reuniões, ative os dois filtros:
-- ☑ **Excluir reagendamentos**
+- ☑ **Excluir reagendamentos** — separa visualmente "Agendada nova" de "Agendada por remarcação"
 - ☑ **Apenas criados por SDR**
 
 O total exibido passa a coincidir 100% com o card do Dashboard.
