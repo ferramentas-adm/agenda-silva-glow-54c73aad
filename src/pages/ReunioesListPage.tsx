@@ -101,6 +101,7 @@ export default function ReunioesListPage() {
   const [onlyWithSale, setOnlyWithSale] = useState(false);
   const [onlyWithOffer, setOnlyWithOffer] = useState(false);
   const [filterOfferProduct, setFilterOfferProduct] = useState<string>("all");
+  const [excludeReagendamentos, setExcludeReagendamentos] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
@@ -310,6 +311,7 @@ export default function ReunioesListPage() {
         const s = searchText.toLowerCase();
         if (!ag.lead_name.toLowerCase().includes(s) && !ag.lead_phone.includes(s)) return false;
       }
+      if (excludeReagendamentos && ag.original_agendamento_id) return false;
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithOffer) {
@@ -325,7 +327,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility, sdrGlobalVisibilityUserIds]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, excludeReagendamentos, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility, sdrGlobalVisibilityUserIds]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -361,7 +363,7 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all";
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all" || excludeReagendamentos;
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -377,8 +379,17 @@ export default function ReunioesListPage() {
     setOnlyWithSale(false);
     setOnlyWithOffer(false);
     setFilterOfferProduct("all");
+    setExcludeReagendamentos(false);
     setCurrentPage(1);
   };
+
+  // Breakdown do resultado filtrado — útil quando o usuário filtra por "Criação"
+  // e quer conciliar com o card "Agendas Geradas" das Métricas SDRs (que exclui
+  // reagendamentos e agendas criadas por não-SDRs).
+  const reagendamentosCount = useMemo(
+    () => filtered.filter((ag: any) => ag.original_agendamento_id).length,
+    [filtered],
+  );
 
   const exportCSV = () => {
     const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Canal", "Observação"];
@@ -610,8 +621,21 @@ export default function ReunioesListPage() {
               <Download className="h-3.5 w-3.5" />
               Exportar CSV
             </Button>
-            <Badge variant="outline" className="text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="text-muted-foreground"
+              title={
+                reagendamentosCount > 0
+                  ? `${filtered.length - reagendamentosCount} agendas novas + ${reagendamentosCount} reagendamento${reagendamentosCount !== 1 ? "s" : ""}.\nO card "Agendas Geradas" das Métricas SDRs exclui reagendamentos e agendas criadas por não-SDRs.`
+                  : undefined
+              }
+            >
               {filtered.length} reuniões
+              {reagendamentosCount > 0 && (
+                <span className="ml-1 text-[10px] opacity-70">
+                  ({filtered.length - reagendamentosCount} novas + {reagendamentosCount} reag.)
+                </span>
+              )}
             </Badge>
           </div>
         </div>
@@ -726,6 +750,20 @@ export default function ReunioesListPage() {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setExcludeReagendamentos((v) => !v); setCurrentPage(1); }}
+              title="Reagendamentos herdam o registro do agendamento original. O card 'Agendas Geradas' das Métricas SDRs já exclui reagendamentos — ative aqui para bater os números."
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                excludeReagendamentos
+                  ? "border-purple-500/40 bg-purple-500/15 text-purple-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", excludeReagendamentos ? "bg-purple-500" : "bg-muted-foreground/40")} />
+              Excluir reagendamentos
+            </button>
             <button
               type="button"
               onClick={() => { setExcludeWithSale((v) => { const nv = !v; if (nv) setOnlyWithSale(false); return nv; }); setCurrentPage(1); }}

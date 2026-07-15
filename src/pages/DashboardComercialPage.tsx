@@ -719,6 +719,7 @@ function MetricCard({
   highlight,
   icon,
   onClick,
+  tooltip,
 }: {
   title: string;
   value: number | string;
@@ -726,12 +727,14 @@ function MetricCard({
   highlight?: boolean;
   icon?: React.ReactNode;
   onClick?: () => void;
+  tooltip?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={!onClick}
+      title={tooltip}
       className={cn(
         "rounded-xl border p-4 space-y-2 transition-all text-left w-full",
         onClick && "hover:border-primary/60 hover:shadow-md cursor-pointer",
@@ -1127,7 +1130,7 @@ function MetricasSDRsTab({
       {/* Row 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MetricCard title={titlePara} value={metrics.todayScheduled} subtitle={subtitleSelected} highlight onClick={() => openDrill(titlePara, metrics.todayScheduledIds)} />
-        <MetricCard title={titleGeradas} value={metrics.todayCreated} subtitle={subtitleSelected} onClick={() => openDrill(titleGeradas, metrics.todayCreatedIds)} />
+        <MetricCard title={titleGeradas} value={metrics.todayCreated} subtitle={subtitleSelected} onClick={() => openDrill(titleGeradas, metrics.todayCreatedIds)} tooltip="Conta apenas agendas novas criadas por SDRs. Exclui reagendamentos (que herdam o registro original) e agendas criadas por closers/gestores. Para conciliar com a Lista de Reuniões, ative 'Excluir reagendamentos' lá." />
         <MetricCard title={titleDe} value={metrics.yesterdayScheduled} subtitle={subtitlePrev} onClick={() => openDrill(titleDe, metrics.yesterdayScheduledIds)} />
       </div>
 
