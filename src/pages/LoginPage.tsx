@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import loginBg from "@/assets/login-bg.webp";
 export default function LoginPage() {
   const { signIn, user } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,7 +23,11 @@ export default function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
 
-  const from = (location.state as any)?.from?.pathname || "/";
+  // Honor ?next=<same-origin-relative-path> (used by the MCP OAuth consent flow)
+  // before falling back to location.state.from set by ProtectedRoute.
+  const rawNext = searchParams.get("next");
+  const safeNext = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+  const from = safeNext || (location.state as any)?.from?.pathname || "/";
 
   useEffect(() => {
     const handler = (e: Event) => {
