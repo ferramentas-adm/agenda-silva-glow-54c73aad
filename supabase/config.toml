@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.silva-reunioes]
 verify_jwt = false
+
+[functions.mcp]
+verify_jwt = false
