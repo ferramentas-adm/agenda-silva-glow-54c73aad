@@ -278,6 +278,10 @@ export default function ReunioesListPage() {
     [profiles, roleMap],
   );
 
+  // Set de user_ids considerados SDR (para conciliar com o card "Agendas Geradas"
+  // das Métricas SDRs, que só conta agendamentos cujo criador efetivo é SDR).
+  const sdrUserIdSet = useMemo(() => new Set(sdrProfiles.map((p: any) => p.user_id)), [sdrProfiles]);
+
   // Helper: resolve effective SDR for an agendamento
   const sdrIdOf = (ag: any): string | null => ag.sdr_responsavel_id || ag.created_by || null;
 
