@@ -11,7 +11,14 @@ import { retryWithBackoff, type RetryOptions } from "@/lib/retryWithBackoff";
 // Fila global serializa TODAS as chamadas ao proxy do DataCrazy, evitando
 // que múltiplos componentes (AppLayout + LeadSearch, etc.) batam em paralelo
 // e estourem o rate-limit (HTTP 429).
+//
+// C3: A implementação anterior encadeava tudo em `apiChain = apiChain.then(...)`,
+// o que mantinha uma corrente de promises crescente na memória por toda a
+// sessão. Agora usamos um contador de tarefas pendentes + uma promise "cauda"
+// que é resetada para `Promise.resolve()` sempre que a fila esvazia, evitando
+// que o histórico de chamadas antigas fique retido pelo garbage collector.
 let apiChain: Promise<unknown> = Promise.resolve();
+let pendingCount = 0;
 const GLOBAL_GAP_MS = 250;
 const sleepGlobal = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -47,17 +54,25 @@ async function api(method: string, path: string, payload?: unknown, retryOpts?: 
       { label: `datacrazy-proxy ${method} ${path}`, ...retryOpts },
     );
 
+  pendingCount += 1;
   const chained = apiChain.then(async () => {
     const result = await run();
     await sleepGlobal(GLOBAL_GAP_MS);
     return result;
   });
-  // Mantém a corrente viva mesmo após falhas
+  // Mantém a corrente viva mesmo após falhas, mas reseta quando a fila esvazia
+  // para não acumular referências indefinidamente.
   apiChain = chained.catch(() => undefined);
+  const settled = chained.finally(() => {
+    pendingCount -= 1;
+    if (pendingCount === 0) {
+      apiChain = Promise.resolve();
+    }
+  });
 
   if (dedupeKey) {
-    inFlightGets.set(dedupeKey, chained);
-    chained.finally(() => inFlightGets.delete(dedupeKey));
+    inFlightGets.set(dedupeKey, settled);
+    settled.finally(() => inFlightGets.delete(dedupeKey));
   }
 
   return chained;
@@ -87,8 +102,14 @@ async function getStageId(key: string): Promise<string> {
 }
 
 // ─── Queue ───────────────────────────────────────────────────────
+//
+// M7: fila persiste em localStorage para sobreviver a reloads, mas antes
+// crescia indefinidamente. Agora aplicamos TTL (24h) + cap (100 itens) em
+// toda leitura, descartando itens antigos e mantendo apenas os mais recentes.
 
 const QUEUE_KEY = "datacrazy_sync_queue";
+const QUEUE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const QUEUE_MAX_ITEMS = 100;
 
 export interface QueueItem {
   id: string;
@@ -100,12 +121,34 @@ export interface QueueItem {
   status: "pendente" | "falha_definitiva";
 }
 
+function pruneQueue(items: QueueItem[]): QueueItem[] {
+  const now = Date.now();
+  const fresh = items.filter((it) => {
+    const t = Date.parse(it.criado_em);
+    return Number.isFinite(t) && now - t < QUEUE_TTL_MS;
+  });
+  if (fresh.length <= QUEUE_MAX_ITEMS) return fresh;
+  // Mantém os últimos QUEUE_MAX_ITEMS (mais recentes).
+  return fresh
+    .sort((a, b) => Date.parse(a.criado_em) - Date.parse(b.criado_em))
+    .slice(-QUEUE_MAX_ITEMS);
+}
+
 function getQueue(): QueueItem[] {
-  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch { return []; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]") as QueueItem[];
+    const pruned = pruneQueue(Array.isArray(raw) ? raw : []);
+    if (pruned.length !== (Array.isArray(raw) ? raw.length : 0)) {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(pruned));
+    }
+    return pruned;
+  } catch {
+    return [];
+  }
 }
 
 function setQueue(items: QueueItem[]) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(items));
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(pruneQueue(items)));
 }
 
 function addToQueue(tipo: string, passo: number, agendamento: Record<string, unknown>) {
@@ -133,6 +176,11 @@ export function getAllQueue(): QueueItem[] {
 export function markResolved(id: string) {
   const queue = getQueue();
   setQueue(queue.filter(i => i.id !== id));
+}
+
+/** Limpa manualmente toda a fila (uso administrativo). */
+export function clearQueue() {
+  localStorage.removeItem(QUEUE_KEY);
 }
 
 // ─── Core functions ──────────────────────────────────────────────
