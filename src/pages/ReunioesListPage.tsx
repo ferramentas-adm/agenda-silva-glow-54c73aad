@@ -802,6 +802,20 @@ export default function ReunioesListPage() {
             </button>
             <button
               type="button"
+              onClick={() => { setOnlyCreatedByCloser((v) => !v); setCurrentPage(1); }}
+              title="Mantém apenas agendamentos cujo criador (created_by) é um usuário com papel de Closer — encaixes e agendas lançadas diretamente pelo time de Closer."
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                onlyCreatedByCloser
+                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", onlyCreatedByCloser ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+              Apenas criadas por Closer
+            </button>
+            <button
+              type="button"
               onClick={() => { setExcludeWithSale((v) => { const nv = !v; if (nv) setOnlyWithSale(false); return nv; }); setCurrentPage(1); }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
