@@ -57,7 +57,7 @@ export function useNotifications() {
           // Toast no canto da tela
           toast(n.title, { description: n.message });
           // Atualiza cache adicionando no topo
-          queryClient.setQueryData<Notification[]>(QUERY_KEY, (old) => {
+          queryClient.setQueryData<Notification[]>([...QUERY_KEY, user.id], (old) => {
             const next = old ? [n, ...old] : [n];
             return next.slice(0, 50);
           });
