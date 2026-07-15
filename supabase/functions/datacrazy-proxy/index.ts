@@ -148,6 +148,97 @@ serve(async (req) => {
       });
     }
 
+    // ── Agregador especial: GET /leads/by-tag-compact?tagId=...
+    // Pagina server-side em paralelo e devolve apenas {id,name,phone,tags[]}.
+    // Reduz 20+ round-trips do cliente para 1 e o payload em ~95%.
+    const compactMatch = normalizedPath.match(/^\/leads\/by-tag-compact\?tagId=([^&]+)/);
+    if (method === "GET" && compactMatch) {
+      const tagId = decodeURIComponent(compactMatch[1]);
+      const compactKey = `COMPACT ${tagId}`;
+      const cachedCompact = responseCache.get(compactKey);
+      if (cachedCompact && cachedCompact.expiresAt > Date.now()) {
+        return new Response(cachedCompact.body, {
+          status: cachedCompact.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json", "X-Proxy-Cache": "HIT" },
+        });
+      }
+
+      const PAGE_SIZE = 100;
+      const dcHeaders = {
+        "Content-Type": "application/json",
+        Authorization: DATACRAZY_API_TOKEN,
+      };
+      const fetchPageDC = async (skip: number): Promise<{ items: any[]; count: number | null }> => {
+        const pageUrl = buildProxyUrl(
+          DATACRAZY_API_URL,
+          `/leads?filter[tags]=${tagId}&limit=${PAGE_SIZE}&skip=${skip}`,
+        );
+        let res = await fetchWithRetry(pageUrl, { method: "GET", headers: dcHeaders });
+        if (res.status === 404) {
+          const fb = buildG1FallbackUrl(pageUrl);
+          if (fb) res = await fetchWithRetry(fb, { method: "GET", headers: dcHeaders });
+        }
+        const txt = await res.text();
+        let parsed: any;
+        try { parsed = JSON.parse(txt); } catch { parsed = null; }
+        const items = Array.isArray(parsed) ? parsed : parsed?.data || [];
+        const count = parsed && typeof parsed.count === "number" ? parsed.count : null;
+        return { items, count };
+      };
+
+      const first = await fetchPageDC(0);
+      const totalPages = first.count
+        ? Math.ceil(first.count / PAGE_SIZE)
+        : (first.items.length === PAGE_SIZE ? 40 : 1);
+
+      const skips: number[] = [];
+      for (let i = 1; i < totalPages; i++) skips.push(i * PAGE_SIZE);
+
+      // Paralelismo em lotes de 5 no edge (rede rápida server↔DataCrazy).
+      const CONCURRENCY = 5;
+      const allItems: any[] = [...first.items];
+      let stop = first.items.length < PAGE_SIZE;
+      for (let i = 0; i < skips.length && !stop; i += CONCURRENCY) {
+        const batch = skips.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(
+          batch.map((s) => fetchPageDC(s).catch(() => ({ items: [], count: null }))),
+        );
+        for (const r of results) {
+          if (r.items.length === 0) { stop = true; continue; }
+          allItems.push(...r.items);
+          if (r.items.length < PAGE_SIZE) stop = true;
+        }
+      }
+
+      // Compacta: mantém apenas o essencial para a UI de busca de lead.
+      const seen = new Set<string>();
+      const compact: any[] = [];
+      for (const l of allItems) {
+        if (!l?.id || seen.has(l.id)) continue;
+        seen.add(l.id);
+        const phone = l.phone || (Array.isArray(l.phones) && l.phones[0]?.phone) || "";
+        compact.push({
+          id: l.id,
+          name: l.name,
+          phone: typeof phone === "string" ? phone : String(phone),
+          tags: Array.isArray(l.tags)
+            ? l.tags.map((t: any) => ({ id: t.id, name: t.name }))
+            : [],
+        });
+      }
+
+      const compactBody = JSON.stringify({ data: compact, count: compact.length });
+      responseCache.set(compactKey, {
+        expiresAt: Date.now() + CACHE_TTL_MS,
+        status: 200,
+        body: compactBody,
+      });
+      return new Response(compactBody, {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Proxy-Cache": "MISS" },
+      });
+    }
+
     // Cache check (apenas GETs em rotas idempotentes).
     const isCacheable =
       method === "GET" && CACHEABLE_PREFIXES.some((p) => normalizedPath.startsWith(p));
