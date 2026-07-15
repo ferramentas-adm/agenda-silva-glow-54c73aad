@@ -187,9 +187,16 @@ function UsersSection() {
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ["admin-all-users"],
     queryFn: async () => {
-      const { data: profiles } = await supabase.from("profiles").select("*");
-      const { data: roles } = await supabase.from("user_roles").select("*");
-      const { data: closers } = await supabase.from("closers").select("*").order("name");
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email, active, available_for_scheduling, is_sdr_override, moderador_tipo, sdr_team, datacrazy_id");
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+      const { data: closers } = await supabase
+        .from("closers")
+        .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id")
+        .order("name");
 
       // Build a map of closer info by email
       const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string }>();
