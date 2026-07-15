@@ -283,6 +283,12 @@ export default function ReunioesListPage() {
   // das Métricas SDRs, que só conta agendamentos cujo criador efetivo é SDR).
   const sdrUserIdSet = useMemo(() => new Set(sdrProfiles.map((p: any) => p.user_id)), [sdrProfiles]);
 
+  // Set de user_ids considerados Closer (perfis com role=closer)
+  const closerUserIdSet = useMemo(
+    () => new Set(profiles.filter((p: any) => roleMap[p.user_id] === "closer").map((p: any) => p.user_id)),
+    [profiles, roleMap],
+  );
+
   // Helper: resolve effective SDR for an agendamento
   const sdrIdOf = (ag: any): string | null => ag.sdr_responsavel_id || ag.created_by || null;
 
