@@ -241,6 +241,18 @@ serve(async (req) => {
     const args = call?.function?.arguments;
     const parsed = typeof args === "string" ? JSON.parse(args) : args;
 
+    // Persistir no cache (upsert). Erros aqui não devem quebrar a resposta.
+    try {
+      await supabase
+        .from("lead_ai_analysis")
+        .upsert(
+          { agendamento_id, analysis: parsed, updated_at: new Date().toISOString() },
+          { onConflict: "agendamento_id" },
+        );
+    } catch (e) {
+      console.warn("lead_ai_analysis upsert falhou:", e);
+    }
+
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
