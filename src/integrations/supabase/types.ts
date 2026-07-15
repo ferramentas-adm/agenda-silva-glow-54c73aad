@@ -852,6 +852,37 @@ export type Database = {
     }
     Functions: {
       current_closer_id: { Args: never; Returns: string }
+      dashboard_agendas_por_canal: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          channel: string
+          ids_created: string[]
+          ids_created_realizada: string[]
+          ids_scheduled: string[]
+          ids_scheduled_realizada: string[]
+          qtd_created: number
+          qtd_created_realizada: number
+          qtd_scheduled: number
+          qtd_scheduled_realizada: number
+        }[]
+      }
+      dashboard_trend_sdr: {
+        Args: { _window_days: number }
+        Returns: {
+          criadas: number
+          day: string
+          realizadas: number
+        }[]
+      }
+      dashboard_trend_vendas: {
+        Args: { _closer_id?: string; _window_days: number }
+        Returns: {
+          day: string
+          faturamento: number
+          realizadas: number
+          vendas: number
+        }[]
+      }
       get_public_profiles: {
         Args: never
         Returns: {

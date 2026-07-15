@@ -10,14 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 
-interface AgRow {
-  id: string;
-  scheduled_date: string;
-  created_at: string;
-  status: string;
-  channel_type: string | null;
-}
-
 interface Props {
   currentDate: Date;
   dateRange?: DateRange;
@@ -31,14 +23,25 @@ interface Props {
   vendasFechadasNoPeriodo?: { agendamento_id: string; channel_type: string | null; valor: number }[];
 }
 
+interface CanalRow {
+  channel: string;
+  qtd_scheduled: number;
+  qtd_scheduled_realizada: number;
+  qtd_created: number;
+  qtd_created_realizada: number;
+  ids_scheduled: string[];
+  ids_scheduled_realizada: string[];
+  ids_created: string[];
+  ids_created_realizada: string[];
+}
+
 /**
  * Painel "Agendas por Canal" — usado dentro da aba de Vendas.
  *
- * Diferente do painel equivalente em "Métricas SDR" (que filtra apenas
- * agendamentos criados por SDR), aqui são consideradas TODAS as agendas
- * do período, incluindo segundas reuniões criadas pelos closers. Isso é
- * importante para a aba de vendas, onde queremos ver agendadas, realizadas
- * e vendas reais — inclusive vendas de segunda reunião.
+ * Agregação server-side via RPC `dashboard_agendas_por_canal`:
+ * substitui duas varreduras paginadas em `agendamentos` (até milhares
+ * de linhas cada) por uma única chamada que já devolve os totais e
+ * os ids necessários para drilldown/export.
  */
 export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFechadasNoPeriodo }: Props) {
   const isRange = !!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to));
@@ -54,57 +57,25 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
     return format(currentDate, "dd/MM/yyyy");
   }, [currentDate, isRange, dateRange]);
 
-  // Agendas com scheduled_date dentro do período
-  const { data: scheduledAgs = [] } = useQuery<AgRow[]>({
-    queryKey: ["vendas-canal-scheduled", fromStr, toStr],
+  const { data: canais = [] } = useQuery<CanalRow[]>({
+    queryKey: ["vendas-canal-rpc", fromStr, toStr],
     queryFn: async () => {
-      const all: AgRow[] = [];
-      const PAGE = 1000;
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("agendamentos")
-          .select("id, scheduled_date, created_at, status, channel_type")
-          .is("deleted_at", null)
-          .gte("scheduled_date", fromStr)
-          .lte("scheduled_date", toStr)
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as AgRow[];
-        all.push(...batch);
-        if (batch.length < PAGE) break;
-        from += PAGE;
-      }
-      return all;
-    },
-    staleTime: 60_000,
-    refetchInterval: 2 * 60_000,
-  });
-
-  // Agendas criadas dentro do período (BRT) — usa range em created_at com offset -03:00
-  const { data: createdAgs = [] } = useQuery<AgRow[]>({
-    queryKey: ["vendas-canal-created", fromStr, toStr],
-    queryFn: async () => {
-      const all: AgRow[] = [];
-      const PAGE = 1000;
-      let from = 0;
-      const startIso = `${fromStr}T00:00:00-03:00`;
-      const endIso = `${toStr}T23:59:59-03:00`;
-      while (true) {
-        const { data, error } = await supabase
-          .from("agendamentos")
-          .select("id, scheduled_date, created_at, status, channel_type")
-          .is("deleted_at", null)
-          .gte("created_at", startIso)
-          .lte("created_at", endIso)
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as AgRow[];
-        all.push(...batch);
-        if (batch.length < PAGE) break;
-        from += PAGE;
-      }
-      return all;
+      const { data, error } = await supabase.rpc("dashboard_agendas_por_canal", {
+        _from: fromStr,
+        _to: toStr,
+      });
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        channel: r.channel as string,
+        qtd_scheduled: Number(r.qtd_scheduled) || 0,
+        qtd_scheduled_realizada: Number(r.qtd_scheduled_realizada) || 0,
+        qtd_created: Number(r.qtd_created) || 0,
+        qtd_created_realizada: Number(r.qtd_created_realizada) || 0,
+        ids_scheduled: (r.ids_scheduled ?? []) as string[],
+        ids_scheduled_realizada: (r.ids_scheduled_realizada ?? []) as string[],
+        ids_created: (r.ids_created ?? []) as string[],
+        ids_created_realizada: (r.ids_created_realizada ?? []) as string[],
+      }));
     },
     staleTime: 60_000,
     refetchInterval: 2 * 60_000,
@@ -127,43 +98,37 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
     return m;
   }, [vendasFechadasNoPeriodo]);
 
-  const byChannel = useMemo(() => {
-    return (list: AgRow[]) => {
-      const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[]; valorVendas: number }>();
-      list.forEach((a) => {
-        const ch = a.channel_type || "Sem canal";
-        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
-        cur.ids.push(a.id);
-        if (a.status === "realizada") cur.idsRealizadas.push(a.id);
-        map.set(ch, cur);
-      });
-      // Incorpora vendas do período (por canal). Cria linha mesmo para
-      // canais que não têm agendamento no período (vendas vindas de
-      // follow-ups de reuniões fora do período).
-      vendasByChannel.forEach((v, ch) => {
-        const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
-        cur.idsVendas = v.ids;
-        cur.valorVendas = v.valor;
-        map.set(ch, cur);
-      });
-      return Array.from(map.entries())
-        .sort((a, b) => b[1].ids.length - a[1].ids.length)
-        .map(([canal, v], i) => ({
-          num: i + 1,
-          canal,
-          qtd: v.ids.length,
-          ids: v.ids,
-          qtdRealizadas: v.idsRealizadas.length,
-          idsRealizadas: v.idsRealizadas,
-          qtdVendas: v.idsVendas.length,
-          idsVendas: v.idsVendas,
-          valorVendas: v.valorVendas,
-        }));
-    };
-  }, [vendasByChannel]);
+  const buildChannels = (mode: "scheduled" | "created") => {
+    const map = new Map<string, { ids: string[]; idsRealizadas: string[]; idsVendas: string[]; valorVendas: number }>();
+    canais.forEach((c) => {
+      const ids = mode === "scheduled" ? c.ids_scheduled : c.ids_created;
+      const idsReal = mode === "scheduled" ? c.ids_scheduled_realizada : c.ids_created_realizada;
+      if (ids.length === 0 && idsReal.length === 0) return;
+      map.set(c.channel, { ids, idsRealizadas: idsReal, idsVendas: [], valorVendas: 0 });
+    });
+    vendasByChannel.forEach((v, ch) => {
+      const cur = map.get(ch) || { ids: [], idsRealizadas: [], idsVendas: [], valorVendas: 0 };
+      cur.idsVendas = v.ids;
+      cur.valorVendas = v.valor;
+      map.set(ch, cur);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => b[1].ids.length - a[1].ids.length)
+      .map(([canal, v], i) => ({
+        num: i + 1,
+        canal,
+        qtd: v.ids.length,
+        ids: v.ids,
+        qtdRealizadas: v.idsRealizadas.length,
+        idsRealizadas: v.idsRealizadas,
+        qtdVendas: v.idsVendas.length,
+        idsVendas: v.idsVendas,
+        valorVendas: v.valorVendas,
+      }));
+  };
 
-  const channelsScheduled = useMemo(() => byChannel(scheduledAgs), [byChannel, scheduledAgs]);
-  const channelsCreated = useMemo(() => byChannel(createdAgs), [byChannel, createdAgs]);
+  const channelsScheduled = useMemo(() => buildChannels("scheduled"), [canais, vendasByChannel]);
+  const channelsCreated = useMemo(() => buildChannels("created"), [canais, vendasByChannel]);
 
   const [drill, setDrill] = useState<{ open: boolean; title: string; ids: string[] }>({ open: false, title: "", ids: [] });
   const openDrill = (title: string, ids: string[]) => setDrill({ open: true, title, ids });
@@ -206,6 +171,7 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
     </>
   );
 }
+
 
 // ─── ChannelTable (cópia local do componente usado em Métricas SDR) ──
 function ChannelTable({
