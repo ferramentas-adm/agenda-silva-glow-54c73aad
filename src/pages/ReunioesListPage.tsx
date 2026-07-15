@@ -752,6 +752,20 @@ export default function ReunioesListPage() {
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
+              onClick={() => { setExcludeReagendamentos((v) => !v); setCurrentPage(1); }}
+              title="Reagendamentos herdam o registro do agendamento original. O card 'Agendas Geradas' das Métricas SDRs já exclui reagendamentos — ative aqui para bater os números."
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                excludeReagendamentos
+                  ? "border-purple-500/40 bg-purple-500/15 text-purple-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", excludeReagendamentos ? "bg-purple-500" : "bg-muted-foreground/40")} />
+              Excluir reagendamentos
+            </button>
+            <button
+              type="button"
               onClick={() => { setExcludeWithSale((v) => { const nv = !v; if (nv) setOnlyWithSale(false); return nv; }); setCurrentPage(1); }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
