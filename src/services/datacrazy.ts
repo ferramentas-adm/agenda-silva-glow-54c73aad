@@ -11,7 +11,14 @@ import { retryWithBackoff, type RetryOptions } from "@/lib/retryWithBackoff";
 // Fila global serializa TODAS as chamadas ao proxy do DataCrazy, evitando
 // que múltiplos componentes (AppLayout + LeadSearch, etc.) batam em paralelo
 // e estourem o rate-limit (HTTP 429).
+//
+// C3: A implementação anterior encadeava tudo em `apiChain = apiChain.then(...)`,
+// o que mantinha uma corrente de promises crescente na memória por toda a
+// sessão. Agora usamos um contador de tarefas pendentes + uma promise "cauda"
+// que é resetada para `Promise.resolve()` sempre que a fila esvazia, evitando
+// que o histórico de chamadas antigas fique retido pelo garbage collector.
 let apiChain: Promise<unknown> = Promise.resolve();
+let pendingCount = 0;
 const GLOBAL_GAP_MS = 250;
 const sleepGlobal = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -47,17 +54,25 @@ async function api(method: string, path: string, payload?: unknown, retryOpts?: 
       { label: `datacrazy-proxy ${method} ${path}`, ...retryOpts },
     );
 
+  pendingCount += 1;
   const chained = apiChain.then(async () => {
     const result = await run();
     await sleepGlobal(GLOBAL_GAP_MS);
     return result;
   });
-  // Mantém a corrente viva mesmo após falhas
+  // Mantém a corrente viva mesmo após falhas, mas reseta quando a fila esvazia
+  // para não acumular referências indefinidamente.
   apiChain = chained.catch(() => undefined);
+  const settled = chained.finally(() => {
+    pendingCount -= 1;
+    if (pendingCount === 0) {
+      apiChain = Promise.resolve();
+    }
+  });
 
   if (dedupeKey) {
-    inFlightGets.set(dedupeKey, chained);
-    chained.finally(() => inFlightGets.delete(dedupeKey));
+    inFlightGets.set(dedupeKey, settled);
+    settled.finally(() => inFlightGets.delete(dedupeKey));
   }
 
   return chained;
