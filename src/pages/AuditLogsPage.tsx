@@ -101,7 +101,7 @@ export default function AuditLogsPage() {
     queryFn: async () => {
       let query = supabase
         .from("audit_logs")
-        .select("*", { count: "exact" })
+        .select("*", { count: "estimated" })
         .order("created_at", { ascending: false });
 
       if (dateFrom) {
