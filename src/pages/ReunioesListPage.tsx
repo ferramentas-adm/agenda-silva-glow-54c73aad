@@ -317,6 +317,10 @@ export default function ReunioesListPage() {
         if (!ag.lead_name.toLowerCase().includes(s) && !ag.lead_phone.includes(s)) return false;
       }
       if (excludeReagendamentos && ag.original_agendamento_id) return false;
+      if (onlyCreatedBySdr) {
+        const creator = sdrIdOf(ag);
+        if (!creator || !sdrUserIdSet.has(creator)) return false;
+      }
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithOffer) {
