@@ -367,62 +367,21 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const { data: conversaoData } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
     queryKey: ["vendas-tab-conversao", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
     queryFn: async () => {
-      // 1) Busca agendamentos realizados no período (paginado)
-      const PAGE = 1000;
-      const ags: { id: string; closer_id: string | null }[] = [];
-      let from = 0;
-      while (true) {
-        let q = supabase
-          .from("agendamentos")
-          .select("id, closer_id")
-          .is("deleted_at", null)
-          .eq("status", "realizada")
-          .eq("is_venda_avulsa", false)
-          .gte("scheduled_date", convPeriodFrom)
-          .lte("scheduled_date", convPeriodTo)
-          .range(from, from + PAGE - 1);
-        if (isCloserView && myCloserId) q = q.eq("closer_id", myCloserId);
-        const { data, error } = await q;
-        if (error) throw error;
-        const batch = (data ?? []) as { id: string; closer_id: string | null }[];
-        ags.push(...batch);
-        if (batch.length < PAGE) break;
-        from += PAGE;
-      }
-      if (ags.length === 0) return { totalReunioes: 0, totalVendas: 0, ids: [] };
-
-      // 2) Busca vendas (vendeu + motivo) desses agendamentos
-      const ids = ags.map((a) => a.id);
-      const vendasMap = new Map<string, { vendeu: boolean; motivo: string }>();
-      const CHUNK = 500;
-      for (let i = 0; i < ids.length; i += CHUNK) {
-        const chunk = ids.slice(i, i + CHUNK);
-        const { data, error } = await supabase
-          .from("vendas")
-          .select("agendamento_id, vendeu, motivo_nao_fechamento, created_at")
-          .in("agendamento_id", chunk)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        (data ?? []).forEach((v: any) => {
-          // 1 linha por agendamento (mais recente vence)
-          if (!vendasMap.has(v.agendamento_id)) {
-            vendasMap.set(v.agendamento_id, {
-              vendeu: !!v.vendeu,
-              motivo: (v.motivo_nao_fechamento || "").trim().toLowerCase(),
-            });
-          }
-        });
-      }
-
-      // 3) Filtra Call Interompida/Interrompida do denominador
-      const validos = ags.filter((a) => {
-        const v = vendasMap.get(a.id);
-        if (!v) return true;
-        if (!v.vendeu && (v.motivo === "call interompida" || v.motivo === "call interrompida")) return false;
-        return true;
+      // Agrega direto no banco via RPC: elimina paginação de milhares de linhas
+      // e o pós-processamento client-side (C4 residual). A RPC roda em
+      // SECURITY INVOKER, então o RLS do usuário continua sendo aplicado.
+      const { data, error } = await supabase.rpc("dashboard_conversao_period", {
+        p_from: convPeriodFrom,
+        p_to: convPeriodTo,
+        p_closer_id: isCloserView && myCloserId ? myCloserId : null,
       });
-      const totalVendas = validos.filter((a) => vendasMap.get(a.id)?.vendeu).length;
-      return { totalReunioes: validos.length, totalVendas, ids: validos.map((a) => a.id) };
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        totalReunioes: row?.total_reunioes ?? 0,
+        totalVendas: row?.total_vendas ?? 0,
+        ids: (row?.ids ?? []) as string[],
+      };
     },
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
