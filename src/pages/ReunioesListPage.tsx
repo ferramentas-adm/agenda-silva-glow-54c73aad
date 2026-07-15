@@ -103,6 +103,7 @@ export default function ReunioesListPage() {
   const [filterOfferProduct, setFilterOfferProduct] = useState<string>("all");
   const [excludeReagendamentos, setExcludeReagendamentos] = useState(false);
   const [onlyCreatedBySdr, setOnlyCreatedBySdr] = useState(false);
+  const [onlyCreatedByCloser, setOnlyCreatedByCloser] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
@@ -282,6 +283,12 @@ export default function ReunioesListPage() {
   // das Métricas SDRs, que só conta agendamentos cujo criador efetivo é SDR).
   const sdrUserIdSet = useMemo(() => new Set(sdrProfiles.map((p: any) => p.user_id)), [sdrProfiles]);
 
+  // Set de user_ids considerados Closer (perfis com role=closer)
+  const closerUserIdSet = useMemo(
+    () => new Set(profiles.filter((p: any) => roleMap[p.user_id] === "closer").map((p: any) => p.user_id)),
+    [profiles, roleMap],
+  );
+
   // Helper: resolve effective SDR for an agendamento
   const sdrIdOf = (ag: any): string | null => ag.sdr_responsavel_id || ag.created_by || null;
 
@@ -321,6 +328,10 @@ export default function ReunioesListPage() {
         const creator = sdrIdOf(ag);
         if (!creator || !sdrUserIdSet.has(creator)) return false;
       }
+      if (onlyCreatedByCloser) {
+        const creator = ag.created_by;
+        if (!creator || !closerUserIdSet.has(creator)) return false;
+      }
       if (excludeWithSale && vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithSale && !vendaAgendamentoIds.has(ag.id)) return false;
       if (onlyWithOffer) {
@@ -336,7 +347,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, excludeReagendamentos, onlyCreatedBySdr, sdrUserIdSet, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility, sdrGlobalVisibilityUserIds]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, excludeReagendamentos, onlyCreatedBySdr, onlyCreatedByCloser, sdrUserIdSet, closerUserIdSet, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility, sdrGlobalVisibilityUserIds]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -372,7 +383,7 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all" || excludeReagendamentos || onlyCreatedBySdr;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all" || excludeReagendamentos || onlyCreatedBySdr || onlyCreatedByCloser;
 
   const clearFilters = () => {
     setFilterCloser("all");
@@ -390,6 +401,7 @@ export default function ReunioesListPage() {
     setFilterOfferProduct("all");
     setExcludeReagendamentos(false);
     setOnlyCreatedBySdr(false);
+    setOnlyCreatedByCloser(false);
     setCurrentPage(1);
   };
 
@@ -787,6 +799,20 @@ export default function ReunioesListPage() {
             >
               <span className={cn("h-2 w-2 rounded-full", onlyCreatedBySdr ? "bg-sky-500" : "bg-muted-foreground/40")} />
               Apenas criados por SDR
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOnlyCreatedByCloser((v) => !v); setCurrentPage(1); }}
+              title="Mantém apenas agendamentos cujo criador (created_by) é um usuário com papel de Closer — encaixes e agendas lançadas diretamente pelo time de Closer."
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                onlyCreatedByCloser
+                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                  : "border-border bg-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", onlyCreatedByCloser ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+              Apenas criadas por Closer
             </button>
             <button
               type="button"
