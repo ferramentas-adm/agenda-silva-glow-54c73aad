@@ -417,6 +417,35 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_ai_analysis: {
+        Row: {
+          agendamento_id: string
+          analysis: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          agendamento_id: string
+          analysis: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          agendamento_id?: string
+          analysis?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_ai_analysis_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: true
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_metrics: {
         Row: {
           classificacao: string | null

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, Fragment, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef, Fragment, useCallback, memo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, isToday } from "date-fns";
@@ -1816,7 +1816,7 @@ export default function DashboardPage() {
 // ─── Day View ────────────────────────────────────────────────────
 const DAY_HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
 
-function DayView({
+const DayView = memo(function DayView({
   date,
   closers,
   agendamentos,
@@ -2206,10 +2206,10 @@ function DayView({
       </div>
     </div>
   );
-}
+});
 
 // ─── Edit Time Slots (simplified picker for edit mode) ───────────
-function EditTimeSlots({
+const EditTimeSlots = memo(function EditTimeSlots({
   closerId,
   date,
   selectedTime,
@@ -2378,4 +2378,4 @@ function EditTimeSlots({
       )}
     </div>
   );
-}
+});

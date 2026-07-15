@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -51,6 +51,11 @@ export default function AguardandoAtribuicaoPage() {
   const [errorDialog, setErrorDialog] = useState<{ agendamento: Agendamento; alsoDelete: boolean } | null>(null);
   const [errorDescription, setErrorDescription] = useState("");
   const [submittingError, setSubmittingError] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 25;
+
+
+
 
   const todayStr = (() => {
     const d = new Date();
@@ -76,6 +81,15 @@ export default function AguardandoAtribuicaoPage() {
       return (data ?? []) as Agendamento[];
     },
   });
+
+  const totalPages = Math.max(1, Math.ceil(pending.length / PAGE_SIZE));
+  useEffect(() => {
+    if (page >= totalPages) setPage(0);
+  }, [totalPages, page]);
+  const paged = useMemo(
+    () => pending.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    [pending, page],
+  );
 
   const { data: closers = [] } = useQuery<Closer[]>({
     queryKey: ["closers-active-assignable"],
@@ -358,7 +372,7 @@ export default function AguardandoAtribuicaoPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {pending.map((a) => {
+            {paged.map((a) => {
               const dateObj = new Date(`${a.scheduled_date}T12:00:00`);
               const sdrLabel = profileName(a.sdr_responsavel_id ?? a.created_by);
               const isReschedule = !!a.original_agendamento_id;
@@ -505,6 +519,21 @@ export default function AguardandoAtribuicaoPage() {
                 </div>
               );
             })}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
+                <span>
+                  {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, pending.length)} de {pending.length}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                    Anterior
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

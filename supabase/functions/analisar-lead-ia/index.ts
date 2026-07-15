@@ -48,15 +48,34 @@ async function buscarDataCrazyLead(phone: string) {
   }
 }
 
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { agendamento_id } = await req.json();
+    const { agendamento_id, force } = await req.json();
     if (!agendamento_id) {
       return new Response(JSON.stringify({ error: "agendamento_id obrigatório" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // 0. Cache hit (TTL 24h) — evita nova chamada ao modelo
+    if (!force) {
+      const { data: cached } = await supabase
+        .from("lead_ai_analysis")
+        .select("analysis, updated_at")
+        .eq("agendamento_id", agendamento_id)
+        .maybeSingle();
+      if (cached?.analysis && cached.updated_at) {
+        const age = Date.now() - new Date(cached.updated_at).getTime();
+        if (age < CACHE_TTL_MS) {
+          return new Response(JSON.stringify({ ...cached.analysis, _cached: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
     }
 
     // 1. Agendamento
@@ -221,6 +240,18 @@ serve(async (req) => {
     const call = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
     const args = call?.function?.arguments;
     const parsed = typeof args === "string" ? JSON.parse(args) : args;
+
+    // Persistir no cache (upsert). Erros aqui não devem quebrar a resposta.
+    try {
+      await supabase
+        .from("lead_ai_analysis")
+        .upsert(
+          { agendamento_id, analysis: parsed, updated_at: new Date().toISOString() },
+          { onConflict: "agendamento_id" },
+        );
+    } catch (e) {
+      console.warn("lead_ai_analysis upsert falhou:", e);
+    }
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
