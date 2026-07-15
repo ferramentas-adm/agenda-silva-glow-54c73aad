@@ -357,23 +357,20 @@ export function CalendarContent() {
   });
 
   // Realtime: ouve mudanças em agendamentos para TODOS os usuários (independente da função).
-  // Channel name único por sessão evita colisões entre múltiplos clientes/abas.
+  // Channel name idempotente por usuário evita acúmulo de canais no servidor Realtime.
   useEffect(() => {
-    const channelName = `agendamentos-realtime-${Math.random().toString(36).slice(2, 10)}`;
+    if (!user?.id) return;
     const channel = supabase
-      .channel(channelName)
+      .channel(`agendamentos-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
         queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-metrics"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-created"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-prev"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
+  }, [queryClient, user?.id]);
 
   // Fetch Google Calendar events for all selected closers
-  const closerIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+  const closerIds = useMemo(() => Array.from(selectedIds).sort(), [selectedIds]);
   const closerIdsKey = closerIds.join(",");
 
   const { data: googleBusyBlocks = [] } = useQuery<GoogleBusyBlock[]>({
