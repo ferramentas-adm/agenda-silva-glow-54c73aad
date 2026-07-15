@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyCloserId } from "@/hooks/useMyCloserId";
 import { brPartsOf, brTodayYMD } from "@/lib/timezone";
 
 export interface OverdueMeeting {
@@ -54,20 +55,8 @@ export function useOverdueMeetings() {
   const queryClient = useQueryClient();
   const isManager = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
 
-  // Busca closer record por email — qualquer usuário pode ter um (cobre Vick: SDR+Closer).
-  const { data: myCloserId } = useQuery({
-    queryKey: ["overdue-meetings-closer-id", user?.email],
-    enabled: !!user?.email && !isManager,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id")
-        .eq("email", user!.email!)
-        .maybeSingle();
-      return data?.id ?? null;
-    },
-    staleTime: 10 * 60 * 1000,
-  });
+  // Closer record compartilhado — evita duplicar a query em cada hook/banner.
+  const { data: myCloserId } = useMyCloserId();
 
   // Hoje em BRT; a busca precisa incluir QUALQUER data anterior ainda pendente.
   const today = brTodayYMD();
