@@ -43,11 +43,29 @@ export interface VendaWebhookPayload {
  * o registro local da venda já está salvo no banco.
  */
 export async function sendVendaToDataCrazy(payload: VendaWebhookPayload) {
+  // Para desfechos "fechou" e "perdeu", alinha o payload ao formato do webhook
+  // `reuniao_realizada` (usado pelo CRM em src/services/datacrazy.ts) e
+  // adiciona `is_vendeu`. Demais outcomes seguem como estavam.
+  const enriched: VendaWebhookPayload =
+    payload.outcome === "fechou" || payload.outcome === "perdeu"
+      ? {
+          ...payload,
+          evento: "status_atualizado",
+          pipeline_acao: "reuniao_realizada",
+          status_novo: "realizada",
+          timestamp: new Date().toISOString(),
+          is_vendeu: payload.outcome === "fechou",
+          ...(payload.outcome === "perdeu"
+            ? { motivo_status: "nao-venda perdida" }
+            : {}),
+        }
+      : payload;
+
   try {
     await retryWithBackoff(
       async () => {
         const { error } = await supabase.functions.invoke("datacrazy-venda-webhook", {
-          body: payload,
+          body: enriched,
         });
         if (error) {
           const wrapped = new Error(error.message) as Error & { status?: number };
