@@ -24,6 +24,14 @@ export interface VendaWebhookPayload {
   recebimento_acordado?: boolean;
   valor_previsto?: number | null;
   data_prevista?: string | null;
+  // Campos alinhados ao webhook `reuniao_realizada` (adicionados automaticamente
+  // para outcomes "fechou" / "perdeu").
+  evento?: string;
+  pipeline_acao?: string;
+  status_novo?: string;
+  timestamp?: string;
+  is_vendeu?: boolean;
+  motivo_status?: string;
 }
 
 /**
