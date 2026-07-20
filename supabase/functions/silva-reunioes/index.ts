@@ -42,6 +42,10 @@ Deno.serve(async (req) => {
   const since = url.searchParams.get("since") ?? defaultSince();
   const limitParam = url.searchParams.get("limit");
   const limit = limitParam ? parseInt(limitParam, 10) : null;
+  const statusParam = url.searchParams.get("status");
+  const statusList = statusParam
+    ? statusParam.split(",").map((s) => s.trim()).filter(Boolean)
+    : null;
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -51,7 +55,7 @@ Deno.serve(async (req) => {
   let query = supabase
     .from("agendamentos")
     .select(`
-      id, lead_name, lead_phone, scheduled_date, scheduled_time,
+      id, lead_name, lead_phone, scheduled_date, scheduled_time, status,
       is_venda_avulsa, is_5k, meeting_reason, channel_type,
       closers ( id, name, email )
     `)
@@ -59,6 +63,10 @@ Deno.serve(async (req) => {
     .is("deleted_at", null)
     .order("scheduled_date", { ascending: false })
     .order("scheduled_time", { ascending: false });
+
+  if (statusList && statusList.length > 0) {
+    query = query.in("status", statusList);
+  }
 
   if (limit && limit > 0) {
     query = query.limit(limit);
@@ -80,6 +88,7 @@ Deno.serve(async (req) => {
       lead: a.lead_name ?? null,
       data: a.scheduled_date ? toBRDate(a.scheduled_date) : null,
       hora_reuniao: a.scheduled_time ?? null,
+      status: a.status ?? null,
       is_venda_avulsa: a.is_venda_avulsa ?? false,
       is_5k: a.is_5k ?? false,
       meeting_reason: a.meeting_reason ?? null,
