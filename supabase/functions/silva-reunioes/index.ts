@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
       lead: a.lead_name ?? null,
       data: a.scheduled_date ? toBRDate(a.scheduled_date) : null,
       hora_reuniao: a.scheduled_time ?? null,
+      status: a.status ?? null,
       is_venda_avulsa: a.is_venda_avulsa ?? false,
       is_5k: a.is_5k ?? false,
       meeting_reason: a.meeting_reason ?? null,
