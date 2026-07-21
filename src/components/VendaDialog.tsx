@@ -84,7 +84,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [explicacaoNaoFechamento, setExplicacaoNaoFechamento] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [sdrError, setSdrError] = useState(false);
-  const [apresentouPreco, setApresentouPreco] = useState<"sim" | "nao" | null>(null);
+  // Campo "Apresentou o preço" oculto — assume "sim" por padrão (valor_apresentado continua sendo coletado via input Valor).
+  const [apresentouPreco, setApresentouPreco] = useState<"sim" | "nao" | null>("sim");
+
   const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -129,7 +131,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setExplicacaoNaoFechamento("");
     setObservacoes("");
     setSdrError(false);
-    setApresentouPreco(null);
+    setApresentouPreco("sim");
     setLeadRevenue("");
     setIsEditing(false);
     setHasRecebimento(false);
@@ -690,28 +692,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Apresentou o preço? *</Label>
-                <RadioGroup
-                  value={apresentouPreco ?? ""}
-                  onValueChange={(v) => {
-                    const next = v as "sim" | "nao";
-                    setApresentouPreco(next);
-                    if (next === "nao") setValor("");
-                  }}
-                >
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="sim" id="apr-preco-sim" />
-                      <Label htmlFor="apr-preco-sim" className="cursor-pointer font-normal">Sim</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="nao" id="apr-preco-nao" />
-                      <Label htmlFor="apr-preco-nao" className="cursor-pointer font-normal">Não</Label>
-                    </div>
-                  </div>
-                </RadioGroup>
-              </div>
+              {/* Campo "Apresentou o preço?" ocultado temporariamente — teste com Closers.
+                  Assume-se "sim" por padrão para manter a coleta de valor_apresentado. */}
+
 
               {produtosList.length > 0 && (
                 <div className="space-y-1.5">
