@@ -84,7 +84,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [explicacaoNaoFechamento, setExplicacaoNaoFechamento] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [sdrError, setSdrError] = useState(false);
-  const [apresentouPreco, setApresentouPreco] = useState<"sim" | "nao" | null>(null);
+  // Campo "Apresentou o preço" oculto — assume "sim" por padrão (valor_apresentado continua sendo coletado via input Valor).
+  const [apresentouPreco, setApresentouPreco] = useState<"sim" | "nao" | null>("sim");
+
   const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
