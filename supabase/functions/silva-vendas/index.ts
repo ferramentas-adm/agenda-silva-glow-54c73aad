@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
       agendamento_id, created_at,
       agendamentos!inner (
         scheduled_date, scheduled_time, lead_name, is_venda_avulsa, is_5k,
+        channel_type, meeting_reason,
         closers ( name, email )
       )
     `)
