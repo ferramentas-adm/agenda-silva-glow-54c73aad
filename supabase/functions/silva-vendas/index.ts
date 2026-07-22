@@ -98,6 +98,8 @@ Deno.serve(async (req) => {
       valor_total_projeto: v.valor_total_projeto,
       is_venda_avulsa: ag.is_venda_avulsa ?? false,
       is_5k: ag.is_5k ?? false,
+      channel_type: ag.channel_type ?? null,
+      meeting_reason: ag.meeting_reason ?? null,
       produto: v.produto,
       resumo_venda: v.resumo_venda,
       segunda_reuniao: v.segunda_reuniao ?? false,
