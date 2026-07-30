@@ -270,6 +270,24 @@ function UsersSection() {
     },
   });
 
+  const visibleUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return (allUsers as any[])
+      .filter((u) => {
+        if (filterRole !== "all" && u.role !== filterRole) return false;
+        if (filterStatus === "active" && !u.active) return false;
+        if (filterStatus === "inactive" && u.active) return false;
+        if (!q) return true;
+        return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+      })
+      .sort((a, b) => {
+        const cmp = (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" });
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+  }, [allUsers, filterRole, filterStatus, searchQuery, sortDir]);
+
+  const isFiltered = filterRole !== "all" || filterStatus !== "all" || searchQuery.trim().length > 0;
+
   const validatePassword = (pw: string): string[] => {
     const errs: string[] = [];
     if (pw.length < 8) errs.push("Mínimo 8 caracteres");
