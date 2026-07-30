@@ -445,6 +445,11 @@ export default function ProdutividadeSDRTab({
           value={kpis.compareceu}
           accent="emerald"
           active={filter === "compareceu"}
+          sub={
+            kpis.foraSdr > 0
+              ? `somente agendas de SDR (${kpis.foraSdr} de closer/gestor fora)`
+              : "somente agendas de SDR"
+          }
         />
         <SummaryCard
           icon={XCircle}
@@ -556,12 +561,14 @@ function SummaryCard({
   value,
   accent,
   active,
+  sub,
 }: {
   icon: typeof CalendarDays;
   label: string;
   value: number;
   accent: "primary" | "emerald" | "destructive" | "sky";
   active: boolean;
+  sub?: string | null;
 }) {
   const accentClass = {
     primary: "text-primary",
@@ -582,6 +589,7 @@ function SummaryCard({
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground font-medium">{label}</p>
         <p className="text-2xl font-bold leading-tight">{value}</p>
+        {sub && <p className="text-[10px] text-muted-foreground/80 leading-tight mt-0.5">{sub}</p>}
       </div>
     </div>
   );
