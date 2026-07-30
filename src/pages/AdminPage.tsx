@@ -679,13 +679,7 @@ function UsersSection() {
           </div>
         ) : (
           <div className="space-y-2">
-            {allUsers
-              .filter((u: any) => {
-                if (filterRole !== "all" && u.role !== filterRole) return false;
-                if (!searchQuery.trim()) return true;
-                const q = searchQuery.toLowerCase();
-                return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
-              })
+            {visibleUsers
               .map((u: any) => {
               const isEditing = editingId === u.userId;
               return (
