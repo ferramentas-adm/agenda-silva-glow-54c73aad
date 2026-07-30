@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -116,6 +116,8 @@ function UsersSection() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"sdr" | "gestor" | "closer" | "moderador" | "supervisor" | "apresentador">("sdr");
@@ -267,6 +269,24 @@ function UsersSection() {
       return [...profileUsers, ...closerUsers];
     },
   });
+
+  const visibleUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return (allUsers as any[])
+      .filter((u) => {
+        if (filterRole !== "all" && u.role !== filterRole) return false;
+        if (filterStatus === "active" && !u.active) return false;
+        if (filterStatus === "inactive" && u.active) return false;
+        if (!q) return true;
+        return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+      })
+      .sort((a, b) => {
+        const cmp = (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" });
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+  }, [allUsers, filterRole, filterStatus, searchQuery, sortDir]);
+
+  const isFiltered = filterRole !== "all" || filterStatus !== "all" || searchQuery.trim().length > 0;
 
   const validatePassword = (pw: string): string[] => {
     const errs: string[] = [];
@@ -599,26 +619,48 @@ function UsersSection() {
 
       {/* Users list */}
       <div className="rounded-xl border border-primary/10 bg-card p-5 space-y-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <h3 className="flex items-center gap-2 text-base font-semibold">
             <Users className="h-4 w-4 text-primary" />
-            Usuários ({allUsers.length})
+            Usuários ({isFiltered ? `${visibleUsers.length} de ${allUsers.length}` : allUsers.length})
           </h3>
-          <Select value={filterRole} onValueChange={setFilterRole}>
-            <SelectTrigger className="w-[160px] h-8 text-xs">
-              <SelectValue placeholder="Filtrar por função" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as funções</SelectItem>
-              <SelectItem value="sdr">SDR</SelectItem>
-              <SelectItem value="closer">Closer</SelectItem>
-              <SelectItem value="gestor">Administrador</SelectItem>
-              <SelectItem value="moderador">Moderador</SelectItem>
-              <SelectItem value="supervisor">Supervisor</SelectItem>
-              <SelectItem value="apresentador">Apresentador</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+              <SelectTrigger className="w-[150px] h-8 text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Ativos e inativos</SelectItem>
+                <SelectItem value="active">Apenas ativos</SelectItem>
+                <SelectItem value="inactive">Apenas inativos</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortDir} onValueChange={(v) => setSortDir(v as typeof sortDir)}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="Ordenar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">Nome: A → Z</SelectItem>
+                <SelectItem value="desc">Nome: Z → A</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterRole} onValueChange={setFilterRole}>
+              <SelectTrigger className="w-[160px] h-8 text-xs">
+                <SelectValue placeholder="Filtrar por função" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as funções</SelectItem>
+                <SelectItem value="sdr">SDR</SelectItem>
+                <SelectItem value="closer">Closer</SelectItem>
+                <SelectItem value="gestor">Administrador</SelectItem>
+                <SelectItem value="moderador">Moderador</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
+                <SelectItem value="apresentador">Apresentador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
 
         {/* Search bar */}
         <div className="relative">
@@ -637,13 +679,7 @@ function UsersSection() {
           </div>
         ) : (
           <div className="space-y-2">
-            {allUsers
-              .filter((u: any) => {
-                if (filterRole !== "all" && u.role !== filterRole) return false;
-                if (!searchQuery.trim()) return true;
-                const q = searchQuery.toLowerCase();
-                return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
-              })
+            {visibleUsers
               .map((u: any) => {
               const isEditing = editingId === u.userId;
               return (
