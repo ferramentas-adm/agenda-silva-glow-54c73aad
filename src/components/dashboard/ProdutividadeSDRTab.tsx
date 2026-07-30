@@ -258,26 +258,29 @@ export default function ProdutividadeSDRTab({
 
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
   const kpis = useMemo(() => {
-    if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0 };
+    if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0, foraSdr: 0 };
     const criadas = createdAgs.filter((a) => {
       if (!effectiveSdrId(a)) return false;
       if (a.original_agendamento_id) return false; // reagendamentos não contam como nova
       const localDay = localDateOf(a.created_at);
       return localDay >= range.from && localDay <= range.to;
     }).length;
-    const dia = agendamentos.filter(
-      (a) =>
-        effectiveSdrId(a) &&
-        a.scheduled_date >= range.from &&
-        a.scheduled_date <= range.to,
+    const noPeriodo = agendamentos.filter(
+      (a) => a.scheduled_date >= range.from && a.scheduled_date <= range.to,
     );
+    const dia = noPeriodo.filter((a) => effectiveSdrId(a));
+    // Realizadas do período que NÃO são atribuíveis a um SDR ativo
+    // (criadas por closer/gestor) — explicam a diferença para o card da agenda.
+    const foraSdr = noPeriodo.filter(
+      (a) => !effectiveSdrId(a) && getEffectiveStatus(a) === "realizada",
+    ).length;
     const para = dia.length;
     const compareceu = dia.filter((a) => getEffectiveStatus(a) === "realizada").length;
     const naoCompareceu = dia.filter((a) => {
       const eff = getEffectiveStatus(a);
       return eff === "no_show" || eff === "cancelada" || eff === "reagendada";
     }).length;
-    return { criadas, para, compareceu, naoCompareceu };
+    return { criadas, para, compareceu, naoCompareceu, foraSdr };
   }, [agendamentos, createdAgs, sdrIds, range]);
 
   // ─── Quadros de turno (Manhã / Tarde / Noite) ─────────────────
