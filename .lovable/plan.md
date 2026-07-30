@@ -1,34 +1,41 @@
-## Objetivo
+## O que está acontecendo (verificado no banco, dia 29/07)
 
-Corrigir dois cálculos de taxa de conversão no Dashboard Comercial.
+Total real de reuniões com status `realizada` em 29/07: **98**. Cada tela aplica um recorte diferente:
 
-## 1. Card "Taxa de Conversão" (aba Vendas)
+| Tela | Número | Filtro aplicado |
+|---|---|---|
+| Agenda / Calendário | 98 | todas com status `realizada` |
+| Card Taxa de Conversão | 90 | 98 − 8 de 2ª reunião (regra nova que combinamos) |
+| Métricas SDRs · "Compareceu" | 88 (medido) | só as cujo SDR efetivo é SDR ativo; 10 criadas por closer/gestor ficam de fora |
+| Card do Closer | 9 | só as do closer logado (ex.: Neto Benini = 9) |
 
-Hoje: numerador = vendas dos agendamentos realizados no período, incluindo vendas registradas em agendamentos de 2ª reunião que ocorreram no período (13 de 86 = 15,1%).
+Ou seja: 98 = 90 (conversão) + 8 segundas; 98 = 88 (SDR) + 10 criadas fora de SDR. O card do Closer é só o recorte individual dele.
 
-Novo comportamento:
-- Uma venda sempre conta na data da **primeira call daquele lead**, não na data da 2ª reunião/follow-up.
-- Vendas fechadas via follow-up ou 2ª reunião passam a atualizar a conversão do dia da 1ª reunião (dias anteriores), não do dia atual.
-- Reuniões marcadas como 2ª reunião deixam de entrar no denominador do próprio dia (não são calls novas), evitando penalizar a taxa do dia.
+Observação: o "92" citado não bateu com 29/07 (deu 88). Pode ser outro dia (28/07 teve 99 realizadas) ou dados em cache na tela. Confirmo isso como primeiro passo.
 
-Como será feito (RPC `dashboard_conversao_period`):
-- Denominador: agendamentos `realizada`, não avulsos, `scheduled_date` no período, **excluindo** `meeting_reason = 'segunda_reuniao'` e excluindo Call Interrompida (regra atual mantida).
-- Numerador: para cada agendamento do denominador, considera vendida se:
-  - existe venda `vendeu = true` no próprio agendamento (independente de quando foi fechada), **ou**
-  - existe venda `vendeu = true` em um agendamento de 2ª reunião derivado dele (via `original_agendamento_id`, com fallback por telefone normalizado quando o vínculo não existir), atribuída à data da 1ª call.
-- O subtítulo do card passa a explicitar a regra: "vendas atribuídas à data da 1ª call".
-- O drill-down do card usa os mesmos ids do denominador/numerador ajustados.
+## O problema real
 
-Efeito: o número do dia atual cai (só conta o que era call daquele dia) e dias passados sobem retroativamente quando um follow-up fecha.
+Nenhum card diz qual recorte está usando. Números diferentes na mesma tela parecem erro, mas são definições distintas — e hoje não há um "número oficial de realizadas".
 
-## 2. Conversão por canal ("Agendas Para/Criadas — por Canal")
+## Plano
 
-Hoje a coluna Conversão usa `vendas / agendadas`. Passa a usar `vendas / realizadas`, tanto nas linhas quanto na linha TOTAL. Quando `realizadas = 0`, mostra "—".
+1. **Confirmar o 92**: reproduzir a aba Métricas SDRs no dia exato em que você viu 92 e identificar se é dia diferente, filtro de time ativo ou cache desatualizado. Se for cache, corrigir a invalidação da query.
 
-Arquivo: `src/components/dashboard/AgendasPorCanalPanel.tsx` (função `pct` aplicada sobre `qtdRealizadas` / `totals.qtdRealizadas`).
+2. **Padronizar a definição de "Realizadas"** com uma única regra oficial:
+   - Reuniões realizadas = status `realizada`, não excluídas, não venda avulsa, **excluindo 2ª reunião** (não é call nova).
+   - Aplicar essa base tanto no card "Realizadas" quanto no denominador da conversão, para que os dois sempre batam.
+   - Agenda/Calendário continua mostrando o total operacional (98), pois lá o objetivo é ver todos os compromissos do dia.
+
+3. **Tornar o recorte explícito em cada card** (subtexto curto):
+   - Card Realizadas: "não inclui 2ªs reuniões (8)".
+   - Métricas SDRs · Compareceu: "somente agendas de SDR (X criadas por closer/gestor fora)".
+   - Card do Closer: "somente suas reuniões".
+
+4. **Tooltip de conciliação** no card de conversão mostrando a conta: total do dia → menos 2ªs reuniões → menos calls interrompidas → base usada.
 
 ## Detalhes técnicos
 
-- Migração de banco: `CREATE OR REPLACE FUNCTION public.dashboard_conversao_period(...)` mantendo a mesma assinatura e retorno (`total_reunioes`, `total_vendas`, `ids`), sem mudança de contrato no front.
-- `src/components/dashboard/VendasTab.tsx`: apenas ajuste do texto do subtítulo do card; o restante (Coletado, Vendas Fechadas, cards "Vendas registradas") permanece como está, pois esses são por data de registro da venda.
-- Nenhum dado é apagado ou alterado; só a forma de agregar.
+- Fonte da divergência SDR: `ProdutividadeSDRTab` filtra por `effectiveSdrId` (sdr_responsavel_id || created_by) contra o conjunto `sdrProfiles` (role `sdr` + `is_sdr_override` + nomes legados), montado em `DashboardComercialPage` só com perfis `active = true`. Agendas criadas por closer/gestor somem dessa contagem.
+- Card de conversão: RPC `dashboard_conversao_period` (já exclui `segunda_reuniao`, avulsas e "Call Interrompida").
+- Card "Realizadas": hoje conta direto do pool de agendamentos sem exclusões — é o ponto a alinhar.
+- Nenhum dado é alterado; só a forma de contar e rotular.
