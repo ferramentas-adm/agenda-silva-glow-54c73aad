@@ -958,6 +958,12 @@ export function CalendarContent() {
                       setTotalChannelsOpen(true);
                     }
                   : undefined;
+                // Recorte explícito: o card "Realizadas" é o total operacional do
+                // dia e inclui as 2ªs reuniões, que NÃO entram na taxa de conversão.
+                const hint =
+                  key === "realizada" && !isCloserView && closerRealizadaCount > 0
+                    ? `inclui ${closerRealizadaCount} de 2ª reunião`
+                    : null;
                 return (
                   <div
                     key={key}
@@ -971,6 +977,9 @@ export function CalendarContent() {
                     <Icon className={cn("h-4 w-4 shrink-0", color)} />
                     <p className="text-lg font-bold leading-none">{count}</p>
                     <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
+                    {hint && (
+                      <p className="text-[9px] text-muted-foreground/70 leading-tight">{hint}</p>
+                    )}
                   </div>
                 );
 
