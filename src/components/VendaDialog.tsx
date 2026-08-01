@@ -267,6 +267,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       return (
         valorValido &&
         valorTotalProjetoValido &&
+        !!vendaOrigem &&
         (produtosList.length === 0 || !!produto)
       );
 
@@ -313,6 +314,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
           valor: valorNum,
           valor_total_projeto: vendeu === "sim" && valorTotalProjetoValido ? valorTotalProjetoNum : null,
+          venda_origem: vendeu === "sim" ? vendaOrigem : null,
 
           follow_up: fuActive,
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
