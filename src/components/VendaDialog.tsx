@@ -74,6 +74,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [produto, setProduto] = useState("");
   const [valor, setValor] = useState("");
   const [valorTotalProjeto, setValorTotalProjeto] = useState("");
+  // Origem da venda (obrigatório quando vendeu): 1ª call ou follow-up / 2ª reunião
+  const [vendaOrigem, setVendaOrigem] = useState<"primeira_call" | "follow_up" | null>(null);
 
 
   // Tipo de acompanhamento quando NÃO vendeu: follow_up, segunda_reuniao ou perdeu (sem acompanhamento)
@@ -122,6 +124,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setProduto("");
     setValor("");
     setValorTotalProjeto("");
+    setVendaOrigem(null);
 
 
     setAcompanhamento(null);
