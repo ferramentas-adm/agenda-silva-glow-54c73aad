@@ -637,7 +637,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         total: stats.vendas + stats.naoFechou,
         conversao: stats.vendas + stats.naoFechou > 0 ? (stats.vendas / (stats.vendas + stats.naoFechou)) * 100 : 0,
       }))
-      .sort((a, b) => b.receita - a.receita);
+      .sort(
+        (a, b) =>
+          b.conversao - a.conversao ||
+          b.vendas - a.vendas ||
+          b.receita - a.receita ||
+          b.total - a.total,
+      );
   }, [vendasDia, agMap, closerMap, closerChannelFilter]);
 
 
