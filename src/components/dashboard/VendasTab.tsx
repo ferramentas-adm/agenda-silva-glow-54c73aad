@@ -1232,6 +1232,7 @@ type VendaHojeItem = {
   valor: number | null;
   follow_up: boolean;
   segunda_reuniao: boolean;
+  venda_origem: string | null;
   scheduled_date: string;
   meeting_reason: string | null;
   closer_id: string | null;
