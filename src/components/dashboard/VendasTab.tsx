@@ -1330,9 +1330,9 @@ function VendasHojeCard({
               onClick={() => onOpenDrill(`Vendas de 1ª call — ${dayLabel}`, callItems.map((v) => v.agendamento_id))}
               className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
             >
-              <div className="text-xs font-medium">De call (reunião no período)</div>
+              <div className="text-xs font-medium">De 1ª call</div>
               <div className="text-2xl font-bold">{callItems.length}</div>
-              <div className="text-xs text-muted-foreground">Fechadas no mesmo dia da call</div>
+              <div className="text-xs text-muted-foreground">Marcado pelo closer no resultado</div>
             </button>
             <button
               type="button"
@@ -1341,7 +1341,7 @@ function VendasHojeCard({
             >
               <div className="text-xs font-medium">De follow-up / 2ª reunião</div>
               <div className="text-2xl font-bold">{followItems.length}</div>
-              <div className="text-xs text-muted-foreground">Reunião em outro dia</div>
+              <div className="text-xs text-muted-foreground">Marcado pelo closer no resultado</div>
             </button>
 
             <div className="rounded-lg border p-3">
