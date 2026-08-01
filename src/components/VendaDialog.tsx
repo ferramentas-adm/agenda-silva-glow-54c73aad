@@ -74,6 +74,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [produto, setProduto] = useState("");
   const [valor, setValor] = useState("");
   const [valorTotalProjeto, setValorTotalProjeto] = useState("");
+  // Origem da venda (obrigatório quando vendeu): 1ª call ou follow-up / 2ª reunião
+  const [vendaOrigem, setVendaOrigem] = useState<"primeira_call" | "follow_up" | null>(null);
 
 
   // Tipo de acompanhamento quando NÃO vendeu: follow_up, segunda_reuniao ou perdeu (sem acompanhamento)
@@ -122,6 +124,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setProduto("");
     setValor("");
     setValorTotalProjeto("");
+    setVendaOrigem(null);
 
 
     setAcompanhamento(null);
@@ -172,6 +175,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         if (vtp != null) {
           setValorTotalProjeto(Math.round(Number(vtp) * 100).toString());
         }
+
+        if (data.vendeu) {
+          const origemSalva = (data as { venda_origem?: string | null }).venda_origem;
+          if (origemSalva === "primeira_call" || origemSalva === "follow_up") {
+            setVendaOrigem(origemSalva);
+          } else {
+            const segunda = (data as { segunda_reuniao?: boolean | null }).segunda_reuniao === true;
+            setVendaOrigem(segunda || data.follow_up ? "follow_up" : "primeira_call");
+          }
+        }
+
 
         const reasonIsPending = isPendingStageReason(data.motivo_nao_fechamento);
         if (!data.vendeu && !reasonIsPending) {
@@ -253,6 +267,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       return (
         valorValido &&
         valorTotalProjetoValido &&
+        !!vendaOrigem &&
         (produtosList.length === 0 || !!produto)
       );
 
@@ -299,6 +314,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
           valor: valorNum,
           valor_total_projeto: vendeu === "sim" && valorTotalProjetoValido ? valorTotalProjetoNum : null,
+          venda_origem: vendeu === "sim" ? vendaOrigem : null,
 
           follow_up: fuActive,
           follow_up_date: fuActive && followUpDate ? format(followUpDate, "yyyy-MM-dd") : null,
@@ -485,6 +501,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
         valor: valorNum,
         produto: produto || null,
+        venda_origem: vendeu === "sim" ? vendaOrigem : null,
 
         motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
         explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
@@ -616,6 +633,32 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
           {vendeu === "sim" && (
             <>
+              <div className="space-y-2">
+                <Label>Origem da venda *</Label>
+                <RadioGroup
+                  value={vendaOrigem ?? ""}
+                  onValueChange={(v) => setVendaOrigem(v as "primeira_call" | "follow_up")}
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="primeira_call" id="origem-1call" />
+                      <Label htmlFor="origem-1call" className="cursor-pointer font-normal">
+                        Venda na 1ª call
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="follow_up" id="origem-followup" />
+                      <Label htmlFor="origem-followup" className="cursor-pointer font-normal">
+                        Venda de follow-up / 2ª reunião
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  Define como a venda aparece no relatório de vendas registradas.
+                </p>
+              </div>
+
               {produtosList.length > 0 && (
                 <div className="space-y-1.5">
                   <Label>Produto vendido *</Label>

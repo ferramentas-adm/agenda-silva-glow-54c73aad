@@ -239,7 +239,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [isRange, rangeFromStr, rangeToStr, dateStr]);
 
   const { data: vendasHoje = [] } = useQuery<
-    { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; scheduled_date: string; meeting_reason: string | null; closer_id: string | null; closed_at: string | null; updated_at: string }[]
+    { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; venda_origem: string | null; scheduled_date: string; meeting_reason: string | null; closer_id: string | null; closed_at: string | null; updated_at: string }[]
   >({
     queryKey: ["vendas-uploaded-period", uploadPeriod.from, uploadPeriod.to, uploadPeriod.startUtc, uploadPeriod.endUtc],
     queryFn: async () => {
@@ -248,7 +248,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       // O filtro final por "data efetiva de subida" acontece client-side em BRT.
       const { data, error } = await supabase
         .from("vendas")
-        .select("agendamento_id, valor, follow_up, segunda_reuniao, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
+        .select("agendamento_id, valor, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
         .eq("vendeu", true)
         .is("agendamentos.deleted_at", null)
         .or(
@@ -261,6 +261,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         valor: v.valor,
         follow_up: v.follow_up,
         segunda_reuniao: v.segunda_reuniao,
+        venda_origem: v.venda_origem ?? null,
         scheduled_date: v.agendamentos?.scheduled_date,
         meeting_reason: v.agendamentos?.meeting_reason ?? null,
         closer_id: v.agendamentos?.closer_id ?? null,
@@ -1231,6 +1232,7 @@ type VendaHojeItem = {
   valor: number | null;
   follow_up: boolean;
   segunda_reuniao: boolean;
+  venda_origem: string | null;
   scheduled_date: string;
   meeting_reason: string | null;
   closer_id: string | null;
@@ -1272,10 +1274,13 @@ function VendasHojeCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vendas, isCloserView, myCloserId, periodFrom, periodTo],
   );
-  // Call = reunião foi no mesmo período em que a venda foi registrada e não é follow-up/2ª.
-
-  const isFollow = (v: VendaHojeItem) =>
-    v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || !inPeriod(v.scheduled_date);
+  // Origem da venda: prioriza a marcação feita pelo closer no modal de resultado.
+  // Vendas antigas (sem marcação) mantêm a heurística: reunião no período e sem follow-up/2ª = call.
+  const isFollow = (v: VendaHojeItem) => {
+    if (v.venda_origem === "follow_up") return true;
+    if (v.venda_origem === "primeira_call") return false;
+    return v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || !inPeriod(v.scheduled_date);
+  };
   const total = filtered.length;
   const followItems = filtered.filter(isFollow);
   const callItems = filtered.filter((v) => !isFollow(v));
@@ -1325,9 +1330,9 @@ function VendasHojeCard({
               onClick={() => onOpenDrill(`Vendas de 1ª call — ${dayLabel}`, callItems.map((v) => v.agendamento_id))}
               className="rounded-lg border p-3 text-left hover:shadow-md transition-all"
             >
-              <div className="text-xs font-medium">De call (reunião no período)</div>
+              <div className="text-xs font-medium">De 1ª call</div>
               <div className="text-2xl font-bold">{callItems.length}</div>
-              <div className="text-xs text-muted-foreground">Fechadas no mesmo dia da call</div>
+              <div className="text-xs text-muted-foreground">Marcado pelo closer no resultado</div>
             </button>
             <button
               type="button"
@@ -1336,7 +1341,7 @@ function VendasHojeCard({
             >
               <div className="text-xs font-medium">De follow-up / 2ª reunião</div>
               <div className="text-2xl font-bold">{followItems.length}</div>
-              <div className="text-xs text-muted-foreground">Reunião em outro dia</div>
+              <div className="text-xs text-muted-foreground">Marcado pelo closer no resultado</div>
             </button>
 
             <div className="rounded-lg border p-3">

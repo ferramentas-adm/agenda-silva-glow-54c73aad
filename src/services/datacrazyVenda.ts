@@ -11,6 +11,7 @@ export interface VendaWebhookPayload {
   resumo_venda: string | null;
   valor: number | null;
   motivo_nao_fechamento: string | null;
+  venda_origem?: "primeira_call" | "follow_up" | null;
   explicacao_nao_fechamento?: string | null;
   follow_up: boolean;
   follow_up_date: string | null;
