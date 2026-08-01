@@ -176,6 +176,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           setValorTotalProjeto(Math.round(Number(vtp) * 100).toString());
         }
 
+        if (data.vendeu) {
+          const origemSalva = (data as { venda_origem?: string | null }).venda_origem;
+          if (origemSalva === "primeira_call" || origemSalva === "follow_up") {
+            setVendaOrigem(origemSalva);
+          } else {
+            const segunda = (data as { segunda_reuniao?: boolean | null }).segunda_reuniao === true;
+            setVendaOrigem(segunda || data.follow_up ? "follow_up" : "primeira_call");
+          }
+        }
+
+
         const reasonIsPending = isPendingStageReason(data.motivo_nao_fechamento);
         if (!data.vendeu && !reasonIsPending) {
           const segunda = (data as { segunda_reuniao?: boolean | null }).segunda_reuniao === true;
