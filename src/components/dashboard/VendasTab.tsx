@@ -1274,10 +1274,13 @@ function VendasHojeCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vendas, isCloserView, myCloserId, periodFrom, periodTo],
   );
-  // Call = reunião foi no mesmo período em que a venda foi registrada e não é follow-up/2ª.
-
-  const isFollow = (v: VendaHojeItem) =>
-    v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || !inPeriod(v.scheduled_date);
+  // Origem da venda: prioriza a marcação feita pelo closer no modal de resultado.
+  // Vendas antigas (sem marcação) mantêm a heurística: reunião no período e sem follow-up/2ª = call.
+  const isFollow = (v: VendaHojeItem) => {
+    if (v.venda_origem === "follow_up") return true;
+    if (v.venda_origem === "primeira_call") return false;
+    return v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || !inPeriod(v.scheduled_date);
+  };
   const total = filtered.length;
   const followItems = filtered.filter(isFollow);
   const callItems = filtered.filter((v) => !isFollow(v));
