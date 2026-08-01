@@ -813,6 +813,7 @@ export type Database = {
           updated_at: string
           valor: number | null
           valor_total_projeto: number | null
+          venda_origem: string | null
           vendeu: boolean
         }
         Insert: {
@@ -838,6 +839,7 @@ export type Database = {
           updated_at?: string
           valor?: number | null
           valor_total_projeto?: number | null
+          venda_origem?: string | null
           vendeu: boolean
         }
         Update: {
@@ -863,6 +865,7 @@ export type Database = {
           updated_at?: string
           valor?: number | null
           valor_total_projeto?: number | null
+          venda_origem?: string | null
           vendeu?: boolean
         }
         Relationships: [
