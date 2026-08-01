@@ -239,7 +239,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [isRange, rangeFromStr, rangeToStr, dateStr]);
 
   const { data: vendasHoje = [] } = useQuery<
-    { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; scheduled_date: string; meeting_reason: string | null; closer_id: string | null; closed_at: string | null; updated_at: string }[]
+    { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; venda_origem: string | null; scheduled_date: string; meeting_reason: string | null; closer_id: string | null; closed_at: string | null; updated_at: string }[]
   >({
     queryKey: ["vendas-uploaded-period", uploadPeriod.from, uploadPeriod.to, uploadPeriod.startUtc, uploadPeriod.endUtc],
     queryFn: async () => {
@@ -248,7 +248,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       // O filtro final por "data efetiva de subida" acontece client-side em BRT.
       const { data, error } = await supabase
         .from("vendas")
-        .select("agendamento_id, valor, follow_up, segunda_reuniao, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
+        .select("agendamento_id, valor, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
         .eq("vendeu", true)
         .is("agendamentos.deleted_at", null)
         .or(
@@ -261,6 +261,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         valor: v.valor,
         follow_up: v.follow_up,
         segunda_reuniao: v.segunda_reuniao,
+        venda_origem: v.venda_origem ?? null,
         scheduled_date: v.agendamentos?.scheduled_date,
         meeting_reason: v.agendamentos?.meeting_reason ?? null,
         closer_id: v.agendamentos?.closer_id ?? null,
