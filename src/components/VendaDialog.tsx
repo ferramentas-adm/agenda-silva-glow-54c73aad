@@ -501,6 +501,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         resumo_venda: vendeu === "sim" ? resumoVenda.trim() : null,
         valor: valorNum,
         produto: produto || null,
+        venda_origem: vendeu === "sim" ? vendaOrigem : null,
 
         motivo_nao_fechamento: vendeu === "nao" ? motivo : null,
         explicacao_nao_fechamento: vendeu === "nao" ? explicacaoNaoFechamento.trim() : null,
@@ -632,6 +633,32 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
           {vendeu === "sim" && (
             <>
+              <div className="space-y-2">
+                <Label>Origem da venda *</Label>
+                <RadioGroup
+                  value={vendaOrigem ?? ""}
+                  onValueChange={(v) => setVendaOrigem(v as "primeira_call" | "follow_up")}
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="primeira_call" id="origem-1call" />
+                      <Label htmlFor="origem-1call" className="cursor-pointer font-normal">
+                        Venda na 1ª call
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="follow_up" id="origem-followup" />
+                      <Label htmlFor="origem-followup" className="cursor-pointer font-normal">
+                        Venda de follow-up / 2ª reunião
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  Define como a venda aparece no relatório de vendas registradas.
+                </p>
+              </div>
+
               {produtosList.length > 0 && (
                 <div className="space-y-1.5">
                   <Label>Produto vendido *</Label>
