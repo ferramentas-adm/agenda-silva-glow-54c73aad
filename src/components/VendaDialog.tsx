@@ -649,8 +649,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="follow_up" id="origem-followup" />
                       <Label htmlFor="origem-followup" className="cursor-pointer font-normal">
-                        Venda de follow-up / 2ª reunião
+                        Venda de follow-up
                       </Label>
+
                     </div>
                   </div>
                 </RadioGroup>
