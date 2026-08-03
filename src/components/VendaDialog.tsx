@@ -792,7 +792,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                     <Label>Vai acompanhar esse lead? *</Label>
                     <RadioGroup
                       value={acompanhamento ?? ""}
-                      onValueChange={(v) => setAcompanhamento(v as "follow_up" | "segunda_reuniao" | "perdeu")}
+                      onValueChange={(v) => setAcompanhamento(v as "follow_up" | "perdeu")}
                     >
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
@@ -803,23 +803,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                           </Label>
                         </div>
                         <div className="flex items-center gap-2">
-                          <RadioGroupItem value="segunda_reuniao" id="ac-2nd" />
-                          <Label htmlFor="ac-2nd" className="cursor-pointer font-normal">Sim — marcar segunda reunião</Label>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <RadioGroupItem value="perdeu" id="ac-perdeu" />
                           <Label htmlFor="ac-perdeu" className="cursor-pointer font-normal">Não (venda perdida)</Label>
                         </div>
                       </div>
                     </RadioGroup>
-                    {acompanhamento === "segunda_reuniao" && (
-                      <p className="text-xs text-muted-foreground">
-                        Uma nova reunião será criada na agenda do mesmo closer. Não conta como follow-up.
-                      </p>
-                    )}
                   </div>
 
-                  {(acompanhamento === "follow_up" || acompanhamento === "segunda_reuniao") && (
+                  {acompanhamento === "follow_up" && (
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
                         <Label>Data *</Label>
@@ -841,12 +832,22 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                               mode="single"
                               selected={followUpDate}
                               onSelect={setFollowUpDate}
-                              disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                              disabled={(d) => {
+                                const hoje = new Date();
+                                return (
+                                  d.getFullYear() !== hoje.getFullYear() ||
+                                  d.getMonth() !== hoje.getMonth() ||
+                                  d.getDate() !== hoje.getDate()
+                                );
+                              }}
                               locale={ptBR}
                               initialFocus
                             />
                           </PopoverContent>
                         </Popover>
+                        <p className="text-xs text-muted-foreground">
+                          O follow-up deve ser feito no mesmo dia da reunião.
+                        </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="fu-time">Horário *</Label>
@@ -860,6 +861,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                     </div>
                   )}
                 </>
+
 
             </>
           )}
