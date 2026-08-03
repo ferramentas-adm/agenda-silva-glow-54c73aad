@@ -649,8 +649,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="follow_up" id="origem-followup" />
                       <Label htmlFor="origem-followup" className="cursor-pointer font-normal">
-                        Venda de follow-up / 2ª reunião
+                        Venda de follow-up
                       </Label>
+
                     </div>
                   </div>
                 </RadioGroup>
@@ -791,7 +792,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                     <Label>Vai acompanhar esse lead? *</Label>
                     <RadioGroup
                       value={acompanhamento ?? ""}
-                      onValueChange={(v) => setAcompanhamento(v as "follow_up" | "segunda_reuniao" | "perdeu")}
+                      onValueChange={(v) => setAcompanhamento(v as "follow_up" | "perdeu")}
                     >
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
@@ -802,23 +803,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                           </Label>
                         </div>
                         <div className="flex items-center gap-2">
-                          <RadioGroupItem value="segunda_reuniao" id="ac-2nd" />
-                          <Label htmlFor="ac-2nd" className="cursor-pointer font-normal">Sim — marcar segunda reunião</Label>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <RadioGroupItem value="perdeu" id="ac-perdeu" />
                           <Label htmlFor="ac-perdeu" className="cursor-pointer font-normal">Não (venda perdida)</Label>
                         </div>
                       </div>
                     </RadioGroup>
-                    {acompanhamento === "segunda_reuniao" && (
-                      <p className="text-xs text-muted-foreground">
-                        Uma nova reunião será criada na agenda do mesmo closer. Não conta como follow-up.
-                      </p>
-                    )}
                   </div>
 
-                  {(acompanhamento === "follow_up" || acompanhamento === "segunda_reuniao") && (
+                  {acompanhamento === "follow_up" && (
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
                         <Label>Data *</Label>
@@ -840,12 +832,22 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                               mode="single"
                               selected={followUpDate}
                               onSelect={setFollowUpDate}
-                              disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                              disabled={(d) => {
+                                const hoje = new Date();
+                                return (
+                                  d.getFullYear() !== hoje.getFullYear() ||
+                                  d.getMonth() !== hoje.getMonth() ||
+                                  d.getDate() !== hoje.getDate()
+                                );
+                              }}
                               locale={ptBR}
                               initialFocus
                             />
                           </PopoverContent>
                         </Popover>
+                        <p className="text-xs text-muted-foreground">
+                          O follow-up deve ser feito no mesmo dia da reunião.
+                        </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="fu-time">Horário *</Label>
@@ -860,76 +862,12 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                   )}
                 </>
 
+
             </>
           )}
 
-          {vendeu === "nao" && acompanhamento && acompanhamento !== "perdeu" && (
-            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-              <div className="space-y-2">
-                <Label>Foi acordado recebimento de valor (sinal/entrada/restante)?</Label>
-                <RadioGroup
-                  value={hasRecebimento ? "sim" : "nao"}
-                  onValueChange={(v) => setHasRecebimento(v === "sim")}
-                >
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="sim" id="receb-sim" />
-                      <Label htmlFor="receb-sim" className="cursor-pointer font-normal">Sim</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="nao" id="receb-nao" />
-                      <Label htmlFor="receb-nao" className="cursor-pointer font-normal">Não</Label>
-                    </div>
-                  </div>
-                </RadioGroup>
-                <p className="text-xs text-muted-foreground">
-                  Se sim, será criado um pagamento previsto na aba Pagamentos.
-                </p>
-              </div>
+          {/* Bloco de recebimento de sinal removido — não existe mais sinal. */}
 
-              {hasRecebimento && (
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="valor-previsto">Valor previsto *</Label>
-                    <Input
-                      id="valor-previsto"
-                      inputMode="numeric"
-                      value={formatBRL(valorPrevisto)}
-                      onChange={(e) => setValorPrevisto(e.target.value.replace(/\D/g, ""))}
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Data prevista *</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !dataPrevista && "text-muted-foreground",
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dataPrevista ? format(dataPrevista, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dataPrevista}
-                          onSelect={setDataPrevista}
-                          disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-                          locale={ptBR}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {vendeu && (
             <div className="space-y-1.5">
