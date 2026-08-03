@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       segunda_reuniao, follow_up, motivo_nao_fechamento, vendeu,
       agendamento_id, created_at,
       agendamentos!inner (
-        scheduled_date, scheduled_time, lead_name, is_venda_avulsa, is_5k,
+        scheduled_date, scheduled_time, lead_name, lead_phone, is_venda_avulsa, is_5k,
         channel_type, meeting_reason,
         closers ( name, email )
       )
@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
       closer: closer.name ?? null,
       closer_email: closer.email ?? null,
       lead: ag.lead_name ?? null,
+      lead_whatsapp: ag.lead_phone ?? null,
       data: data_str,
       hora_reuniao: ag.scheduled_time ?? null,
       valor: v.valor,

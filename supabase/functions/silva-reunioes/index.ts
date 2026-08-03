@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
       closer: closer.name ?? null,
       closer_email: closer.email ?? null,
       lead: a.lead_name ?? null,
+      lead_whatsapp: a.lead_phone ?? null,
       data: a.scheduled_date ? toBRDate(a.scheduled_date) : null,
       hora_reuniao: a.scheduled_time ?? null,
       status: a.status ?? null,
