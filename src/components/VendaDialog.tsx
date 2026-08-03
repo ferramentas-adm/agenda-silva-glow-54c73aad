@@ -864,73 +864,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             </>
           )}
 
-          {vendeu === "nao" && acompanhamento && acompanhamento !== "perdeu" && (
-            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-              <div className="space-y-2">
-                <Label>Foi acordado recebimento de valor (sinal/entrada/restante)?</Label>
-                <RadioGroup
-                  value={hasRecebimento ? "sim" : "nao"}
-                  onValueChange={(v) => setHasRecebimento(v === "sim")}
-                >
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="sim" id="receb-sim" />
-                      <Label htmlFor="receb-sim" className="cursor-pointer font-normal">Sim</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="nao" id="receb-nao" />
-                      <Label htmlFor="receb-nao" className="cursor-pointer font-normal">Não</Label>
-                    </div>
-                  </div>
-                </RadioGroup>
-                <p className="text-xs text-muted-foreground">
-                  Se sim, será criado um pagamento previsto na aba Pagamentos.
-                </p>
-              </div>
+          {/* Bloco de recebimento de sinal removido — não existe mais sinal. */}
 
-              {hasRecebimento && (
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="valor-previsto">Valor previsto *</Label>
-                    <Input
-                      id="valor-previsto"
-                      inputMode="numeric"
-                      value={formatBRL(valorPrevisto)}
-                      onChange={(e) => setValorPrevisto(e.target.value.replace(/\D/g, ""))}
-                      placeholder="0,00"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Data prevista *</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !dataPrevista && "text-muted-foreground",
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dataPrevista ? format(dataPrevista, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dataPrevista}
-                          onSelect={setDataPrevista}
-                          disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-                          locale={ptBR}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {vendeu && (
             <div className="space-y-1.5">
