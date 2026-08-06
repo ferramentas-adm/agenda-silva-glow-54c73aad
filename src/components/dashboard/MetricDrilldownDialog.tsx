@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2, ShieldCheck, AlertOctagon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { DEFAULT_REASONS } from "@/lib/vendaConstants";
+import { logAudit } from "@/services/auditLog";
 
 interface AgendamentoRef {
   id: string;
@@ -294,137 +296,45 @@ export default function MetricDrilldownDialog({
     await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
   };
 
-  // ─── Classificação de erros do Closer (gestor) ────────────────
-  const isGestor = role === "gestor";
-  const { items: errorCategories } = useAppSettingList(APP_SETTING_KEYS.closer_error_categories, []);
-  const { data: closerReviews = [] } = useQuery<
-    { id: string; agendamento_id: string; classification: "closer_error" | "acerto"; error_description: string | null; error_category: string | null; reviewed_by: string | null; reviewed_at: string }[]
-  >({
-    queryKey: ["drilldown-closer-reviews", agendamentoIds.join(",")],
-    enabled: open && agendamentoIds.length > 0,
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("closer_error_reviews")
-        .select("id, agendamento_id, classification, error_description, error_category, reviewed_by, reviewed_at")
-        .in("agendamento_id", agendamentoIds);
-      return data ?? [];
-    },
-  });
-  const closerReviewMap = new Map(closerReviews.map((r) => [r.agendamento_id, r]));
+  // ─── Correção do motivo de não fechamento (gestor/moderador) ───
+  const canEditMotivo = role === "gestor" || role === "moderador";
+  const { items: motivosNaoFechamento } = useAppSettingList(
+    APP_SETTING_KEYS.motivos_nao_fechamento,
+    DEFAULT_REASONS,
+  );
+  const [editingMotivoId, setEditingMotivoId] = useState<string | null>(null);
+  const [motivoValue, setMotivoValue] = useState<string>("");
+  const [savingMotivo, setSavingMotivo] = useState(false);
 
-  const [classifyOpen, setClassifyOpen] = useState(false);
-  const [classifyAg, setClassifyAg] = useState<AgendamentoDetail | null>(null);
-  const [classifyDesc, setClassifyDesc] = useState("");
-  const [classifyCategory, setClassifyCategory] = useState<string>("");
-  const [classifyExistingId, setClassifyExistingId] = useState<string | null>(null);
-  const [classifyType, setClassifyType] = useState<"closer_error" | "acerto">("closer_error");
-  const [savingClassify, setSavingClassify] = useState(false);
-
-  const openClassify = (d: AgendamentoDetail) => {
-    setClassifyAg(d);
-    setClassifyDesc("");
-    setClassifyCategory("");
-    setClassifyExistingId(null);
-    setClassifyType("closer_error");
-    setClassifyOpen(true);
-  };
-
-  const openReclassify = (d: AgendamentoDetail) => {
-    const review = closerReviewMap.get(d.id);
-    setClassifyAg(d);
-    setClassifyDesc(review?.error_description ?? "");
-    setClassifyCategory(review?.error_category ?? "");
-    setClassifyExistingId(review?.id ?? null);
-    setClassifyType((review?.classification as "closer_error" | "acerto") ?? "closer_error");
-    setClassifyOpen(true);
-  };
-
-  const submitClassify = async () => {
-    if (!classifyAg) return;
-    if (classifyType === "closer_error" && !classifyCategory.trim()) {
-      toast.error("Selecione a categoria do erro");
+  const saveMotivo = async (agId: string) => {
+    if (!motivoValue.trim()) {
+      toast.error("Selecione o motivo");
       return;
     }
-    setSavingClassify(true);
-    const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
-    const basePayload =
-      classifyType === "closer_error"
-        ? {
-            classification: "closer_error" as const,
-            error_category: classifyCategory.trim(),
-            error_description: classifyDesc.trim() || null,
-            reviewed_by: userId,
-            reviewed_at: new Date().toISOString(),
-          }
-        : {
-            classification: "acerto" as const,
-            error_category: null,
-            error_description: null,
-            reviewed_by: userId,
-            reviewed_at: new Date().toISOString(),
-          };
-    const { error } = classifyExistingId
-      ? await (supabase as any)
-          .from("closer_error_reviews")
-          .update(basePayload)
-          .eq("id", classifyExistingId)
-      : await (supabase as any).from("closer_error_reviews").insert({
-          agendamento_id: classifyAg.id,
-          closer_id: classifyAg.closer_id,
-          ...basePayload,
-        });
-    setSavingClassify(false);
+    setSavingMotivo(true);
+    const { error } = await supabase
+      .from("vendas")
+      .update({ motivo_nao_fechamento: motivoValue })
+      .eq("agendamento_id", agId);
+    setSavingMotivo(false);
     if (error) {
-      toast.error("Erro ao registrar: " + error.message);
+      toast.error("Erro ao atualizar motivo: " + error.message);
       return;
     }
-    toast.success(
-      classifyType === "acerto"
-        ? "Marcado como acerto"
-        : classifyExistingId
-        ? "Erro atualizado"
-        : "Erro do Closer registrado"
-    );
-    setClassifyOpen(false);
-    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
-    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
-  };
-
-  const markAcerto = async (d: AgendamentoDetail) => {
-    const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
-    const { error } = await (supabase as any).from("closer_error_reviews").insert({
-      agendamento_id: d.id,
-      closer_id: d.closer_id,
-      classification: "acerto",
-      error_category: null,
-      error_description: null,
-      reviewed_by: userId,
-      reviewed_at: new Date().toISOString(),
+    const ag = details.find((x) => x.id === agId);
+    await logAudit("motivo_nao_fechamento_editado", "venda", agId, {
+      lead_name: ag?.lead_name,
+      motivo: motivoValue,
     });
-    if (error) {
-      toast.error("Erro ao registrar: " + error.message);
-      return;
-    }
-    toast.success("Marcado como acerto");
-    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
-    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
+    toast.success("Motivo atualizado");
+    setEditingMotivoId(null);
+    setMotivoValue("");
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas"] });
   };
 
 
-
-  const removeClassify = async (reviewId: string) => {
-    const { error } = await (supabase as any)
-      .from("closer_error_reviews")
-      .delete()
-      .eq("id", reviewId);
-    if (error) {
-      toast.error("Erro ao remover: " + error.message);
-      return;
-    }
-    toast.success("Apontamento removido");
-    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
-    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
-  };
 
 
   return (
@@ -502,102 +412,6 @@ export default function MetricDrilldownDialog({
                     </div>
                   </div>
 
-                  {/* Classificação de erro do Closer (gestor) */}
-                  {d.status === "realizada" && (() => {
-                    const v = vendaMap.get(d.id) as any;
-                    // Aparece para qualquer reunião realizada que não foi vendida (inclui follow-ups e sem motivo registrado)
-                    if (!v || v.vendeu === true) return null;
-
-                    const review = closerReviewMap.get(d.id);
-                    if (review && review.classification === "acerto") {
-                      return (
-                        <div className="rounded-md border p-2 text-xs border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 flex items-center justify-between gap-2">
-                          <span className="font-semibold">
-                            Não teve erro do Closer
-                            <span className="font-normal opacity-80">
-                              {" · "}{format(new Date(review.reviewed_at), "dd/MM/yyyy")}
-                            </span>
-                          </span>
-                          {isGestor && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-                              onClick={() => removeClassify(review.id)}
-                              title="Remover apontamento"
-                            >
-                              <XIcon className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    }
-                    if (review) {
-                      return (
-                        <div className="rounded-md border p-2 text-xs border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="font-semibold">
-                              Erro do Closer
-                              {review.error_category ? ` · ${review.error_category}` : ""}
-                              {" "}
-                              <span className="font-normal opacity-80">
-                                · {format(new Date(review.reviewed_at), "dd/MM/yyyy")}
-                              </span>
-                            </div>
-                            {isGestor && (
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => openReclassify(d)}
-                                >
-                                  <Pencil className="h-3 w-3 mr-1" />
-                                  Ajustar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-                                  onClick={() => removeClassify(review.id)}
-                                  title="Remover apontamento"
-                                >
-                                  <XIcon className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                          {review.error_description && (
-                            <p className="mt-1 whitespace-pre-wrap text-foreground/80">
-                              {review.error_description}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }
-                    if (!isGestor) return null;
-                    return (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
-                          onClick={() => openClassify(d)}
-                        >
-                          <AlertOctagon className="h-3.5 w-3.5 mr-1" />
-                          Apontar erro do Closer
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
-                          onClick={() => markAcerto(d)}
-                        >
-                          Não teve erro
-                        </Button>
-                      </div>
-                    );
-                  })()}
 
 
 
@@ -729,6 +543,54 @@ export default function MetricDrilldownDialog({
                             <Badge variant="outline" className="text-[10px]">
                               Motivo: {d.meeting_reason}
                             </Badge>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {(() => {
+                      const v = vendaMap.get(d.id) as any;
+                      if (!v || v.vendeu === true) return null;
+                      const motivoAtual = v.motivo_nao_fechamento?.trim() || null;
+                      if (!motivoAtual && !canEditMotivo) return null;
+                      return (
+                        <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                            Motivo de não fechamento
+                          </p>
+                          {editingMotivoId === d.id ? (
+                            <div className="flex items-center gap-1">
+                              <Select value={motivoValue} onValueChange={setMotivoValue}>
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue placeholder="Selecione o motivo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {motivosNaoFechamento.map((m) => (
+                                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" disabled={savingMotivo} onClick={() => saveMotivo(d.id)}>
+                                {savingMotivo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" disabled={savingMotivo} onClick={() => { setEditingMotivoId(null); setMotivoValue(""); }}>
+                                <XIcon className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-foreground">{motivoAtual ?? "—"}</span>
+                              {canEditMotivo && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5"
+                                  onClick={() => { setEditingMotivoId(d.id); setMotivoValue(motivoAtual ?? ""); }}
+                                  title="Corrigir motivo de não fechamento"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
                       );
@@ -875,93 +737,6 @@ export default function MetricDrilldownDialog({
       </AlertDialogContent>
     </AlertDialog>
 
-    <Dialog open={classifyOpen} onOpenChange={setClassifyOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {classifyExistingId ? "Ajustar erro do Closer" : "Apontar erro do Closer"}
-          </DialogTitle>
-          <DialogDescription>
-            Lead: <strong>{classifyAg?.lead_name}</strong>
-            {classifyAg?.closer_id && closerMap.get(classifyAg.closer_id)
-              ? ` · Closer: ${closerMap.get(classifyAg.closer_id)}`
-              : ""}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3">
-          {classifyExistingId && (
-            <div>
-              <label className="text-xs font-medium mb-1 block">Classificação</label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={classifyType === "closer_error" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setClassifyType("closer_error")}
-                >
-                  Erro do Closer
-                </Button>
-                <Button
-                  type="button"
-                  variant={classifyType === "acerto" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setClassifyType("acerto")}
-                >
-                  Foi acerto
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {classifyType === "closer_error" && (
-            <>
-              <div>
-                <label className="text-xs font-medium mb-1 block">Categoria do erro</label>
-                <Select value={classifyCategory} onValueChange={setClassifyCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {errorCategories.length === 0 ? (
-                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                        Cadastre categorias em Admin → Listas dinâmicas
-                      </div>
-                    ) : (
-                      errorCategories.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-medium mb-1 block">Descrição (opcional)</label>
-                <Textarea
-                  placeholder="Detalhes do erro..."
-                  value={classifyDesc}
-                  onChange={(e) => setClassifyDesc(e.target.value)}
-                  rows={4}
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setClassifyOpen(false)} disabled={savingClassify}>
-            Cancelar
-          </Button>
-          <Button onClick={submitClassify} disabled={savingClassify}>
-            {savingClassify ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Confirmar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
     </>
   );
 }
