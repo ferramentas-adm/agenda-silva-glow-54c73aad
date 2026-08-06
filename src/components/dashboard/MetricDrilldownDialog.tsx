@@ -733,6 +733,54 @@ export default function MetricDrilldownDialog({
                         </div>
                       );
                     })()}
+                    {(() => {
+                      const v = vendaMap.get(d.id) as any;
+                      if (!v || v.vendeu === true) return null;
+                      const motivoAtual = v.motivo_nao_fechamento?.trim() || null;
+                      if (!motivoAtual && !canEditMotivo) return null;
+                      return (
+                        <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
+                            Motivo de não fechamento
+                          </p>
+                          {editingMotivoId === d.id ? (
+                            <div className="flex items-center gap-1">
+                              <Select value={motivoValue} onValueChange={setMotivoValue}>
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue placeholder="Selecione o motivo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {motivosNaoFechamento.map((m) => (
+                                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" disabled={savingMotivo} onClick={() => saveMotivo(d.id)}>
+                                {savingMotivo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" disabled={savingMotivo} onClick={() => { setEditingMotivoId(null); setMotivoValue(""); }}>
+                                <XIcon className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-foreground">{motivoAtual ?? "—"}</span>
+                              {canEditMotivo && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5"
+                                  onClick={() => { setEditingMotivoId(d.id); setMotivoValue(motivoAtual ?? ""); }}
+                                  title="Corrigir motivo de não fechamento"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {d.status === "cancelada" && d.cancellation_reason && (
                       <div className="col-span-2 mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2">
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
