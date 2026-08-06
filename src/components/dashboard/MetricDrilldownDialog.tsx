@@ -294,137 +294,45 @@ export default function MetricDrilldownDialog({
     await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
   };
 
-  // ─── Classificação de erros do Closer (gestor) ────────────────
-  const isGestor = role === "gestor";
-  const { items: errorCategories } = useAppSettingList(APP_SETTING_KEYS.closer_error_categories, []);
-  const { data: closerReviews = [] } = useQuery<
-    { id: string; agendamento_id: string; classification: "closer_error" | "acerto"; error_description: string | null; error_category: string | null; reviewed_by: string | null; reviewed_at: string }[]
-  >({
-    queryKey: ["drilldown-closer-reviews", agendamentoIds.join(",")],
-    enabled: open && agendamentoIds.length > 0,
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("closer_error_reviews")
-        .select("id, agendamento_id, classification, error_description, error_category, reviewed_by, reviewed_at")
-        .in("agendamento_id", agendamentoIds);
-      return data ?? [];
-    },
-  });
-  const closerReviewMap = new Map(closerReviews.map((r) => [r.agendamento_id, r]));
+  // ─── Correção do motivo de não fechamento (gestor/moderador) ───
+  const canEditMotivo = role === "gestor" || role === "moderador";
+  const { items: motivosNaoFechamento } = useAppSettingList(
+    APP_SETTING_KEYS.motivos_nao_fechamento,
+    DEFAULT_REASONS,
+  );
+  const [editingMotivoId, setEditingMotivoId] = useState<string | null>(null);
+  const [motivoValue, setMotivoValue] = useState<string>("");
+  const [savingMotivo, setSavingMotivo] = useState(false);
 
-  const [classifyOpen, setClassifyOpen] = useState(false);
-  const [classifyAg, setClassifyAg] = useState<AgendamentoDetail | null>(null);
-  const [classifyDesc, setClassifyDesc] = useState("");
-  const [classifyCategory, setClassifyCategory] = useState<string>("");
-  const [classifyExistingId, setClassifyExistingId] = useState<string | null>(null);
-  const [classifyType, setClassifyType] = useState<"closer_error" | "acerto">("closer_error");
-  const [savingClassify, setSavingClassify] = useState(false);
-
-  const openClassify = (d: AgendamentoDetail) => {
-    setClassifyAg(d);
-    setClassifyDesc("");
-    setClassifyCategory("");
-    setClassifyExistingId(null);
-    setClassifyType("closer_error");
-    setClassifyOpen(true);
-  };
-
-  const openReclassify = (d: AgendamentoDetail) => {
-    const review = closerReviewMap.get(d.id);
-    setClassifyAg(d);
-    setClassifyDesc(review?.error_description ?? "");
-    setClassifyCategory(review?.error_category ?? "");
-    setClassifyExistingId(review?.id ?? null);
-    setClassifyType((review?.classification as "closer_error" | "acerto") ?? "closer_error");
-    setClassifyOpen(true);
-  };
-
-  const submitClassify = async () => {
-    if (!classifyAg) return;
-    if (classifyType === "closer_error" && !classifyCategory.trim()) {
-      toast.error("Selecione a categoria do erro");
+  const saveMotivo = async (agId: string) => {
+    if (!motivoValue.trim()) {
+      toast.error("Selecione o motivo");
       return;
     }
-    setSavingClassify(true);
-    const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
-    const basePayload =
-      classifyType === "closer_error"
-        ? {
-            classification: "closer_error" as const,
-            error_category: classifyCategory.trim(),
-            error_description: classifyDesc.trim() || null,
-            reviewed_by: userId,
-            reviewed_at: new Date().toISOString(),
-          }
-        : {
-            classification: "acerto" as const,
-            error_category: null,
-            error_description: null,
-            reviewed_by: userId,
-            reviewed_at: new Date().toISOString(),
-          };
-    const { error } = classifyExistingId
-      ? await (supabase as any)
-          .from("closer_error_reviews")
-          .update(basePayload)
-          .eq("id", classifyExistingId)
-      : await (supabase as any).from("closer_error_reviews").insert({
-          agendamento_id: classifyAg.id,
-          closer_id: classifyAg.closer_id,
-          ...basePayload,
-        });
-    setSavingClassify(false);
+    setSavingMotivo(true);
+    const { error } = await supabase
+      .from("vendas")
+      .update({ motivo_nao_fechamento: motivoValue })
+      .eq("agendamento_id", agId);
+    setSavingMotivo(false);
     if (error) {
-      toast.error("Erro ao registrar: " + error.message);
+      toast.error("Erro ao atualizar motivo: " + error.message);
       return;
     }
-    toast.success(
-      classifyType === "acerto"
-        ? "Marcado como acerto"
-        : classifyExistingId
-        ? "Erro atualizado"
-        : "Erro do Closer registrado"
-    );
-    setClassifyOpen(false);
-    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
-    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
-  };
-
-  const markAcerto = async (d: AgendamentoDetail) => {
-    const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
-    const { error } = await (supabase as any).from("closer_error_reviews").insert({
-      agendamento_id: d.id,
-      closer_id: d.closer_id,
-      classification: "acerto",
-      error_category: null,
-      error_description: null,
-      reviewed_by: userId,
-      reviewed_at: new Date().toISOString(),
+    const ag = details.find((x) => x.id === agId);
+    await logAudit("motivo_nao_fechamento_editado", "venda", agId, {
+      lead_name: ag?.lead_name,
+      motivo: motivoValue,
     });
-    if (error) {
-      toast.error("Erro ao registrar: " + error.message);
-      return;
-    }
-    toast.success("Marcado como acerto");
-    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
-    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
+    toast.success("Motivo atualizado");
+    setEditingMotivoId(null);
+    setMotivoValue("");
+    await queryClient.invalidateQueries({ queryKey: ["drilldown-vendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+    await queryClient.invalidateQueries({ queryKey: ["vendas"] });
   };
 
 
-
-  const removeClassify = async (reviewId: string) => {
-    const { error } = await (supabase as any)
-      .from("closer_error_reviews")
-      .delete()
-      .eq("id", reviewId);
-    if (error) {
-      toast.error("Erro ao remover: " + error.message);
-      return;
-    }
-    toast.success("Apontamento removido");
-    await queryClient.invalidateQueries({ queryKey: ["drilldown-closer-reviews"] });
-    await queryClient.invalidateQueries({ queryKey: ["closer-error-reviews"] });
-  };
 
 
   return (
