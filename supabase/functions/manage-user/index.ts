@@ -257,13 +257,23 @@ Deno.serve(async (req) => {
         }
       }
 
-      // If changing FROM closer, deactivate closer record
-      if (oldRole === "closer" && new_role !== "closer" && profile?.email) {
-        await supabaseAdmin
-          .from("closers")
-          .update({ active: false })
-          .eq("email", profile.email);
+      // If changing to a non-closer role, deactivate the closer record unless the
+      // user is explicitly marked as available for scheduling.
+      if (new_role !== "closer" && profile?.email) {
+        const { data: profileFlags } = await supabaseAdmin
+          .from("profiles")
+          .select("available_for_scheduling")
+          .eq("user_id", user_id)
+          .maybeSingle();
+
+        if (!profileFlags?.available_for_scheduling) {
+          await supabaseAdmin
+            .from("closers")
+            .update({ active: false })
+            .eq("email", profile.email);
+        }
       }
+
 
       return new Response(JSON.stringify({ message: `Role alterada para ${new_role}` }), {
         status: 200,
