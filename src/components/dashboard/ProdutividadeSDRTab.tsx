@@ -29,6 +29,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
+import CriadasPorDiaDialog, { type CriadasDayGroup } from "@/components/dashboard/CriadasPorDiaDialog";
+import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import { SdrTeamBadge, type SdrTeam } from "@/components/sdr/SdrTeamBadge";
 import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
 
@@ -132,6 +134,8 @@ export default function ProdutividadeSDRTab({
     to: undefined,
   });
   const [dateOpen, setDateOpen] = useState(false);
+  const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
+  const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
 
   // ─── Lookup: somente user_ids de SDRs (filtrado por time se selecionado) ─
   const filteredSdrProfiles = useMemo(
@@ -282,6 +286,26 @@ export default function ProdutividadeSDRTab({
     }).length;
     return { criadas, para, compareceu, naoCompareceu, foraSdr };
   }, [agendamentos, createdAgs, sdrIds, range]);
+
+  // ─── "Criadas" agrupadas pelo dia AGENDADO (para o modal) ─────
+  const criadasPorDia = useMemo<CriadasDayGroup[]>(() => {
+    if (!range) return [];
+    const map = new Map<string, string[]>();
+    createdAgs.forEach((a) => {
+      if (!effectiveSdrId(a)) return;
+      if (a.original_agendamento_id) return;
+      const localDay = localDateOf(a.created_at);
+      if (localDay < range.from || localDay > range.to) return;
+      const arr = map.get(a.scheduled_date) ?? [];
+      arr.push(a.id);
+      map.set(a.scheduled_date, arr);
+    });
+    return Array.from(map.entries())
+      .map(([date, ids]) => ({ date, ids }))
+      .sort((x, y) => x.date.localeCompare(y.date));
+  }, [createdAgs, sdrIds, range]);
+
+
 
   // ─── Quadros de turno (Manhã / Tarde / Noite) ─────────────────
   // A referência temporal muda conforme o filtro:
@@ -434,7 +458,9 @@ export default function ProdutividadeSDRTab({
           value={kpis.criadas}
           accent="primary"
           active={filter === "criadas"}
+          onClick={() => setCriadasDiasOpen(true)}
         />
+
         <SummaryCard
           icon={CalendarClock}
           label="Para"
@@ -553,6 +579,27 @@ export default function ProdutividadeSDRTab({
           color="indigo"
         />
       </div>
+
+      <CriadasPorDiaDialog
+        open={criadasDiasOpen}
+        onOpenChange={setCriadasDiasOpen}
+        periodLabel={periodLabel}
+        groups={criadasPorDia}
+        onSelectDay={(date, ids) => {
+          setCriadasDiasOpen(false);
+          setDrill({
+            title: `Criadas em ${periodLabel} — agendadas para ${format(parseISO(date), "dd/MM/yyyy")}`,
+            ids,
+          });
+        }}
+      />
+
+      <MetricDrilldownDialog
+        open={!!drill}
+        onOpenChange={(o) => !o && setDrill(null)}
+        title={drill?.title ?? ""}
+        agendamentoIds={drill?.ids ?? []}
+      />
     </div>
   );
 }
@@ -565,6 +612,7 @@ function SummaryCard({
   accent,
   active,
   sub,
+  onClick,
 }: {
   icon: typeof CalendarDays;
   label: string;
@@ -572,6 +620,7 @@ function SummaryCard({
   accent: "primary" | "emerald" | "destructive" | "sky";
   active: boolean;
   sub?: string | null;
+  onClick?: () => void;
 }) {
   const accentClass = {
     primary: "text-primary",
@@ -581,13 +630,24 @@ function SummaryCard({
   }[accent];
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
         "rounded-xl border p-4 flex items-center gap-3 transition-all",
         active
           ? "border-primary/40 bg-primary/10 shadow-sm"
           : "border-primary/10 bg-card",
+        onClick && "cursor-pointer hover:border-primary/50 hover:bg-primary/5",
       )}
     >
+
       <Icon className={cn("h-5 w-5 shrink-0", accentClass)} />
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground font-medium">{label}</p>
