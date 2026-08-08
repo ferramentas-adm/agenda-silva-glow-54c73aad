@@ -579,11 +579,32 @@ export default function ProdutividadeSDRTab({
           color="indigo"
         />
       </div>
+
+      <CriadasPorDiaDialog
+        open={criadasDiasOpen}
+        onOpenChange={setCriadasDiasOpen}
+        periodLabel={periodLabel}
+        groups={criadasPorDia}
+        onSelectDay={(date, ids) => {
+          setCriadasDiasOpen(false);
+          setDrill({
+            title: `Criadas em ${periodLabel} — agendadas para ${format(parseISO(date), "dd/MM/yyyy")}`,
+            ids,
+          });
+        }}
+      />
+
+      <MetricDrilldownDialog
+        open={!!drill}
+        onOpenChange={(o) => !o && setDrill(null)}
+        title={drill?.title ?? ""}
+        agendamentoIds={drill?.ids ?? []}
+      />
     </div>
   );
 }
 
-// ─── Subcomponentes ─────────────────────────────────────────────
+
 function SummaryCard({
   icon: Icon,
   label,
