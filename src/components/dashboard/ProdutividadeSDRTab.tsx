@@ -604,7 +604,7 @@ export default function ProdutividadeSDRTab({
   );
 }
 
-
+// ─── Subcomponentes ─────────────────────────────────────────────
 function SummaryCard({
   icon: Icon,
   label,
@@ -612,6 +612,7 @@ function SummaryCard({
   accent,
   active,
   sub,
+  onClick,
 }: {
   icon: typeof CalendarDays;
   label: string;
@@ -619,6 +620,7 @@ function SummaryCard({
   accent: "primary" | "emerald" | "destructive" | "sky";
   active: boolean;
   sub?: string | null;
+  onClick?: () => void;
 }) {
   const accentClass = {
     primary: "text-primary",
@@ -628,13 +630,24 @@ function SummaryCard({
   }[accent];
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
         "rounded-xl border p-4 flex items-center gap-3 transition-all",
         active
           ? "border-primary/40 bg-primary/10 shadow-sm"
           : "border-primary/10 bg-card",
+        onClick && "cursor-pointer hover:border-primary/50 hover:bg-primary/5",
       )}
     >
+
       <Icon className={cn("h-5 w-5 shrink-0", accentClass)} />
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground font-medium">{label}</p>
