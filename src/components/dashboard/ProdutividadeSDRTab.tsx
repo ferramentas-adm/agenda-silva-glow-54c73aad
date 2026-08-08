@@ -134,6 +134,8 @@ export default function ProdutividadeSDRTab({
     to: undefined,
   });
   const [dateOpen, setDateOpen] = useState(false);
+  const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
+  const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
 
   // ─── Lookup: somente user_ids de SDRs (filtrado por time se selecionado) ─
   const filteredSdrProfiles = useMemo(
