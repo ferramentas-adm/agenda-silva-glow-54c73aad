@@ -458,7 +458,9 @@ export default function ProdutividadeSDRTab({
           value={kpis.criadas}
           accent="primary"
           active={filter === "criadas"}
+          onClick={() => setCriadasDiasOpen(true)}
         />
+
         <SummaryCard
           icon={CalendarClock}
           label="Para"
