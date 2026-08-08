@@ -287,6 +287,26 @@ export default function ProdutividadeSDRTab({
     return { criadas, para, compareceu, naoCompareceu, foraSdr };
   }, [agendamentos, createdAgs, sdrIds, range]);
 
+  // ─── "Criadas" agrupadas pelo dia AGENDADO (para o modal) ─────
+  const criadasPorDia = useMemo<CriadasDayGroup[]>(() => {
+    if (!range) return [];
+    const map = new Map<string, string[]>();
+    createdAgs.forEach((a) => {
+      if (!effectiveSdrId(a)) return;
+      if (a.original_agendamento_id) return;
+      const localDay = localDateOf(a.created_at);
+      if (localDay < range.from || localDay > range.to) return;
+      const arr = map.get(a.scheduled_date) ?? [];
+      arr.push(a.id);
+      map.set(a.scheduled_date, arr);
+    });
+    return Array.from(map.entries())
+      .map(([date, ids]) => ({ date, ids }))
+      .sort((x, y) => x.date.localeCompare(y.date));
+  }, [createdAgs, sdrIds, range]);
+
+
+
   // ─── Quadros de turno (Manhã / Tarde / Noite) ─────────────────
   // A referência temporal muda conforme o filtro:
   //  - "Criadas": turno calculado pela HORA DE CRIAÇÃO (created_at).
