@@ -1168,6 +1168,29 @@ export function CalendarContent() {
           </div>
         )}
 
+        {/* Toggle SDR — ver apenas os próprios agendamentos */}
+        {isSdrRole && (
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Switch
+              id="only-my-sdr"
+              checked={onlyMySdr}
+              onCheckedChange={setOnlyMySdr}
+              className={cn(onlyMySdr && "data-[state=checked]:bg-emerald-500")}
+            />
+            <Label htmlFor="only-my-sdr" className="text-xs cursor-pointer">
+              Só meus agendamentos
+            </Label>
+            {onlyMySdr && (
+              <Badge variant="outline" className="text-[10px]">
+                {filtered.length} agenda{filtered.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
+        )}
+
+
+
         {/* Content */}
         {isLoading || loadingAgendamentos ? (
           <div className="space-y-3">
