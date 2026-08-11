@@ -440,15 +440,18 @@ export function CalendarContent() {
   const filtered = useMemo(() => {
     return agendamentos.filter((a) => {
       if (!a.closer_id || !selectedIds.has(a.closer_id)) return false;
+      const ownerSdr =
+        a.sdr_responsavel_id ||
+        (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
+      if (isSdrRole && onlyMySdr && user) {
+        if (ownerSdr !== user.id) return false;
+      }
       if (selectedSdrId !== "all") {
-        const ownerSdr =
-          a.sdr_responsavel_id ||
-          (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
         if (ownerSdr !== selectedSdrId) return false;
       }
       return true;
     });
-  }, [agendamentos, selectedIds, selectedSdrId, userRolesMap]);
+  }, [agendamentos, selectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
 
   const patchAgendamentosCache = useCallback(
     (agendamentoId: string, updater: (agendamento: Agendamento) => Agendamento | null) => {
