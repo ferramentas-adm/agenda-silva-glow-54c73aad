@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { isSdrOverrideName } from "@/lib/sdrOverrides";
 import { supabase } from "@/integrations/supabase/client";
@@ -160,6 +162,20 @@ export function CalendarContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedSdrId, setSelectedSdrId] = useState<string>("all");
+  const isSdrRole = role === "sdr";
+  const [onlyMySdr, setOnlyMySdr] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("calendar_only_my_sdr");
+      return saved === null ? true : saved === "true";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("calendar_only_my_sdr", String(onlyMySdr));
+    } catch {}
+  }, [onlyMySdr]);
 
   // SDRs disponíveis para filtragem (somente gestor/moderador veem esse filtro)
   const { data: sdrUsers = [] } = useQuery({
@@ -424,15 +440,18 @@ export function CalendarContent() {
   const filtered = useMemo(() => {
     return agendamentos.filter((a) => {
       if (!a.closer_id || !selectedIds.has(a.closer_id)) return false;
+      const ownerSdr =
+        a.sdr_responsavel_id ||
+        (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
+      if (isSdrRole && onlyMySdr && user) {
+        if (ownerSdr !== user.id) return false;
+      }
       if (selectedSdrId !== "all") {
-        const ownerSdr =
-          a.sdr_responsavel_id ||
-          (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
         if (ownerSdr !== selectedSdrId) return false;
       }
       return true;
     });
-  }, [agendamentos, selectedIds, selectedSdrId, userRolesMap]);
+  }, [agendamentos, selectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
 
   const patchAgendamentosCache = useCallback(
     (agendamentoId: string, updater: (agendamento: Agendamento) => Agendamento | null) => {
@@ -1148,6 +1167,29 @@ export function CalendarContent() {
             )}
           </div>
         )}
+
+        {/* Toggle SDR — ver apenas os próprios agendamentos */}
+        {isSdrRole && (
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Switch
+              id="only-my-sdr"
+              checked={onlyMySdr}
+              onCheckedChange={setOnlyMySdr}
+              className={cn(onlyMySdr && "data-[state=checked]:bg-emerald-500")}
+            />
+            <Label htmlFor="only-my-sdr" className="text-xs cursor-pointer">
+              Só meus agendamentos
+            </Label>
+            {onlyMySdr && (
+              <Badge variant="outline" className="text-[10px]">
+                {filtered.length} agenda{filtered.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
+        )}
+
+
 
         {/* Content */}
         {isLoading || loadingAgendamentos ? (
