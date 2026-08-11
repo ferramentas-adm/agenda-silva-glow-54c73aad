@@ -162,6 +162,20 @@ export function CalendarContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedSdrId, setSelectedSdrId] = useState<string>("all");
+  const isSdrRole = role === "sdr";
+  const [onlyMySdr, setOnlyMySdr] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("calendar_only_my_sdr");
+      return saved === null ? true : saved === "true";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("calendar_only_my_sdr", String(onlyMySdr));
+    } catch {}
+  }, [onlyMySdr]);
 
   // SDRs disponíveis para filtragem (somente gestor/moderador veem esse filtro)
   const { data: sdrUsers = [] } = useQuery({
