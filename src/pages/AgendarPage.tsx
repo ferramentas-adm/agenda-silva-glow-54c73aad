@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { isSdrOverrideName } from "@/lib/sdrOverrides";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -161,24 +162,19 @@ function AgendarPageInner() {
     },
   });
 
-  // Fetch SDR users for admin selector (apenas perfis com role 'sdr')
+  // Fetch SDR users for admin selector (role 'sdr' + "Atua como SDR")
   const { data: sdrUsers = [] } = useQuery({
     queryKey: ["sdr-users-for-admin-scheduling"],
     enabled: isAdmin,
     queryFn: async () => {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "sdr");
-      const ids = (roles ?? []).map((r: any) => r.user_id);
-      if (ids.length === 0) return [];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", ids)
-        .eq("active", true)
-        .order("full_name", { ascending: true });
-      return profiles ?? [];
+      const [rolesRes, profilesRes] = await Promise.all([
+        supabase.from("user_roles").select("user_id").eq("role", "sdr"),
+        supabase.rpc("get_public_profiles"),
+      ]);
+      const sdrSet = new Set((rolesRes.data ?? []).map((r: any) => r.user_id));
+      return ((profilesRes.data ?? []) as any[])
+        .filter((p) => sdrSet.has(p.user_id) || p.is_sdr_override === true || isSdrOverrideName(p.full_name))
+        .map((p) => ({ user_id: p.user_id, full_name: p.full_name }));
     },
   });
 
