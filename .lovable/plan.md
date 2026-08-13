@@ -46,4 +46,5 @@ Nada mais é alterado: negócio/etapa não é movido, tags antigas não são rem
 - Registro em `audit_logs` via `logAudit("datacrazy_ganho_enviado", "venda", agendamento_id, { lead_name, periodo })`.
 
 **Limites**
-- Como o DataCrazy tem rate limit, o envio respeita pausa curta entre blocos; um histórico grande (centenas de leads) leva alguns minutos e mostra progresso.
+- Lotes de **20 leads** por chamada, processados sequencialmente, respeitando o limite do DataCrazy de **120 requisições/segundo** (cada lead consome ~3 requisições: busca do lead, tag e webhook). Pausa curta entre lotes e tratamento de `429` com backoff.
+- Um histórico grande (centenas de leads) leva alguns minutos e mostra progresso.
