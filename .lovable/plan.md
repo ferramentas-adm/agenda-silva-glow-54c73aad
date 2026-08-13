@@ -1,4 +1,4 @@
-# Envio dos fechados do follow-up para o DataCrazy (webhook + tag)
+# Envio dos fechados do follow-up para o DataCrazy (webhook)
 
 Adicionar na página de Follow-ups um botão único que envia em lote, por webhook, os leads cujo desfecho foi **Fechou**, com opção de escolher o período — inclusive **todo o histórico**.
 
@@ -20,11 +20,9 @@ Vendas com resultado **Fechou** vindas do fluxo de follow-up (`vendeu = true`, c
 
 ## O que é enviado
 
-Para cada lead:
-1. **Webhook** com os dados da venda: nome e telefone do lead, closer, SDR, valor, produto, resumo da venda, data de fechamento, origem da venda, `outcome: "fechou"`.
-2. **Tag `status-ganho`** aplicada ao lead no DataCrazy (localizado pelo telefone). Se a tag não existir na conta, é criada automaticamente na primeira vez e reutilizada depois.
+Somente o **payload via webhook**, com os dados da venda: nome e telefone do lead, closer, SDR, valor, produto, resumo da venda, data de fechamento, origem da venda e `outcome: "fechou"`.
 
-Nada mais é alterado: negócio/etapa não é movido, tags antigas não são removidas, nota não é criada.
+A aplicação da tag `status-ganho` fica por conta da automação dentro do CRM — o app não chama a API de tags nem altera negócio/etapa/notas.
 
 ## Detalhes técnicos
 
@@ -35,9 +33,6 @@ Nada mais é alterado: negócio/etapa não é movido, tags antigas não são rem
 - Body: `{ venda_ids: string[] }` — **lote fixo de até 20 ids por chamada**. Valida JWT do chamador e papel (gestor/moderador/supervisor, ou closer dono das vendas).
 - Lê cada venda + agendamento (lead, telefone, closer, SDR) com service role.
 - Webhook: `POST DATACRAZY_WEBHOOK_URL` com `event: "venda_resultado"`, mesmo formato de `datacrazy-venda-webhook` (`outcome: "fechou"`, `status: "Vendido"`, `is_vendeu: true`).
-- Tag, via `DATACRAZY_API_URL` / `DATACRAZY_API_TOKEN` reaproveitando o helper `dcApi` de `datacrazy-crm-sync` (retry/backoff + fallback `api.g1`):
-  - `GET /leads?search=<telefone>` para achar o lead;
-  - `GET /tags`; se não houver `status-ganho`, `POST /tags`; depois `POST /leads/{leadId}/tags` com o `tagId` (id da tag cacheado por instância).
 - Em sucesso grava `datacrazy_ganho_sent_at = now()`; retorna por item `{ venda_id, ok, error? }` para o frontend montar o resumo.
 
 **Frontend**
@@ -46,5 +41,5 @@ Nada mais é alterado: negócio/etapa não é movido, tags antigas não são rem
 - Registro em `audit_logs` via `logAudit("datacrazy_ganho_enviado", "venda", agendamento_id, { lead_name, periodo })`.
 
 **Limites**
-- Lotes de **20 leads** por chamada, processados sequencialmente, respeitando o limite do DataCrazy de **120 requisições/segundo** (cada lead consome ~3 requisições: busca do lead, tag e webhook). Pausa curta entre lotes e tratamento de `429` com backoff.
+- Lotes de **20 leads** por chamada, processados sequencialmente, respeitando o limite do DataCrazy de **120 requisições/segundo** (1 requisição de webhook por lead). Pausa curta entre lotes e tratamento de `429` com backoff.
 - Um histórico grande (centenas de leads) leva alguns minutos e mostra progresso.
