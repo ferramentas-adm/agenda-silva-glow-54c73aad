@@ -11,7 +11,7 @@ Adicionar na página de Follow-ups um botão único que envia em lote, por webho
   - Contagem de leads que serão enviados + lista (nome, telefone, valor, data de fechamento).
 - Ao confirmar, o envio ocorre em lotes sequenciais com barra de progresso e resultado final ("48 enviados, 2 falharam").
 - Cada lead enviado com sucesso registra data/hora do envio, então o padrão nunca duplica; falhas continuam na fila e podem ser reenviadas.
-- Como "todo o histórico" pode ser grande, o envio é feito em blocos (ex.: 25 por vez) e pode ser interrompido pelo usuário; o que já foi enviado permanece marcado.
+- Como "todo o histórico" pode ser grande, o envio é feito em **lotes de 20 leads** e pode ser interrompido pelo usuário; o que já foi enviado permanece marcado.
 - Visível para gestor/moderador/supervisor; closer vê apenas os próprios registros (mesma visibilidade da lista da página).
 
 ## Quais leads entram
