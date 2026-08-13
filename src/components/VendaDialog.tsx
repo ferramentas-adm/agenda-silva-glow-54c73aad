@@ -235,7 +235,34 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
               O lançamento oficial da venda é feito pelo gestor/supervisor.
             </p>
           </div>
+
+          {vendeuCloser === "nao" && (
+            <div className="space-y-2">
+              <Label>Motivo de não fechamento *</Label>
+              <Select value={motivo} onValueChange={setMotivo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {motivosNaoFechamento.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Observações</Label>
+            <Textarea
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              placeholder="Detalhes relevantes da reunião (opcional)"
+              rows={3}
+            />
+          </div>
         </div>
+
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
