@@ -15,8 +15,9 @@
 - Sem valor total do projeto e sem descrição do cliente.
 - Se já existe venda lançada, o modal abre preenchido para edição e oferece **Remover venda** (a reunião volta a "realizada sem venda", mantendo a declaração do closer).
 - Somente esse lançamento alimenta as métricas de venda.
+- **Independente do closer**: o gestor pode lançar a venda em qualquer reunião realizada, mesmo que o closer tenha marcado "Não" ou não tenha preenchido nada.
 
-**Indicação visual**: no detalhe da agenda, quando o closer marcou "Sim" e o gestor ainda não lançou, aparece um aviso "Closer indicou venda — aguardando lançamento".
+**Indicação visual**: no detalhe da agenda, se o closer marcou "Sim" e ainda não há venda lançada, aparece um aviso informativo "Closer indicou venda" — apenas sinalização, não bloqueia nem exige nada.
 
 ## Detalhes técnicos
 
