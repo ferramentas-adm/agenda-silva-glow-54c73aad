@@ -9,10 +9,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
+import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { DEFAULT_REASONS } from "@/lib/vendaConstants";
 
 interface VendaDialogProps {
   open: boolean;
@@ -45,15 +48,24 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const [vendeuCloser, setVendeuCloser] = useState<"sim" | "nao" | null>(null);
   const [leadRevenue, setLeadRevenue] = useState<string>("");
+  const [motivo, setMotivo] = useState<string>("");
+  const [observacoes, setObservacoes] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
   // Venda já lançada pelo gestor — preservada integralmente ao salvar.
   const [existing, setExisting] = useState<any | null>(null);
 
+  const { items: motivosNaoFechamento } = useAppSettingList(
+    APP_SETTING_KEYS.motivos_nao_fechamento,
+    DEFAULT_REASONS,
+  );
+
   const resetAllFields = () => {
     setVendeuCloser(null);
     setLeadRevenue("");
+    setMotivo("");
+    setObservacoes("");
     setIsEditing(false);
     setExisting(null);
   };
@@ -80,12 +92,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         if (declared === true) setVendeuCloser("sim");
         else if (declared === false) setVendeuCloser("nao");
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
+        setMotivo((data as { motivo_nao_fechamento?: string | null }).motivo_nao_fechamento ?? "");
+        setObservacoes((data as { observacoes?: string | null }).observacoes ?? "");
       }
       setLoadingExisting(false);
     })();
   }, [open, agendamentoId]);
 
-  const canSubmit = !!vendeuCloser && !!leadRevenue;
+  const canSubmit = !!vendeuCloser && !!leadRevenue && (vendeuCloser === "sim" || !!motivo);
 
   const handleSubmit = async () => {
     if (!canSubmit || !user) return;
@@ -98,6 +112,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           vendeu: existing?.vendeu === true,
           vendeu_closer: vendeuCloser === "sim",
           lead_revenue: leadRevenue || null,
+          motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
+          observacoes: observacoes.trim() || null,
           created_by: existing?.created_by ?? user.id,
         } as any,
         { onConflict: "agendamento_id" },
@@ -138,11 +154,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         vendeu: false,
         resumo_venda: null,
         valor: null,
-        motivo_nao_fechamento: null,
+        motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
         follow_up: false,
         follow_up_date: null,
         follow_up_time: null,
-        observacoes: null,
+        observacoes: observacoes.trim() || null,
         outcome: "em_andamento",
         status: null,
         registered_at: new Date().toISOString(),
@@ -219,7 +235,34 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
               O lançamento oficial da venda é feito pelo gestor/supervisor.
             </p>
           </div>
+
+          {vendeuCloser === "nao" && (
+            <div className="space-y-2">
+              <Label>Motivo de não fechamento *</Label>
+              <Select value={motivo} onValueChange={setMotivo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {motivosNaoFechamento.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Observações</Label>
+            <Textarea
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              placeholder="Detalhes relevantes da reunião (opcional)"
+              rows={3}
+            />
+          </div>
         </div>
+
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
