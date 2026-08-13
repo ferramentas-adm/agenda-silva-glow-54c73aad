@@ -41,5 +41,5 @@ A aplicação da tag `status-ganho` fica por conta da automação dentro do CRM 
 - Registro em `audit_logs` via `logAudit("datacrazy_ganho_enviado", "venda", agendamento_id, { lead_name, periodo })`.
 
 **Limites**
-- Lotes de **20 leads** por chamada, processados sequencialmente, respeitando o limite do DataCrazy de **120 requisições/segundo** (cada lead consome ~3 requisições: busca do lead, tag e webhook). Pausa curta entre lotes e tratamento de `429` com backoff.
+- Lotes de **20 leads** por chamada, processados sequencialmente, respeitando o limite do DataCrazy de **120 requisições/segundo** (1 requisição de webhook por lead). Pausa curta entre lotes e tratamento de `429` com backoff.
 - Um histórico grande (centenas de leads) leva alguns minutos e mostra progresso.
