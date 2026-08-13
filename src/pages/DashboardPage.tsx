@@ -208,6 +208,7 @@ export function CalendarContent() {
   const [viewBriefing, setViewBriefing] = useState(false);
   const [viewJustification, setViewJustification] = useState(false);
   const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
+  const [gestorVendaAg, setGestorVendaAg] = useState<Agendamento | null>(null);
   // Transfer lead between closers (mantido em código; botão escondido na UI)
   const [transferTarget, setTransferTarget] = useState<string>("");
   const [transferOpen, setTransferOpen] = useState(false);
