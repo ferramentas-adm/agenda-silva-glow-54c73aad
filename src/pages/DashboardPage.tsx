@@ -40,6 +40,7 @@ import { logAudit } from "@/services/auditLog";
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
+import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
