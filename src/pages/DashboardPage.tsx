@@ -40,6 +40,7 @@ import { logAudit } from "@/services/auditLog";
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
+import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
@@ -208,6 +209,7 @@ export function CalendarContent() {
   const [viewBriefing, setViewBriefing] = useState(false);
   const [viewJustification, setViewJustification] = useState(false);
   const [vendaDialogAg, setVendaDialogAg] = useState<Agendamento | null>(null);
+  const [gestorVendaAg, setGestorVendaAg] = useState<Agendamento | null>(null);
   // Transfer lead between closers (mantido em código; botão escondido na UI)
   const [transferTarget, setTransferTarget] = useState<string>("");
   const [transferOpen, setTransferOpen] = useState(false);
@@ -1408,14 +1410,15 @@ export function CalendarContent() {
                   Lógica de transferência preservada (handleTransferLead + dialog). */}
 
 
-              {/* Registrar venda — gestor/moderador podem registrar/atualizar venda
-                  mesmo quando o closer já marcou como realizada sem preencher. */}
-              {(role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor") && detailAg.status === "realizada" && (
+              {/* Lançar venda — gestor/moderador/supervisor/apresentador lançam a venda
+                  em QUALQUER agenda, independente do que o closer preencheu.
+                  Ao confirmar, a reunião vira "realizada" automaticamente. */}
+              {(role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor") && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="gap-1.5 text-xs w-full border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
-                  onClick={() => setVendaDialogAg(detailAg)}
+                  onClick={() => setGestorVendaAg(detailAg)}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />Registrar / atualizar venda
                 </Button>
@@ -1841,6 +1844,24 @@ export function CalendarContent() {
           }}
         />
       )}
+
+      {gestorVendaAg && (
+        <GestorVendaDialog
+          open={!!gestorVendaAg}
+          onOpenChange={(o) => !o && setGestorVendaAg(null)}
+          agendamentoId={gestorVendaAg.id}
+          leadName={gestorVendaAg.lead_name}
+          currentStatus={gestorVendaAg.status}
+          onSuccess={(newStatus) => {
+            patchAgendamentosCache(gestorVendaAg.id, (a) => ({ ...a, status: newStatus as any }));
+            setDetailAg((d) => (d && d.id === gestorVendaAg.id ? { ...d, status: newStatus as any } : d));
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+            queryClient.invalidateQueries({ queryKey: ["vendas"] });
+          }}
+        />
+      )}
+
+
 
       <CancelReasonDialog
         open={cancelReasonOpen}

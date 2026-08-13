@@ -810,11 +810,15 @@ export type Database = {
           sdr_error_reviewed_at: string | null
           sdr_error_reviewed_by: string | null
           segunda_reuniao: boolean
+          status_antes_venda:
+            | Database["public"]["Enums"]["appointment_status"]
+            | null
           updated_at: string
           valor: number | null
           valor_total_projeto: number | null
           venda_origem: string | null
           vendeu: boolean
+          vendeu_closer: boolean | null
         }
         Insert: {
           agendamento_id: string
@@ -836,11 +840,15 @@ export type Database = {
           sdr_error_reviewed_at?: string | null
           sdr_error_reviewed_by?: string | null
           segunda_reuniao?: boolean
+          status_antes_venda?:
+            | Database["public"]["Enums"]["appointment_status"]
+            | null
           updated_at?: string
           valor?: number | null
           valor_total_projeto?: number | null
           venda_origem?: string | null
           vendeu: boolean
+          vendeu_closer?: boolean | null
         }
         Update: {
           agendamento_id?: string
@@ -862,11 +870,15 @@ export type Database = {
           sdr_error_reviewed_at?: string | null
           sdr_error_reviewed_by?: string | null
           segunda_reuniao?: boolean
+          status_antes_venda?:
+            | Database["public"]["Enums"]["appointment_status"]
+            | null
           updated_at?: string
           valor?: number | null
           valor_total_projeto?: number | null
           venda_origem?: string | null
           vendeu?: boolean
+          vendeu_closer?: boolean | null
         }
         Relationships: [
           {
