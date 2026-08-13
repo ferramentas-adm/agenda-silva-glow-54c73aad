@@ -11,7 +11,7 @@ Adicionar na página de Follow-ups um botão único que envia em lote, por webho
   - Contagem de leads que serão enviados + lista (nome, telefone, valor, data de fechamento).
 - Ao confirmar, o envio ocorre em lotes sequenciais com barra de progresso e resultado final ("48 enviados, 2 falharam").
 - Cada lead enviado com sucesso registra data/hora do envio, então o padrão nunca duplica; falhas continuam na fila e podem ser reenviadas.
-- Como "todo o histórico" pode ser grande, o envio é feito em blocos (ex.: 25 por vez) e pode ser interrompido pelo usuário; o que já foi enviado permanece marcado.
+- Como "todo o histórico" pode ser grande, o envio é feito em **lotes de 20 leads** e pode ser interrompido pelo usuário; o que já foi enviado permanece marcado.
 - Visível para gestor/moderador/supervisor; closer vê apenas os próprios registros (mesma visibilidade da lista da página).
 
 ## Quais leads entram
@@ -32,7 +32,7 @@ Nada mais é alterado: negócio/etapa não é movido, tags antigas não são rem
 - `datacrazy_ganho_sent_at timestamptz` — preenchido no envio bem-sucedido; base do filtro "só não enviados".
 
 **Nova edge function `datacrazy-ganho-sync`**
-- Body: `{ venda_ids: string[] }` (máx. ~25 por chamada). Valida JWT do chamador e papel (gestor/moderador/supervisor, ou closer dono das vendas).
+- Body: `{ venda_ids: string[] }` — **lote fixo de até 20 ids por chamada**. Valida JWT do chamador e papel (gestor/moderador/supervisor, ou closer dono das vendas).
 - Lê cada venda + agendamento (lead, telefone, closer, SDR) com service role.
 - Webhook: `POST DATACRAZY_WEBHOOK_URL` com `event: "venda_resultado"`, mesmo formato de `datacrazy-venda-webhook` (`outcome: "fechou"`, `status: "Vendido"`, `is_vendeu: true`).
 - Tag, via `DATACRAZY_API_URL` / `DATACRAZY_API_TOKEN` reaproveitando o helper `dcApi` de `datacrazy-crm-sync` (retry/backoff + fallback `api.g1`):
@@ -46,4 +46,5 @@ Nada mais é alterado: negócio/etapa não é movido, tags antigas não são rem
 - Registro em `audit_logs` via `logAudit("datacrazy_ganho_enviado", "venda", agendamento_id, { lead_name, periodo })`.
 
 **Limites**
-- Como o DataCrazy tem rate limit, o envio respeita pausa curta entre blocos; um histórico grande (centenas de leads) leva alguns minutos e mostra progresso.
+- Lotes de **20 leads** por chamada, processados sequencialmente, respeitando o limite do DataCrazy de **120 requisições/segundo** (cada lead consome ~3 requisições: busca do lead, tag e webhook). Pausa curta entre lotes e tratamento de `429` com backoff.
+- Um histórico grande (centenas de leads) leva alguns minutos e mostra progresso.
