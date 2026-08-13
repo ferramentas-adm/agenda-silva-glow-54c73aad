@@ -1408,14 +1408,15 @@ export function CalendarContent() {
                   Lógica de transferência preservada (handleTransferLead + dialog). */}
 
 
-              {/* Registrar venda — gestor/moderador podem registrar/atualizar venda
-                  mesmo quando o closer já marcou como realizada sem preencher. */}
-              {(role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor") && detailAg.status === "realizada" && (
+              {/* Lançar venda — gestor/moderador/supervisor/apresentador lançam a venda
+                  em QUALQUER agenda, independente do que o closer preencheu.
+                  Ao confirmar, a reunião vira "realizada" automaticamente. */}
+              {(role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor") && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="gap-1.5 text-xs w-full border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
-                  onClick={() => setVendaDialogAg(detailAg)}
+                  onClick={() => setGestorVendaAg(detailAg)}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />Registrar / atualizar venda
                 </Button>
