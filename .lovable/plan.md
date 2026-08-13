@@ -20,11 +20,9 @@ Vendas com resultado **Fechou** vindas do fluxo de follow-up (`vendeu = true`, c
 
 ## O que é enviado
 
-Para cada lead:
-1. **Webhook** com os dados da venda: nome e telefone do lead, closer, SDR, valor, produto, resumo da venda, data de fechamento, origem da venda, `outcome: "fechou"`.
-2. **Tag `status-ganho`** aplicada ao lead no DataCrazy (localizado pelo telefone). Se a tag não existir na conta, é criada automaticamente na primeira vez e reutilizada depois.
+Somente o **payload via webhook**, com os dados da venda: nome e telefone do lead, closer, SDR, valor, produto, resumo da venda, data de fechamento, origem da venda e `outcome: "fechou"`.
 
-Nada mais é alterado: negócio/etapa não é movido, tags antigas não são removidas, nota não é criada.
+A aplicação da tag `status-ganho` fica por conta da automação dentro do CRM — o app não chama a API de tags nem altera negócio/etapa/notas.
 
 ## Detalhes técnicos
 
