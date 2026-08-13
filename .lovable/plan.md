@@ -32,7 +32,7 @@ Nada mais é alterado: negócio/etapa não é movido, tags antigas não são rem
 - `datacrazy_ganho_sent_at timestamptz` — preenchido no envio bem-sucedido; base do filtro "só não enviados".
 
 **Nova edge function `datacrazy-ganho-sync`**
-- Body: `{ venda_ids: string[] }` (máx. ~25 por chamada). Valida JWT do chamador e papel (gestor/moderador/supervisor, ou closer dono das vendas).
+- Body: `{ venda_ids: string[] }` — **lote fixo de até 20 ids por chamada**. Valida JWT do chamador e papel (gestor/moderador/supervisor, ou closer dono das vendas).
 - Lê cada venda + agendamento (lead, telefone, closer, SDR) com service role.
 - Webhook: `POST DATACRAZY_WEBHOOK_URL` com `event: "venda_resultado"`, mesmo formato de `datacrazy-venda-webhook` (`outcome: "fechou"`, `status: "Vendido"`, `is_vendeu: true`).
 - Tag, via `DATACRAZY_API_URL` / `DATACRAZY_API_TOKEN` reaproveitando o helper `dcApi` de `datacrazy-crm-sync` (retry/backoff + fallback `api.g1`):
