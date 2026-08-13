@@ -1844,6 +1844,24 @@ export function CalendarContent() {
         />
       )}
 
+      {gestorVendaAg && (
+        <GestorVendaDialog
+          open={!!gestorVendaAg}
+          onOpenChange={(o) => !o && setGestorVendaAg(null)}
+          agendamentoId={gestorVendaAg.id}
+          leadName={gestorVendaAg.lead_name}
+          currentStatus={gestorVendaAg.status}
+          onSuccess={(newStatus) => {
+            patchAgendamentosCache(gestorVendaAg.id, (a) => ({ ...a, status: newStatus as any }));
+            setDetailAg((d) => (d && d.id === gestorVendaAg.id ? { ...d, status: newStatus as any } : d));
+            queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+            queryClient.invalidateQueries({ queryKey: ["vendas"] });
+          }}
+        />
+      )}
+
+
+
       <CancelReasonDialog
         open={cancelReasonOpen}
         onOpenChange={setCancelReasonOpen}
