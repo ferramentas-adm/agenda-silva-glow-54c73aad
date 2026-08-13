@@ -1,4 +1,4 @@
-# Envio dos fechados do follow-up para o DataCrazy (webhook + tag)
+# Envio dos fechados do follow-up para o DataCrazy (webhook)
 
 Adicionar na página de Follow-ups um botão único que envia em lote, por webhook, os leads cujo desfecho foi **Fechou**, com opção de escolher o período — inclusive **todo o histórico**.
 
