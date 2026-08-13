@@ -14,7 +14,7 @@
   - `Origem da venda *` — Venda na 1ª call | Venda de follow-up
 - Sem valor total do projeto e sem descrição do cliente.
 - **Zero dependência do closer**: ao confirmar a venda, a reunião é marcada **automaticamente como realizada**, mesmo que o closer não tenha preenchido nada (ou tenha marcado no-show/pendente/não vendeu).
-- Se já existe venda lançada, o modal abre preenchido para edição e oferece **Remover venda** (a reunião continua "realizada", só sem venda).
+- Se já existe venda lançada, o modal abre preenchido para edição e oferece **Remover venda**. Ao remover, a reunião **volta ao status que tinha antes** do lançamento (ex.: no-show volta a no-show, pendente volta a pendente). Se já estava realizada antes, continua realizada.
 - Somente esse lançamento alimenta as métricas de venda.
 
 **Indicação visual**: no detalhe da agenda, se o closer marcou "Sim" e ainda não há venda lançada, aparece um aviso informativo "Closer indicou venda" — apenas sinalização, não bloqueia nem exige nada.
