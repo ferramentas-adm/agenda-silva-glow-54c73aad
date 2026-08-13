@@ -8,14 +8,14 @@
 - Ao confirmar, a reunião vira **realizada** e a resposta do closer é gravada apenas como declaração — **não entra em nenhuma métrica de venda** (Vendas registradas, coletado, conversão, Performance por Closer).
 
 **Gestor / Moderador / Supervisor / Apresentador**
-- Clicando na agenda (reunião realizada), o botão existente **"Registrar / atualizar venda"** abre um modal novo e enxuto:
+- Clicando em **qualquer agenda** (não precisa estar realizada), o botão **"Registrar / atualizar venda"** abre um modal novo e enxuto:
   - `Produto *`
   - `Valor coletado (R$) *`
   - `Origem da venda *` — Venda na 1ª call | Venda de follow-up
 - Sem valor total do projeto e sem descrição do cliente.
-- Se já existe venda lançada, o modal abre preenchido para edição e oferece **Remover venda** (a reunião volta a "realizada sem venda", mantendo a declaração do closer).
+- **Zero dependência do closer**: ao confirmar a venda, a reunião é marcada **automaticamente como realizada**, mesmo que o closer não tenha preenchido nada (ou tenha marcado no-show/pendente/não vendeu).
+- Se já existe venda lançada, o modal abre preenchido para edição e oferece **Remover venda** (a reunião continua "realizada", só sem venda).
 - Somente esse lançamento alimenta as métricas de venda.
-- **Independente do closer**: o gestor pode lançar a venda em qualquer reunião realizada, mesmo que o closer tenha marcado "Não" ou não tenha preenchido nada.
 
 **Indicação visual**: no detalhe da agenda, se o closer marcou "Sim" e ainda não há venda lançada, aparece um aviso informativo "Closer indicou venda" — apenas sinalização, não bloqueia nem exige nada.
 
