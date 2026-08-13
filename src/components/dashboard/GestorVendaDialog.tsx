@@ -221,7 +221,7 @@ export default function GestorVendaDialog({
       if (restoredStatus !== currentStatus) {
         const { error: agError } = await supabase
           .from("agendamentos")
-          .update({ status: restoredStatus })
+          .update({ status: restoredStatus as any })
           .eq("id", agendamentoId);
         if (agError) throw agError;
       }
