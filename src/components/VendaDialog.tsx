@@ -105,20 +105,29 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     if (!canSubmit || !user) return;
     setSubmitting(true);
     try {
-      const { error: vendaError } = await supabase.from("vendas").upsert(
-        {
+      const payload = {
+        vendeu_closer: vendeuCloser === "sim",
+        lead_revenue: leadRevenue || null,
+        motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
+        observacoes: observacoes.trim() || null,
+      };
+
+      if (existing) {
+        const { error: vendaError } = await supabase
+          .from("vendas")
+          .update(payload as any)
+          .eq("agendamento_id", agendamentoId);
+        if (vendaError) throw vendaError;
+      } else {
+        const { error: vendaError } = await supabase.from("vendas").insert({
           agendamento_id: agendamentoId,
-          // `vendeu` é gravado exclusivamente pelo modal do gestor — aqui só preservamos.
-          vendeu: existing?.vendeu === true,
-          vendeu_closer: vendeuCloser === "sim",
-          lead_revenue: leadRevenue || null,
-          motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
-          observacoes: observacoes.trim() || null,
-          created_by: existing?.created_by ?? user.id,
-        } as any,
-        { onConflict: "agendamento_id" },
-      );
-      if (vendaError) throw vendaError;
+          vendeu: false,
+          ...payload,
+          created_by: user.id,
+        } as any);
+        if (vendaError) throw vendaError;
+      }
+
 
       const { error: agError } = await supabase
         .from("agendamentos")
