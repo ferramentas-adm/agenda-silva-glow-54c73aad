@@ -489,8 +489,16 @@ export default function ProdutividadeSDRTab({
         />
       </div>
 
+      {/* Produtividade por hora com comparação entre dias */}
+      <ProdutividadePorHoraCard
+        createdAgs={createdAgs}
+        sdrIds={sdrIds}
+        baseDate={isIntervalMode ? new Date(range.to) : currentDate}
+      />
+
       {/* Tendência preditiva — apenas para gestores/moderadores */}
       {isManager && <TrendCardSDR />}
+
 
       {/* Gráfico comparativo */}
       <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
