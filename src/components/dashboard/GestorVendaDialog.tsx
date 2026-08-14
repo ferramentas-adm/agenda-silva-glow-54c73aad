@@ -130,8 +130,21 @@ export default function GestorVendaDialog({
         (existing as any)?.status_antes_venda ??
         (currentStatus && currentStatus !== "realizada" ? currentStatus : null);
 
-      const { error: vendaError } = await supabase.from("vendas").upsert(
-        {
+      if (existing) {
+        const { error: vendaError } = await supabase
+          .from("vendas")
+          .update({
+            vendeu: true,
+            valor: valorNum,
+            produto: produto || null,
+            venda_origem: vendaOrigem,
+            closed_at: brTodayYMD(),
+            status_antes_venda: statusAntes,
+          } as any)
+          .eq("agendamento_id", agendamentoId);
+        if (vendaError) throw vendaError;
+      } else {
+        const { error: vendaError } = await supabase.from("vendas").insert({
           agendamento_id: agendamentoId,
           vendeu: true,
           valor: valorNum,
@@ -139,14 +152,11 @@ export default function GestorVendaDialog({
           venda_origem: vendaOrigem,
           closed_at: brTodayYMD(),
           status_antes_venda: statusAntes,
-          // preserva declaração do closer / faturamento informado
-          lead_revenue: existing?.lead_revenue ?? null,
-          vendeu_closer: existing?.vendeu_closer ?? null,
-          created_by: existing?.created_by ?? user.id,
-        } as any,
-        { onConflict: "agendamento_id" },
-      );
-      if (vendaError) throw vendaError;
+          created_by: user.id,
+        } as any);
+        if (vendaError) throw vendaError;
+      }
+
 
       if (currentStatus !== "realizada") {
         const { error: agError } = await supabase
