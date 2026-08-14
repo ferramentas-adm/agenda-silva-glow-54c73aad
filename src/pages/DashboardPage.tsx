@@ -759,8 +759,10 @@ export function CalendarContent() {
   // Status update handler
   const handleStatusChange = async (newStatus: string, cancellationReason?: string) => {
     if (!detailAg) return;
-    // Realizada → abre pop-up de Vendeu? (bloqueia submit até preencher)
-    if (newStatus === "realizada") {
+    // Realizada → abre pop-up de Vendeu? apenas para closer/SDR.
+    // Gestor/moderador/supervisor/apresentador marcam direto: o lançamento
+    // oficial da venda é feito uma única vez no GestorVendaDialog.
+    if (newStatus === "realizada" && !isAdminLike) {
       setVendaDialogAg(detailAg);
       return;
     }
