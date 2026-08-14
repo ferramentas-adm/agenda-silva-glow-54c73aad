@@ -495,7 +495,7 @@ export default function ProdutividadeSDRTab({
       <ProdutividadePorHoraCard
         createdAgs={createdAgs}
         sdrIds={sdrIds}
-        baseDate={isIntervalMode ? new Date(range.to) : currentDate}
+        baseDate={isIntervalMode ? parseISO(range.to) : currentDate}
       />
 
       {/* Tendência preditiva — apenas para gestores/moderadores */}
