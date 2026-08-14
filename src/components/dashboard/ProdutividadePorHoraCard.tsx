@@ -10,7 +10,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { format, subDays, parseISO } from "date-fns";
+import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Clock, TrendingUp, TrendingDown, Minus, CalendarDays } from "lucide-react";
 
@@ -116,9 +116,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, baseDate 
       };
     });
 
-    const totalBase = rows.reduce((s, r) => s + (cumulative ? 0 : r.base), cumulative ? accBase : 0);
-    const totalCmp = cumulative ? accCmp : rows.reduce((s, r) => s + r.cmp, 0);
-    return { data: rows, totals: { base: totalBase, cmp: totalCmp } };
+    return { data: rows, totals: { base: accBase, cmp: accCmp } };
   }, [createdAgs, sdrIds, baseStr, compare, cumulative]);
 
   const delta = totals.cmp > 0 ? ((totals.base - totals.cmp) / totals.cmp) * 100 : totals.base > 0 ? 100 : 0;
