@@ -29,6 +29,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
+import ProdutividadePorHoraCard from "@/components/dashboard/ProdutividadePorHoraCard";
+
 import CriadasPorDiaDialog, { type CriadasDayGroup } from "@/components/dashboard/CriadasPorDiaDialog";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import { SdrTeamBadge, type SdrTeam } from "@/components/sdr/SdrTeamBadge";
