@@ -233,7 +233,10 @@ export default function BloqueioMassaPage() {
 
 
       toast.success(
-        rows.length === 1 ? "Bloqueio criado!" : `${rows.length} bloqueios criados!`
+        (rows.length === 1 ? "Bloqueio criado!" : `${rows.length} bloqueios criados!`) +
+          (replacedCount > 0
+            ? ` ${replacedCount} bloqueio(s) anterior(es) substituído(s).`
+            : "")
       );
       setSelected([]);
       setDate(undefined);
