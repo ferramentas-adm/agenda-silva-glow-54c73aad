@@ -66,6 +66,19 @@ export default function BloqueioMassaPage() {
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const isFullDay = startTime === "09:00" && endTime === "23:00";
+  const toggleFullDay = () => {
+    if (isFullDay) {
+      setStartTime("09:00");
+      setEndTime("10:00");
+    } else {
+      setStartTime("09:00");
+      setEndTime("23:00");
+    }
+  };
+
+
+
   const { items: savedReasons } = useAppSettingList(APP_SETTING_KEYS.block_reasons, []);
   const reasons = useMemo(() => {
     const set = new Set<string>([...MASS_BLOCK_REASONS, ...savedReasons.filter(Boolean)]);
