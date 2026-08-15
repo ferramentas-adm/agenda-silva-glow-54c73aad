@@ -1977,7 +1977,9 @@ const DayView = memo(function DayView({
     closerBlocks.forEach((b) => {
       const startHour = parseInt(b.start_time.slice(0, 2));
       const endHour = parseInt(b.end_time.slice(0, 2));
-      for (let h = startHour; h < endHour; h++) {
+      const endMin = parseInt(b.end_time.slice(3, 5)) || 0;
+      const endHourExclusive = endMin > 0 ? endHour + 1 : endHour;
+      for (let h = startHour; h < endHourExclusive; h++) {
         const key = `${b.closer_id}-${String(h).padStart(2, "0")}`;
         if (!m.has(key)) m.set(key, b);
       }

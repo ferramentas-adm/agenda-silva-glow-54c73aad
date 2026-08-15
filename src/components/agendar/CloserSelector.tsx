@@ -81,8 +81,10 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
       (blocks ?? []).forEach((b: any) => {
         const startH = parseInt(b.start_time.slice(0, 2), 10);
         const endH = parseInt(b.end_time.slice(0, 2), 10);
+        const endM = parseInt(b.end_time.slice(3, 5), 10) || 0;
+        const endHourExclusive = endM > 0 ? endH + 1 : endH;
         if (!blockedMap.has(b.closer_id)) blockedMap.set(b.closer_id, new Set());
-        for (let h = startH; h < endH; h++) {
+        for (let h = startH; h < endHourExclusive; h++) {
           blockedMap.get(b.closer_id)!.add(`${String(h).padStart(2, "0")}:00`);
         }
       });
