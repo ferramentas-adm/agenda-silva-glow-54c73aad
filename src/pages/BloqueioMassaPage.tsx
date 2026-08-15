@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, CalendarDays, CalendarOff, Clock, Repeat, Search, Trash2, Users } from "lucide-react";
+import { CalendarIcon, CalendarDays, CalendarOff, Clock, Plus, Repeat, Search, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { pickedDateToYMD } from "@/lib/timezone";
@@ -58,24 +58,29 @@ export default function BloqueioMassaPage() {
   const [mode, setMode] = useState<Mode>("pontual");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [weekdays, setWeekdays] = useState<number[]>([]);
-  const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("10:00");
+  const [ranges, setRanges] = useState<{ start: string; end: string }[]>([
+    { start: "09:00", end: "10:00" },
+  ]);
   const [blockType, setBlockType] = useState("");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const isFullDay = startTime === "09:00" && endTime === "23:00";
-  const toggleFullDay = () => {
-    if (isFullDay) {
-      setStartTime("09:00");
-      setEndTime("10:00");
-    } else {
-      setStartTime("09:00");
-      setEndTime("23:00");
-    }
-  };
+  const isFullDay =
+    ranges.length === 1 && ranges[0].start === "09:00" && ranges[0].end === "23:00";
+  const toggleFullDay = () =>
+    setRanges(isFullDay ? [{ start: "09:00", end: "10:00" }] : [{ start: "09:00", end: "23:00" }]);
+
+  const updateRange = (idx: number, patch: Partial<{ start: string; end: string }>) =>
+    setRanges((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  const addRange = () =>
+    setRanges((prev) => [...prev, { start: prev[prev.length - 1]?.end || "09:00", end: "23:00" }]);
+  const removeRange = (idx: number) =>
+    setRanges((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)));
+
+  const rangesValid = ranges.length > 0 && ranges.every((r) => r.start < r.end);
+
 
 
 
@@ -145,45 +150,48 @@ export default function BloqueioMassaPage() {
   const canSubmit =
     selected.length > 0 &&
     !!blockType &&
-    startTime < endTime &&
+    rangesValid &&
     (mode === "pontual" ? !!date : weekdays.length > 0);
 
   const handleSubmit = async () => {
     if (selected.length === 0) return toast.error("Selecione ao menos um closer");
     if (!blockType) return toast.error("Selecione um motivo");
-    if (startTime >= endTime) return toast.error("Horário de fim deve ser depois do início");
+    if (!rangesValid) return toast.error("Em cada intervalo, o fim deve ser depois do início");
     if (mode === "pontual" && !date) return toast.error("Selecione a data");
     if (mode === "recorrente" && weekdays.length === 0) return toast.error("Selecione ao menos um dia da semana");
 
     setSubmitting(true);
     try {
       const todayStr = pickedDateToYMD(new Date());
-      const rows = selected.flatMap((closerId) => {
-        if (mode === "pontual") {
-          return [
-            {
-              closer_id: closerId,
-              block_date: pickedDateToYMD(date!),
-              start_time: startTime,
-              end_time: endTime,
-              block_type: blockType,
-              description: description || null,
-              is_recurring: false,
-              recurrence_weekday: null as number | null,
-            },
-          ];
-        }
-        return weekdays.map((wd) => ({
-          closer_id: closerId,
-          block_date: todayStr,
-          start_time: startTime,
-          end_time: endTime,
-          block_type: blockType,
-          description: description || null,
-          is_recurring: true,
-          recurrence_weekday: wd,
-        }));
-      });
+      const rows = selected.flatMap((closerId) =>
+        ranges.flatMap((r) => {
+          if (mode === "pontual") {
+            return [
+              {
+                closer_id: closerId,
+                block_date: pickedDateToYMD(date!),
+                start_time: r.start,
+                end_time: r.end,
+                block_type: blockType,
+                description: description || null,
+                is_recurring: false,
+                recurrence_weekday: null as number | null,
+              },
+            ];
+          }
+          return weekdays.map((wd) => ({
+            closer_id: closerId,
+            block_date: todayStr,
+            start_time: r.start,
+            end_time: r.end,
+            block_type: blockType,
+            description: description || null,
+            is_recurring: true,
+            recurrence_weekday: wd,
+          }));
+        })
+      );
+
 
       const { error } = await supabase.from("closer_blocks").insert(rows);
       if (error) throw error;
@@ -397,7 +405,9 @@ export default function BloqueioMassaPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">Horário</label>
+                <label className="text-xs text-muted-foreground">
+                  Horários {ranges.length > 1 && `(${ranges.length} intervalos)`}
+                </label>
                 <Button
                   type="button"
                   size="sm"
@@ -409,17 +419,49 @@ export default function BloqueioMassaPage() {
                   Dia inteiro
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Início</label>
-                  <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+
+              {ranges.map((r, idx) => (
+                <div key={idx} className="flex items-end gap-2">
+                  <div className="flex-1 space-y-1.5">
+                    {idx === 0 && <label className="text-xs text-muted-foreground">Início</label>}
+                    <Input
+                      type="time"
+                      value={r.start}
+                      onChange={(e) => updateRange(idx, { start: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    {idx === 0 && <label className="text-xs text-muted-foreground">Fim</label>}
+                    <Input
+                      type="time"
+                      value={r.end}
+                      onChange={(e) => updateRange(idx, { end: e.target.value })}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    disabled={ranges.length === 1}
+                    onClick={() => removeRange(idx)}
+                    aria-label="Remover intervalo"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Fim</label>
-                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-                </div>
-              </div>
+              ))}
+
+              <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs" onClick={addRange}>
+                <Plus className="h-3.5 w-3.5" />
+                Adicionar intervalo
+              </Button>
+
+              {!rangesValid && (
+                <p className="text-xs text-destructive">Em cada intervalo, o fim deve ser depois do início.</p>
+              )}
             </div>
+
 
 
             <div className="space-y-1.5">
