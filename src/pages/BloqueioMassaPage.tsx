@@ -150,45 +150,48 @@ export default function BloqueioMassaPage() {
   const canSubmit =
     selected.length > 0 &&
     !!blockType &&
-    startTime < endTime &&
+    rangesValid &&
     (mode === "pontual" ? !!date : weekdays.length > 0);
 
   const handleSubmit = async () => {
     if (selected.length === 0) return toast.error("Selecione ao menos um closer");
     if (!blockType) return toast.error("Selecione um motivo");
-    if (startTime >= endTime) return toast.error("Horário de fim deve ser depois do início");
+    if (!rangesValid) return toast.error("Em cada intervalo, o fim deve ser depois do início");
     if (mode === "pontual" && !date) return toast.error("Selecione a data");
     if (mode === "recorrente" && weekdays.length === 0) return toast.error("Selecione ao menos um dia da semana");
 
     setSubmitting(true);
     try {
       const todayStr = pickedDateToYMD(new Date());
-      const rows = selected.flatMap((closerId) => {
-        if (mode === "pontual") {
-          return [
-            {
-              closer_id: closerId,
-              block_date: pickedDateToYMD(date!),
-              start_time: startTime,
-              end_time: endTime,
-              block_type: blockType,
-              description: description || null,
-              is_recurring: false,
-              recurrence_weekday: null as number | null,
-            },
-          ];
-        }
-        return weekdays.map((wd) => ({
-          closer_id: closerId,
-          block_date: todayStr,
-          start_time: startTime,
-          end_time: endTime,
-          block_type: blockType,
-          description: description || null,
-          is_recurring: true,
-          recurrence_weekday: wd,
-        }));
-      });
+      const rows = selected.flatMap((closerId) =>
+        ranges.flatMap((r) => {
+          if (mode === "pontual") {
+            return [
+              {
+                closer_id: closerId,
+                block_date: pickedDateToYMD(date!),
+                start_time: r.start,
+                end_time: r.end,
+                block_type: blockType,
+                description: description || null,
+                is_recurring: false,
+                recurrence_weekday: null as number | null,
+              },
+            ];
+          }
+          return weekdays.map((wd) => ({
+            closer_id: closerId,
+            block_date: todayStr,
+            start_time: r.start,
+            end_time: r.end,
+            block_type: blockType,
+            description: description || null,
+            is_recurring: true,
+            recurrence_weekday: wd,
+          }));
+        })
+      );
+
 
       const { error } = await supabase.from("closer_blocks").insert(rows);
       if (error) throw error;
