@@ -71,7 +71,9 @@ export function useSlotCounts(dateStr: string | null | undefined) {
           if (!b.closer_id || !activeCloserIds.has(b.closer_id)) continue;
           const startH = parseInt(String(b.start_time ?? "00").slice(0, 2), 10);
           const endH = parseInt(String(b.end_time ?? "00").slice(0, 2), 10);
-          if (slotH >= startH && slotH < endH) blocked.add(b.closer_id);
+          const endM = parseInt(String(b.end_time ?? "00").slice(3, 5), 10) || 0;
+          const endHourExclusive = endM > 0 ? endH + 1 : endH;
+          if (slotH >= startH && slotH < endHourExclusive) blocked.add(b.closer_id);
         }
         return blocked.size;
       };
