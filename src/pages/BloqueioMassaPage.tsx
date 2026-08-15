@@ -405,7 +405,9 @@ export default function BloqueioMassaPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">Horário</label>
+                <label className="text-xs text-muted-foreground">
+                  Horários {ranges.length > 1 && `(${ranges.length} intervalos)`}
+                </label>
                 <Button
                   type="button"
                   size="sm"
@@ -417,17 +419,49 @@ export default function BloqueioMassaPage() {
                   Dia inteiro
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Início</label>
-                  <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+
+              {ranges.map((r, idx) => (
+                <div key={idx} className="flex items-end gap-2">
+                  <div className="flex-1 space-y-1.5">
+                    {idx === 0 && <label className="text-xs text-muted-foreground">Início</label>}
+                    <Input
+                      type="time"
+                      value={r.start}
+                      onChange={(e) => updateRange(idx, { start: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    {idx === 0 && <label className="text-xs text-muted-foreground">Fim</label>}
+                    <Input
+                      type="time"
+                      value={r.end}
+                      onChange={(e) => updateRange(idx, { end: e.target.value })}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    disabled={ranges.length === 1}
+                    onClick={() => removeRange(idx)}
+                    aria-label="Remover intervalo"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Fim</label>
-                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-                </div>
-              </div>
+              ))}
+
+              <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs" onClick={addRange}>
+                <Plus className="h-3.5 w-3.5" />
+                Adicionar intervalo
+              </Button>
+
+              {!rangesValid && (
+                <p className="text-xs text-destructive">Em cada intervalo, o fim deve ser depois do início.</p>
+              )}
             </div>
+
 
 
             <div className="space-y-1.5">
