@@ -58,24 +58,29 @@ export default function BloqueioMassaPage() {
   const [mode, setMode] = useState<Mode>("pontual");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [weekdays, setWeekdays] = useState<number[]>([]);
-  const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("10:00");
+  const [ranges, setRanges] = useState<{ start: string; end: string }[]>([
+    { start: "09:00", end: "10:00" },
+  ]);
   const [blockType, setBlockType] = useState("");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const isFullDay = startTime === "09:00" && endTime === "23:00";
-  const toggleFullDay = () => {
-    if (isFullDay) {
-      setStartTime("09:00");
-      setEndTime("10:00");
-    } else {
-      setStartTime("09:00");
-      setEndTime("23:00");
-    }
-  };
+  const isFullDay =
+    ranges.length === 1 && ranges[0].start === "09:00" && ranges[0].end === "23:00";
+  const toggleFullDay = () =>
+    setRanges(isFullDay ? [{ start: "09:00", end: "10:00" }] : [{ start: "09:00", end: "23:00" }]);
+
+  const updateRange = (idx: number, patch: Partial<{ start: string; end: string }>) =>
+    setRanges((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  const addRange = () =>
+    setRanges((prev) => [...prev, { start: prev[prev.length - 1]?.end || "09:00", end: "23:00" }]);
+  const removeRange = (idx: number) =>
+    setRanges((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)));
+
+  const rangesValid = ranges.length > 0 && ranges.every((r) => r.start < r.end);
+
 
 
 
