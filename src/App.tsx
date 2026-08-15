@@ -25,6 +25,7 @@ const LeadDetalhesPage = lazy(() => import("@/pages/LeadDetalhesPage"));
 const CancelarReuniaoPage = lazy(() => import("@/pages/CancelarReuniaoPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const OAuthConsentPage = lazy(() => import("@/pages/OAuthConsentPage"));
+const BloqueioMassaPage = lazy(() => import("@/pages/BloqueioMassaPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/dashboard-leads" element={<ProtectedRoute><DashboardLeadsPage /></ProtectedRoute>} />
               <Route path="/reunioes" element={<ProtectedRoute><ReunioesListPage /></ProtectedRoute>} />
               <Route path="/aguardando-atribuicao" element={<ProtectedRoute><AguardandoAtribuicaoPage /></ProtectedRoute>} />
+              <Route path="/bloqueio-massa" element={<ProtectedRoute><BloqueioMassaPage /></ProtectedRoute>} />
               <Route path="/follow-ups" element={<ProtectedRoute><FollowUpsPage /></ProtectedRoute>} />
               <Route path="/meus-follows" element={<ProtectedRoute><MeusFollowsPage /></ProtectedRoute>} />
               <Route path="/pagamentos" element={<ProtectedRoute><PagamentosPage /></ProtectedRoute>} />

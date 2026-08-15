@@ -107,6 +107,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ...(can("view_payments") ? [{ to: "/pagamentos", label: "Pagamentos", icon: Wallet, badge: 0 }] : []),
     ...(can("view_dashboard_comercial") ? [{ to: "/dashboard-comercial", label: "Dashboard", icon: BarChart3, badge: 0 }] : []),
     ...(can("view_dashboard_leads") && !can("view_dashboard_comercial") ? [{ to: "/dashboard-leads", label: "Dashboard de Formulário", icon: BarChart3, badge: 0 }] : []),
+    ...(isGestor ? [{ to: "/bloqueio-massa", label: "Bloqueio em massa", icon: CalendarOff, badge: 0 }] : []),
     ...(can("view_admin") ? [{ to: "/admin", label: "Admin", icon: Settings, badge: 0 }] : []),
     ...(can("view_audit_logs") ? [{ to: "/audit-logs", label: "Logs", icon: ScrollText, badge: 0 }] : []),
   ];
