@@ -25,6 +25,7 @@ const LeadDetalhesPage = lazy(() => import("@/pages/LeadDetalhesPage"));
 const CancelarReuniaoPage = lazy(() => import("@/pages/CancelarReuniaoPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const OAuthConsentPage = lazy(() => import("@/pages/OAuthConsentPage"));
+const BloqueioMassaPage = lazy(() => import("@/pages/BloqueioMassaPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
