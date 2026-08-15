@@ -382,16 +382,32 @@ export default function BloqueioMassaPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Início</label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Horário</label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isFullDay ? "default" : "outline"}
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={toggleFullDay}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  Dia inteiro
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Fim</label>
-                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Início</label>
+                  <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Fim</label>
+                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                </div>
               </div>
             </div>
+
 
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Descrição (opcional)</label>
