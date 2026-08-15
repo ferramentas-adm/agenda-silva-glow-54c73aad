@@ -193,9 +193,44 @@ export default function BloqueioMassaPage() {
         })
       );
 
+      // Substitui bloqueios existentes que ficam totalmente contidos nos novos intervalos
+      let replacedCount = 0;
+      const scopeQuery = supabase
+        .from("closer_blocks")
+        .select("id, closer_id, block_date, start_time, end_time, is_recurring, recurrence_weekday")
+        .in("closer_id", selected);
+
+      if (mode === "pontual") {
+        const targetDate = pickedDateToYMD(date!);
+        const weekday = new Date(`${targetDate}T12:00:00`).getDay();
+        scopeQuery.or(
+          `and(is_recurring.eq.false,block_date.eq.${targetDate}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`
+        );
+      } else {
+        scopeQuery.eq("is_recurring", true).in("recurrence_weekday", weekdays);
+      }
+
+      const { data: existing, error: existingError } = await scopeQuery;
+      if (existingError) throw existingError;
+
+      const containedIds = (existing ?? [])
+        .filter((b) =>
+          ranges.some((r) => b.start_time >= r.start && b.end_time <= r.end)
+        )
+        .map((b) => b.id);
+
+      if (containedIds.length > 0) {
+        const { error: delError } = await supabase
+          .from("closer_blocks")
+          .delete()
+          .in("id", containedIds);
+        if (delError) throw delError;
+        replacedCount = containedIds.length;
+      }
 
       const { error } = await supabase.from("closer_blocks").insert(rows);
       if (error) throw error;
+
 
       toast.success(
         rows.length === 1 ? "Bloqueio criado!" : `${rows.length} bloqueios criados!`
