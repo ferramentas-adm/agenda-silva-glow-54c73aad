@@ -68,9 +68,10 @@ export default function BloqueioMassaPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const isFullDay =
-    ranges.length === 1 && ranges[0].start === "09:00" && ranges[0].end === "23:00";
+    ranges.length === 1 && ranges[0].start === "09:00" && ranges[0].end === "23:59";
   const toggleFullDay = () =>
-    setRanges(isFullDay ? [{ start: "09:00", end: "10:00" }] : [{ start: "09:00", end: "23:00" }]);
+    setRanges(isFullDay ? [{ start: "09:00", end: "10:00" }] : [{ start: "09:00", end: "23:59" }]);
+
 
   const updateRange = (idx: number, patch: Partial<{ start: string; end: string }>) =>
     setRanges((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
