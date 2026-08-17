@@ -5,7 +5,6 @@
 // A correspondência é feita pelo `full_name` do profile (case-insensitive,
 // ignorando acentos), evitando depender de IDs fixos por ambiente.
 export const SDR_OVERRIDE_NAMES: string[] = [
-  "Bruna Angélica",
   "Lucas Emanuel",
 ];
 
