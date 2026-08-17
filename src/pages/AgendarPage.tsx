@@ -412,7 +412,45 @@ function AgendarPageInner() {
         ? [closerJustification, observation.trim()].filter(Boolean).join(" — ") || null
         : (observation.trim() || null);
 
-      const { data: insertedData, error } = await supabase.from("agendamentos").insert({
+      // Reagendamento para o MESMO dia = apenas troca de horário: atualiza o
+      // próprio registro, sem criar duplicata nem marcar "reagendada".
+      const isSameDayReschedule =
+        !!editId && !!editData?.scheduled_date && editData.scheduled_date === dateStr;
+
+      let insertedData: { id: string } | null = null;
+
+      if (isSameDayReschedule) {
+        const { data: updatedData, error: updateError } = await supabase
+          .from("agendamentos")
+          .update({
+            closer_id: closerId,
+            scheduled_time: time,
+            duration_minutes: durationMinutes,
+            observation: finalObservation,
+            briefing: briefingText.trim() || null,
+            meet_link: meetLink,
+            google_event_id: googleEventId,
+            meeting_reason: resolvedReason,
+            channel_type: channelType || null,
+            is_5k: is5k,
+          } as any)
+          .eq("id", editId!)
+          .select("id")
+          .maybeSingle();
+        if (updateError) throw updateError;
+        if (!updatedData) {
+          throw new Error("Você não tem permissão para alterar este agendamento.");
+        }
+        insertedData = updatedData;
+
+        await logAudit("reschedule_same_day", "agendamento", editId, {
+          lead_name: lead.name,
+          closer_name: closerName,
+          scheduled_date: dateStr,
+          scheduled_time: time,
+        });
+      } else {
+      const { data: insertedRow, error } = await supabase.from("agendamentos").insert({
         lead_name: lead.name,
         lead_phone: lead.phone,
         closer_id: closerId,
@@ -433,6 +471,7 @@ function AgendarPageInner() {
       } as any).select("id").single();
 
       if (error) throw error;
+      insertedData = insertedRow;
 
       // Se for reagendamento, marcar o agendamento ORIGINAL como 'reagendada'
       // para que apareça no calendário do dia antigo com o badge correto.
@@ -462,6 +501,7 @@ function AgendarPageInner() {
             original_agendamento_id: editId,
           }
         );
+      }
       }
 
       // Reagendamento: o trigger do banco já envia "Reagendada" ao DataCrazy
