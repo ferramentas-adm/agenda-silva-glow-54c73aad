@@ -62,6 +62,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   });
 
   const [leadName, setLeadName] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
   const [channelType, setChannelType] = useState("");
   const [sdrId, setSdrId] = useState<string>("none");
   const [closerId, setCloserId] = useState("");
@@ -74,7 +75,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     if (!open) {
-      setLeadName(""); setChannelType(""); setSdrId("none"); setCloserId("");
+      setLeadName(""); setLeadPhone(""); setChannelType(""); setSdrId("none"); setCloserId("");
       setProduto(""); setValorColetado(""); setValorTotal(""); setDescricao("");
       setSaleDate(new Date()); setSaving(false);
     }
@@ -85,8 +86,19 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
     return Number.isFinite(n) ? n : NaN;
   };
 
+  const formatPhone = (raw: string) => {
+    const d = raw.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 2) return d.length ? `(${d}` : "";
+    if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  };
+
+  const phoneDigits = leadPhone.replace(/\D/g, "");
+
   const valid = useMemo(() => {
     if (!leadName.trim()) return false;
+    if (phoneDigits.length < 10) return false;
     if (!channelType) return false;
     if (!closerId) return false;
     if (produtosList.length > 0 && !produto) return false;
@@ -97,7 +109,8 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
     if (!(vt > 0)) return false;
     if (descricao.trim().length < 10) return false;
     return true;
-  }, [leadName, channelType, closerId, produto, produtosList.length, valorColetado, valorTotal, descricao]);
+  }, [leadName, phoneDigits, channelType, closerId, produto, produtosList.length, valorColetado, valorTotal, descricao]);
+
 
   const handleSubmit = async () => {
     if (!valid || !user) return;
@@ -111,7 +124,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
         .from("agendamentos")
         .insert({
           lead_name: leadName.trim(),
-          lead_phone: "",
+          lead_phone: leadPhone.trim(),
           closer_id: closerId,
           sdr_responsavel_id: sdrFinal,
           channel_type: channelType,
@@ -168,10 +181,22 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
-          <div className="grid gap-2">
-            <Label>Nome do cliente *</Label>
-            <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Ex.: Empresa XYZ" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>Nome do cliente *</Label>
+              <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Ex.: Empresa XYZ" />
+            </div>
+            <div className="grid gap-2">
+              <Label>Telefone (WhatsApp) *</Label>
+              <Input
+                inputMode="tel"
+                value={leadPhone}
+                onChange={(e) => setLeadPhone(formatPhone(e.target.value))}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
           </div>
+
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
