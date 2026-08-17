@@ -537,7 +537,13 @@ function AgendarPageInner() {
       } else if (!closerId) {
         toast.success("Reunião agendada! Aguardando atribuição de Closer.");
       } else {
-        toast.success(editId ? "Reunião reagendada!" : "Reunião agendada!");
+        toast.success(
+          isSameDayReschedule
+            ? "Horário atualizado!"
+            : editId
+              ? "Reunião reagendada!"
+              : "Reunião agendada!",
+        );
       }
       // Limpa o briefing logo após o envio para não vazar ao próximo agendamento
       setBriefingText("");
