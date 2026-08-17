@@ -28,7 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
-import { isSdrOverrideName, countsAsSdr } from "@/lib/sdrOverrides";
+import { countsAsSdr } from "@/lib/sdrOverrides";
 import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
 import { SdrTeamBadge } from "@/components/sdr/SdrTeamBadge";
 import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
