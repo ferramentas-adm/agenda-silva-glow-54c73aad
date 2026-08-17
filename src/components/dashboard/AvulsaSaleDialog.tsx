@@ -62,6 +62,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   });
 
   const [leadName, setLeadName] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
   const [channelType, setChannelType] = useState("");
   const [sdrId, setSdrId] = useState<string>("none");
   const [closerId, setCloserId] = useState("");
@@ -74,7 +75,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     if (!open) {
-      setLeadName(""); setChannelType(""); setSdrId("none"); setCloserId("");
+      setLeadName(""); setLeadPhone(""); setChannelType(""); setSdrId("none"); setCloserId("");
       setProduto(""); setValorColetado(""); setValorTotal(""); setDescricao("");
       setSaleDate(new Date()); setSaving(false);
     }
@@ -85,8 +86,19 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
     return Number.isFinite(n) ? n : NaN;
   };
 
+  const formatPhone = (raw: string) => {
+    const d = raw.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 2) return d.length ? `(${d}` : "";
+    if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  };
+
+  const phoneDigits = leadPhone.replace(/\D/g, "");
+
   const valid = useMemo(() => {
     if (!leadName.trim()) return false;
+    if (phoneDigits.length < 10) return false;
     if (!channelType) return false;
     if (!closerId) return false;
     if (produtosList.length > 0 && !produto) return false;
@@ -97,7 +109,8 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
     if (!(vt > 0)) return false;
     if (descricao.trim().length < 10) return false;
     return true;
-  }, [leadName, channelType, closerId, produto, produtosList.length, valorColetado, valorTotal, descricao]);
+  }, [leadName, phoneDigits, channelType, closerId, produto, produtosList.length, valorColetado, valorTotal, descricao]);
+
 
   const handleSubmit = async () => {
     if (!valid || !user) return;
