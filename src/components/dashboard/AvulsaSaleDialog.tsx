@@ -124,7 +124,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
         .from("agendamentos")
         .insert({
           lead_name: leadName.trim(),
-          lead_phone: "",
+          lead_phone: leadPhone.trim(),
           closer_id: closerId,
           sdr_responsavel_id: sdrFinal,
           channel_type: channelType,
