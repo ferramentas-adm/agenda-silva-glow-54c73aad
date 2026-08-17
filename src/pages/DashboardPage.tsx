@@ -854,6 +854,43 @@ export function CalendarContent() {
     try {
       const newDateStr = `${rescheduleDate.getFullYear()}-${String(rescheduleDate.getMonth() + 1).padStart(2, "0")}-${String(rescheduleDate.getDate()).padStart(2, "0")}`;
       const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
+
+      // MESMO dia = apenas troca de horário: atualiza o próprio agendamento,
+      // sem criar duplicata nem marcar a original como "reagendada".
+      if (newDateStr === detailAg.scheduled_date) {
+        if (rescheduleTime === detailAg.scheduled_time) {
+          setRescheduleOpen(false);
+          setRescheduleDate(null);
+          setRescheduleTime(null);
+          setRescheduling(false);
+          return;
+        }
+        const { data, error } = await supabase
+          .from("agendamentos")
+          .update({
+            scheduled_time: rescheduleTime,
+            closer_id: null,
+            status: "agendada",
+            meet_link: null,
+            google_event_id: null,
+          } as any)
+          .eq("id", detailAg.id)
+          .select("id");
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error("Você não tem permissão para alterar este agendamento.");
+        }
+        toast.success("Horário alterado. Reunião enviada para Aguardando atribuição.");
+        setRescheduleOpen(false);
+        setRescheduleDate(null);
+        setRescheduleTime(null);
+        setDetailAg(null);
+        queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+        queryClient.invalidateQueries({ queryKey: ["pending-assignments"] });
+        setRescheduling(false);
+        return;
+      }
+
       const { error } = await supabase.from("agendamentos").insert({
         lead_name: detailAg.lead_name,
         lead_phone: detailAg.lead_phone,
