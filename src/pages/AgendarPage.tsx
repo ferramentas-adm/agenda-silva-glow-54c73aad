@@ -18,7 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { isSdrOverrideName } from "@/lib/sdrOverrides";
+import { countsAsSdr } from "@/lib/sdrOverrides";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -168,12 +168,12 @@ function AgendarPageInner() {
     enabled: isAdmin,
     queryFn: async () => {
       const [rolesRes, profilesRes] = await Promise.all([
-        supabase.from("user_roles").select("user_id").eq("role", "sdr"),
+        supabase.from("user_roles").select("user_id, role"),
         supabase.rpc("get_public_profiles"),
       ]);
-      const sdrSet = new Set((rolesRes.data ?? []).map((r: any) => r.user_id));
+      const roleMap = new Map<string, string>(((rolesRes.data ?? []) as any[]).map((r: any) => [r.user_id, r.role]));
       return ((profilesRes.data ?? []) as any[])
-        .filter((p) => sdrSet.has(p.user_id) || p.is_sdr_override === true || isSdrOverrideName(p.full_name))
+        .filter((p) => countsAsSdr({ role: roleMap.get(p.user_id), isOverride: p.is_sdr_override, fullName: p.full_name }))
         .map((p) => ({ user_id: p.user_id, full_name: p.full_name }));
     },
   });

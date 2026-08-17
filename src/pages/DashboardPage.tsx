@@ -31,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { isSdrOverrideName } from "@/lib/sdrOverrides";
+import { isSdrOverrideName, countsAsSdr } from "@/lib/sdrOverrides";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
@@ -185,12 +185,12 @@ export function CalendarContent() {
     enabled: isAdminLike,
     queryFn: async () => {
       const [rolesRes, profilesRes] = await Promise.all([
-        supabase.from("user_roles").select("user_id").eq("role", "sdr"),
+        supabase.from("user_roles").select("user_id, role"),
         supabase.rpc("get_public_profiles"),
       ]);
-      const sdrSet = new Set((rolesRes.data ?? []).map((r: any) => r.user_id));
+      const roleMap = new Map<string, string>(((rolesRes.data ?? []) as any[]).map((r: any) => [r.user_id, r.role]));
       return ((profilesRes.data ?? []) as any[])
-        .filter((p) => sdrSet.has(p.user_id) || p.is_sdr_override === true || isSdrOverrideName(p.full_name))
+        .filter((p) => countsAsSdr({ role: roleMap.get(p.user_id), isOverride: p.is_sdr_override, fullName: p.full_name }))
         .map((p) => ({ user_id: p.user_id, full_name: p.full_name })) as { user_id: string; full_name: string }[];
     },
   });
@@ -343,6 +343,8 @@ export function CalendarContent() {
       // legados antes do flag ser propagado.
       const { data: profiles } = await supabase.rpc("get_public_profiles");
       (profiles ?? []).forEach((p: any) => {
+        // Gestores nunca são tratados como SDR, mesmo com override.
+        if (map.get(p.user_id) === "gestor") return;
         if (p.is_sdr_override === true || isSdrOverrideName(p.full_name)) {
           map.set(p.user_id, "sdr");
         }
