@@ -181,10 +181,22 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
-          <div className="grid gap-2">
-            <Label>Nome do cliente *</Label>
-            <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Ex.: Empresa XYZ" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>Nome do cliente *</Label>
+              <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Ex.: Empresa XYZ" />
+            </div>
+            <div className="grid gap-2">
+              <Label>Telefone (WhatsApp) *</Label>
+              <Input
+                inputMode="tel"
+                value={leadPhone}
+                onChange={(e) => setLeadPhone(formatPhone(e.target.value))}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
           </div>
+
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
