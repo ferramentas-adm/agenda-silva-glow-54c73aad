@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.clear_sdr_override_on_gestor() FROM PUBLIC, anon, authenticated;

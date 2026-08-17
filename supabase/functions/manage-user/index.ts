@@ -228,6 +228,14 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
 
+      // Gestor é função de gestão: nunca aparece em rankings/métricas de SDR.
+      if (new_role === "gestor") {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ is_sdr_override: false })
+          .eq("user_id", user_id);
+      }
+
       // Get user profile for email/name
       const { data: profile } = await supabaseAdmin
         .from("profiles")

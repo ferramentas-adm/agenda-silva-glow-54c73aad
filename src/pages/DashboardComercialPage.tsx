@@ -28,7 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
-import { isSdrOverrideName } from "@/lib/sdrOverrides";
+import { isSdrOverrideName, countsAsSdr } from "@/lib/sdrOverrides";
 import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
 import { SdrTeamBadge } from "@/components/sdr/SdrTeamBadge";
 import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
@@ -300,18 +300,16 @@ export default function DashboardComercialPage() {
     queryFn: async () => {
       const { data: roles } = await supabase
         .from("user_roles")
-        .select("user_id")
-        .eq("role", "sdr");
-      const userIds = (roles ?? []).map(r => r.user_id);
+        .select("user_id, role");
+      const roleMap = new Map<string, string>((roles ?? []).map((r: any) => [r.user_id, r.role]));
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, is_sdr_override, sdr_team")
         .eq("active", true);
-      const sdrSet = new Set(userIds);
       // Inclui usuários marcados com "Atua como SDR" no /admin (override DB)
-      // ou em fallback por nome (legado).
+      // ou em fallback por nome (legado). Gestores nunca entram.
       return ((profiles ?? []) as any[])
-        .filter((p) => sdrSet.has(p.user_id) || p.is_sdr_override === true || isSdrOverrideName(p.full_name))
+        .filter((p) => countsAsSdr({ role: roleMap.get(p.user_id), isOverride: p.is_sdr_override, fullName: p.full_name }))
         .map((p) => ({ user_id: p.user_id, full_name: p.full_name, sdr_team: p.sdr_team ?? null })) as SDRProfile[];
     },
     staleTime: 5 * 60 * 1000,

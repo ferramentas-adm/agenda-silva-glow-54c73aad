@@ -11,7 +11,7 @@ import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
-import { isSdrOverrideName } from "@/lib/sdrOverrides";
+import { countsAsSdr } from "@/lib/sdrOverrides";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -275,7 +275,7 @@ export default function ReunioesListPage() {
 
   // Only profiles with SDR role for SDR filter
   const sdrProfiles = useMemo(
-    () => profiles.filter((p: any) => roleMap[p.user_id] === "sdr" || p.is_sdr_override === true || isSdrOverrideName(p.full_name)),
+    () => profiles.filter((p: any) => countsAsSdr({ role: roleMap[p.user_id], isOverride: p.is_sdr_override, fullName: p.full_name })),
     [profiles, roleMap],
   );
 
