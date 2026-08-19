@@ -143,6 +143,34 @@ export default function AguardandoAtribuicaoPage() {
     });
   }
 
+  // Ocupação dos closers nos horários pedidos pelos SDRs
+  const { data: closerLoads = [] } = useQuery({
+    queryKey: ["closer-load-pending", pendingDates.join(",")],
+    enabled: pendingDates.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("closer_id, scheduled_date, scheduled_time")
+        .not("closer_id", "is", null)
+        .is("deleted_at", null)
+        .neq("status", "cancelada")
+        .in("scheduled_date", pendingDates);
+      return data ?? [];
+    },
+  });
+
+  const loadMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (closerLoads as any[]).forEach((r) => {
+      const key = `${r.closer_id}|${r.scheduled_date}|${String(r.scheduled_time).slice(0, 5)}`;
+      m.set(key, (m.get(key) ?? 0) + 1);
+    });
+    return m;
+  }, [closerLoads]);
+
+  const closerLoad = (closerId: string, date: string, time: string) =>
+    loadMap.get(`${closerId}|${date}|${time.slice(0, 5)}`) ?? 0;
+
   // Map de SDR (created_by/sdr_responsavel_id) → nome
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-for-pending-list"],
