@@ -317,6 +317,7 @@ export default function AguardandoAtribuicaoPage() {
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
       queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
       queryClient.invalidateQueries({ queryKey: ["slot-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-load-pending"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao atribuir Closer.");
     } finally {
