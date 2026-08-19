@@ -26,6 +26,7 @@ import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionRe
 import DynamicListManager from "@/components/DynamicListManager";
 import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 
