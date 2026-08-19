@@ -477,19 +477,19 @@ export default function AguardandoAtribuicaoPage() {
                             <SelectValue placeholder="Selecionar Closer" />
                           </SelectTrigger>
                           <SelectContent>
-                            {closers.map((c) => {
-                              const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
-                              return (
-                                <SelectItem
-                                  key={c.id}
-                                  value={c.id}
-                                  disabled={blocked}
-                                  className={blocked ? "opacity-50" : ""}
-                                >
-                                  {c.name}{blocked ? " · agenda bloqueada" : ""}
-                                </SelectItem>
-                              );
-                            })}
+                            {closerOptions.map((c) => (
+                              <SelectItem
+                                key={c.id}
+                                value={c.id}
+                                disabled={c.blocked || c.full}
+                                className={c.blocked || c.full ? "opacity-50" : ""}
+                              >
+                                {c.name}
+                                {c.blocked
+                                  ? " · agenda bloqueada"
+                                  : ` · ${c.load}/${closerSlotLimit}${c.full ? " cheio" : ""}`}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
