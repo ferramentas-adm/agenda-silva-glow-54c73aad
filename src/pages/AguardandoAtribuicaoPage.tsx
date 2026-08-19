@@ -9,6 +9,7 @@ import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -45,6 +46,7 @@ interface Closer {
 export default function AguardandoAtribuicaoPage() {
   const { user } = useAuth();
   const { can, isLoading: permLoading } = usePermissions();
+  const { limit: closerSlotLimit } = useCloserSlotLimit();
   const queryClient = useQueryClient();
   const [selecting, setSelecting] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -143,6 +145,34 @@ export default function AguardandoAtribuicaoPage() {
     });
   }
 
+  // Ocupação dos closers nos horários pedidos pelos SDRs
+  const { data: closerLoads = [] } = useQuery({
+    queryKey: ["closer-load-pending", pendingDates.join(",")],
+    enabled: pendingDates.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("closer_id, scheduled_date, scheduled_time")
+        .not("closer_id", "is", null)
+        .is("deleted_at", null)
+        .neq("status", "cancelada")
+        .in("scheduled_date", pendingDates);
+      return data ?? [];
+    },
+  });
+
+  const loadMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (closerLoads as any[]).forEach((r) => {
+      const key = `${r.closer_id}|${r.scheduled_date}|${String(r.scheduled_time).slice(0, 5)}`;
+      m.set(key, (m.get(key) ?? 0) + 1);
+    });
+    return m;
+  }, [closerLoads]);
+
+  const closerLoad = (closerId: string, date: string, time: string) =>
+    loadMap.get(`${closerId}|${date}|${time.slice(0, 5)}`) ?? 0;
+
   // Map de SDR (created_by/sdr_responsavel_id) → nome
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-for-pending-list"],
@@ -232,7 +262,7 @@ export default function AguardandoAtribuicaoPage() {
       return;
     }
 
-    // Limite de 2 reuniões por Closer no mesmo horário
+    // Limite configurável de reuniões por Closer no mesmo horário
     const { count, error: countErr } = await supabase
       .from("agendamentos")
       .select("id", { count: "exact", head: true })
@@ -245,8 +275,8 @@ export default function AguardandoAtribuicaoPage() {
       toast.error("Erro ao validar disponibilidade do Closer.");
       return;
     }
-    if ((count ?? 0) >= 2) {
-      toast.error("Esse Closer já tem 2 reuniões nesse horário. Escolha outro.");
+    if ((count ?? 0) >= closerSlotLimit) {
+      toast.error(`Esse Closer já tem ${closerSlotLimit} reuniõe${closerSlotLimit > 1 ? "s" : ""} nesse horário. Escolha outro.`);
       return;
     }
 
@@ -287,6 +317,7 @@ export default function AguardandoAtribuicaoPage() {
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
       queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
       queryClient.invalidateQueries({ queryKey: ["slot-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-load-pending"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao atribuir Closer.");
     } finally {
@@ -378,6 +409,18 @@ export default function AguardandoAtribuicaoPage() {
               const isReschedule = !!a.original_agendamento_id;
               const original = isReschedule ? originalById(a.original_agendamento_id) : null;
               const hist = leadHistory(a.lead_phone, a.id);
+              const closerOptions = closers
+                .map((c) => {
+                  const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
+                  const load = closerLoad(c.id, a.scheduled_date, a.scheduled_time);
+                  return { ...c, blocked, load, full: load >= closerSlotLimit };
+                })
+                .sort((x, y) => {
+                  const rank = (o: typeof x) => (o.blocked ? 2 : o.full ? 1 : 0);
+                  if (rank(x) !== rank(y)) return rank(x) - rank(y);
+                  if (x.load !== y.load) return x.load - y.load;
+                  return x.name.localeCompare(y.name, "pt-BR");
+                });
               return (
                 <div key={a.id} className="card-meeting p-4 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -435,19 +478,19 @@ export default function AguardandoAtribuicaoPage() {
                             <SelectValue placeholder="Selecionar Closer" />
                           </SelectTrigger>
                           <SelectContent>
-                            {closers.map((c) => {
-                              const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
-                              return (
-                                <SelectItem
-                                  key={c.id}
-                                  value={c.id}
-                                  disabled={blocked}
-                                  className={blocked ? "opacity-50" : ""}
-                                >
-                                  {c.name}{blocked ? " · agenda bloqueada" : ""}
-                                </SelectItem>
-                              );
-                            })}
+                            {closerOptions.map((c) => (
+                              <SelectItem
+                                key={c.id}
+                                value={c.id}
+                                disabled={c.blocked || c.full}
+                                className={c.blocked || c.full ? "opacity-50" : ""}
+                              >
+                                {c.name}
+                                {c.blocked
+                                  ? " · agenda bloqueada"
+                                  : ` · ${c.load}/${closerSlotLimit}${c.full ? " cheio" : ""}`}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>

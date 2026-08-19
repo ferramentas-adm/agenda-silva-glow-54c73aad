@@ -26,6 +26,7 @@ import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionRe
 import DynamicListManager from "@/components/DynamicListManager";
 import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 
@@ -34,6 +35,7 @@ function DynamicListsSection() {
   return (
     <div className="space-y-4">
       <SlotLimitSetting />
+        <CloserSlotLimitSetting />
       <div className="grid gap-4 md:grid-cols-2">
         <DynamicListManager
           settingKey={APP_SETTING_KEYS.channel_types}
@@ -105,6 +107,39 @@ function SlotLimitSetting() {
     </div>
   );
 }
+
+/* ─── Limite de reuniões por Closer no mesmo horário ───── */
+function CloserSlotLimitSetting() {
+  const { limit, isLoading, save, isSaving } = useCloserSlotLimit();
+  const [value, setValue] = useState<string>("");
+  useEffect(() => { if (!isLoading) setValue(String(limit)); }, [limit, isLoading]);
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-1 text-sm font-semibold">Limite de reuniões por Closer no mesmo horário</div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Quantas reuniões um mesmo Closer pode ter no mesmo dia e horário. Usado na validação da atribuição e no contador exibido em "Aguardando atribuição".
+      </p>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={1}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="w-28"
+        />
+        <Button
+          size="sm"
+          disabled={isSaving || !value || parseInt(value, 10) === limit || parseInt(value, 10) < 1}
+          onClick={() => save(parseInt(value, 10))}
+        >
+          Salvar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
