@@ -408,6 +408,18 @@ export default function AguardandoAtribuicaoPage() {
               const isReschedule = !!a.original_agendamento_id;
               const original = isReschedule ? originalById(a.original_agendamento_id) : null;
               const hist = leadHistory(a.lead_phone, a.id);
+              const closerOptions = closers
+                .map((c) => {
+                  const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
+                  const load = closerLoad(c.id, a.scheduled_date, a.scheduled_time);
+                  return { ...c, blocked, load, full: load >= closerSlotLimit };
+                })
+                .sort((x, y) => {
+                  const rank = (o: typeof x) => (o.blocked ? 2 : o.full ? 1 : 0);
+                  if (rank(x) !== rank(y)) return rank(x) - rank(y);
+                  if (x.load !== y.load) return x.load - y.load;
+                  return x.name.localeCompare(y.name, "pt-BR");
+                });
               return (
                 <div key={a.id} className="card-meeting p-4 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
