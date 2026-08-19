@@ -107,6 +107,39 @@ function SlotLimitSetting() {
   );
 }
 
+/* ─── Limite de reuniões por Closer no mesmo horário ───── */
+function CloserSlotLimitSetting() {
+  const { limit, isLoading, save, isSaving } = useCloserSlotLimit();
+  const [value, setValue] = useState<string>("");
+  useEffect(() => { if (!isLoading) setValue(String(limit)); }, [limit, isLoading]);
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-1 text-sm font-semibold">Limite de reuniões por Closer no mesmo horário</div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Quantas reuniões um mesmo Closer pode ter no mesmo dia e horário. Usado na validação da atribuição e no contador exibido em "Aguardando atribuição".
+      </p>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={1}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="w-28"
+        />
+        <Button
+          size="sm"
+          disabled={isSaving || !value || parseInt(value, 10) === limit || parseInt(value, 10) < 1}
+          onClick={() => save(parseInt(value, 10))}
+        >
+          Salvar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
 function UsersSection() {
