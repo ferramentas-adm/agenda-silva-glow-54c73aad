@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     if (action === "toggle_active") {
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("active")
+        .select("active, email, available_for_scheduling")
         .eq("user_id", user_id)
         .single();
 
@@ -146,8 +146,34 @@ Deno.serve(async (req) => {
 
       if (!newActive) {
         await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "876600h" });
+        // Usuário inativado: desativa o registro de closer. A trigger no banco
+        // devolve as reuniões futuras dele para "Aguardando atribuição".
+        if (profile?.email) {
+          await supabaseAdmin
+            .from("closers")
+            .update({ active: false })
+            .eq("email", profile.email)
+            .eq("active", true);
+        }
       } else {
         await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "none" });
+        // Reativa o registro de closer apenas se a função for closer ou o
+        // usuário estiver marcado como disponível para agendamento.
+        if (profile?.email) {
+          const { data: roleData } = await supabaseAdmin
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", user_id)
+            .maybeSingle();
+
+          if (roleData?.role === "closer" || profile.available_for_scheduling) {
+            await supabaseAdmin
+              .from("closers")
+              .update({ active: true })
+              .eq("email", profile.email)
+              .eq("active", false);
+          }
+        }
       }
 
       return new Response(JSON.stringify({ message: newActive ? "Usuário ativado" : "Usuário desativado", active: newActive }), {
@@ -155,6 +181,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // Change password
     if (action === "change_password") {
