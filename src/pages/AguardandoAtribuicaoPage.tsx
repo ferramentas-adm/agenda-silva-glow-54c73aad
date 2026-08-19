@@ -260,7 +260,7 @@ export default function AguardandoAtribuicaoPage() {
       return;
     }
 
-    // Limite de 2 reuniões por Closer no mesmo horário
+    // Limite configurável de reuniões por Closer no mesmo horário
     const { count, error: countErr } = await supabase
       .from("agendamentos")
       .select("id", { count: "exact", head: true })
@@ -273,8 +273,8 @@ export default function AguardandoAtribuicaoPage() {
       toast.error("Erro ao validar disponibilidade do Closer.");
       return;
     }
-    if ((count ?? 0) >= 2) {
-      toast.error("Esse Closer já tem 2 reuniões nesse horário. Escolha outro.");
+    if ((count ?? 0) >= closerSlotLimit) {
+      toast.error(`Esse Closer já tem ${closerSlotLimit} reuniõe${closerSlotLimit > 1 ? "s" : ""} nesse horário. Escolha outro.`);
       return;
     }
 
