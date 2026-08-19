@@ -45,6 +45,7 @@ interface Closer {
 export default function AguardandoAtribuicaoPage() {
   const { user } = useAuth();
   const { can, isLoading: permLoading } = usePermissions();
+  const { limit: closerSlotLimit } = useCloserSlotLimit();
   const queryClient = useQueryClient();
   const [selecting, setSelecting] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
