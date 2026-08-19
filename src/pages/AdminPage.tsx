@@ -34,6 +34,7 @@ function DynamicListsSection() {
   return (
     <div className="space-y-4">
       <SlotLimitSetting />
+        <CloserSlotLimitSetting />
       <div className="grid gap-4 md:grid-cols-2">
         <DynamicListManager
           settingKey={APP_SETTING_KEYS.channel_types}
