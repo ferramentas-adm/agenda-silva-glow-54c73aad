@@ -956,6 +956,10 @@ export type Database = {
       is_manager: { Args: never; Returns: boolean }
       is_manager_or_apresentador: { Args: never; Returns: boolean }
       is_manager_or_sdr: { Args: never; Returns: boolean }
+      unassign_agendamentos_from_closer: {
+        Args: { _closer_id: string; _reason: string }
+        Returns: number
+      }
     }
     Enums: {
       app_role:
