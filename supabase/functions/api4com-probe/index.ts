@@ -1,36 +1,34 @@
 const TOKEN = Deno.env.get("API4COM_API_TOKEN") ?? "";
+const BASE = "https://api.api4com.com/api/v1";
 
 const PATHS = [
-  "https://api.api4com.com/extensions",
-  "https://api.api4com.com/v1/extensions",
-  "https://api.api4com.com/api/v1/extensions",
-  "https://api.api4com.com/api/extensions",
-  "https://api.api4com.com/",
-  "https://api.api4com.com/v1",
-  "https://api.api4com.com/calls",
-  "https://api.api4com.com/v1/calls",
-  "https://app.api4com.com/api/v1/extensions",
+  "/click2call",
+  "/clicktocall",
+  "/calls",
+  "/call",
+  "/originate",
+  "/cdr",
+  "/cdrs",
+  "/extensions",
+  "/dial",
 ];
 
 Deno.serve(async () => {
   const out: unknown[] = [];
-  for (const url of PATHS) {
-    for (const scheme of ["Bearer", "Token", "raw"]) {
+  for (const p of PATHS) {
+    for (const method of ["GET", "POST"]) {
       try {
-        const res = await fetch(url, {
-          headers: {
-            Authorization: scheme === "raw" ? TOKEN : `${scheme} ${TOKEN}`,
-            Accept: "application/json",
-          },
+        const res = await fetch(`${BASE}${p}`, {
+          method,
+          headers: { Authorization: TOKEN, Accept: "application/json", "Content-Type": "application/json" },
+          body: method === "POST" ? JSON.stringify({}) : undefined,
         });
-        const text = (await res.text()).slice(0, 300);
-        out.push({ url, scheme, status: res.status, body: text });
+        const text = (await res.text()).slice(0, 400);
+        out.push({ path: p, method, status: res.status, body: text });
       } catch (e) {
-        out.push({ url, scheme, error: String(e) });
+        out.push({ path: p, method, error: String(e) });
       }
     }
   }
-  return new Response(JSON.stringify({ token_len: TOKEN.length, out }, null, 2), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(JSON.stringify(out, null, 2), { headers: { "Content-Type": "application/json" } });
 });
