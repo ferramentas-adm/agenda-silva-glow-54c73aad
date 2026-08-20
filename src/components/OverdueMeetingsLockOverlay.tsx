@@ -87,8 +87,12 @@ export default function OverdueMeetingsLockOverlay() {
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Reuniões passam a exigir atualização <strong>1h05 após o horário agendado</strong>.
-                  Defina o desfecho de cada uma abaixo — a tela libera assim que todas estiverem resolvidas.
+                  Toda reunião em <strong>Sem confirmar</strong>, <strong>Não confirmada</strong>,{" "}
+                  <strong>Confirmada</strong> ou <strong>Aguardando atribuição</strong> precisa de desfecho
+                  (Realizada, No-show ou Cancelada). Não há transferência nem como pular: a tela só libera
+                  quando todas estiverem resolvidas.
                 </p>
+
               </div>
             </div>
             <div className="mt-3 flex justify-end">
