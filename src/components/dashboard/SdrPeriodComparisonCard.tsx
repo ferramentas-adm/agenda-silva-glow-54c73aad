@@ -97,13 +97,24 @@ export default function SdrPeriodComparisonCard({ sdrId, sdrName }: Props) {
       const end = p!.current.to;
       const select =
         "id, created_at, scheduled_date, status, created_by, sdr_responsavel_id, original_agendamento_id";
+      const mineFilter = `sdr_responsavel_id.eq.${sdrId},and(sdr_responsavel_id.is.null,created_by.eq.${sdrId})`;
       const [byDate, byCreated] = await Promise.all([
-        supabase.from("agendamentos").select(select).gte("scheduled_date", start).lte("scheduled_date", end),
         supabase
           .from("agendamentos")
           .select(select)
-          .gte("created_at", `${start}T00:00:00`)
-          .lte("created_at", `${end}T23:59:59`),
+          .is("deleted_at", null)
+          .or(mineFilter)
+          .gte("scheduled_date", start)
+          .lte("scheduled_date", end)
+          .limit(5000),
+        supabase
+          .from("agendamentos")
+          .select(select)
+          .is("deleted_at", null)
+          .or(mineFilter)
+          .gte("created_at", `${start}T00:00:00-03:00`)
+          .lte("created_at", `${end}T23:59:59-03:00`)
+          .limit(5000),
       ]);
       if (byDate.error) throw byDate.error;
       if (byCreated.error) throw byCreated.error;
@@ -111,6 +122,7 @@ export default function SdrPeriodComparisonCard({ sdrId, sdrName }: Props) {
       [...(byDate.data ?? []), ...(byCreated.data ?? [])].forEach((r: any) => map.set(r.id, r as Row));
       return Array.from(map.values());
     },
+
   });
 
   const cur = p ? computeMetrics(rows, sdrId, p.current.from, p.current.to, p.days) : null;
