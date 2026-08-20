@@ -197,6 +197,9 @@ function UsersSection() {
   const [datacrazyTarget, setDatacrazyTarget] = useState<{ userId: string; name: string; type: string; currentId: string; closerId?: string } | null>(null);
   const [editDatacrazyId, setEditDatacrazyId] = useState("");
   const [savingDatacrazyId, setSavingDatacrazyId] = useState(false);
+  const [ramalTarget, setRamalTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [editRamal, setEditRamal] = useState("");
+  const [savingRamal, setSavingRamal] = useState(false);
 
   // Scheduling toggle
   const [togglingSchedulingId, setTogglingSchedulingId] = useState<string | null>(null);
@@ -226,7 +229,7 @@ function UsersSection() {
     queryFn: async () => {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, user_id, full_name, email, active, available_for_scheduling, is_sdr_override, moderador_tipo, sdr_team, datacrazy_id");
+        .select("id, user_id, full_name, email, active, available_for_scheduling, is_sdr_override, moderador_tipo, sdr_team, datacrazy_id, api4com_extension");
       const { data: roles } = await supabase
         .from("user_roles")
         .select("user_id, role");
@@ -271,6 +274,7 @@ function UsersSection() {
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
+          api4comExtension: (p as any).api4com_extension || "",
           availableForScheduling: p.available_for_scheduling ?? false,
           isSdrOverride: (p as any).is_sdr_override === true,
           moderadorTipo: (p as any).moderador_tipo as ("sdr" | "closer" | null) ?? null,
