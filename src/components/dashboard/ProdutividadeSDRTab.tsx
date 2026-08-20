@@ -242,17 +242,27 @@ export default function ProdutividadeSDRTab({
         end: parseISO(range.to),
       });
       const dayCounts = new Map<string, number>();
+      const daySdrs = new Map<string, Set<string>>();
       chartPool.forEach((a) => {
         const day =
           filter === "criadas" ? localDateOf(a.created_at) : a.scheduled_date;
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
+        const sid = effectiveSdrId(a);
+        if (sid) {
+          if (!daySdrs.has(day)) daySdrs.set(day, new Set());
+          daySdrs.get(day)!.add(sid);
+        }
       });
       const rows = days.map((d) => {
         const key = format(d, "yyyy-MM-dd");
+        const total = dayCounts.get(key) || 0;
+        const sdrsAtivos = daySdrs.get(key)?.size || 0;
         return {
           sdr: format(d, "EEEE, dd/MM/yyyy", { locale: ptBR }),
           shortName: format(d, "dd/MM"),
-          total: dayCounts.get(key) || 0,
+          total,
+          sdrsAtivos,
+          mediaPorSdr: sdrsAtivos > 0 ? Number((total / sdrsAtivos).toFixed(1)) : 0,
         };
       });
       // Média móvel diária (janela de 7 dias, trailing).
@@ -262,6 +272,7 @@ export default function ProdutividadeSDRTab({
         const avg = slice.reduce((s, x) => s + x.total, 0) / slice.length;
         return { ...r, mediaMovel: Number(avg.toFixed(1)) };
       });
+
     }
     const counts = new Map<string, number>();
     chartPool.forEach((a) => {
@@ -278,6 +289,8 @@ export default function ProdutividadeSDRTab({
           sdr: p.full_name,
           shortName,
           total: counts.get(p.user_id) || 0,
+          sdrsAtivos: 0,
+          mediaPorSdr: 0,
           mediaMovel: undefined as number | undefined,
         };
       })
@@ -289,6 +302,16 @@ export default function ProdutividadeSDRTab({
     const days = eachDayOfInterval({ start: parseISO(range.from), end: parseISO(range.to) }).length || 1;
     return totalGeral / days;
   }, [totalGeral, range]);
+
+  /** Média de agendamentos por SDR ativo (média dos dias com pelo menos 1 SDR ativo). */
+  const showMediaPorSdr = isDailyView && selectedSdr === "all";
+  const mediaPorSdrAtivo = useMemo(() => {
+    if (!showMediaPorSdr) return 0;
+    const dias = chartData.filter((c) => (c.sdrsAtivos || 0) > 0);
+    if (dias.length === 0) return 0;
+    return dias.reduce((s, c) => s + c.total / c.sdrsAtivos, 0) / dias.length;
+  }, [chartData, showMediaPorSdr]);
+
 
 
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
@@ -524,6 +547,13 @@ export default function ProdutividadeSDRTab({
             <span>
               Média/dia: <span className="font-bold text-foreground">{mediaPorDia.toFixed(1)}</span>
             </span>
+            {showMediaPorSdr && (
+              <span title="Agendamentos do dia ÷ SDRs ativos no dia (mín. 1 agendamento)">
+                Média/SDR ativo:{" "}
+                <span className="font-bold text-foreground">{mediaPorSdrAtivo.toFixed(1)}</span>
+              </span>
+            )}
+
           </div>
         </div>
         {chartData.length === 0 || totalGeral === 0 ? (
@@ -557,11 +587,17 @@ export default function ProdutividadeSDRTab({
                     color: "hsl(var(--primary))",
                   }}
                   labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
-                  formatter={(value: number, name) =>
-                    name === "mediaMovel"
-                      ? [Number(value).toFixed(1), "Média móvel (7d)"]
-                      : [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel]
-                  }
+                  formatter={(value: number, name, item) => {
+                    if (name === "mediaMovel") return [Number(value).toFixed(1), "Média móvel (7d)"];
+                    if (name === "mediaPorSdr") {
+                      const ativos = (item?.payload as { sdrsAtivos?: number })?.sdrsAtivos ?? 0;
+                      return [
+                        `${Number(value).toFixed(1)} (${ativos} SDR${ativos !== 1 ? "s" : ""} ativo${ativos !== 1 ? "s" : ""})`,
+                        "Média por SDR ativo",
+                      ];
+                    }
+                    return [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel];
+                  }}
                   labelFormatter={(label, payload) => {
                     const entry = payload?.[0]?.payload as { sdr?: string } | undefined;
                     return entry?.sdr ?? label;
@@ -583,6 +619,18 @@ export default function ProdutividadeSDRTab({
                     dot={false}
                   />
                 )}
+                {showMediaPorSdr && (
+                  <Line
+                    type="monotone"
+                    dataKey="mediaPorSdr"
+                    name="Média por SDR ativo"
+                    stroke="hsl(160 84% 39%)"
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                    dot={false}
+                  />
+                )}
+
               </ComposedChart>
             </ResponsiveContainer>
           </div>
