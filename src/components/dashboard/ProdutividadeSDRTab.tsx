@@ -223,22 +223,31 @@ export default function ProdutividadeSDRTab({
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
   // ─── Dados do gráfico ─────────────────────────────────────────
-  // - Single mode (1 dia): cada coluna = um SDR (somatório do dia).
-  // - Interval mode (período): cada coluna = um dia, somando todos os SDRs.
+  // - SDR individual selecionado: cada coluna = um dia do período.
+  // - Todos + intervalo: cada coluna = um dia, somando todos os SDRs.
+  // - Todos + dia único: cada coluna = um SDR.
+  const isDailyView = isIntervalMode || selectedSdr !== "all";
+
+  /** Pool restrito ao SDR escolhido no dropdown do gráfico. */
+  const chartPool = useMemo(
+    () => (selectedSdr === "all" ? pool : pool.filter((a) => effectiveSdrId(a) === selectedSdr)),
+    [pool, selectedSdr, sdrIds],
+  );
+
   const chartData = useMemo(() => {
-    if (isIntervalMode) {
+    if (isDailyView) {
       // Iteramos cada dia do intervalo e contamos a partir do pool.
       const days = eachDayOfInterval({
         start: parseISO(range.from),
         end: parseISO(range.to),
       });
       const dayCounts = new Map<string, number>();
-      pool.forEach((a) => {
+      chartPool.forEach((a) => {
         const day =
           filter === "criadas" ? localDateOf(a.created_at) : a.scheduled_date;
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
       });
-      return days.map((d) => {
+      const rows = days.map((d) => {
         const key = format(d, "yyyy-MM-dd");
         return {
           sdr: format(d, "EEEE, dd/MM/yyyy", { locale: ptBR }),
@@ -246,9 +255,16 @@ export default function ProdutividadeSDRTab({
           total: dayCounts.get(key) || 0,
         };
       });
+      // Média móvel diária (janela de 7 dias, trailing).
+      const win = 7;
+      return rows.map((r, i) => {
+        const slice = rows.slice(Math.max(0, i - win + 1), i + 1);
+        const avg = slice.reduce((s, x) => s + x.total, 0) / slice.length;
+        return { ...r, mediaMovel: Number(avg.toFixed(1)) };
+      });
     }
     const counts = new Map<string, number>();
-    pool.forEach((a) => {
+    chartPool.forEach((a) => {
       const key = effectiveSdrId(a);
       if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
@@ -262,12 +278,18 @@ export default function ProdutividadeSDRTab({
           sdr: p.full_name,
           shortName,
           total: counts.get(p.user_id) || 0,
+          mediaMovel: undefined as number | undefined,
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [pool, filteredSdrProfiles, isIntervalMode, range, filter]);
+  }, [chartPool, filteredSdrProfiles, isDailyView, range, filter]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
+  const mediaPorDia = useMemo(() => {
+    const days = eachDayOfInterval({ start: parseISO(range.from), end: parseISO(range.to) }).length || 1;
+    return totalGeral / days;
+  }, [totalGeral, range]);
+
 
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
   const kpis = useMemo(() => {
