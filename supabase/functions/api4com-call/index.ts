@@ -63,16 +63,24 @@ async function findExtensionByEmail(email: string) {
   return { extension: ext || null, tried };
 }
 
-/** Origina a chamada (click-to-call) via POST /dialer. */
-async function originateCall(extension: string, destination: string) {
+/**
+ * Origina a chamada (click-to-call) via POST /dialer.
+ * Doc: body { extension, phone (E.164), metadata } → { id, message }.
+ * O metadata volta no webhook da chamada.
+ */
+async function originateCall(
+  extension: string,
+  phone: string,
+  metadata: Record<string, unknown>,
+) {
   const r = await api4com("/dialer", {
     method: "POST",
-    body: JSON.stringify({ from: extension, to: destination }),
+    body: JSON.stringify({ extension, phone, metadata }),
   });
   const attempts = [{ path: "/dialer", status: r.status, body: r.body }];
   if (!r.ok) return { ok: false, callId: null, raw: r.body, attempts };
   const b: any = r.body ?? {};
-  const callId = b?.id ?? b?.call_id ?? b?.uuid ?? b?.data?.id ?? null;
+  const callId = b?.id ?? null;
   return { ok: true, callId: callId ? String(callId) : null, raw: r.body, attempts };
 }
 
