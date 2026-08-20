@@ -26,28 +26,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [blocksOpen, setBlocksOpen] = useState(false);
 
-  // Warm-up + prefetch da lista de leads do DataCrazy apenas ao entrar em /agendar
-  // (evita cold-start da edge function sem custar requisições em toda navegação).
+  // Warm-up da base de leads do DataCrazy: começa a carregar em background
+  // já ao montar o layout (páginas incrementais), para a etapa 1 de /agendar
+  // abrir instantaneamente.
   useEffect(() => {
     if (!user) return;
-    if (location.pathname !== "/agendar") return;
     const tagId = (import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO as string) || "";
     if (!tagId) return;
-    queryClient.prefetchQuery({
-      queryKey: ["datacrazy-leads-agendamento", tagId],
-      queryFn: async () => {
-        const dcLeads = await buscarLeadsComTagId(tagId);
-        return dcLeads.map((l: any) => ({
-          id: l.id,
-          name: l.name,
-          phone: l.phone || (l.phones && l.phones[0]?.phone) || "",
-          dataCrazyId: l.id,
-          tags: l.tags,
-        }));
-      },
-      staleTime: 5 * 60_000,
-    });
-  }, [user, queryClient, location.pathname]);
+    void ensureLeads(tagId);
+  }, [user]);
+
+  const prefetchLeads = useCallback(() => {
+    const tagId = (import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO as string) || "";
+    if (tagId) void ensureLeads(tagId);
+  }, []);
+
 
   // Sidebar hover-expand state
   const [expanded, setExpanded] = useState(false);
