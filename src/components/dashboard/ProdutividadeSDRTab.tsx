@@ -18,6 +18,7 @@ import {
   Sun,
   Sunset,
   Moon,
+  MoonStar,
   Users,
   CalendarDays,
   CheckCircle2,
@@ -776,9 +777,10 @@ function ShiftCard({
   range: string;
   value: number;
   totalPeriodo: number;
-  color: "amber" | "orange" | "indigo";
+  color: "sky" | "amber" | "orange" | "indigo";
 }) {
   const colorMap = {
+    sky: "text-sky-400 bg-sky-500/10 border-sky-500/30",
     amber: "text-amber-500 bg-amber-500/10 border-amber-500/30",
     orange: "text-orange-500 bg-orange-500/10 border-orange-500/30",
     indigo: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
