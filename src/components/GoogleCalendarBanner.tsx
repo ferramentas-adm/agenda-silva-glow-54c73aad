@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGoogleAuthUrl } from "@/hooks/useGoogleCalendar";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, X } from "lucide-react";
@@ -14,7 +14,7 @@ import { toast } from "sonner";
 export default function GoogleCalendarBanner() {
   const { user } = useAuth();
   const { getAuthUrl } = useGoogleAuthUrl();
-  const queryClient = useQueryClient();
+
   
   const [connecting, setConnecting] = useState(false);
 
