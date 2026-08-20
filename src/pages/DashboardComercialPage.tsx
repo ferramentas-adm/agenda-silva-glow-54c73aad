@@ -629,7 +629,12 @@ export default function DashboardComercialPage() {
           <div className="flex items-center gap-3">
             <div className="ml-auto flex items-center gap-1">
 
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => shiftPeriod(-1)} title="Período anterior">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
               <FacebookDateRangePicker
+
                 value={{
                   from: dateRange?.from ?? currentDate,
                   to: dateRange?.to ?? currentDate,
