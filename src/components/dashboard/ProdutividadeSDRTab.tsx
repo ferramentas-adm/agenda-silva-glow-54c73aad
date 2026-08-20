@@ -569,6 +569,16 @@ export default function ProdutividadeSDRTab({
       {/* Tendência preditiva — apenas para gestores/moderadores */}
       {isManager && <TrendCardSDR range={range} />}
 
+      {/* Comparação de períodos — somente na visão individual de um SDR */}
+      {selectedSdr !== "all" && (
+        <SdrPeriodComparisonCard
+          sdrId={selectedSdr}
+          sdrName={sdrNameById.get(selectedSdr) ?? "SDR"}
+        />
+      )}
+
+
+
 
 
       {/* Gráfico comparativo */}
