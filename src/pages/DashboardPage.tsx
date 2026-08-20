@@ -45,6 +45,7 @@ import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { useBusinessHours } from "@/hooks/useBusinessHours";
 import { AlertTriangle, Sparkles } from "lucide-react";
 
 
@@ -2534,16 +2535,15 @@ const EditTimeSlots = memo(function EditTimeSlots({
   const isTodaySP = dateStr === spNow.date;
 
   const slots = useMemo(() => {
-    // Slots fixos: 09h às 23h (independente do horário do closer).
-    const allSlots: string[] = [];
-    for (let h = 9; h <= 23; h++) allSlots.push(`${String(h).padStart(2, "0")}:00`);
+    // Slots do horário comercial configurado em Administração > Configurações Gerais.
+    const allSlots = businessSlots;
 
     if (isTodaySP) {
       return allSlots.filter(s => parseInt(s.split(":")[0], 10) > spNow.hour);
     }
 
     return allSlots;
-  }, [closer, dateStr, isTodaySP, spNow.hour]);
+  }, [businessSlots, isTodaySP, spNow.hour]);
 
   // Booked times (excluding the current agendamento being edited)
   const bookedTimes = useMemo(() => {
