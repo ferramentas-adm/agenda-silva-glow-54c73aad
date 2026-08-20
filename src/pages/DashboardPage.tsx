@@ -45,6 +45,7 @@ import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { useBusinessHours } from "@/hooks/useBusinessHours";
 import { AlertTriangle, Sparkles } from "lucide-react";
 
 
@@ -238,38 +239,12 @@ export function CalendarContent() {
   const { data: slotCounts } = useSlotCounts(dateStr);
   const { limit: slotLimit } = useSlotLimit();
 
-  // Horário comercial global = união dos ranges dos closers ativos.
-  const { data: activeHours } = useQuery({
-    queryKey: ["closers-active-hours"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("business_hours_start, business_hours_end, business_hours_ranges")
-        .eq("active", true);
-      return data ?? [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const businessRange = useMemo(() => {
-    // Retorna [minStartHour, maxEndHour) em horas inteiras.
-    let minStart = 24;
-    let maxEnd = 0;
-    for (const c of (activeHours ?? []) as any[]) {
-      const ranges =
-        Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
-          ? c.business_hours_ranges
-          : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
-      for (const r of ranges) {
-        const sh = parseInt(String(r.start ?? "09:00").slice(0, 2), 10);
-        const eh = parseInt(String(r.end ?? "23:00").slice(0, 2), 10);
-        if (!Number.isNaN(sh) && sh < minStart) minStart = sh;
-        if (!Number.isNaN(eh) && eh > maxEnd) maxEnd = eh;
-      }
-    }
-    if (minStart === 24 || maxEnd === 0) return { minStart: 9, maxEnd: 23 };
-    return { minStart, maxEnd };
-  }, [activeHours]);
+  // Horário comercial global vem de Administração > Configurações Gerais.
+  const { startHour: bhStart, endHour: bhEnd } = useBusinessHours();
+  const businessRange = useMemo(
+    () => ({ minStart: bhStart, maxEnd: bhEnd + 1 }),
+    [bhStart, bhEnd],
+  );
 
   const slotAlerts = useMemo(() => {
     const full: { time: string; count: number }[] = [];
@@ -2070,7 +2045,7 @@ export default function DashboardPage() {
 }
 
 // ─── Day View ────────────────────────────────────────────────────
-const DAY_HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
+// Horas exibidas vêm do horário comercial configurado (Administração > Configurações Gerais).
 
 const DayView = memo(function DayView({
   date,
@@ -2095,6 +2070,7 @@ const DayView = memo(function DayView({
   onClickAg: (ag: Agendamento) => void;
   onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
+  const { slots: DAY_HOURS } = useBusinessHours();
 
   const BLOCK_TYPE_LABELS: Record<string, string> = {
     almoco: "Almoço",
@@ -2256,7 +2232,7 @@ const DayView = memo(function DayView({
           style={{ gridTemplateColumns: `${TIME_COL}px repeat(${closers.length}, ${colWidth}px)` }}
         >
         {/* Header */}
-        <div className="border-b border-primary/10 p-2" />
+        <div className="sticky left-0 z-30 border-b border-primary/10 bg-card p-2" />
         {closers.map((c) => {
           const idx = closerIndexMap.get(c.id) ?? 0;
           const color = getCloserColor(c.id, idx);
@@ -2272,7 +2248,7 @@ const DayView = memo(function DayView({
           const hourPrefix = hour.slice(0, 2);
           return (
             <Fragment key={`row-${hour}`}>
-              <div className="border-b border-primary/5 px-2 py-1 text-right flex items-start pt-3">
+              <div className="sticky left-0 z-20 border-b border-r border-primary/5 bg-card px-2 py-1 text-right flex items-start pt-3">
                 <span className="text-sm text-muted-foreground font-mono font-medium">{hour}</span>
               </div>
               {closers.map((c) => {
@@ -2480,6 +2456,7 @@ const EditTimeSlots = memo(function EditTimeSlots({
   onSelect: (time: string) => void;
   currentAgId: string;
 }) {
+  const { slots: businessSlots } = useBusinessHours();
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
@@ -2533,16 +2510,15 @@ const EditTimeSlots = memo(function EditTimeSlots({
   const isTodaySP = dateStr === spNow.date;
 
   const slots = useMemo(() => {
-    // Slots fixos: 09h às 23h (independente do horário do closer).
-    const allSlots: string[] = [];
-    for (let h = 9; h <= 23; h++) allSlots.push(`${String(h).padStart(2, "0")}:00`);
+    // Slots do horário comercial configurado em Administração > Configurações Gerais.
+    const allSlots = businessSlots;
 
     if (isTodaySP) {
       return allSlots.filter(s => parseInt(s.split(":")[0], 10) > spNow.hour);
     }
 
     return allSlots;
-  }, [closer, dateStr, isTodaySP, spNow.hour]);
+  }, [businessSlots, isTodaySP, spNow.hour]);
 
   // Booked times (excluding the current agendamento being edited)
   const bookedTimes = useMemo(() => {

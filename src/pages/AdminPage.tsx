@@ -1323,6 +1323,7 @@ function SettingsSection() {
 
       toast.success("Configurações salvas!");
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["business-hours-settings"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
     }

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useBusinessHours } from "@/hooks/useBusinessHours";
 
 interface CloserSelectorProps {
   selectedDate: Date | undefined;
@@ -27,12 +28,13 @@ function countSlotsFromRanges(_ranges: { start: string; end: string }[]): number
 }
 
 export default function CloserSelector({ selectedDate, selectedCloserId, onSelect }: CloserSelectorProps) {
+  const { slots: businessSlots } = useBusinessHours();
   const dateStr = selectedDate
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
     : null;
 
   const { data: closers = [] } = useQuery<CloserWithAvailability[]>({
-    queryKey: ["closers-availability", dateStr],
+    queryKey: ["closers-availability", dateStr, businessSlots.join(",")],
     queryFn: async () => {
       const { data: activeClosers } = await supabase
         .from("closers")
@@ -47,7 +49,7 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
           const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
             ? c.business_hours_ranges
             : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
-          const totalSlots = countSlotsFromRanges(ranges);
+          const totalSlots = businessSlots.length;
           return { id: c.id, name: c.name, freeSlots: totalSlots, totalSlots };
         });
       }
@@ -101,8 +103,8 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
       const currentHourStr = isToday ? `${get("hour")}:${get("minute")}` : null;
 
       return activeClosers.map((c: any) => {
-        // Slots fixos 09–23 (independente do horário do closer)
-        const allSlots = FIXED_SLOTS;
+        // Slots do horário comercial configurado em Administração
+        const allSlots = businessSlots;
 
         const booked = bookedMap.get(c.id) ?? new Set();
         const blocked = blockedMap.get(c.id) ?? new Set();

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
+import { useBusinessHours } from "@/hooks/useBusinessHours";
 import { Users } from "lucide-react";
 
 interface TimeSlotPickerProps {
@@ -149,7 +150,8 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
 
   // Slots fixos: 09h às 23h (independente do horário do closer).
   const ranges = useMemo(() => parseBusinessHours(closerData), [closerData]);
-  const ALL_SLOTS = FIXED_SLOTS;
+  // Slots refletem o horário comercial global (Administração > Configurações Gerais).
+  const { slots: ALL_SLOTS } = useBusinessHours();
 
   const { data: bookedTimes = [] } = useQuery<string[]>({
     queryKey: ["booked-slots", closerId, dateStr],
