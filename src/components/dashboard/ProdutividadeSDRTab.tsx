@@ -495,14 +495,36 @@ export default function ProdutividadeSDRTab({
 
       {/* Gráfico comparativo */}
       <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Users className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">
-            {isIntervalMode ? `Agendamentos por dia — ${filterLabel}` : `Agendamentos por SDR — ${filterLabel}`}
+            {isDailyView ? `Agendamentos por dia — ${filterLabel}` : `Agendamentos por SDR — ${filterLabel}`}
+            {selectedSdr !== "all" && ` · ${sdrNameById.get(selectedSdr) ?? "SDR"}`}
           </h3>
-          <span className="ml-auto text-xs text-muted-foreground">
-            Total: <span className="font-bold text-foreground">{totalGeral}</span>
-          </span>
+          <Select value={selectedSdr} onValueChange={setSelectedSdr}>
+            <SelectTrigger className="h-7 w-[210px] text-xs">
+              <SelectValue placeholder="Todos os SDRs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os SDRs</SelectItem>
+              {filteredSdrProfiles
+                .slice()
+                .sort((a, b) => a.full_name.localeCompare(b.full_name))
+                .map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.full_name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+            <span>
+              Total: <span className="font-bold text-foreground">{totalGeral}</span>
+            </span>
+            <span>
+              Média/dia: <span className="font-bold text-foreground">{mediaPorDia.toFixed(1)}</span>
+            </span>
+          </div>
         </div>
         {chartData.length === 0 || totalGeral === 0 ? (
           <p className="text-sm text-muted-foreground italic py-8 text-center">
@@ -511,7 +533,7 @@ export default function ProdutividadeSDRTab({
         ) : (
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+              <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                 <XAxis
                   dataKey="shortName"
@@ -534,20 +556,34 @@ export default function ProdutividadeSDRTab({
                     fontSize: 12,
                     color: "hsl(var(--primary))",
                   }}
-                  itemStyle={{ color: "hsl(var(--primary))", fontWeight: 600 }}
                   labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
-                  formatter={(value: number) => [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel]}
+                  formatter={(value: number, name) =>
+                    name === "mediaMovel"
+                      ? [Number(value).toFixed(1), "Média móvel (7d)"]
+                      : [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel]
+                  }
                   labelFormatter={(label, payload) => {
                     const entry = payload?.[0]?.payload as { sdr?: string } | undefined;
                     return entry?.sdr ?? label;
                   }}
                 />
-                <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                {isDailyView && <Legend wrapperStyle={{ fontSize: 11 }} />}
+                <Bar dataKey="total" name={filterLabel} radius={[6, 6, 0, 0]}>
                   {chartData.map((_, idx) => (
                     <Cell key={idx} fill="hsl(var(--primary))" fillOpacity={0.85} />
                   ))}
                 </Bar>
-              </BarChart>
+                {isDailyView && (
+                  <Line
+                    type="monotone"
+                    dataKey="mediaMovel"
+                    name="Média móvel (7d)"
+                    stroke="hsl(38 92% 50%)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}
