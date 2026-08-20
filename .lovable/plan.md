@@ -12,7 +12,23 @@ O que os registros de auditoria mostram nos últimos 30 dias (179 inativações/
 
 Consistência dos dados: 90 usuários ativos, 48 inativos, **zero divergências** entre `profiles.active` e o registro de Closer correspondente, e nenhum Closer duplicado por e-mail. A base está íntegra.
 
-## Anomalias reais encontradas na página "Usuários"
+## O que está confirmado e o que não está (transparência)
+
+Confirmado por consulta direta:
+
+- Só a página "Usuários" e a função `manage-user` gravam `profiles.active` — nenhum cron, gatilho ou webhook faz isso.
+- Os nomes dos autores nos registros conferem com o cadastro (comparei `user_id` do log com `profiles`): Leticia 109 ações, Gustavo 45, Kauan 36, João Matias 32 nos últimos 60 dias.
+- Para praticamente todos os 48 usuários inativos, a data de alteração do cadastro coincide (diferença de ~1 segundo) com um registro de inativação feito por um administrador. Ou seja, há autor humano identificado.
+
+Não confirmado / limitações desta análise:
+
+- Quatro casos (Victor Lima, Matheus Ranite, Pedro Lopes, Maria Eduarda) têm alteração recente do cadastro sem registro de inativação correspondente na mesma data — provavelmente edição de outro campo (nome, ramal, time), mas não consigo afirmar pelo log atual, porque o log não guarda o campo alterado nem o status anterior.
+- O registro de auditoria é gravado pelo navegador **depois** da mudança. Se o navegador fechar ou falhar no meio, a inativação acontece e o log não é criado — então o histórico pode ser incompleto (não confiável como prova definitiva).
+- Não tenho acesso à tabela interna de autenticação neste ambiente, então não pude confirmar o estado de bloqueio de login de cada conta nem verificar expiração de sessão. A afirmação de que "a sessão só cai quando o token expira" é baseada no código do app (não há checagem de `active` durante a navegação), não em medição.
+- Analisei os últimos 30–60 dias. Se o relato dos usuários for anterior a isso, precisa de nova consulta.
+
+Conclusão honesta: **não encontrei nenhuma inativação automática de contas**, mas encontrei um efeito automático real (Closer desativado e reuniões futuras devolvidas ao pool quando alguém troca a função ou remove da agenda) e um histórico frágil, que é o que impede provar caso a caso.
+
 
 1. **Chave (switch) de ativo sem confirmação.** Um clique acidental bane o login do usuário, desativa o registro de Closer e faz as reuniões futuras dele voltarem para "Aguardando atribuição" (efeito da trigger já existente). Ele fica encostado a outros ícones pequenos da mesma linha (agenda, função, SDR), o que favorece o clique errado.
 2. **Efeito colateral silencioso ao trocar a função ou o "liberar para agenda".** Nesses casos o registro de Closer é desativado automaticamente e as reuniões futuras são devolvidas ao pool — sem aviso na tela. É exatamente o que um Closer percebe como "fui inativado automaticamente".
