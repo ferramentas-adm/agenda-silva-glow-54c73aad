@@ -266,15 +266,38 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           )}
 
           <div className="space-y-2">
-            <Label>Observações</Label>
+            <Label>
+              Justificativa {vendeuCloser === "nao" && <span className="text-destructive">*</span>}
+            </Label>
             <Textarea
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Detalhes relevantes da reunião (opcional)"
-              rows={3}
+              placeholder={
+                vendeuCloser === "nao"
+                  ? 'Explique com detalhes por que o lead não fechou. Se possível, destaque entre aspas uma frase dita pelo cliente. Ex.: "vou esperar o próximo mês para decidir".'
+                  : "Detalhes relevantes da reunião (opcional)"
+              }
+              rows={vendeuCloser === "nao" ? 5 : 3}
             />
+            {vendeuCloser === "nao" && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Obrigatório — mínimo de {JUSTIFICATION_MIN} caracteres. Se possível, destaque entre
+                  aspas alguma frase dita pelo cliente que explique por que ele não seguiu para o
+                  fechamento.
+                </p>
+                <p
+                  className={`text-xs font-medium ${
+                    justificationLength >= JUSTIFICATION_MIN ? "text-emerald-500" : "text-destructive"
+                  }`}
+                >
+                  {justificationLength}/{JUSTIFICATION_MIN} caracteres
+                </p>
+              </div>
+            )}
           </div>
         </div>
+
 
 
         <DialogFooter className="gap-2">
