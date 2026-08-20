@@ -68,8 +68,10 @@ export function useOverdueMeetings() {
   const query = useQuery<OverdueMeeting[]>({
     queryKey: ["overdue-meetings", user?.id, myCloserId, today],
     enabled,
-    refetchInterval: 60 * 1000,
-    staleTime: 30 * 1000,
+    // P1: 5 min (antes 60s). Combinado com o refetch em visibilitychange abaixo,
+    // cobre o caso real de uso sem gerar milhares de chamadas por sessão.
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
     queryFn: async () => {
       let q = supabase
         .from("agendamentos")
