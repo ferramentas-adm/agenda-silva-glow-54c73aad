@@ -279,8 +279,8 @@ export default function DashboardComercialPage() {
     staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const out: { agendamento_id: string; valor: number | null }[] = [];
-      // Blocos maiores = menos requisições em série.
-      const chunkSize = 1000;
+      // 500 por bloco: acima disso a URL do PostgREST estoura e retorna 400.
+      const chunkSize = 500;
       for (let i = 0; i < vendaAgIds.length; i += chunkSize) {
         const chunk = vendaAgIds.slice(i, i + chunkSize);
         const { data, error } = await supabase
