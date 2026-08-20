@@ -1,40 +1,33 @@
-# Queda do sistema — 20/08/2026, ~18:35 às 19:00 (horário de Brasília)
+# Buscar Lead instantâneo (carregamento em background)
 
-## O que aconteceu (confirmado nos logs)
+Hoje a etapa 1 do "Novo Agendamento" só mostra algo depois que **toda** a base de leads com a tag "agendamento" termina de carregar (uma chamada única que pagina o DataCrazy inteiro no servidor). Enquanto isso o usuário vê apenas os 4 blocos cinza. Objetivo: o usuário digita e já vê resultados em ~1s, e nunca fica esperando a base inteira.
 
-O login e a renovação de sessão pararam de responder. Nos registros de autenticação aparecem, na janela do incidente, erros como `context deadline exceeded` em `/token` (login) e dezenas de `failed to connect to ... user=supabase_auth_admin ... operation was canceled` em `/user`. Ou seja: **o serviço de autenticação ficou sem conseguir falar com o banco** — por isso a tela simplesmente não abriu para ninguém, mesmo com o banco e a aplicação "de pé".
+## O que muda para o usuário
 
-No mesmo intervalo, a integração de Google Agenda disparou uma avalanche de chamadas: 143, 144, 190, 167, 165 e 52 chamadas por minuto, sendo **97 delas estouradas no tempo limite de 150 segundos** (erro 504) e 6 com erro 503. Cada uma dessas chamadas mantém abertas conexões com o banco durante os 150 segundos.
+1. **A lista abre com o que já estava em cache.** O resultado da última carga fica guardado no navegador, então ao entrar na tela a busca já está utilizável (com aviso discreto "atualizando…"), sem skeleton bloqueando.
+2. **Carregamento em background, progressivo.** As páginas de leads chegam aos poucos: a primeira leva ~1s e a lista já exibe/filtra em cima dela, crescendo sozinha até completar. Não há mais tela travada até o fim.
+3. **Busca direta no CRM enquanto digita.** A partir de 2 caracteres, com 350ms de debounce, o app pergunta ao CRM só pelos leads que casam com aquele nome/telefone (limite 25). Isso responde em ~1s mesmo se a base completa ainda estiver carregando, e os resultados são mesclados com os já carregados (sem duplicar).
+4. **Pré-carregamento antecipado.** A base começa a carregar em background quando o usuário passa o mouse/toca no item "Agendar" do menu, então em muitos casos a tela abre já pronta.
+5. **Nunca mais bloqueio para ir à etapa 2:** selecionar um lead vindo da busca rápida é suficiente para avançar.
 
-Agora (19:00) o banco voltou ao normal: 44 conexões, fila de webhooks zerada, backend respondendo.
+## Detalhes técnicos
 
-## Causa raiz
+**Edge function `datacrazy-proxy`**
+- Novo agregador `GET /leads/search-compact?tagId=…&q=…`: consulta o DataCrazy com o filtro de tag + termo (`filter[name]` / `filter[phone]`, conforme suportado pela API — validar; se o filtro por termo não existir, cair para varredura das 2 primeiras páginas), `limit=25`, e devolve o mesmo formato compacto `{id,name,phone,tags[]}`. Cache em memória de 60s por `tagId+q`.
+- Novo agregador `GET /leads/by-tag-page?tagId=…&page=N`: devolve uma única página compacta + `count`, permitindo carga incremental pelo cliente. O `by-tag-compact` atual permanece (compatibilidade), mas deixa de ser o caminho da UI.
+- `fetchWithRetry`: corrigir consumo duplicado de body no retry de 429 e adicionar `AbortSignal.timeout(20s)` por página, para uma página lenta não travar tudo.
 
-A tela "Calendário" faz **uma chamada separada por closer** para buscar a agenda do Google. Com ~20 closers selecionados, cada operador com a tela aberta gera ~20 chamadas simultâneas, e isso se repete a cada 5 minutos e a cada troca de dia/seleção. Com vários operadores online, chega a ~180 chamadas por minuto.
+**`src/services/datacrazy.ts`**
+- `buscarLeadsPagina(tagId, page)` e `buscarLeadsPorTermo(tagId, q)`.
+- A busca por termo entra em um caminho leve que **não** passa pela fila serializada global (ela existe para evitar 429 em escrita); mantém dedupe de GETs em voo e cancela requisições obsoletas.
 
-Essa função **não tem tempo limite na chamada ao Google**. Quando o Google ficou lento, cada chamada travou por 150 segundos segurando conexão com o banco. O acúmulo esgotou a capacidade de conexão, e o serviço de autenticação — que disputa o mesmo banco — ficou sem conseguir conectar. Resultado: ninguém consegue entrar.
+**`src/components/agendar/LeadSearch.tsx`**
+- Substituir a query única por `useInfiniteQuery` (ou loop controlado) que busca páginas em background com `persister` em `localStorage` (chave versionada por `tagId`, TTL 10 min) e `placeholderData` do cache.
+- Remover o `if (isLoading) return <Skeleton/>` bloqueante: o campo de busca e a lista aparecem sempre; skeleton apenas nas linhas ainda não carregadas.
+- Query paralela de busca por termo com `debounce 350ms`, `enabled: q.length >= 2`, mesclada por `id` com os leads locais já carregados; indicador "buscando no CRM…".
+- Rodapé passa a mostrar "X de Y leads carregados" enquanto a carga em background avança.
 
-Em resumo: não foi o banco que caiu nem uma alteração de estrutura; foi **excesso de chamadas simultâneas ao Google Agenda sem tempo limite**, que sufocou a autenticação.
+**`src/components/AppLayout.tsx`**
+- `onMouseEnter`/`onFocus` no link "Agendar" dispara `queryClient.prefetchQuery` da primeira página de leads.
 
-## Problemas encontrados, por severidade
-
-### Crítico — causa da queda
-1. **Sem tempo limite na chamada ao Google** (`supabase/functions/google-calendar-events/index.ts`): as duas chamadas externas (renovar token e buscar eventos) não têm `AbortSignal.timeout`. Correção: 8 s para o token, 10 s para os eventos, respondendo "não conectado" em caso de estouro.
-2. **Uma chamada por closer, todas ao mesmo tempo** (`src/pages/DashboardPage.tsx`, bloco `google-busy-blocks`): `Promise.allSettled` dispara ~20 chamadas de uma vez. Correção: enviar a lista de closers em **uma única chamada** (a função passa a aceitar `closer_ids[]` e resolve em lotes internos, com tempo limite por closer).
-3. **Sem proteção contra repetição em falha**: a consulta não define `retry` nem `refetchOnWindowFocus`. Em cenário de lentidão, cada troca de aba multiplica a avalanche. Correção: `retry: 0`, `refetchOnWindowFocus: false` e intervalo de atualização só com a aba visível.
-
-### Moderado
-4. **Busca de lead quebrada por consumo duplo do corpo da resposta** (`supabase/functions/datacrazy-proxy/index.ts`, `fetchWithRetry` linha 75 + uso na linha 181): quando o DataCrazy responde 429 (limite de uso), a função lê o corpo para descartar e, esgotadas as tentativas, devolve essa mesma resposta já consumida — daí o erro `TypeError: Body already consumed` registrado hoje 7 vezes. Correção: `fetchWithRetry` passa a devolver o texto já lido, e o chamador usa esse texto. Efeito colateral do 429: o DataCrazy está limitando nosso volume — reduzir o paralelismo de 5 para 3 nas páginas.
-5. **Nenhuma degradação suave na tela**: se a agenda do Google falha, o operador não recebe nenhum aviso e pode agendar sobre um horário ocupado. Correção: aviso discreto de "agenda do Google indisponível" no topo do calendário.
-
-### Baixo
-6. **26 erros de chave duplicada em `vendas_agendamento_id_key`** no banco hoje: alguém clicou duas vezes em salvar o resultado da reunião, ou tentou registrar resultado de uma reunião que já tinha. Não derrubou nada, mas gera erro na tela do closer. Correção: tratar esse caso específico como atualização do registro existente, com mensagem clara.
-
-## Detalhes técnicos das mudanças
-
-- `supabase/functions/google-calendar-events/index.ts`: aceitar `closer_ids: string[]` (mantendo compatibilidade com `closer_id`), buscar tokens em uma consulta, processar em lotes de 5 com `AbortSignal.timeout`, e devolver `{ results: [{ closer_id, connected, expired, events }] }`.
-- `src/hooks/useGoogleCalendar.ts` e `src/pages/DashboardPage.tsx`: uma única invocação com a lista de closers; `retry: 0`, `refetchOnWindowFocus: false`, `refetchIntervalInBackground: false`.
-- `supabase/functions/datacrazy-proxy/index.ts`: `fetchWithRetry` devolve `{ res, text }`; `CONCURRENCY` de 5 → 3.
-- `src/components/VendaDialog.tsx`: tratar violação de unicidade (código `23505`) como atualização.
-
-Nenhuma alteração de estrutura de banco, política de acesso ou regra de negócio é necessária.
+Sem alterações de banco de dados.
