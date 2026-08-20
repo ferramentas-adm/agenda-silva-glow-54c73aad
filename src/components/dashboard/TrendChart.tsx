@@ -239,19 +239,22 @@ export default function TrendChart({
               ))}
             </div>
           )}
-          <div className="flex items-center gap-1">
-            {([7, 15, 30, 60, 90] as TrendWindow[]).map((w) => (
-              <Button
-                key={w}
-                variant={windowDays === w ? "default" : "outline"}
-                size="sm"
-                className="h-7 text-xs px-2"
-                onClick={() => onWindowChange(w)}
-              >
-                {w}d
-              </Button>
-            ))}
-          </div>
+          {onWindowChange && (
+            <div className="flex items-center gap-1">
+              {([7, 15, 30, 60, 90] as TrendWindow[]).map((w) => (
+                <Button
+                  key={w}
+                  variant={windowDays === w ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={() => onWindowChange(w)}
+                >
+                  {w}d
+                </Button>
+              ))}
+            </div>
+          )}
+
         </div>
       </div>
 
