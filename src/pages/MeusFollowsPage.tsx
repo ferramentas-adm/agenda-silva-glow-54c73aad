@@ -1,25 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
 import { Loader2, Users } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useMyCloserId } from "@/hooks/useMyCloserId";
 import AppLayout from "@/components/AppLayout";
 import CargaClosersTab from "@/components/dashboard/CargaClosersTab";
 
 export default function MeusFollowsPage() {
-  const { user } = useAuth();
-
-  const { data: myCloserId, isLoading } = useQuery({
-    queryKey: ["my-closer-id-meus-follows", user?.email],
-    enabled: !!user?.email,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id")
-        .eq("email", user!.email!)
-        .maybeSingle();
-      return data?.id ?? null;
-    },
-  });
+  // Usa o hook compartilhado (mesma cache key do restante do app) em vez de
+  // repetir a consulta com uma chave própria.
+  const { data: myCloserId, isLoading } = useMyCloserId();
 
   return (
     <AppLayout>

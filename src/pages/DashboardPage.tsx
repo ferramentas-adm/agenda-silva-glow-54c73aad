@@ -357,7 +357,7 @@ export function CalendarContent() {
     },
     // Lista de papéis muda raramente — evita refetches de minuto em minuto.
     staleTime: 30 * 60_000,
-    gcTime: Infinity,
+    gcTime: 30 * 60_000,
   });
 
   // Fetch profiles for name resolution (responsável, briefing reader, etc.)
@@ -373,7 +373,7 @@ export function CalendarContent() {
     },
     // Mapa de nomes muda raramente; mantém em cache pela sessão.
     staleTime: 30 * 60_000,
-    gcTime: Infinity,
+    gcTime: 30 * 60_000,
   });
 
   // Realtime: ouve mudanças em agendamentos para TODOS os usuários (independente da função).
