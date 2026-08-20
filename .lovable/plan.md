@@ -29,6 +29,7 @@ Não confirmado / limitações desta análise:
 
 Conclusão honesta: **não encontrei nenhuma inativação automática de contas**, mas encontrei um efeito automático real (Closer desativado e reuniões futuras devolvidas ao pool quando alguém troca a função ou remove da agenda) e um histórico frágil, que é o que impede provar caso a caso.
 
+## Anomalias reais encontradas na página "Usuários"
 
 1. **Chave (switch) de ativo sem confirmação.** Um clique acidental bane o login do usuário, desativa o registro de Closer e faz as reuniões futuras dele voltarem para "Aguardando atribuição" (efeito da trigger já existente). Ele fica encostado a outros ícones pequenos da mesma linha (agenda, função, SDR), o que favorece o clique errado.
 2. **Efeito colateral silencioso ao trocar a função ou o "liberar para agenda".** Nesses casos o registro de Closer é desativado automaticamente e as reuniões futuras são devolvidas ao pool — sem aviso na tela. É exatamente o que um Closer percebe como "fui inativado automaticamente".
