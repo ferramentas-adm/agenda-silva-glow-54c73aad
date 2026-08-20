@@ -40,6 +40,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
 import ProdutividadePorHoraCard from "@/components/dashboard/ProdutividadePorHoraCard";
+import SdrPeriodComparisonCard from "@/components/dashboard/SdrPeriodComparisonCard";
 
 import CriadasPorDiaDialog, { type CriadasDayGroup } from "@/components/dashboard/CriadasPorDiaDialog";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
