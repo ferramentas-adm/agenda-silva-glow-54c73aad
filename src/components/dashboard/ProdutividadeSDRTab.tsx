@@ -409,44 +409,6 @@ export default function ProdutividadeSDRTab({
           );
         })}
 
-        <span className="text-xs text-muted-foreground font-medium ml-2">Intervalo:</span>
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant={isIntervalMode ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs gap-1.5"
-            >
-              <CalendarDays className="h-3 w-3" />
-              {isIntervalMode
-                ? `${format(new Date(range.from), "dd/MM")} — ${format(new Date(range.to), "dd/MM")}`
-                : "Selecionar período"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={{ from: customRange.from, to: customRange.to }}
-              onSelect={(rng) => {
-                setCustomRange({ from: rng?.from, to: rng?.to });
-                if (rng?.from && rng?.to) setDateOpen(false);
-              }}
-              numberOfMonths={2}
-              locale={ptBR}
-              className="p-3 pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-        {isIntervalMode && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setCustomRange({ from: undefined, to: undefined })}
-          >
-            Limpar
-          </Button>
-        )}
       </div>
 
       {/* Filtro por time (Tráfego / Social Selling) */}
