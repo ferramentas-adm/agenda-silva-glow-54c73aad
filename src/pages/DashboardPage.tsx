@@ -1545,6 +1545,23 @@ export function CalendarContent() {
                 </Button>
               )}
 
+              {/* Reverter status — corrige cliques errados (ex.: "Realizada" por engano).
+                  Volta ao status anterior registrado na auditoria e limpa a declaração
+                  do closer para que a reunião retorne ao fluxo normal. */}
+              {isAdminLike && prevStatus && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                  onClick={() => { setRevertReason(""); setRevertOpen(true); }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reverter para {STATUS_LABELS[prevStatus] ?? prevStatus}
+                </Button>
+              )}
+
+
+
               {canChangeStatus && (() => {
                 // SDR só pode operar em reagendadas se ele mesmo criou o reagendamento.
                 const sdrIsOwnerOfReschedule =
