@@ -78,6 +78,8 @@ interface Props {
   createdAgs: AgendamentoMetric[];
   sdrProfiles: SDRProfile[];
   currentDate: Date;
+  /** Intervalo vindo do filtro de data único no topo da página. */
+  dateRange?: { from: Date; to: Date };
   updatedAgo: string;
 }
 
@@ -125,6 +127,7 @@ export default function ProdutividadeSDRTab({
   createdAgs,
   sdrProfiles,
   currentDate,
+  dateRange,
   updatedAgo,
 }: Props) {
   const { role } = useAuth();
