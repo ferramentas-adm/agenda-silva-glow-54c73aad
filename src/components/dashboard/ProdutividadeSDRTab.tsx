@@ -587,6 +587,8 @@ export default function ProdutividadeSDRTab({
                     color: "hsl(var(--primary))",
                   }}
                   labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
+                  itemStyle={{ color: "hsl(var(--foreground))" }}
+
                   formatter={(value: number, name, item) => {
                     if (name === "mediaMovel") return [Number(value).toFixed(1), "Média móvel (7d)"];
                     if (name === "mediaPorSdr") {
