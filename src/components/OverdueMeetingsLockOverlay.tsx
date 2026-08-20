@@ -1,7 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2, Eye } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  Loader2,
+  Eye,
+  CalendarClock,
+  ArrowRightLeft,
+  UserCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +22,16 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
 // Somente as telas necessárias para RESOLVER a pendência ficam liberadas.
 const HIDE_ON_PREFIXES = ["/cancelar-reuniao", "/venda/", "/lead-detalhes"];
 
@@ -20,11 +39,18 @@ const STATUS_LABEL: Record<string, string> = {
   agendada: "Sem confirmar",
   confirmada: "Confirmada",
   nao_confirmada: "Não confirmada",
-  pendente: "Aguardando atribuição",
 };
 
 type DirectStatus = "no_show" | "cancelada";
 
+const TIME_OPTIONS: string[] = (() => {
+  const out: string[] = [];
+  for (let h = 8; h <= 23; h++) {
+    out.push(`${String(h).padStart(2, "0")}:00`);
+    out.push(`${String(h).padStart(2, "0")}:30`);
+  }
+  return out;
+})();
 
 export default function OverdueMeetingsLockOverlay() {
   const { overdue, count, myCloserId, refetch } = useOverdueMeetings();
@@ -33,30 +59,52 @@ export default function OverdueMeetingsLockOverlay() {
   const navigate = useNavigate();
   const location = useLocation();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [rescheduleFor, setRescheduleFor] = useState<string | null>(null);
+  const [newDate, setNewDate] = useState<string>("");
+  const [newTime, setNewTime] = useState<string>("");
+  const [transferFor, setTransferFor] = useState<string | null>(null);
+  const [transferTo, setTransferTo] = useState<string>("");
+  const [activeClosers, setActiveClosers] = useState<{ id: string; name: string }[]>([]);
+
+  const hasCloserStage = overdue.some((m) => m.stage === "closer");
+
+  useEffect(() => {
+    if (!hasCloserStage || activeClosers.length > 0) return;
+    (async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      setActiveClosers(data ?? []);
+    })();
+  }, [hasCloserStage, activeClosers.length]);
 
   if (count === 0) return null;
   if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
 
-  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus, cancellationReason?: string) => {
+  const invalidateAll = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+    await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    await queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });
+    await queryClient.invalidateQueries({ queryKey: ["pending-assignments"] });
+    refetch();
+  };
+
+  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus) => {
     setUpdatingId(m.id);
     try {
-      const patch: any = { status: newStatus };
-      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
       const { data, error } = await supabase
         .from("agendamentos")
-        .update(patch)
+        .update({ status: newStatus } as any)
         .eq("id", m.id)
         .select("id");
       if (error) throw error;
       if (!data || data.length === 0) {
         throw new Error("Sem permissão para alterar este agendamento.");
       }
-      // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
       toast.success(`Status atualizado para ${newStatus === "no_show" ? "No-show" : "Cancelada"}`);
-      await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-      await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-      await queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });
-      refetch();
+      await invalidateAll();
     } catch (err: any) {
       toast.error(err?.message || "Erro ao atualizar status");
     } finally {
@@ -64,61 +112,152 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
-  // Transferência (handoff) removida: ninguém sai do bloqueio sem dar desfecho.
+  // Reagendar (SDR): mesmo dia → troca de horário; outro dia → cria nova agenda
+  // (a trigger marca a original como "reagendada"). Em ambos os casos a reunião
+  // volta para "Aguardando atribuição", que é responsabilidade do gestor.
+  const handleReschedule = async (m: OverdueMeeting) => {
+    if (!newDate || !newTime) {
+      toast.error("Escolha data e horário");
+      return;
+    }
+    setUpdatingId(m.id);
+    try {
+      if (newDate === m.scheduled_date) {
+        const { data, error } = await supabase
+          .from("agendamentos")
+          .update({
+            scheduled_time: newTime,
+            closer_id: null,
+            status: "agendada",
+            meet_link: null,
+            google_event_id: null,
+          } as any)
+          .eq("id", m.id)
+          .select("id");
+        if (error) throw error;
+        if (!data || data.length === 0) throw new Error("Sem permissão para alterar este agendamento.");
+      } else {
+        const { data: orig, error: origErr } = await supabase
+          .from("agendamentos")
+          .select(
+            "lead_name, lead_phone, briefing, meeting_reason, channel_type, duration_minutes, sdr_responsavel_id, created_by",
+          )
+          .eq("id", m.id)
+          .maybeSingle();
+        if (origErr) throw origErr;
+        const { error } = await supabase.from("agendamentos").insert({
+          lead_name: orig?.lead_name ?? m.lead_name,
+          lead_phone: orig?.lead_phone ?? m.lead_phone,
+          scheduled_date: newDate,
+          scheduled_time: newTime,
+          status: "agendada",
+          closer_id: null,
+          original_agendamento_id: m.id,
+          briefing: orig?.briefing ?? null,
+          meeting_reason: orig?.meeting_reason ?? null,
+          channel_type: orig?.channel_type ?? null,
+          duration_minutes: orig?.duration_minutes ?? 60,
+          sdr_responsavel_id: (orig as any)?.sdr_responsavel_id ?? orig?.created_by ?? user?.id,
+          created_by: user?.id,
+        } as any);
+        if (error) throw error;
+      }
+      toast.success("Reagendado. Reunião enviada para Aguardando atribuição.");
+      setRescheduleFor(null);
+      setNewDate("");
+      setNewTime("");
+      await invalidateAll();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao reagendar");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
+  // Encaminha a responsabilidade para o Closer (SDR sai da trava, Closer entra).
+  const handleForwardToCloser = async (m: OverdueMeeting) => {
+    setUpdatingId(m.id);
+    try {
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update({ sdr_handoff_at: new Date().toISOString() } as any)
+        .eq("id", m.id)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Sem permissão para encaminhar este agendamento.");
+      toast.success(`Encaminhado para ${m.closer_name ?? "o Closer"}`);
+      await invalidateAll();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao encaminhar");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
-
-
+  // Closer transfere para outro closer ativo (via função segura no banco).
+  const handleTransfer = async (m: OverdueMeeting) => {
+    if (!transferTo) {
+      toast.error("Escolha o closer de destino");
+      return;
+    }
+    setUpdatingId(m.id);
+    try {
+      const { error } = await supabase.rpc("transfer_agendamento_closer", {
+        _agendamento_id: m.id,
+        _new_closer_id: transferTo,
+      } as any);
+      if (error) throw error;
+      toast.success("Reunião transferida para outro closer");
+      setTransferFor(null);
+      setTransferTo("");
+      await invalidateAll();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao transferir");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   return (
-    <>
-      <div
-        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/95 backdrop-blur-md"
-        role="alertdialog"
-        aria-modal="true"
-      >
-        <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col rounded-xl border-2 border-destructive/40 bg-card shadow-2xl">
-          <div className="px-6 py-5 border-b border-destructive/20 bg-destructive/5">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-7 w-7 shrink-0 text-destructive mt-0.5" />
-              <div>
-                <h2 className="text-xl font-bold text-destructive">
-                  Atualize as reuniões vencidas para continuar
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Reuniões passam a exigir atualização <strong>1h05 após o horário agendado</strong>.
-                  Toda reunião em <strong>Sem confirmar</strong>, <strong>Não confirmada</strong>,{" "}
-                  <strong>Confirmada</strong> ou <strong>Aguardando atribuição</strong> precisa de desfecho
-                  (Realizada, No-show ou Cancelada). Não há transferência nem como pular: a tela só libera
-                  quando todas estiverem resolvidas.
-                </p>
-
-              </div>
-            </div>
-            <div className="mt-3 flex justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => navigate("/lead-detalhes")}
-                className="h-8 text-xs gap-1"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Ver detalhes do cliente
-              </Button>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/95 backdrop-blur-md"
+      role="alertdialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col rounded-xl border-2 border-destructive/40 bg-card shadow-2xl">
+        <div className="px-6 py-5 border-b border-destructive/20 bg-destructive/5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-7 w-7 shrink-0 text-destructive mt-0.5" />
+            <div>
+              <h2 className="text-xl font-bold text-destructive">
+                Atualize as reuniões vencidas para continuar
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Reuniões exigem atualização <strong>1h05 após o horário agendado</strong>. Primeiro o{" "}
+                <strong>SDR</strong> resolve (Cancelar, No-show ou Reagendar). Se nenhuma opção for
+                factível, ele encaminha para o <strong>Closer</strong>, que marca{" "}
+                <strong>Realizada</strong> ou transfere para outro closer ativo.
+              </p>
             </div>
           </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate("/lead-detalhes")}
+              className="h-8 text-xs gap-1"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Ver detalhes do cliente
+            </Button>
+          </div>
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {overdue.map((m) => {
-              const isSdrOfThis = !!user && m.created_by === user.id;
-              const isCloserOfThis = !!myCloserId && m.closer_id === myCloserId;
-              // canHandoff removido: bypass do bloqueio foi desabilitado para
-              // forçar SDR/Closer a atualizarem o status real (No-show / Cancelada / Realizada).
-              return (
-              <div
-                key={m.id}
-                className="rounded-lg border border-destructive/20 bg-background p-4"
-              >
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {overdue.map((m) => {
+            const busy = updatingId === m.id;
+            return (
+              <div key={m.id} className="rounded-lg border border-destructive/20 bg-background p-4">
                 <div className="flex items-start gap-3 flex-wrap">
                   <div className="flex-1 min-w-[240px]">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -134,38 +273,47 @@ export default function OverdueMeetingsLockOverlay() {
                       >
                         {STATUS_LABEL[m.status] ?? m.status}
                       </Badge>
+                      <Badge variant="outline" className="text-[10px] border-muted-foreground/30">
+                        {m.stage === "sdr" ? "Etapa: SDR" : "Etapa: Closer"}
+                      </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatBRDate(m.scheduled_date + "T12:00:00")} às {m.scheduled_time}
-                      {m.closer_name && <> · Closer: <strong>{m.closer_name}</strong></>}
+                      {m.closer_name && (
+                        <>
+                          {" "}
+                          · Closer: <strong>{m.closer_name}</strong>
+                        </>
+                      )}
                       {m.creator_name && <> · SDR: {m.creator_name}</>}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  {isCloserOfThis && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={updatingId === m.id}
-                      onClick={() => navigate(`/venda/${m.id}?lead=${encodeURIComponent(m.lead_name)}`)}
-                      className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Realizada
-                    </Button>
-                  )}
-                  {(isSdrOfThis || isCloserOfThis) && (
-                    <>
+                {/* ETAPA 1 — SDR */}
+                {m.stage === "sdr" && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={updatingId === m.id}
+                        disabled={busy}
+                        onClick={() =>
+                          navigate(`/cancelar-reuniao/${m.id}?lead=${encodeURIComponent(m.lead_name)}`)
+                        }
+                        className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Cancelar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
                         onClick={() => handleDirect(m, "no_show")}
                         className="h-8 text-xs gap-1 text-orange-500 hover:bg-orange-500/10 border-orange-500/30"
                       >
-                        {updatingId === m.id ? (
+                        {busy ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Ban className="h-3.5 w-3.5" />
@@ -175,37 +323,131 @@ export default function OverdueMeetingsLockOverlay() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={updatingId === m.id}
-                        onClick={() => navigate(`/cancelar-reuniao/${m.id}?lead=${encodeURIComponent(m.lead_name)}`)}
-                        className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
+                        disabled={busy}
+                        onClick={() => {
+                          setRescheduleFor(rescheduleFor === m.id ? null : m.id);
+                          setNewDate(m.scheduled_date);
+                          setNewTime(m.scheduled_time);
+                        }}
+                        className="h-8 text-xs gap-1 text-blue-400 hover:bg-blue-500/10 border-blue-400/30"
                       >
-                        {updatingId === m.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <XCircle className="h-3.5 w-3.5" />
-                        )}
-                        Cancelada
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        Reagendar
                       </Button>
-                    </>
-                  )}
-                  {!isSdrOfThis && !isCloserOfThis && (
-                    <p className="text-xs text-muted-foreground italic">
-                      Aguardando ação do SDR ou Closer responsável.
-                    </p>
-                  )}
-                </div>
+                      {m.closer_id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => handleForwardToCloser(m)}
+                          className="h-8 text-xs gap-1"
+                        >
+                          <UserCheck className="h-3.5 w-3.5" />
+                          Encaminhar para o Closer
+                        </Button>
+                      )}
+                    </div>
 
+                    {rescheduleFor === m.id && (
+                      <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[11px] text-muted-foreground">Nova data</span>
+                          <Input
+                            type="date"
+                            value={newDate}
+                            onChange={(e) => setNewDate(e.target.value)}
+                            className="h-8 text-xs w-[150px]"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[11px] text-muted-foreground">Novo horário</span>
+                          <Select value={newTime} onValueChange={setNewTime}>
+                            <SelectTrigger className="h-8 text-xs w-[110px]">
+                              <SelectValue placeholder="Horário" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TIME_OPTIONS.map((t) => (
+                                <SelectItem key={t} value={t} className="text-xs">
+                                  {t}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button size="sm" className="h-8 text-xs" disabled={busy} onClick={() => handleReschedule(m)}>
+                          {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                          Confirmar reagendamento
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* ETAPA 2 — Closer */}
+                {m.stage === "closer" && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => navigate(`/venda/${m.id}?lead=${encodeURIComponent(m.lead_name)}`)}
+                        className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Realizada
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => {
+                          setTransferFor(transferFor === m.id ? null : m.id);
+                          setTransferTo("");
+                        }}
+                        className="h-8 text-xs gap-1"
+                      >
+                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                        Transferir para outro closer
+                      </Button>
+                    </div>
+
+                    {transferFor === m.id && (
+                      <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[11px] text-muted-foreground">Closer de destino</span>
+                          <Select value={transferTo} onValueChange={setTransferTo}>
+                            <SelectTrigger className="h-8 text-xs w-[220px]">
+                              <SelectValue placeholder="Selecione o closer" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activeClosers
+                                .filter((c) => c.id !== m.closer_id)
+                                .map((c) => (
+                                  <SelectItem key={c.id} value={c.id} className="text-xs">
+                                    {c.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button size="sm" className="h-8 text-xs" disabled={busy} onClick={() => handleTransfer(m)}>
+                          {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                          Confirmar transferência
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-              );
-            })}
-          </div>
+            );
+          })}
+        </div>
 
-          <div className="px-4 py-3 border-t border-destructive/20 text-xs text-muted-foreground">
-            {count} reuni{count === 1 ? "ão" : "ões"} pendente{count === 1 ? "" : "s"}.
-          </div>
+        <div className="px-4 py-3 border-t border-destructive/20 text-xs text-muted-foreground">
+          {count} reuni{count === 1 ? "ão" : "ões"} pendente{count === 1 ? "" : "s"}.
         </div>
       </div>
-
-    </>
+    </div>
   );
 }

@@ -18,6 +18,8 @@ export interface OverdueMeeting {
   closer_handoff_at: string | null;
   closer_name: string | null;
   creator_name: string | null;
+  /** Quem está com a responsabilidade AGORA: primeiro o SDR, depois o Closer. */
+  stage: "sdr" | "closer";
 }
 
 const OVERDUE_GRACE_MINUTES = 65;
@@ -73,7 +75,9 @@ export function useOverdueMeetings() {
         .from("agendamentos")
         .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at")
         .is("deleted_at", null)
-        .in("status", ["agendada", "confirmada", "nao_confirmada", "pendente"])
+        // "pendente" (Aguardando atribuição) NÃO trava ninguém: é responsabilidade
+        // exclusiva de gestores/moderadores atribuir o closer.
+        .in("status", ["agendada", "confirmada", "nao_confirmada"])
         .lte("scheduled_date", today)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
@@ -86,24 +90,25 @@ export function useOverdueMeetings() {
 
       const { data, error } = await q;
       if (error) throw error;
-      const list = (data ?? []) as Omit<OverdueMeeting, "closer_name" | "creator_name">[];
+      const list = (data ?? []) as Omit<OverdueMeeting, "closer_name" | "creator_name" | "stage">[];
 
       // Filtra só as vencidas (>= horário + 1h05)
       const nowMin = nowEpochMin();
-      let overdue = list.filter(
+      const overdueAll = list.filter(
         (m) => meetingEpochMin(m.scheduled_date, m.scheduled_time) + OVERDUE_GRACE_MINUTES <= nowMin,
       );
 
+      // Fluxo em ETAPAS (nunca os dois ao mesmo tempo):
+      //  1) SDR criador é travado primeiro (Cancelar / No-show / Reagendar).
+      //  2) Se nada for factível, ele encaminha para o Closer (`sdr_handoff_at`),
+      //     e a trava passa para o Closer (Realizada ou transferir para outro closer).
+      const overdue = overdueAll
+        .map((m) => ({ ...m, stage: (m.sdr_handoff_at ? "closer" : "sdr") as "sdr" | "closer" }))
+        .filter((m) => {
+          if (m.stage === "sdr") return !!user?.id && m.created_by === user.id;
+          return !!myCloserId && m.closer_id === myCloserId;
+        });
 
-      // Sem escapatória: o handoff NÃO libera mais ninguém. SDR criador e Closer
-      // responsável seguem travados até a reunião receber um desfecho real
-      // (Realizada / No-show / Cancelada). Assim nenhum dia fica com reuniões
-      // em "Ainda a real. dia", "Sem confirmar" ou "Confirmada".
-      overdue = overdue.filter((m) => {
-        const isSdr = !!user?.id && m.created_by === user.id;
-        const isCloser = !!myCloserId && m.closer_id === myCloserId;
-        return isSdr || isCloser;
-      });
 
 
       if (overdue.length === 0) return [];
