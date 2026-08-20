@@ -547,6 +547,13 @@ export default function ProdutividadeSDRTab({
             <span>
               Média/dia: <span className="font-bold text-foreground">{mediaPorDia.toFixed(1)}</span>
             </span>
+            {showMediaPorSdr && (
+              <span title="Agendamentos do dia ÷ SDRs ativos no dia (mín. 1 agendamento)">
+                Média/SDR ativo:{" "}
+                <span className="font-bold text-foreground">{mediaPorSdrAtivo.toFixed(1)}</span>
+              </span>
+            )}
+
           </div>
         </div>
         {chartData.length === 0 || totalGeral === 0 ? (
