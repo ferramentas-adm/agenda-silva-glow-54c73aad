@@ -403,7 +403,7 @@ export default function ProdutividadeSDRTab({
       }
 
       const shift = getShift(hour);
-      if (shift !== "manha" && shift !== "tarde" && shift !== "noite") return;
+      if (shift === "outros") return;
 
       // Corte temporal somente para Compareceu / Não compareceu no dia de hoje.
       if (
