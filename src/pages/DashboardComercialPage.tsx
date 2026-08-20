@@ -695,6 +695,7 @@ export default function DashboardComercialPage() {
             createdAgs={createdAgs}
             sdrProfiles={sdrProfiles}
             currentDate={currentDate}
+            dateRange={dateRange}
             updatedAgo={updatedAgo}
           />
         )}

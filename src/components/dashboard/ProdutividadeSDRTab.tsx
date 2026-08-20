@@ -24,8 +24,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
@@ -78,6 +76,8 @@ interface Props {
   createdAgs: AgendamentoMetric[];
   sdrProfiles: SDRProfile[];
   currentDate: Date;
+  /** Intervalo vindo do filtro de data único no topo da página. */
+  dateRange?: { from?: Date; to?: Date };
   updatedAgo: string;
 }
 
@@ -125,17 +125,13 @@ export default function ProdutividadeSDRTab({
   createdAgs,
   sdrProfiles,
   currentDate,
+  dateRange,
   updatedAgo,
 }: Props) {
   const { role } = useAuth();
   const isManager = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
   const [filter, setFilter] = useState<FilterType>("criadas");
   const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
-  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined,
-  });
-  const [dateOpen, setDateOpen] = useState(false);
   const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
   const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
 
@@ -157,18 +153,19 @@ export default function ProdutividadeSDRTab({
   }, [sdrProfiles]);
 
   // ─── Range efetivo ────────────────────────────────────────────
-  // Modo "intervalo": usuário escolheu from + to no calendário.
-  // Modo "single":   usa o currentDate vindo do filtro superior.
-  const isIntervalMode = Boolean(customRange.from && customRange.to);
+  // Sempre vem do filtro de data único no topo da página.
+  const isIntervalMode = Boolean(
+    dateRange?.from && dateRange?.to && format(dateRange.from, "yyyy-MM-dd") !== format(dateRange.to, "yyyy-MM-dd"),
+  );
   const range = useMemo(() => {
     const fmt = (d: Date) => format(d, "yyyy-MM-dd");
-    if (isIntervalMode && customRange.from && customRange.to) {
-      const a = customRange.from <= customRange.to ? customRange.from : customRange.to;
-      const b = customRange.from <= customRange.to ? customRange.to : customRange.from;
+    if (dateRange?.from && dateRange?.to) {
+      const a = dateRange.from <= dateRange.to ? dateRange.from : dateRange.to;
+      const b = dateRange.from <= dateRange.to ? dateRange.to : dateRange.from;
       return { from: fmt(a), to: fmt(b) };
     }
     return { from: fmt(currentDate), to: fmt(currentDate) };
-  }, [isIntervalMode, customRange, currentDate]);
+  }, [dateRange, currentDate]);
 
   // ─── Pool de agendamentos a considerar ───────────────────────
   // Regra de negócio: contamos para o SDR EFETIVO de cada agendamento, que é
@@ -409,44 +406,6 @@ export default function ProdutividadeSDRTab({
           );
         })}
 
-        <span className="text-xs text-muted-foreground font-medium ml-2">Intervalo:</span>
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant={isIntervalMode ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs gap-1.5"
-            >
-              <CalendarDays className="h-3 w-3" />
-              {isIntervalMode
-                ? `${format(new Date(range.from), "dd/MM")} — ${format(new Date(range.to), "dd/MM")}`
-                : "Selecionar período"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={{ from: customRange.from, to: customRange.to }}
-              onSelect={(rng) => {
-                setCustomRange({ from: rng?.from, to: rng?.to });
-                if (rng?.from && rng?.to) setDateOpen(false);
-              }}
-              numberOfMonths={2}
-              locale={ptBR}
-              className="p-3 pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-        {isIntervalMode && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setCustomRange({ from: undefined, to: undefined })}
-          >
-            Limpar
-          </Button>
-        )}
       </div>
 
       {/* Filtro por time (Tráfego / Social Selling) */}
