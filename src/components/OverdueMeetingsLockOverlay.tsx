@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2, Eye, ArrowRightLeft } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { logAudit } from "@/services/auditLog";
+
 import { formatBRDate } from "@/lib/timezone";
 import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
 import { useAuth } from "@/contexts/AuthContext";

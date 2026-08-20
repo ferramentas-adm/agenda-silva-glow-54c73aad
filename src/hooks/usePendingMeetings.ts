@@ -54,7 +54,7 @@ export function usePendingMeetings() {
         .select("id, lead_name, scheduled_date, scheduled_time, status, closer_id, created_by")
         .is("deleted_at", null)
         .lt("scheduled_date", today)
-        .in("status", ["agendada", "confirmada"])
+        .in("status", ["agendada", "confirmada", "nao_confirmada", "pendente"])
         .order("scheduled_date", { ascending: false })
         .order("scheduled_time", { ascending: true });
 
