@@ -226,7 +226,6 @@ export default function ReunioesListPage() {
   const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>() } = useQuery({
     queryKey: ["vendas-oferta-map", meetingWindowStart, agendamentoIdsKey],
     enabled: agendamentoIds.length > 0,
-    enabled: agendamentoIds.length > 0,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     queryFn: async () => {
