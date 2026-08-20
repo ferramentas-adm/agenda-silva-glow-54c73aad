@@ -614,34 +614,8 @@ export default function DashboardComercialPage() {
         {/* ─── Date nav (oculta na aba Agenda Closers) ──── */}
         {activeTabKey !== "agenda" && activeTabKey !== "carga" && (
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">
-              {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
-                ? `Calendário — ${format(dateRange.from, "dd/MM/yyyy")} a ${format(dateRange.to, "dd/MM/yyyy")}`
-                : format(currentDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
-                  ? "Calendário"
-                  : `Calendário — ${format(currentDate, "dd/MM/yyyy")}`}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
-                ? `Intervalo de ${format(dateRange.from, "dd/MM", { locale: ptBR })} até ${format(dateRange.to, "dd/MM", { locale: ptBR })}`
-                : format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-            </p>
-
             <div className="ml-auto flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goPrev} disabled={!!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to))}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-xs font-medium min-w-[100px] text-center">
-                {dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to)
-                  ? `${format(dateRange.from, "dd/MM")} – ${format(dateRange.to, "dd/MM")}`
-                  : format(currentDate, "dd/MM/yyyy")}
-              </span>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goNext} disabled={!!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to))}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs ml-1" onClick={goToday}>
-                Hoje
-              </Button>
+
               <FacebookDateRangePicker
                 value={{
                   from: dateRange?.from ?? currentDate,
