@@ -415,8 +415,7 @@ export default function ProdutividadeSDRTab({
   //    HORÁRIO AGENDADO (scheduled_time).
   // Para "Compareceu" e "Não compareceu" no dia de hoje, ainda aplicamos
   // o corte temporal: só conta se o horário agendado já tiver chegado.
-  const shiftCounts = useMemo(() => {
-    const acc = { madrugada: 0, manha: 0, tarde: 0, noite: 0 };
+  const { shiftCounts, shiftBase } = useMemo(() => {
     const now = new Date();
     const todayStr = brDateFmt.format(now);
     const nowParts = new Intl.DateTimeFormat("en-GB", {
@@ -428,48 +427,52 @@ export default function ProdutividadeSDRTab({
     const nowHour = Number(nowParts.find((p) => p.type === "hour")?.value ?? 0);
     const nowMin = Number(nowParts.find((p) => p.type === "minute")?.value ?? 0);
 
-    pool.forEach((a) => {
-      let hour: number | null;
-      let minute = 0;
+    const tally = (list: AgendamentoMetric[]) => {
+      const acc = { madrugada: 0, manha: 0, tarde: 0, noite: 0 };
+      list.forEach((a) => {
+        let hour: number | null;
+        let minute = 0;
 
-      if (filter === "criadas") {
-        // Hora de criação no fuso de Brasília
-        const parts = new Intl.DateTimeFormat("en-GB", {
-          timeZone: BR_TZ,
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }).formatToParts(new Date(a.created_at));
-        hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
-        minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
-      } else {
-        hour = getHourFromTime(a.scheduled_time);
-        const m = /^(\d{1,2}):(\d{2})/.exec(a.scheduled_time || "");
-        minute = m ? Number(m[2]) : 0;
-      }
+        if (filter === "criadas") {
+          // Hora de criação no fuso de Brasília
+          const parts = new Intl.DateTimeFormat("en-GB", {
+            timeZone: BR_TZ,
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).formatToParts(new Date(a.created_at));
+          hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+          minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+        } else {
+          hour = getHourFromTime(a.scheduled_time);
+          const m = /^(\d{1,2}):(\d{2})/.exec(a.scheduled_time || "");
+          minute = m ? Number(m[2]) : 0;
+        }
 
-      const shift = getShift(hour);
-      if (shift === "outros") return;
+        const shift = getShift(hour);
+        if (shift === "outros") return;
 
-      // Corte temporal somente para Compareceu / Não compareceu no dia de hoje.
-      if (
-        (filter === "compareceu" || filter === "nao_compareceu") &&
-        a.scheduled_date === todayStr &&
-        hour !== null
-      ) {
-        if (hour > nowHour || (hour === nowHour && minute > nowMin)) return;
-      }
-      if (
-        (filter === "compareceu" || filter === "nao_compareceu") &&
-        a.scheduled_date > todayStr
-      ) {
-        return;
-      }
+        // Corte temporal somente para Compareceu / Não compareceu no dia de hoje.
+        if (isRateMode && a.scheduled_date === todayStr && hour !== null) {
+          if (hour > nowHour || (hour === nowHour && minute > nowMin)) return;
+        }
+        if (isRateMode && a.scheduled_date > todayStr) return;
 
-      acc[shift] += 1;
-    });
-    return acc;
-  }, [pool, filter]);
+        acc[shift] += 1;
+      });
+      return acc;
+    };
+
+    return {
+      shiftCounts: tally(pool),
+      shiftBase: isRateMode ? tally(basePool) : null,
+    };
+  }, [pool, basePool, filter, isRateMode]);
+
+  const shiftTotal = shiftCounts.madrugada + shiftCounts.manha + shiftCounts.tarde + shiftCounts.noite;
+  const shiftBaseTotal = shiftBase
+    ? shiftBase.madrugada + shiftBase.manha + shiftBase.tarde + shiftBase.noite
+    : 0;
 
   const periodLabel = useMemo(() => {
     if (isIntervalMode) {
