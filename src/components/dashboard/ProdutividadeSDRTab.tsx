@@ -587,17 +587,26 @@ export default function ProdutividadeSDRTab({
                     color: "hsl(var(--primary))",
                   }}
                   labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
+                  itemStyle={{ color: "hsl(var(--foreground))" }}
+
                   formatter={(value: number, name, item) => {
-                    if (name === "mediaMovel") return [Number(value).toFixed(1), "Média móvel (7d)"];
+                    if (name === "mediaMovel")
+                      return [
+                        <span style={{ color: "hsl(38 92% 50%)" }}>{Number(value).toFixed(1)}</span>,
+                        "Média móvel (7d)",
+                      ];
                     if (name === "mediaPorSdr") {
                       const ativos = (item?.payload as { sdrsAtivos?: number })?.sdrsAtivos ?? 0;
                       return [
-                        `${Number(value).toFixed(1)} (${ativos} SDR${ativos !== 1 ? "s" : ""} ativo${ativos !== 1 ? "s" : ""})`,
+                        <span style={{ color: "hsl(160 84% 45%)" }}>
+                          {`${Number(value).toFixed(1)} (${ativos} SDR${ativos !== 1 ? "s" : ""} ativo${ativos !== 1 ? "s" : ""})`}
+                        </span>,
                         "Média por SDR ativo",
                       ];
                     }
                     return [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel];
                   }}
+
                   labelFormatter={(label, payload) => {
                     const entry = payload?.[0]?.payload as { sdr?: string } | undefined;
                     return entry?.sdr ?? label;
