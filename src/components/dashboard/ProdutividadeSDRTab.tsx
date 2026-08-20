@@ -143,6 +143,7 @@ export default function ProdutividadeSDRTab({
   const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
   const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
   const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
+  const [selectedSdr, setSelectedSdr] = useState<string>("all");
 
   // ─── Lookup: somente user_ids de SDRs (filtrado por time se selecionado) ─
   const filteredSdrProfiles = useMemo(
