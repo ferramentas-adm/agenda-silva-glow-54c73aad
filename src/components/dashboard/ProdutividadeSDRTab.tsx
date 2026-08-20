@@ -242,17 +242,27 @@ export default function ProdutividadeSDRTab({
         end: parseISO(range.to),
       });
       const dayCounts = new Map<string, number>();
+      const daySdrs = new Map<string, Set<string>>();
       chartPool.forEach((a) => {
         const day =
           filter === "criadas" ? localDateOf(a.created_at) : a.scheduled_date;
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
+        const sid = effectiveSdrId(a);
+        if (sid) {
+          if (!daySdrs.has(day)) daySdrs.set(day, new Set());
+          daySdrs.get(day)!.add(sid);
+        }
       });
       const rows = days.map((d) => {
         const key = format(d, "yyyy-MM-dd");
+        const total = dayCounts.get(key) || 0;
+        const sdrsAtivos = daySdrs.get(key)?.size || 0;
         return {
           sdr: format(d, "EEEE, dd/MM/yyyy", { locale: ptBR }),
           shortName: format(d, "dd/MM"),
-          total: dayCounts.get(key) || 0,
+          total,
+          sdrsAtivos,
+          mediaPorSdr: sdrsAtivos > 0 ? Number((total / sdrsAtivos).toFixed(1)) : 0,
         };
       });
       // Média móvel diária (janela de 7 dias, trailing).
@@ -262,6 +272,7 @@ export default function ProdutividadeSDRTab({
         const avg = slice.reduce((s, x) => s + x.total, 0) / slice.length;
         return { ...r, mediaMovel: Number(avg.toFixed(1)) };
       });
+
     }
     const counts = new Map<string, number>();
     chartPool.forEach((a) => {
