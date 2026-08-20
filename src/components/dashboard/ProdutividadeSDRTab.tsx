@@ -540,11 +540,9 @@ export default function ProdutividadeSDRTab({
           value={kpis.compareceu}
           accent="emerald"
           active={filter === "compareceu"}
-          sub={
-            kpis.foraSdr > 0
-              ? `somente agendas de SDR (${kpis.foraSdr} de closer/gestor fora)`
-              : "somente agendas de SDR"
-          }
+          sub={`Taxa de comparecimento: ${pct(kpis.compareceu, kpis.para).toFixed(1)}% (${kpis.compareceu}/${kpis.para})${
+            kpis.foraSdr > 0 ? ` · ${kpis.foraSdr} de closer/gestor fora` : ""
+          }`}
         />
         <SummaryCard
           icon={XCircle}
@@ -552,7 +550,9 @@ export default function ProdutividadeSDRTab({
           value={kpis.naoCompareceu}
           accent="destructive"
           active={filter === "nao_compareceu"}
+          sub={`Taxa de não comparecimento: ${pct(kpis.naoCompareceu, kpis.para).toFixed(1)}% (${kpis.naoCompareceu}/${kpis.para})`}
         />
+
       </div>
 
       {/* Produtividade por hora — orientada pelo filtro único da página */}
