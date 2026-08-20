@@ -343,6 +343,8 @@ export default function ProdutividadeSDRTab({
   }, [chartPool, chartBasePool, filteredSdrProfiles, isDailyView, range, filter, isRateMode]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
+  const totalBaseGrafico = chartData.reduce((s, c) => s + (c.base || 0), 0);
+  const taxaGrafico = pct(totalGeral, totalBaseGrafico);
   const mediaPorDia = useMemo(() => {
     const days = eachDayOfInterval({ start: parseISO(range.from), end: parseISO(range.to) }).length || 1;
     return totalGeral / days;
