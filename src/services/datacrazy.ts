@@ -214,6 +214,49 @@ export async function buscarLeadsComTagId(tagId: string): Promise<DataCrazyLead[
   return items;
 }
 
+export interface LeadsPage {
+  data: DataCrazyLead[];
+  page: number;
+  total: number | null;
+  hasMore: boolean;
+}
+
+/** Busca UMA página (100 leads) da tag — carga incremental/background. */
+export async function buscarLeadsPagina(tagId: string, page: number): Promise<LeadsPage> {
+  if (!tagId) return { data: [], page, total: 0, hasMore: false };
+  const res: any = await api(
+    "GET",
+    `/leads/by-tag-page?tagId=${encodeURIComponent(tagId)}&page=${page}`,
+    undefined,
+    { timeoutMs: 25_000, maxAttempts: 2 },
+  );
+  return {
+    data: Array.isArray(res?.data) ? res.data : [],
+    page,
+    total: typeof res?.total === "number" ? res.total : null,
+    hasMore: !!res?.hasMore,
+  };
+}
+
+/**
+ * Busca rápida por nome/telefone direto no CRM (dentro da tag).
+ * Não passa pela fila serializada global — precisa responder em ~1s enquanto
+ * a carga em background das páginas continua.
+ */
+export async function buscarLeadsPorTermo(tagId: string, q: string): Promise<DataCrazyLead[]> {
+  const term = q.trim();
+  if (!term) return [];
+  const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
+    body: {
+      method: "GET",
+      path: `/leads/search-compact?tagId=${encodeURIComponent(tagId)}&q=${encodeURIComponent(term)}`,
+    },
+  });
+  if (error) throw new Error(`DataCrazy proxy error: ${error.message}`);
+  if ((data as any)?.error) throw new Error(`DataCrazy API error: ${(data as any).error}`);
+  return Array.isArray((data as any)?.data) ? ((data as any).data as DataCrazyLead[]) : [];
+}
+
 
 /** @deprecated Use buscarLeadsComTagId instead */
 export async function buscarLeadsComTag(tagName: string): Promise<DataCrazyLead[]> {

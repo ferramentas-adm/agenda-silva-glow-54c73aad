@@ -72,26 +72,32 @@ function buildG1FallbackUrl(url: string): string | null {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  maxRetries = 2,
+  timeoutMs = 20_000,
+): Promise<Response> {
   let attempt = 0;
-  let lastResponse: Response | null = null;
   while (attempt <= maxRetries) {
-    const res = await fetch(url, init);
-    if (res.status !== 429) return res;
-    lastResponse = res;
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    // Última tentativa: devolve a resposta com o body intacto.
+    if (res.status !== 429 || attempt === maxRetries) return res;
     const retryAfter = res.headers.get("Retry-After");
     let waitMs = 1500 * Math.pow(2, attempt);
     if (retryAfter) {
       const parsed = parseInt(retryAfter, 10);
       if (!isNaN(parsed)) waitMs = Math.min(parsed * 1000, 8000);
     }
-    // Descarta o body para liberar a conexão.
+    // Descarta o body para liberar a conexão antes de tentar de novo.
     try { await res.text(); } catch { /* noop */ }
     await sleep(waitMs);
     attempt += 1;
   }
-  return lastResponse!;
+  // Inalcançável, mas mantém o tipo.
+  return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -146,6 +152,131 @@ serve(async (req) => {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ── Helpers compartilhados pelos agregadores de leads ────────────
+    const PAGE_SIZE_AGG = 100;
+    const dcHeadersAgg = {
+      "Content-Type": "application/json",
+      Authorization: DATACRAZY_API_TOKEN,
+    };
+    const compactLead = (l: any) => {
+      const phone = l.phone || (Array.isArray(l.phones) && l.phones[0]?.phone) || "";
+      return {
+        id: l.id,
+        name: l.name,
+        phone: typeof phone === "string" ? phone : String(phone),
+        tags: Array.isArray(l.tags) ? l.tags.map((t: any) => ({ id: t.id, name: t.name })) : [],
+      };
+    };
+    const fetchLeadsUrl = async (
+      relative: string,
+    ): Promise<{ items: any[]; count: number | null }> => {
+      const pageUrl = buildProxyUrl(DATACRAZY_API_URL, relative);
+      let res = await fetchWithRetry(pageUrl, { method: "GET", headers: dcHeadersAgg });
+      if (res.status === 404) {
+        const fb = buildG1FallbackUrl(pageUrl);
+        if (fb) res = await fetchWithRetry(fb, { method: "GET", headers: dcHeadersAgg });
+      }
+      const txt = await res.text();
+      let parsed: any;
+      try { parsed = JSON.parse(txt); } catch { parsed = null; }
+      const items = Array.isArray(parsed) ? parsed : parsed?.data || [];
+      const count = parsed && typeof parsed.count === "number" ? parsed.count : null;
+      return { items, count };
+    };
+    const jsonCached = (key: string, body: string) => {
+      responseCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, status: 200, body });
+      return new Response(body, {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Proxy-Cache": "MISS" },
+      });
+    };
+    const cacheHit = (key: string) => {
+      const hit = responseCache.get(key);
+      if (hit && hit.expiresAt > Date.now()) {
+        return new Response(hit.body, {
+          status: hit.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json", "X-Proxy-Cache": "HIT" },
+        });
+      }
+      return null;
+    };
+
+    // ── Agregador: GET /leads/by-tag-page?tagId=...&page=N
+    // Devolve UMA página compacta + total, para carga incremental no cliente.
+    const pageMatch = normalizedPath.match(/^\/leads\/by-tag-page\?tagId=([^&]+)&page=(\d+)/);
+    if (method === "GET" && pageMatch) {
+      const tagId = decodeURIComponent(pageMatch[1]);
+      const page = Math.max(0, parseInt(pageMatch[2], 10) || 0);
+      const key = `PAGE ${tagId} ${page}`;
+      const hit = cacheHit(key);
+      if (hit) return hit;
+
+      const { items, count } = await fetchLeadsUrl(
+        `/leads?filter[tags]=${encodeURIComponent(tagId)}&limit=${PAGE_SIZE_AGG}&skip=${page * PAGE_SIZE_AGG}`,
+      );
+      const seenPage = new Set<string>();
+      const data = items
+        .filter((l: any) => l?.id && !seenPage.has(l.id) && seenPage.add(l.id))
+        .map(compactLead);
+      return jsonCached(
+        key,
+        JSON.stringify({
+          data,
+          page,
+          pageSize: PAGE_SIZE_AGG,
+          total: count,
+          hasMore: items.length === PAGE_SIZE_AGG,
+        }),
+      );
+    }
+
+    // ── Agregador: GET /leads/search-compact?tagId=...&q=...
+    // Busca direta no CRM por nome/telefone dentro da tag. Resposta rápida (1 página).
+    const searchMatch = normalizedPath.match(/^\/leads\/search-compact\?tagId=([^&]*)&q=(.*)$/);
+    if (method === "GET" && searchMatch) {
+      const tagId = decodeURIComponent(searchMatch[1] || "");
+      const q = decodeURIComponent(searchMatch[2] || "").trim();
+      if (!q) {
+        return new Response(JSON.stringify({ data: [] }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const key = `SEARCH ${tagId} ${q.toLowerCase()}`;
+      const hit = cacheHit(key);
+      if (hit) return hit;
+
+      const tagFilter = tagId ? `filter[tags]=${encodeURIComponent(tagId)}&` : "";
+      let items: any[] = [];
+      try {
+        const r = await fetchLeadsUrl(
+          `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
+        );
+        items = r.items;
+      } catch {
+        items = [];
+      }
+
+      // Se a API não honrar `search`, filtra localmente o que veio.
+      const needle = q.toLowerCase();
+      const digits = q.replace(/\D/g, "");
+      const matches = items.filter((l: any) => {
+        const name = String(l?.name ?? "").toLowerCase();
+        const phone = String(
+          l?.phone || (Array.isArray(l?.phones) && l.phones[0]?.phone) || "",
+        ).replace(/\D/g, "");
+        return name.includes(needle) || (digits.length >= 3 && phone.includes(digits));
+      });
+      const pool = matches.length > 0 ? matches : items;
+
+      const seenS = new Set<string>();
+      const data = pool
+        .filter((l: any) => l?.id && !seenS.has(l.id) && seenS.add(l.id))
+        .slice(0, 25)
+        .map(compactLead);
+      return jsonCached(key, JSON.stringify({ data, count: data.length }));
     }
 
     // ── Agregador especial: GET /leads/by-tag-compact?tagId=...
