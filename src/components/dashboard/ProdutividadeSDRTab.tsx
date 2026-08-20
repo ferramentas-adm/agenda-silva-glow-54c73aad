@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   CartesianGrid,
   Cell,
@@ -25,6 +27,13 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
 import ProdutividadePorHoraCard from "@/components/dashboard/ProdutividadePorHoraCard";
@@ -134,6 +143,7 @@ export default function ProdutividadeSDRTab({
   const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
   const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
   const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
+  const [selectedSdr, setSelectedSdr] = useState<string>("all");
 
   // ─── Lookup: somente user_ids de SDRs (filtrado por time se selecionado) ─
   const filteredSdrProfiles = useMemo(
@@ -213,22 +223,31 @@ export default function ProdutividadeSDRTab({
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
   // ─── Dados do gráfico ─────────────────────────────────────────
-  // - Single mode (1 dia): cada coluna = um SDR (somatório do dia).
-  // - Interval mode (período): cada coluna = um dia, somando todos os SDRs.
+  // - SDR individual selecionado: cada coluna = um dia do período.
+  // - Todos + intervalo: cada coluna = um dia, somando todos os SDRs.
+  // - Todos + dia único: cada coluna = um SDR.
+  const isDailyView = isIntervalMode || selectedSdr !== "all";
+
+  /** Pool restrito ao SDR escolhido no dropdown do gráfico. */
+  const chartPool = useMemo(
+    () => (selectedSdr === "all" ? pool : pool.filter((a) => effectiveSdrId(a) === selectedSdr)),
+    [pool, selectedSdr, sdrIds],
+  );
+
   const chartData = useMemo(() => {
-    if (isIntervalMode) {
+    if (isDailyView) {
       // Iteramos cada dia do intervalo e contamos a partir do pool.
       const days = eachDayOfInterval({
         start: parseISO(range.from),
         end: parseISO(range.to),
       });
       const dayCounts = new Map<string, number>();
-      pool.forEach((a) => {
+      chartPool.forEach((a) => {
         const day =
           filter === "criadas" ? localDateOf(a.created_at) : a.scheduled_date;
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
       });
-      return days.map((d) => {
+      const rows = days.map((d) => {
         const key = format(d, "yyyy-MM-dd");
         return {
           sdr: format(d, "EEEE, dd/MM/yyyy", { locale: ptBR }),
@@ -236,9 +255,16 @@ export default function ProdutividadeSDRTab({
           total: dayCounts.get(key) || 0,
         };
       });
+      // Média móvel diária (janela de 7 dias, trailing).
+      const win = 7;
+      return rows.map((r, i) => {
+        const slice = rows.slice(Math.max(0, i - win + 1), i + 1);
+        const avg = slice.reduce((s, x) => s + x.total, 0) / slice.length;
+        return { ...r, mediaMovel: Number(avg.toFixed(1)) };
+      });
     }
     const counts = new Map<string, number>();
-    pool.forEach((a) => {
+    chartPool.forEach((a) => {
       const key = effectiveSdrId(a);
       if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
@@ -252,12 +278,18 @@ export default function ProdutividadeSDRTab({
           sdr: p.full_name,
           shortName,
           total: counts.get(p.user_id) || 0,
+          mediaMovel: undefined as number | undefined,
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [pool, filteredSdrProfiles, isIntervalMode, range, filter]);
+  }, [chartPool, filteredSdrProfiles, isDailyView, range, filter]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
+  const mediaPorDia = useMemo(() => {
+    const days = eachDayOfInterval({ start: parseISO(range.from), end: parseISO(range.to) }).length || 1;
+    return totalGeral / days;
+  }, [totalGeral, range]);
+
 
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
   const kpis = useMemo(() => {
@@ -463,14 +495,36 @@ export default function ProdutividadeSDRTab({
 
       {/* Gráfico comparativo */}
       <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Users className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">
-            {isIntervalMode ? `Agendamentos por dia — ${filterLabel}` : `Agendamentos por SDR — ${filterLabel}`}
+            {isDailyView ? `Agendamentos por dia — ${filterLabel}` : `Agendamentos por SDR — ${filterLabel}`}
+            {selectedSdr !== "all" && ` · ${sdrNameById.get(selectedSdr) ?? "SDR"}`}
           </h3>
-          <span className="ml-auto text-xs text-muted-foreground">
-            Total: <span className="font-bold text-foreground">{totalGeral}</span>
-          </span>
+          <Select value={selectedSdr} onValueChange={setSelectedSdr}>
+            <SelectTrigger className="h-7 w-[210px] text-xs">
+              <SelectValue placeholder="Todos os SDRs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os SDRs</SelectItem>
+              {filteredSdrProfiles
+                .slice()
+                .sort((a, b) => a.full_name.localeCompare(b.full_name))
+                .map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.full_name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+            <span>
+              Total: <span className="font-bold text-foreground">{totalGeral}</span>
+            </span>
+            <span>
+              Média/dia: <span className="font-bold text-foreground">{mediaPorDia.toFixed(1)}</span>
+            </span>
+          </div>
         </div>
         {chartData.length === 0 || totalGeral === 0 ? (
           <p className="text-sm text-muted-foreground italic py-8 text-center">
@@ -479,7 +533,7 @@ export default function ProdutividadeSDRTab({
         ) : (
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+              <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                 <XAxis
                   dataKey="shortName"
@@ -502,20 +556,34 @@ export default function ProdutividadeSDRTab({
                     fontSize: 12,
                     color: "hsl(var(--primary))",
                   }}
-                  itemStyle={{ color: "hsl(var(--primary))", fontWeight: 600 }}
                   labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
-                  formatter={(value: number) => [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel]}
+                  formatter={(value: number, name) =>
+                    name === "mediaMovel"
+                      ? [Number(value).toFixed(1), "Média móvel (7d)"]
+                      : [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel]
+                  }
                   labelFormatter={(label, payload) => {
                     const entry = payload?.[0]?.payload as { sdr?: string } | undefined;
                     return entry?.sdr ?? label;
                   }}
                 />
-                <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                {isDailyView && <Legend wrapperStyle={{ fontSize: 11 }} />}
+                <Bar dataKey="total" name={filterLabel} radius={[6, 6, 0, 0]}>
                   {chartData.map((_, idx) => (
                     <Cell key={idx} fill="hsl(var(--primary))" fillOpacity={0.85} />
                   ))}
                 </Bar>
-              </BarChart>
+                {isDailyView && (
+                  <Line
+                    type="monotone"
+                    dataKey="mediaMovel"
+                    name="Média móvel (7d)"
+                    stroke="hsl(38 92% 50%)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}
