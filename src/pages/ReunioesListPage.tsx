@@ -158,17 +158,27 @@ export default function ReunioesListPage() {
     },
   });
 
-  // Janela server-side: por padrão, últimos 60 dias (antes 180 — trazia milhares de
-  // linhas em cada carga). Quando o usuário escolhe uma data inicial mais antiga,
-  // a janela é estendida para cobrir o filtro.
+  // Janela server-side: 180 dias (padrão original — na prática cobre todo o
+  // histórico operacional). Se o usuário filtrar por uma data de reunião OU de
+  // criação mais antiga, a janela é estendida para cobrir o filtro: ela nunca
+  // pode esconder registros que o filtro deveria mostrar.
   const meetingWindowStart = useMemo(() => {
     const defaultStart = new Date();
-    defaultStart.setDate(defaultStart.getDate() - 60);
-    if (filterMeetingDateFrom && filterMeetingDateFrom < defaultStart) {
-      return format(filterMeetingDateFrom, "yyyy-MM-dd");
+    defaultStart.setDate(defaultStart.getDate() - 180);
+    const candidates = [filterMeetingDateFrom, filterCreatedDateFrom].filter(
+      (d): d is Date => !!d && d < defaultStart,
+    );
+    if (candidates.length > 0) {
+      const oldest = candidates.reduce((a, b) => (a < b ? a : b));
+      // Criação anterior à reunião é possível: recua 30 dias extras de margem.
+      const start = new Date(oldest);
+      start.setDate(start.getDate() - 30);
+      return format(start, "yyyy-MM-dd");
     }
     return format(defaultStart, "yyyy-MM-dd");
-  }, [filterMeetingDateFrom]);
+  }, [filterMeetingDateFrom, filterCreatedDateFrom]);
+
+
 
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["reunioes-list", meetingWindowStart],
@@ -201,10 +211,20 @@ export default function ReunioesListPage() {
 
   const agendamentoIds = useMemo(() => agendamentos.map((a: any) => a.id), [agendamentos]);
 
+  // Assinatura estável do conjunto (não só o tamanho): dois conjuntos diferentes
+  // com a mesma quantidade não podem compartilhar cache.
+  const agendamentoIdsKey = useMemo(() => {
+    let h = 0;
+    for (const id of agendamentoIds) {
+      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+    }
+    return `${agendamentoIds.length}:${h}`;
+  }, [agendamentoIds]);
+
   // Map de agendamento_id -> { vendeu, valor, produto } para filtros de oferta.
   // Restrito aos agendamentos da janela carregada (antes baixava a tabela `vendas` inteira).
   const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>() } = useQuery({
-    queryKey: ["vendas-oferta-map", meetingWindowStart, agendamentoIds.length],
+    queryKey: ["vendas-oferta-map", meetingWindowStart, agendamentoIdsKey],
     enabled: agendamentoIds.length > 0,
     staleTime: 60_000,
     gcTime: 5 * 60_000,

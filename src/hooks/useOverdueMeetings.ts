@@ -153,36 +153,41 @@ export function useOverdueMeetings() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [refetch]);
 
-  // Realtime: escuta só as linhas que interessam a este usuário (closer dele ou
-  // criadas por ele) e agrupa eventos, em vez de reagir a QUALQUER update da tabela.
+  // Realtime: escuta as linhas que interessam a este usuário — as do closer dele
+  // E as criadas por ele (quem é closer também pode criar agendamento, e a trava
+  // da etapa SDR usa `created_by`). Eventos são agrupados em 1,5 s.
   useEffect(() => {
     if (!enabled) return;
-    const filter = myCloserId
-      ? `closer_id=eq.${myCloserId}`
-      : user?.id
-        ? `created_by=eq.${user.id}`
-        : null;
-    if (!filter) return;
+    const filters: string[] = [];
+    if (myCloserId) filters.push(`closer_id=eq.${myCloserId}`);
+    if (user?.id) filters.push(`created_by=eq.${user.id}`);
+    if (filters.length === 0) return;
+
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const channel = supabase
-      .channel(`overdue-meetings-${myCloserId ?? user?.id}`)
-      .on(
+    const bump = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+      }, 1500);
+    };
+
+    let channel = supabase.channel(`overdue-meetings-${user?.id ?? myCloserId}`);
+    filters.forEach((filter) => {
+      channel = channel.on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "agendamentos", filter },
-        () => {
-          if (timer) return;
-          timer = setTimeout(() => {
-            timer = null;
-            queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-          }, 1500);
-        },
-      )
-      .subscribe();
+        bump,
+      );
+    });
+    channel.subscribe();
+
     return () => {
       if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [enabled, queryClient, myCloserId, user?.id]);
+
 
   return {
     overdue: query.data ?? [],
