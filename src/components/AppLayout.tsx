@@ -6,7 +6,7 @@ import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List,
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMyCloserId } from "@/hooks/useMyCloserId";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { buscarLeadsComTagId } from "@/services/datacrazy";
+import { ensureLeads } from "@/services/leadsStore";
 import logo from "@/assets/logo.png";
 import { tenantConfig } from "@/config/tenant";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
@@ -145,6 +145,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link
               key={to}
               to={to}
+              onMouseEnter={to === "/agendar" ? prefetchLeads : undefined}
+              onFocus={to === "/agendar" ? prefetchLeads : undefined}
               className={cn(
                 "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 isActive(to)
