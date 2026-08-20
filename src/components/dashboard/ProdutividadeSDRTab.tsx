@@ -157,18 +157,19 @@ export default function ProdutividadeSDRTab({
   }, [sdrProfiles]);
 
   // ─── Range efetivo ────────────────────────────────────────────
-  // Modo "intervalo": usuário escolheu from + to no calendário.
-  // Modo "single":   usa o currentDate vindo do filtro superior.
-  const isIntervalMode = Boolean(customRange.from && customRange.to);
+  // Sempre vem do filtro de data único no topo da página.
+  const isIntervalMode = Boolean(
+    dateRange?.from && dateRange?.to && format(dateRange.from, "yyyy-MM-dd") !== format(dateRange.to, "yyyy-MM-dd"),
+  );
   const range = useMemo(() => {
     const fmt = (d: Date) => format(d, "yyyy-MM-dd");
-    if (isIntervalMode && customRange.from && customRange.to) {
-      const a = customRange.from <= customRange.to ? customRange.from : customRange.to;
-      const b = customRange.from <= customRange.to ? customRange.to : customRange.from;
+    if (dateRange?.from && dateRange?.to) {
+      const a = dateRange.from <= dateRange.to ? dateRange.from : dateRange.to;
+      const b = dateRange.from <= dateRange.to ? dateRange.to : dateRange.from;
       return { from: fmt(a), to: fmt(b) };
     }
     return { from: fmt(currentDate), to: fmt(currentDate) };
-  }, [isIntervalMode, customRange, currentDate]);
+  }, [dateRange, currentDate]);
 
   // ─── Pool de agendamentos a considerar ───────────────────────
   // Regra de negócio: contamos para o SDR EFETIVO de cada agendamento, que é
