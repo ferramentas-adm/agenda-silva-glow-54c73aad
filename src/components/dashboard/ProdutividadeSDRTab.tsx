@@ -758,7 +758,8 @@ export default function ProdutividadeSDRTab({
           label="Madrugada"
           range="00h — 06h"
           value={shiftCounts.madrugada}
-          totalPeriodo={pool.length}
+          totalPeriodo={shiftTotal}
+          rate={shiftBase ? { label: rateLabel, value: pct(shiftCounts.madrugada, shiftBase.madrugada), base: shiftBase.madrugada, positive: filter === "compareceu" } : undefined}
           color="sky"
         />
         <ShiftCard
@@ -766,7 +767,8 @@ export default function ProdutividadeSDRTab({
           label="Manhã"
           range="06h — 12h"
           value={shiftCounts.manha}
-          totalPeriodo={pool.length}
+          totalPeriodo={shiftTotal}
+          rate={shiftBase ? { label: rateLabel, value: pct(shiftCounts.manha, shiftBase.manha), base: shiftBase.manha, positive: filter === "compareceu" } : undefined}
           color="amber"
         />
         <ShiftCard
@@ -774,7 +776,8 @@ export default function ProdutividadeSDRTab({
           label="Tarde"
           range="12h — 18h"
           value={shiftCounts.tarde}
-          totalPeriodo={pool.length}
+          totalPeriodo={shiftTotal}
+          rate={shiftBase ? { label: rateLabel, value: pct(shiftCounts.tarde, shiftBase.tarde), base: shiftBase.tarde, positive: filter === "compareceu" } : undefined}
           color="orange"
         />
         <ShiftCard
@@ -782,7 +785,8 @@ export default function ProdutividadeSDRTab({
           label="Noite"
           range="18h — 24h"
           value={shiftCounts.noite}
-          totalPeriodo={pool.length}
+          totalPeriodo={shiftTotal}
+          rate={shiftBase ? { label: rateLabel, value: pct(shiftCounts.noite, shiftBase.noite), base: shiftBase.noite, positive: filter === "compareceu" } : undefined}
           color="indigo"
         />
       </div>
@@ -873,6 +877,7 @@ function ShiftCard({
   value,
   totalPeriodo,
   color,
+  rate,
 }: {
   icon: typeof Sun;
   label: string;
@@ -880,6 +885,7 @@ function ShiftCard({
   value: number;
   totalPeriodo: number;
   color: "sky" | "amber" | "orange" | "indigo";
+  rate?: { label: string; value: number; base: number; positive: boolean };
 }) {
   const colorMap = {
     sky: "text-sky-400 bg-sky-500/10 border-sky-500/30",
@@ -907,6 +913,17 @@ function ShiftCard({
       <p className="text-[11px] opacity-80">
         {pct.toFixed(0)}% do total do período
       </p>
+      {rate && (
+        <p className="text-[11px] font-semibold text-foreground/90">
+          {rate.label}:{" "}
+          <span className={rate.positive ? "text-emerald-500" : "text-destructive"}>
+            {rate.value.toFixed(1)}%
+          </span>{" "}
+          <span className="font-normal opacity-80">
+            ({value} de {rate.base} marcadas)
+          </span>
+        </p>
+      )}
     </div>
   );
 }
