@@ -143,35 +143,46 @@ export function useOverdueMeetings() {
     },
   });
 
-  // Revalida ao voltar para a aba e a cada minuto via timer próprio
-  // (refetchInterval do react-query já cuida do polling, mas pode pular se aba estiver em background).
+  // Revalida ao voltar para a aba (o polling em background está desligado).
+  const refetch = query.refetch;
   useEffect(() => {
     const onVis = () => {
-      if (document.visibilityState === "visible") {
-        query.refetch();
-      }
+      if (document.visibilityState === "visible") refetch();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [query]);
+  }, [refetch]);
 
-  // Realtime: atualizações na tabela agendamentos invalidam o cache
+  // Realtime: escuta só as linhas que interessam a este usuário (closer dele ou
+  // criadas por ele) e agrupa eventos, em vez de reagir a QUALQUER update da tabela.
   useEffect(() => {
     if (!enabled) return;
+    const filter = myCloserId
+      ? `closer_id=eq.${myCloserId}`
+      : user?.id
+        ? `created_by=eq.${user.id}`
+        : null;
+    if (!filter) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
-      .channel("overdue-meetings-realtime")
+      .channel(`overdue-meetings-${myCloserId ?? user?.id}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "agendamentos" },
+        { event: "UPDATE", schema: "public", table: "agendamentos", filter },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+          if (timer) return;
+          timer = setTimeout(() => {
+            timer = null;
+            queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+          }, 1500);
         },
       )
       .subscribe();
     return () => {
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
     };
-  }, [enabled, queryClient]);
+  }, [enabled, queryClient, myCloserId, user?.id]);
 
   return {
     overdue: query.data ?? [],
