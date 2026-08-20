@@ -18,6 +18,7 @@ import {
   Sun,
   Sunset,
   Moon,
+  MoonStar,
   Users,
   CalendarDays,
   CheckCircle2,
@@ -98,9 +99,10 @@ function getHourFromTime(time?: string | null): number | null {
   return null;
 }
 
-/** Classifica em manhã/tarde/noite. */
-function getShift(hour: number | null): "manha" | "tarde" | "noite" | "outros" {
+/** Classifica em madrugada/manhã/tarde/noite. */
+function getShift(hour: number | null): "madrugada" | "manha" | "tarde" | "noite" | "outros" {
   if (hour === null) return "outros";
+  if (hour >= 0 && hour < 6) return "madrugada";
   if (hour >= 6 && hour < 12) return "manha";
   if (hour >= 12 && hour < 18) return "tarde";
   if (hour >= 18 && hour < 24) return "noite";
@@ -369,7 +371,7 @@ export default function ProdutividadeSDRTab({
   // Para "Compareceu" e "Não compareceu" no dia de hoje, ainda aplicamos
   // o corte temporal: só conta se o horário agendado já tiver chegado.
   const shiftCounts = useMemo(() => {
-    const acc = { manha: 0, tarde: 0, noite: 0 };
+    const acc = { madrugada: 0, manha: 0, tarde: 0, noite: 0 };
     const now = new Date();
     const todayStr = brDateFmt.format(now);
     const nowParts = new Intl.DateTimeFormat("en-GB", {
@@ -402,7 +404,7 @@ export default function ProdutividadeSDRTab({
       }
 
       const shift = getShift(hour);
-      if (shift !== "manha" && shift !== "tarde" && shift !== "noite") return;
+      if (shift === "outros") return;
 
       // Corte temporal somente para Compareceu / Não compareceu no dia de hoje.
       if (
@@ -648,7 +650,15 @@ export default function ProdutividadeSDRTab({
       </div>
 
       {/* Quadros por turno */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <ShiftCard
+          icon={MoonStar}
+          label="Madrugada"
+          range="00h — 06h"
+          value={shiftCounts.madrugada}
+          totalPeriodo={pool.length}
+          color="sky"
+        />
         <ShiftCard
           icon={Sun}
           label="Manhã"
@@ -674,6 +684,7 @@ export default function ProdutividadeSDRTab({
           color="indigo"
         />
       </div>
+
 
       <CriadasPorDiaDialog
         open={criadasDiasOpen}
@@ -766,9 +777,10 @@ function ShiftCard({
   range: string;
   value: number;
   totalPeriodo: number;
-  color: "amber" | "orange" | "indigo";
+  color: "sky" | "amber" | "orange" | "indigo";
 }) {
   const colorMap = {
+    sky: "text-sky-400 bg-sky-500/10 border-sky-500/30",
     amber: "text-amber-500 bg-amber-500/10 border-amber-500/30",
     orange: "text-orange-500 bg-orange-500/10 border-orange-500/30",
     indigo: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
