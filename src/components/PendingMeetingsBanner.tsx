@@ -218,10 +218,10 @@ export default function PendingMeetingsBanner() {
                     className="h-8 text-xs shrink-0"
                     onClick={() => {
                       setOpen(false);
-                      navigate(`/?date=${m.scheduled_date}`);
+                      navigate(`/lead-detalhes/${m.id}`);
                     }}
                   >
-                    Ver no calendário
+                    Ver em Detalhes do Agendamento
                   </Button>
                 )}
               </div>
