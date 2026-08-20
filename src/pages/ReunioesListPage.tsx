@@ -1173,6 +1173,15 @@ export default function ReunioesListPage() {
               </div>
             </section>
             <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Motivo de não fechamento (Closer)</h4>
+              <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3">
+                {detailVenda?.motivo_nao_fechamento?.trim()
+                  || <span className="text-muted-foreground italic">
+                       {detailVenda?.vendeu === true ? "Venda fechada." : "Ainda não preenchido."}
+                     </span>}
+              </p>
+            </section>
+            <section>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Por que não fechou (Closer)</h4>
               <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
                 {detailVenda?.explicacao_nao_fechamento?.trim()
@@ -1189,6 +1198,15 @@ export default function ReunioesListPage() {
                   || <span className="text-muted-foreground italic">Ainda não preenchido.</span>}
               </p>
             </section>
+
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Observações (Closer)</h4>
+              <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
+                {detailVenda?.observacoes?.trim()
+                  || <span className="text-muted-foreground italic">Ainda não preenchido.</span>}
+              </p>
+            </section>
+
           </div>
         </DialogContent>
       </Dialog>
