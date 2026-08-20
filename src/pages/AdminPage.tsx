@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck, UserCog,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -197,6 +197,9 @@ function UsersSection() {
   const [datacrazyTarget, setDatacrazyTarget] = useState<{ userId: string; name: string; type: string; currentId: string; closerId?: string } | null>(null);
   const [editDatacrazyId, setEditDatacrazyId] = useState("");
   const [savingDatacrazyId, setSavingDatacrazyId] = useState(false);
+  const [ramalTarget, setRamalTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [editRamal, setEditRamal] = useState("");
+  const [savingRamal, setSavingRamal] = useState(false);
 
   // Scheduling toggle
   const [togglingSchedulingId, setTogglingSchedulingId] = useState<string | null>(null);
@@ -226,7 +229,7 @@ function UsersSection() {
     queryFn: async () => {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, user_id, full_name, email, active, available_for_scheduling, is_sdr_override, moderador_tipo, sdr_team, datacrazy_id");
+        .select("id, user_id, full_name, email, active, available_for_scheduling, is_sdr_override, moderador_tipo, sdr_team, datacrazy_id, api4com_extension");
       const { data: roles } = await supabase
         .from("user_roles")
         .select("user_id, role");
@@ -271,6 +274,7 @@ function UsersSection() {
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
+          api4comExtension: (p as any).api4com_extension || "",
           availableForScheduling: p.available_for_scheduling ?? false,
           isSdrOverride: (p as any).is_sdr_override === true,
           moderadorTipo: (p as any).moderador_tipo as ("sdr" | "closer" | null) ?? null,
@@ -855,6 +859,12 @@ function UsersSection() {
                               onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
                               <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
                             </Button>
+                            {u.type === "profile" && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={`Ramal API4COM${u.api4comExtension ? ': ' + u.api4comExtension : ' (não configurado)'}`}
+                                onClick={() => { setRamalTarget({ userId: u.userId, name: u.name }); setEditRamal(u.api4comExtension || ""); }}>
+                                <PhoneCall className={`h-3.5 w-3.5 ${u.api4comExtension ? 'text-primary' : 'text-muted-foreground'}`} />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar senha (definir manualmente)"
                               onClick={() => { setPasswordChangeTarget({ userId: u.userId, name: u.name }); setNewPassword(""); setShowNewPassword(false); }}>
                               <KeyRound className="h-3.5 w-3.5" />
@@ -1185,6 +1195,50 @@ function UsersSection() {
               }}
             >
               {savingDatacrazyId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Ramal API4COM dialog */}
+      <AlertDialog open={!!ramalTarget} onOpenChange={(open) => { if (!open) setRamalTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ramal API4COM</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ramal usado para iniciar ligações para o lead em nome de <strong>{ramalTarget?.name}</strong>. Deixe em branco para o sistema tentar descobrir automaticamente pelo e-mail cadastrado na API4COM.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Input
+              placeholder="Ex: 1001"
+              value={editRamal}
+              onChange={(e) => setEditRamal(e.target.value.trim())}
+              className="font-mono text-sm"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingRamal}
+              onClick={async () => {
+                if (!ramalTarget) return;
+                setSavingRamal(true);
+                try {
+                  const { error } = await supabase.from("profiles")
+                    .update({ api4com_extension: editRamal || null } as any)
+                    .eq("user_id", ramalTarget.userId);
+                  if (error) throw error;
+                  toast.success("Ramal atualizado!");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  setRamalTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao salvar ramal");
+                }
+                setSavingRamal(false);
+              }}
+            >
+              {savingRamal ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

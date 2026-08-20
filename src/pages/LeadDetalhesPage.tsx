@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import LigarLeadButton from "@/components/LigarLeadButton";
+import LeadChamadasHistorico from "@/components/LeadChamadasHistorico";
 
 interface Agendamento {
   id: string;
@@ -41,6 +43,7 @@ export default function LeadDetalhesPage() {
   const [items, setItems] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<Agendamento | null>(null);
+  const [callsKey, setCallsKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -184,11 +187,19 @@ export default function LeadDetalhesPage() {
                   </a>
                 </Button>
               )}
+              {detail.lead_phone && (
+                <LigarLeadButton
+                  agendamentoId={detail.id}
+                  leadName={detail.lead_name}
+                  leadPhone={detail.lead_phone}
+                  onCallStarted={() => setCallsKey((k) => k + 1)}
+                />
+              )}
               {telLink && (
-                <Button asChild variant="outline" className="justify-start gap-2">
+                <Button asChild variant="ghost" size="sm" className="justify-start gap-2 text-muted-foreground">
                   <a href={telLink}>
                     <Phone className="h-4 w-4" />
-                    Ligar para o lead
+                    Discagem local (extensão instalada)
                   </a>
                 </Button>
               )}
@@ -201,6 +212,8 @@ export default function LeadDetalhesPage() {
                 </Button>
               )}
             </div>
+
+            <LeadChamadasHistorico agendamentoId={detail.id} refreshKey={callsKey} />
 
             {detail.briefing && (
               <div className="pt-2 border-t">
