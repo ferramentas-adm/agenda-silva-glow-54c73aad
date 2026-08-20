@@ -201,6 +201,11 @@ export function CalendarContent() {
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
+  // Reverter status para o anterior (registro de auditoria) — gestor/moderador/supervisor
+  const [prevStatus, setPrevStatus] = useState<string | null>(null);
+  const [revertOpen, setRevertOpen] = useState(false);
+  const [revertReason, setRevertReason] = useState("");
+  const [reverting, setReverting] = useState(false);
   
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
@@ -799,6 +804,82 @@ export function CalendarContent() {
     }
     setUpdatingStatus(false);
   };
+
+  // Descobre o status anterior (última troca registrada na auditoria) para permitir
+  // reverter cliques errados. Apenas gestor/moderador/supervisor/apresentador.
+  useEffect(() => {
+    if (!detailAg || !isAdminLike) {
+      setPrevStatus(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("audit_logs")
+        .select("details, created_at")
+        .eq("entity_type", "agendamento")
+        .eq("entity_id", detailAg.id)
+        .eq("action", "update_status")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      const details = (data?.[0]?.details ?? null) as any;
+      const oldStatus = details?.old_status ?? null;
+      const newStatus = details?.new_status ?? null;
+      // Só oferece reversão se o último registro corresponde ao status atual.
+      setPrevStatus(oldStatus && newStatus === detailAg.status ? oldStatus : null);
+    })();
+    return () => { cancelled = true; };
+  }, [detailAg?.id, detailAg?.status, isAdminLike]);
+
+  const handleRevertStatus = async () => {
+    if (!detailAg || !prevStatus || !revertReason.trim()) return;
+    setReverting(true);
+    const fromStatus = detailAg.status;
+    try {
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update({ status: prevStatus } as any)
+        .eq("id", detailAg.id)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para reverter o status deste agendamento.");
+      }
+
+      // Limpa a declaração do closer para que a reunião volte ao fluxo normal
+      // (Vendeu? → motivo → justificativa). A venda oficial é preservada.
+      await supabase
+        .from("vendas")
+        .update({
+          vendeu_closer: null,
+          motivo_nao_fechamento: null,
+          observacoes: null,
+        } as any)
+        .eq("agendamento_id", detailAg.id);
+
+      await logAudit("reverter_status", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        from_status: fromStatus,
+        to_status: prevStatus,
+        reason: revertReason.trim(),
+      });
+
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, status: prevStatus }));
+      setDetailAg({ ...detailAg, status: prevStatus });
+      setPrevStatus(null);
+      setRevertOpen(false);
+      setRevertReason("");
+      toast.success(`Status revertido para ${STATUS_LABELS[prevStatus] ?? prevStatus}`);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao reverter status");
+    }
+    setReverting(false);
+  };
+
+
 
   // Open edit mode
   const startEdit = () => {
@@ -1464,6 +1545,23 @@ export function CalendarContent() {
                 </Button>
               )}
 
+              {/* Reverter status — corrige cliques errados (ex.: "Realizada" por engano).
+                  Volta ao status anterior registrado na auditoria e limpa a declaração
+                  do closer para que a reunião retorne ao fluxo normal. */}
+              {isAdminLike && prevStatus && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                  onClick={() => { setRevertReason(""); setRevertOpen(true); }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reverter para {STATUS_LABELS[prevStatus] ?? prevStatus}
+                </Button>
+              )}
+
+
+
               {canChangeStatus && (() => {
                 // SDR só pode operar em reagendadas se ele mesmo criou o reagendamento.
                 const sdrIsOwnerOfReschedule =
@@ -1913,6 +2011,46 @@ export function CalendarContent() {
           await handleStatusChange("cancelada", reason);
         }}
       />
+
+      <Dialog open={revertOpen} onOpenChange={(o) => { if (!reverting) { setRevertOpen(o); if (!o) setRevertReason(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-amber-500" />
+              Reverter status
+            </DialogTitle>
+            <DialogDescription>
+              <span className="font-medium">{detailAg?.lead_name}</span> — o status volta de{" "}
+              <strong>{detailAg ? (STATUS_LABELS[detailAg.status] ?? detailAg.status) : ""}</strong> para{" "}
+              <strong>{prevStatus ? (STATUS_LABELS[prevStatus] ?? prevStatus) : ""}</strong>. A declaração do
+              closer (Vendeu?, motivo e justificativa) será limpa para que a reunião volte ao fluxo normal.
+              A venda oficial lançada pelo gestor não é apagada.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs">Motivo da reversão *</Label>
+            <Textarea
+              value={revertReason}
+              onChange={(e) => setRevertReason(e.target.value)}
+              placeholder="Ex.: status marcado como Realizada por engano."
+              rows={3}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" disabled={reverting} onClick={() => setRevertOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              disabled={reverting || !revertReason.trim() || !prevStatus}
+              onClick={handleRevertStatus}
+            >
+              {reverting ? "Revertendo..." : "Confirmar reversão"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </>
   );
 }
