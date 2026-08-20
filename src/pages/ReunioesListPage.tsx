@@ -209,10 +209,21 @@ export default function ReunioesListPage() {
 
   const agendamentoIds = useMemo(() => agendamentos.map((a: any) => a.id), [agendamentos]);
 
+  // Assinatura estável do conjunto (não só o tamanho): dois conjuntos diferentes
+  // com a mesma quantidade não podem compartilhar cache.
+  const agendamentoIdsKey = useMemo(() => {
+    let h = 0;
+    for (const id of agendamentoIds) {
+      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+    }
+    return `${agendamentoIds.length}:${h}`;
+  }, [agendamentoIds]);
+
   // Map de agendamento_id -> { vendeu, valor, produto } para filtros de oferta.
   // Restrito aos agendamentos da janela carregada (antes baixava a tabela `vendas` inteira).
   const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>() } = useQuery({
-    queryKey: ["vendas-oferta-map", meetingWindowStart, agendamentoIds.length],
+    queryKey: ["vendas-oferta-map", meetingWindowStart, agendamentoIdsKey],
+    enabled: agendamentoIds.length > 0,
     enabled: agendamentoIds.length > 0,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
