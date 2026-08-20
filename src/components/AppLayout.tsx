@@ -23,7 +23,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
   const isModerador = (role === "moderador" || role === "apresentador");
   const location = useLocation();
-  const queryClient = useQueryClient();
   const [blocksOpen, setBlocksOpen] = useState(false);
 
   // Warm-up da base de leads do DataCrazy: começa a carregar em background
