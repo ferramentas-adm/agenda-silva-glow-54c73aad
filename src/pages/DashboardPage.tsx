@@ -2011,6 +2011,46 @@ export function CalendarContent() {
           await handleStatusChange("cancelada", reason);
         }}
       />
+
+      <Dialog open={revertOpen} onOpenChange={(o) => { if (!reverting) { setRevertOpen(o); if (!o) setRevertReason(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-amber-500" />
+              Reverter status
+            </DialogTitle>
+            <DialogDescription>
+              <span className="font-medium">{detailAg?.lead_name}</span> — o status volta de{" "}
+              <strong>{detailAg ? (STATUS_LABELS[detailAg.status] ?? detailAg.status) : ""}</strong> para{" "}
+              <strong>{prevStatus ? (STATUS_LABELS[prevStatus] ?? prevStatus) : ""}</strong>. A declaração do
+              closer (Vendeu?, motivo e justificativa) será limpa para que a reunião volte ao fluxo normal.
+              A venda oficial lançada pelo gestor não é apagada.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs">Motivo da reversão *</Label>
+            <Textarea
+              value={revertReason}
+              onChange={(e) => setRevertReason(e.target.value)}
+              placeholder="Ex.: status marcado como Realizada por engano."
+              rows={3}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" disabled={reverting} onClick={() => setRevertOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              disabled={reverting || !revertReason.trim() || !prevStatus}
+              onClick={handleRevertStatus}
+            >
+              {reverting ? "Revertendo..." : "Confirmar reversão"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </>
   );
 }
