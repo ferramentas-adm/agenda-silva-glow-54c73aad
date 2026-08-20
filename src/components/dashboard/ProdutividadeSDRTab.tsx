@@ -249,7 +249,7 @@ export default function ProdutividadeSDRTab({
   // - SDR individual selecionado: cada coluna = um dia do período.
   // - Todos + intervalo: cada coluna = um dia, somando todos os SDRs.
   // - Todos + dia único: cada coluna = um SDR.
-  const isDailyView = isIntervalMode || selectedSdr !== "all";
+  const isDailyView = (isIntervalMode && !groupBySdr) || selectedSdr !== "all";
 
   /** Pool restrito ao SDR escolhido no dropdown do gráfico. */
   const chartPool = useMemo(
