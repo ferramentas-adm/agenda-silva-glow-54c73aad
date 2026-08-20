@@ -2095,6 +2095,7 @@ const DayView = memo(function DayView({
   onClickAg: (ag: Agendamento) => void;
   onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
+  const { slots: DAY_HOURS } = useBusinessHours();
 
   const BLOCK_TYPE_LABELS: Record<string, string> = {
     almoco: "Almoço",
