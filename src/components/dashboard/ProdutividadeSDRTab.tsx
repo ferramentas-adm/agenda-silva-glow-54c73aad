@@ -255,6 +255,13 @@ export default function ProdutividadeSDRTab({
     [pool, selectedSdr, sdrIds],
   );
 
+  /** Denominador do gráfico (todas as marcadas) para o modo taxa. */
+  const chartBasePool = useMemo(
+    () =>
+      selectedSdr === "all" ? basePool : basePool.filter((a) => effectiveSdrId(a) === selectedSdr),
+    [basePool, selectedSdr, sdrIds],
+  );
+
   const chartData = useMemo(() => {
     if (isDailyView) {
       // Iteramos cada dia do intervalo e contamos a partir do pool.
@@ -263,6 +270,7 @@ export default function ProdutividadeSDRTab({
         end: parseISO(range.to),
       });
       const dayCounts = new Map<string, number>();
+      const dayBase = new Map<string, number>();
       const daySdrs = new Map<string, Set<string>>();
       chartPool.forEach((a) => {
         const day =
@@ -274,15 +282,21 @@ export default function ProdutividadeSDRTab({
           daySdrs.get(day)!.add(sid);
         }
       });
+      chartBasePool.forEach((a) => {
+        dayBase.set(a.scheduled_date, (dayBase.get(a.scheduled_date) || 0) + 1);
+      });
       const rows = days.map((d) => {
         const key = format(d, "yyyy-MM-dd");
         const total = dayCounts.get(key) || 0;
         const sdrsAtivos = daySdrs.get(key)?.size || 0;
+        const base = dayBase.get(key) || 0;
         return {
           sdr: format(d, "EEEE, dd/MM/yyyy", { locale: ptBR }),
           shortName: format(d, "dd/MM"),
           total,
           sdrsAtivos,
+          base,
+          taxa: isRateMode ? Number(pct(total, base).toFixed(1)) : 0,
           mediaPorSdr: sdrsAtivos > 0 ? Number((total / sdrsAtivos).toFixed(1)) : 0,
         };
       });
@@ -301,22 +315,32 @@ export default function ProdutividadeSDRTab({
       if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
     });
+    const bases = new Map<string, number>();
+    chartBasePool.forEach((a) => {
+      const key = effectiveSdrId(a);
+      if (!key) return;
+      bases.set(key, (bases.get(key) || 0) + 1);
+    });
     return filteredSdrProfiles
       .map((p) => {
         const parts = p.full_name.trim().split(/\s+/);
         const shortName =
           parts.length >= 2 ? `${parts[0]} ${parts[1].charAt(0).toUpperCase()}.` : parts[0];
+        const total = counts.get(p.user_id) || 0;
+        const base = bases.get(p.user_id) || 0;
         return {
           sdr: p.full_name,
           shortName,
-          total: counts.get(p.user_id) || 0,
+          total,
           sdrsAtivos: 0,
+          base,
+          taxa: isRateMode ? Number(pct(total, base).toFixed(1)) : 0,
           mediaPorSdr: 0,
           mediaMovel: undefined as number | undefined,
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [chartPool, filteredSdrProfiles, isDailyView, range, filter]);
+  }, [chartPool, chartBasePool, filteredSdrProfiles, isDailyView, range, filter, isRateMode]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
   const mediaPorDia = useMemo(() => {
