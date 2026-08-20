@@ -146,6 +146,8 @@ export default function ProdutividadeSDRTab({
   const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
   const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
   const [selectedSdr, setSelectedSdr] = useState<string>("all");
+  /** No modo intervalo: agrupar o gráfico por SDR (uma coluna por SDR) em vez de por dia. */
+  const [groupBySdr, setGroupBySdr] = useState(false);
 
   // ─── Lookup: somente user_ids de SDRs (filtrado por time se selecionado) ─
   const filteredSdrProfiles = useMemo(
@@ -247,7 +249,7 @@ export default function ProdutividadeSDRTab({
   // - SDR individual selecionado: cada coluna = um dia do período.
   // - Todos + intervalo: cada coluna = um dia, somando todos os SDRs.
   // - Todos + dia único: cada coluna = um SDR.
-  const isDailyView = isIntervalMode || selectedSdr !== "all";
+  const isDailyView = (isIntervalMode && !groupBySdr) || selectedSdr !== "all";
 
   /** Pool restrito ao SDR escolhido no dropdown do gráfico. */
   const chartPool = useMemo(
@@ -591,6 +593,17 @@ export default function ProdutividadeSDRTab({
                 ))}
             </SelectContent>
           </Select>
+          {isIntervalMode && selectedSdr === "all" && (
+            <Button
+              variant={groupBySdr ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setGroupBySdr((v) => !v)}
+              title="Agrupar o período inteiro por SDR (uma coluna por SDR)"
+            >
+              {groupBySdr ? "Por SDR" : "Por dia"}
+            </Button>
+          )}
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
             <span>
               Total: <span className="font-bold text-foreground">{totalGeral}</span>
