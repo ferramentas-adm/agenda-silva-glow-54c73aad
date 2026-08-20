@@ -2482,6 +2482,7 @@ const EditTimeSlots = memo(function EditTimeSlots({
   onSelect: (time: string) => void;
   currentAgId: string;
 }) {
+  const { slots: businessSlots } = useBusinessHours();
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
