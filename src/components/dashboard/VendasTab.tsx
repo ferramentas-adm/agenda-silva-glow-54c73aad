@@ -269,7 +269,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         updated_at: v.updated_at,
       }));
     },
-    refetchInterval: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
     staleTime: 60_000,
   });
 

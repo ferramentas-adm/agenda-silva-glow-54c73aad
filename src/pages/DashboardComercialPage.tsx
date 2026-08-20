@@ -223,7 +223,7 @@ export default function DashboardComercialPage() {
         q.gte("scheduled_date", minDate).lte("scheduled_date", maxDate).order("scheduled_date")
       );
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   // Previous month for comparison
@@ -252,7 +252,7 @@ export default function DashboardComercialPage() {
           .order("created_at", { ascending: false })
       );
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   // Vendas (vendeu=true) para os agendamentos atuais — usado para coluna "Vendas / Taxa"
@@ -260,14 +260,26 @@ export default function DashboardComercialPage() {
     const s = new Set<string>();
     agendamentos.forEach(a => s.add(a.id));
     createdAgs.forEach(a => s.add(a.id));
-    return Array.from(s);
+    return Array.from(s).sort();
   }, [agendamentos, createdAgs]);
 
+  // Assinatura estável do conjunto de IDs: a chave anterior usava apenas
+  // (length, primeiro, último) e podia reaproveitar cache de conjuntos diferentes.
+  const vendaAgIdsKey = useMemo(() => {
+    let h = 0;
+    for (const id of vendaAgIds) {
+      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+    }
+    return `${vendaAgIds.length}:${h}`;
+  }, [vendaAgIds]);
+
   const { data: soldVendas = [] } = useQuery<{ agendamento_id: string; valor: number | null }[]>({
-    queryKey: ["dashboard-comercial-vendas", vendaAgIds.length, vendaAgIds[0], vendaAgIds[vendaAgIds.length - 1]],
+    queryKey: ["dashboard-comercial-vendas", vendaAgIdsKey],
     enabled: vendaAgIds.length > 0,
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const out: { agendamento_id: string; valor: number | null }[] = [];
+      // 500 por bloco: acima disso a URL do PostgREST estoura e retorna 400.
       const chunkSize = 500;
       for (let i = 0; i < vendaAgIds.length; i += chunkSize) {
         const chunk = vendaAgIds.slice(i, i + chunkSize);
@@ -283,7 +295,7 @@ export default function DashboardComercialPage() {
       }
       return out;
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const soldSet = useMemo(() => new Set(soldVendas.map(v => v.agendamento_id)), [soldVendas]);

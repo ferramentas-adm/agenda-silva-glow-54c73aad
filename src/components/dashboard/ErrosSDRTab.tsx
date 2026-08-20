@@ -80,7 +80,7 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
       if (error) throw error;
       return (data ?? []) as unknown as VendaRow[];
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const { data: agendErrs = [] } = useQuery<AgendamentoErrRow[]>({
@@ -97,7 +97,7 @@ export default function ErrosSDRTab({ currentDate, dateRange }: Props) {
       if (error) throw error;
       return (data ?? []) as AgendamentoErrRow[];
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const unified = useMemo<ErrorItem[]>(() => {

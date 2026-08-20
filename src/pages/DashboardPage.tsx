@@ -357,7 +357,7 @@ export function CalendarContent() {
     },
     // Lista de papéis muda raramente — evita refetches de minuto em minuto.
     staleTime: 30 * 60_000,
-    gcTime: Infinity,
+    gcTime: 30 * 60_000,
   });
 
   // Fetch profiles for name resolution (responsável, briefing reader, etc.)
@@ -373,21 +373,31 @@ export function CalendarContent() {
     },
     // Mapa de nomes muda raramente; mantém em cache pela sessão.
     staleTime: 30 * 60_000,
-    gcTime: Infinity,
+    gcTime: 30 * 60_000,
   });
 
   // Realtime: ouve mudanças em agendamentos para TODOS os usuários (independente da função).
-  // Channel name idempotente por usuário evita acúmulo de canais no servidor Realtime.
+  // P1: eventos são agrupados (debounce) e invalidam apenas as chaves do dia visível,
+  // em vez da raiz ["agendamentos"] — evita refetch em cascata de todas as telas.
   useEffect(() => {
     if (!user?.id) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
       .channel(`agendamentos-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "agendamentos" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+        if (timer) return;
+        timer = setTimeout(() => {
+          timer = null;
+          queryClient.invalidateQueries({ queryKey: ["agendamentos", dateStr], exact: true });
+          queryClient.invalidateQueries({ queryKey: ["slot-counts-v2", dateStr], exact: true });
+        }, 1500);
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient, user?.id]);
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, user?.id, dateStr]);
 
   // Fetch Google Calendar events for all selected closers
   const closerIds = useMemo(() => Array.from(selectedIds).sort(), [selectedIds]);

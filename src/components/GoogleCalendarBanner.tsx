@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGoogleAuthUrl } from "@/hooks/useGoogleCalendar";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, X } from "lucide-react";
@@ -14,7 +14,7 @@ import { toast } from "sonner";
 export default function GoogleCalendarBanner() {
   const { user } = useAuth();
   const { getAuthUrl } = useGoogleAuthUrl();
-  const queryClient = useQueryClient();
+
   
   const [connecting, setConnecting] = useState(false);
 
@@ -55,14 +55,8 @@ export default function GoogleCalendarBanner() {
     },
   });
 
-  // Refetch when window regains focus (after OAuth popup closes)
-  useEffect(() => {
-    const onFocus = () => {
-      queryClient.invalidateQueries({ queryKey: ["closer-has-google-token", closerMatch?.id] });
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [queryClient, closerMatch?.id]);
+  // Sem listener de `focus`: o `refetchOnWindowFocus` da query acima já cobre o
+  // retorno do popup de OAuth, respeitando o staleTime de 5 min.
 
   // Only show for closers without token
   if (!closerMatch || hasToken) return null;

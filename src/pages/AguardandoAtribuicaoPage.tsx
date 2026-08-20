@@ -67,7 +67,7 @@ export default function AguardandoAtribuicaoPage() {
   const { data: pending = [], isLoading } = useQuery<Agendamento[]>({
     queryKey: ["pending-closer-assignment", todayStr],
     enabled: can("assign_closer"),
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agendamentos")

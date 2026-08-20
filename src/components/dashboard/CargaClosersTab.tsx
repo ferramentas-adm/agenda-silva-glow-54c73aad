@@ -112,7 +112,7 @@ export default function CargaClosersTab({ restrictToCloserId }: { restrictToClos
       const { data } = await q;
       return (data ?? []) as TaskRow[];
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const { data: followUps = [] } = useQuery({
@@ -131,7 +131,7 @@ export default function CargaClosersTab({ restrictToCloserId }: { restrictToClos
       const rows = (data ?? []) as unknown as FollowUpVendaRow[];
       return rows.filter((r) => !r.agendamentos?.deleted_at);
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
 
