@@ -75,7 +75,9 @@ export function useOverdueMeetings() {
         .from("agendamentos")
         .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at")
         .is("deleted_at", null)
-        .in("status", ["agendada", "confirmada", "nao_confirmada", "pendente"])
+        // "pendente" (Aguardando atribuição) NÃO trava ninguém: é responsabilidade
+        // exclusiva de gestores/moderadores atribuir o closer.
+        .in("status", ["agendada", "confirmada", "nao_confirmada"])
         .lte("scheduled_date", today)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
