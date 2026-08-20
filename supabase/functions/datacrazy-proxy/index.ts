@@ -72,26 +72,32 @@ function buildG1FallbackUrl(url: string): string | null {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  maxRetries = 2,
+  timeoutMs = 20_000,
+): Promise<Response> {
   let attempt = 0;
-  let lastResponse: Response | null = null;
   while (attempt <= maxRetries) {
-    const res = await fetch(url, init);
-    if (res.status !== 429) return res;
-    lastResponse = res;
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    // Última tentativa: devolve a resposta com o body intacto.
+    if (res.status !== 429 || attempt === maxRetries) return res;
     const retryAfter = res.headers.get("Retry-After");
     let waitMs = 1500 * Math.pow(2, attempt);
     if (retryAfter) {
       const parsed = parseInt(retryAfter, 10);
       if (!isNaN(parsed)) waitMs = Math.min(parsed * 1000, 8000);
     }
-    // Descarta o body para liberar a conexão.
+    // Descarta o body para liberar a conexão antes de tentar de novo.
     try { await res.text(); } catch { /* noop */ }
     await sleep(waitMs);
     attempt += 1;
   }
-  return lastResponse!;
+  // Inalcançável, mas mantém o tipo.
+  return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
