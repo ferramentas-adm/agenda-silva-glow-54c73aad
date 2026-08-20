@@ -73,7 +73,7 @@ export function useOverdueMeetings() {
         .from("agendamentos")
         .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at")
         .is("deleted_at", null)
-        .in("status", ["agendada", "confirmada"])
+        .in("status", ["agendada", "confirmada", "nao_confirmada", "pendente"])
         .lte("scheduled_date", today)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
@@ -93,6 +93,7 @@ export function useOverdueMeetings() {
       let overdue = list.filter(
         (m) => meetingEpochMin(m.scheduled_date, m.scheduled_time) + OVERDUE_GRACE_MINUTES <= nowMin,
       );
+
 
       // Regra de repasse: o handoff TRANSFERE responsabilidade — sempre um lado
       // fica travado até a reunião ser resolvida. Quem fez o handoff MAIS RECENTE
