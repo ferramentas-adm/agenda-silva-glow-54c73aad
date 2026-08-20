@@ -10,13 +10,10 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { format, subDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Clock, TrendingUp, TrendingDown, Minus, CalendarDays } from "lucide-react";
+import { format, parseISO, differenceInCalendarDays, subDays } from "date-fns";
+import { Clock, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { BR_TZ, brPartsOf, pickedDateToYMD } from "@/lib/timezone";
 
@@ -33,11 +30,9 @@ interface Props {
   createdAgs: HourAgendamento[];
   /** user_ids de SDRs considerados (já filtrados por time). */
   sdrIds: Set<string>;
-  /** Dia base da análise (o mesmo do filtro superior). */
-  baseDate: Date;
+  /** Período selecionado no filtro único da página (yyyy-MM-dd). */
+  range: { from: string; to: string };
 }
-
-type CompareMode = "ontem" | "semana" | "media7" | "custom";
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 7); // 07h — 23h
 
@@ -49,63 +44,58 @@ const brDateFmt = new Intl.DateTimeFormat("en-CA", {
 });
 
 /**
- * Produtividade por hora dos SDRs (agendas criadas), comparando o dia base
- * com outro dia (ontem, mesmo dia da semana anterior, média dos 7 dias
- * anteriores ou uma data escolhida).
+ * Produtividade por hora dos SDRs (agendas criadas) no período selecionado no
+ * filtro único da página, comparado com o período anterior de mesmo tamanho.
  */
-export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, baseDate }: Props) {
-  const [mode, setMode] = useState<CompareMode>("ontem");
-  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
-  const [dateOpen, setDateOpen] = useState(false);
+export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: Props) {
   const [cumulative, setCumulative] = useState(false);
 
-  const baseStr = pickedDateToYMD(baseDate);
+  const from = parseISO(range.from);
+  const to = parseISO(range.to);
+  const days = Math.max(1, differenceInCalendarDays(to, from) + 1);
 
-  // Datas de comparação (uma ou várias, no caso da média).
-  const compare = useMemo(() => {
-    if (mode === "ontem") {
-      return { dates: [pickedDateToYMD(subDays(baseDate, 1))], label: "Dia anterior", isAvg: false };
-    }
-    if (mode === "semana") {
-      const d = subDays(baseDate, 7);
-      return {
-        dates: [pickedDateToYMD(d)],
-        label: `${format(d, "EEEE, dd/MM", { locale: ptBR })}`,
-        isAvg: false,
-      };
-    }
-    if (mode === "custom" && customDate) {
-      return { dates: [pickedDateToYMD(customDate)], label: format(customDate, "dd/MM/yyyy"), isAvg: false };
-    }
-    const dates = Array.from({ length: 7 }, (_, i) => pickedDateToYMD(subDays(baseDate, i + 1)));
-    return { dates, label: "Média dos 7 dias anteriores", isAvg: true };
-  }, [mode, customDate, baseDate]);
+  const periodLabel =
+    range.from === range.to
+      ? format(to, "dd/MM/yyyy")
+      : `${format(from, "dd/MM")} a ${format(to, "dd/MM")}`;
 
-  // Contagem por hora (criação, fuso BRT) — apenas agendas novas de SDR.
+  // Conjunto de dias do período e do período anterior equivalente.
+  const { baseDays, cmpDays, cmpLabel } = useMemo(() => {
+    const base = new Set<string>();
+    for (let i = 0; i < days; i++) base.add(pickedDateToYMD(subDays(to, i)));
+    const cmp = new Set<string>();
+    const cmpTo = subDays(from, 1);
+    for (let i = 0; i < days; i++) cmp.add(pickedDateToYMD(subDays(cmpTo, i)));
+    const cmpFrom = subDays(from, days);
+    const label =
+      days === 1
+        ? format(cmpTo, "dd/MM/yyyy")
+        : `${format(cmpFrom, "dd/MM")} a ${format(cmpTo, "dd/MM")}`;
+    return { baseDays: base, cmpDays: cmp, cmpLabel: label };
+  }, [from, to, days]);
+
   const { data, totals } = useMemo(() => {
     const baseByHour = new Map<number, number>();
     const cmpByHour = new Map<number, number>();
-    const cmpSet = new Set(compare.dates);
 
     createdAgs.forEach((a) => {
       const sdr = a.sdr_responsavel_id || a.created_by;
       if (!sdr || !sdrIds.has(sdr)) return;
       if (a.original_agendamento_id) return;
       const day = brDateFmt.format(new Date(a.created_at));
-      const isBase = day === baseStr;
-      const isCmp = cmpSet.has(day);
+      const isBase = baseDays.has(day);
+      const isCmp = cmpDays.has(day);
       if (!isBase && !isCmp) return;
       const hour = brPartsOf(a.created_at).hour;
       if (isBase) baseByHour.set(hour, (baseByHour.get(hour) || 0) + 1);
       if (isCmp) cmpByHour.set(hour, (cmpByHour.get(hour) || 0) + 1);
     });
 
-    const divisor = compare.isAvg ? compare.dates.length : 1;
     let accBase = 0;
     let accCmp = 0;
     const rows = HOURS.map((h) => {
       const b = baseByHour.get(h) || 0;
-      const c = (cmpByHour.get(h) || 0) / divisor;
+      const c = cmpByHour.get(h) || 0;
       accBase += b;
       accCmp += c;
       return {
@@ -117,11 +107,10 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, baseDate 
     });
 
     return { data: rows, totals: { base: accBase, cmp: accCmp } };
-  }, [createdAgs, sdrIds, baseStr, compare, cumulative]);
+  }, [createdAgs, sdrIds, baseDays, cmpDays, cumulative]);
 
   const delta = totals.cmp > 0 ? ((totals.base - totals.cmp) / totals.cmp) * 100 : totals.base > 0 ? 100 : 0;
 
-  // Melhor e pior hora em relação à comparação
   const highlights = useMemo(() => {
     if (cumulative) return null;
     const withDiff = data.map((r) => ({ ...r, diff: r.base - r.cmp }));
@@ -132,16 +121,11 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, baseDate 
     return { best, worst };
   }, [data, cumulative]);
 
-  const nowHour = brPartsOf().hour;
-  const isToday = baseStr === brDateFmt.format(new Date());
-
   return (
     <div className="rounded-xl border border-primary/10 bg-card p-4 space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <Clock className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold">
-          Produtividade por hora — {format(baseDate, "dd/MM/yyyy")}
-        </h3>
+        <h3 className="text-sm font-semibold">Produtividade por hora — {periodLabel}</h3>
         <span
           className={cn(
             "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border",
@@ -151,57 +135,14 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, baseDate 
                 ? "text-destructive border-destructive/30 bg-destructive/10"
                 : "text-muted-foreground border-border bg-muted/40",
           )}
-          title={`Dia base: ${totals.base} · Comparação: ${totals.cmp.toFixed(1)}`}
+          title={`Período: ${totals.base} · Período anterior: ${totals.cmp}`}
         >
           {delta > 0 ? <TrendingUp className="h-3 w-3" /> : delta < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
           {delta > 0 ? "+" : ""}
-          {delta.toFixed(0)}% vs comparação
+          {delta.toFixed(0)}% vs período anterior
         </span>
 
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 border rounded-md p-0.5">
-            {([
-              { v: "ontem", l: "Ontem" },
-              { v: "semana", l: "Semana passada" },
-              { v: "media7", l: "Média 7d" },
-            ] as { v: CompareMode; l: string }[]).map((o) => (
-              <Button
-                key={o.v}
-                variant={mode === o.v ? "default" : "ghost"}
-                size="sm"
-                className="h-6 text-xs px-2"
-                onClick={() => setMode(o.v)}
-              >
-                {o.l}
-              </Button>
-            ))}
-            <Popover open={dateOpen} onOpenChange={setDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={mode === "custom" ? "default" : "ghost"}
-                  size="sm"
-                  className="h-6 text-xs px-2 gap-1"
-                >
-                  <CalendarDays className="h-3 w-3" />
-                  {mode === "custom" && customDate ? format(customDate, "dd/MM") : "Outro dia"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={customDate}
-                  onSelect={(d) => {
-                    if (!d) return;
-                    setCustomDate(d);
-                    setMode("custom");
-                    setDateOpen(false);
-                  }}
-                  locale={ptBR}
-                  className="p-3 pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+        <div className="ml-auto">
           <Button
             variant={cumulative ? "default" : "outline"}
             size="sm"
@@ -214,8 +155,8 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, baseDate 
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Agendas novas criadas por SDRs, pela hora de criação (BRT). Comparação: {compare.label}.
-        {isToday && !cumulative && ` Hoje já são ${String(nowHour).padStart(2, "0")}h.`}
+        Agendas novas criadas por SDRs, pela hora de criação (BRT), somando o período do filtro. Comparação:
+        período anterior equivalente ({cmpLabel}).
       </p>
 
       <div className="h-72 w-full">
@@ -235,11 +176,11 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, baseDate 
               labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="base" name={format(baseDate, "dd/MM")} fill="hsl(var(--primary))" fillOpacity={0.85} radius={[6, 6, 0, 0]} />
+            <Bar dataKey="base" name={periodLabel} fill="hsl(var(--primary))" fillOpacity={0.85} radius={[6, 6, 0, 0]} />
             <Line
               type="monotone"
               dataKey="cmp"
-              name={compare.label}
+              name={`Período anterior (${cmpLabel})`}
               stroke="hsl(38 92% 50%)"
               strokeWidth={2}
               strokeDasharray="5 5"
@@ -269,8 +210,8 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, baseDate 
           <thead>
             <tr className="text-muted-foreground">
               <th className="text-left font-medium py-1">Hora</th>
-              <th className="text-right font-medium py-1">{format(baseDate, "dd/MM")}</th>
-              <th className="text-right font-medium py-1">Comparação</th>
+              <th className="text-right font-medium py-1">{periodLabel}</th>
+              <th className="text-right font-medium py-1">Período anterior</th>
               <th className="text-right font-medium py-1">Δ</th>
             </tr>
           </thead>
