@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const API_BASE = "https://api.api4com.com";
+const API_BASE = "https://api.api4com.com/api/v1";
 const TOKEN = Deno.env.get("API4COM_API_TOKEN") ?? "";
 
 function json(body: unknown, status = 200) {
@@ -20,11 +20,11 @@ function digits(v: string) {
   return (v || "").replace(/\D/g, "");
 }
 
-/** Normaliza para E.164 brasileiro sem "+" (ex: 5511999998888). */
+/** Normaliza número brasileiro para discagem (DDD + número, sem +55). */
 function normalizeBr(phone: string) {
   let d = digits(phone);
-  if (d.startsWith("0")) d = d.replace(/^0+/, "");
-  if (!d.startsWith("55") && (d.length === 10 || d.length === 11)) d = "55" + d;
+  if (d.startsWith("55") && d.length >= 12) d = d.slice(2);
+  d = d.replace(/^0+/, "");
   return d;
 }
 
@@ -32,7 +32,8 @@ async function api4com(path: string, init: RequestInit = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${TOKEN}`,
+      // A API4COM espera o token puro no header Authorization.
+      Authorization: TOKEN,
       "Content-Type": "application/json",
       Accept: "application/json",
       ...(init.headers ?? {}),
@@ -50,57 +51,29 @@ async function api4com(path: string, init: RequestInit = {}) {
 
 /** Descobre o ramal do usuário na API4COM casando pelo e-mail. */
 async function findExtensionByEmail(email: string) {
-  const candidates = ["/extensions", "/v1/extensions", "/api/v1/extensions", "/users", "/v1/users"];
-  const tried: unknown[] = [];
-  for (const p of candidates) {
-    const r = await api4com(p);
-    tried.push({ path: p, status: r.status });
-    if (!r.ok || !r.body) continue;
-    const raw: any = r.body;
-    const list: any[] = Array.isArray(raw)
-      ? raw
-      : Array.isArray(raw?.data)
-        ? raw.data
-        : Array.isArray(raw?.extensions)
-          ? raw.extensions
-          : Array.isArray(raw?.items)
-            ? raw.items
-            : [];
-    const hit = list.find(
-      (x) => String(x?.email ?? x?.user_email ?? x?.login ?? "").toLowerCase() === email.toLowerCase(),
-    );
-    if (hit) {
-      const ext = String(
-        hit.extension ?? hit.extension_number ?? hit.number ?? hit.username ?? hit.id ?? "",
-      );
-      if (ext) return { extension: ext, tried };
-    }
-  }
-  return { extension: null as string | null, tried };
+  const r = await api4com("/extensions");
+  const tried = [{ path: "/extensions", status: r.status }];
+  if (!r.ok || !r.body) return { extension: null as string | null, tried };
+  const raw: any = r.body;
+  const list: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+  const hit = list.find(
+    (x) => String(x?.email_address ?? x?.email ?? "").toLowerCase() === email.toLowerCase(),
+  );
+  const ext = hit ? String(hit.ramal ?? hit.extension ?? "") : "";
+  return { extension: ext || null, tried };
 }
 
-/** Tenta originar a chamada em endpoints conhecidos de click-to-call. */
+/** Origina a chamada (click-to-call) via POST /dialer. */
 async function originateCall(extension: string, destination: string) {
-  const attempts: unknown[] = [];
-  const bodies: Array<{ path: string; body: Record<string, unknown> }> = [
-    { path: "/calls", body: { from: extension, to: destination } },
-    { path: "/v1/calls", body: { from: extension, to: destination } },
-    { path: "/api/v1/calls", body: { from: extension, to: destination } },
-    { path: "/click2call", body: { extension, destination } },
-    { path: "/v1/click2call", body: { extension, destination } },
-    { path: "/api/v1/click2call", body: { extension, destination } },
-  ];
-  for (const c of bodies) {
-    const r = await api4com(c.path, { method: "POST", body: JSON.stringify(c.body) });
-    attempts.push({ path: c.path, status: r.status, body: r.body });
-    if (r.ok) {
-      const b: any = r.body ?? {};
-      const callId =
-        b?.id ?? b?.call_id ?? b?.callId ?? b?.uuid ?? b?.data?.id ?? b?.data?.call_id ?? null;
-      return { ok: true, callId: callId ? String(callId) : null, raw: r.body, attempts };
-    }
-  }
-  return { ok: false, callId: null, raw: null, attempts };
+  const r = await api4com("/dialer", {
+    method: "POST",
+    body: JSON.stringify({ from: extension, to: destination }),
+  });
+  const attempts = [{ path: "/dialer", status: r.status, body: r.body }];
+  if (!r.ok) return { ok: false, callId: null, raw: r.body, attempts };
+  const b: any = r.body ?? {};
+  const callId = b?.id ?? b?.call_id ?? b?.uuid ?? b?.data?.id ?? null;
+  return { ok: true, callId: callId ? String(callId) : null, raw: r.body, attempts };
 }
 
 Deno.serve(async (req) => {
