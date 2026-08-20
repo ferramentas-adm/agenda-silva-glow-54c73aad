@@ -587,11 +587,17 @@ export default function ProdutividadeSDRTab({
                     color: "hsl(var(--primary))",
                   }}
                   labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
-                  formatter={(value: number, name) =>
-                    name === "mediaMovel"
-                      ? [Number(value).toFixed(1), "Média móvel (7d)"]
-                      : [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel]
-                  }
+                  formatter={(value: number, name, item) => {
+                    if (name === "mediaMovel") return [Number(value).toFixed(1), "Média móvel (7d)"];
+                    if (name === "mediaPorSdr") {
+                      const ativos = (item?.payload as { sdrsAtivos?: number })?.sdrsAtivos ?? 0;
+                      return [
+                        `${Number(value).toFixed(1)} (${ativos} SDR${ativos !== 1 ? "s" : ""} ativo${ativos !== 1 ? "s" : ""})`,
+                        "Média por SDR ativo",
+                      ];
+                    }
+                    return [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel];
+                  }}
                   labelFormatter={(label, payload) => {
                     const entry = payload?.[0]?.payload as { sdr?: string } | undefined;
                     return entry?.sdr ?? label;
@@ -613,6 +619,18 @@ export default function ProdutividadeSDRTab({
                     dot={false}
                   />
                 )}
+                {showMediaPorSdr && (
+                  <Line
+                    type="monotone"
+                    dataKey="mediaPorSdr"
+                    name="Média por SDR ativo"
+                    stroke="hsl(160 84% 39%)"
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                    dot={false}
+                  />
+                )}
+
               </ComposedChart>
             </ResponsiveContainer>
           </div>
