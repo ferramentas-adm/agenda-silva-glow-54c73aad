@@ -18,6 +18,8 @@ export interface OverdueMeeting {
   closer_handoff_at: string | null;
   closer_name: string | null;
   creator_name: string | null;
+  /** Quem está com a responsabilidade AGORA: primeiro o SDR, depois o Closer. */
+  stage: "sdr" | "closer";
 }
 
 const OVERDUE_GRACE_MINUTES = 65;
