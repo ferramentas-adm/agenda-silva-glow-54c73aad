@@ -507,6 +507,19 @@ export default function DashboardComercialPage() {
   const goNext = () => { setDateRange(undefined); setCurrentDate(d => addDays(d, 1)); };
   const goToday = () => { setDateRange(undefined); setCurrentDate(new Date()); };
 
+  /** Desloca o período atual: 1 dia (dia único) ou o tamanho do intervalo. */
+  const shiftPeriod = (direction: -1 | 1) => {
+    const from = dateRange?.from ?? currentDate;
+    const to = dateRange?.to ?? currentDate;
+    const span = differenceInCalendarDays(to, from) + 1;
+    const newFrom = addDays(from, direction * span);
+    const newTo = addDays(to, direction * span);
+    setCurrentDate(newFrom);
+    if (span <= 1) setDateRange(undefined);
+    else setDateRange({ from: newFrom, to: newTo });
+  };
+
+
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-metrics"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-prev"] });
@@ -616,7 +629,12 @@ export default function DashboardComercialPage() {
           <div className="flex items-center gap-3">
             <div className="ml-auto flex items-center gap-1">
 
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => shiftPeriod(-1)} title="Período anterior">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
               <FacebookDateRangePicker
+
                 value={{
                   from: dateRange?.from ?? currentDate,
                   to: dateRange?.to ?? currentDate,
@@ -635,7 +653,11 @@ export default function DashboardComercialPage() {
                 className="h-7 ml-1"
                 buttonSize="sm"
               />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => shiftPeriod(1)} title="Período seguinte">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7 ml-1" onClick={handleRefresh} title="Atualizar dados">
+
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
