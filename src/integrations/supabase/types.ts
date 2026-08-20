@@ -1033,6 +1033,13 @@ export type Database = {
       is_manager: { Args: never; Returns: boolean }
       is_manager_or_apresentador: { Args: never; Returns: boolean }
       is_manager_or_sdr: { Args: never; Returns: boolean }
+      limpar_registros_antigos: {
+        Args: never
+        Returns: {
+          audit_logs_removidos: number
+          notificacoes_removidas: number
+        }[]
+      }
       transfer_agendamento_closer: {
         Args: { _agendamento_id: string; _new_closer_id: string }
         Returns: boolean
