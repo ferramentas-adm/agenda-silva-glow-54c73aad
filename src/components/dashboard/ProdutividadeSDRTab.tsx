@@ -98,9 +98,10 @@ function getHourFromTime(time?: string | null): number | null {
   return null;
 }
 
-/** Classifica em manhã/tarde/noite. */
-function getShift(hour: number | null): "manha" | "tarde" | "noite" | "outros" {
+/** Classifica em madrugada/manhã/tarde/noite. */
+function getShift(hour: number | null): "madrugada" | "manha" | "tarde" | "noite" | "outros" {
   if (hour === null) return "outros";
+  if (hour >= 0 && hour < 6) return "madrugada";
   if (hour >= 6 && hour < 12) return "manha";
   if (hour >= 12 && hour < 18) return "tarde";
   if (hour >= 18 && hour < 24) return "noite";
