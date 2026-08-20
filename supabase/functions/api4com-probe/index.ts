@@ -2,19 +2,13 @@ const TOKEN = Deno.env.get("API4COM_API_TOKEN") ?? "";
 const BASE = "https://api.api4com.com/api/v1";
 
 const TARGETS: Array<{ path: string; method: string; body?: unknown }> = [
-  { path: "", method: "GET" },
-  { path: "/", method: "GET" },
-  { path: "/calls", method: "OPTIONS" },
-  { path: "/calls/originate", method: "POST", body: { from: "9999", to: "000" } },
-  { path: "/extensions/213179/call", method: "POST", body: { to: "000" } },
-  { path: "/extensions/213179/click2call", method: "POST", body: { to: "000" } },
-  { path: "/extensions/213179", method: "GET" },
-  { path: "/webphone", method: "GET" },
-  { path: "/dialer", method: "GET" },
-  { path: "/queues", method: "GET" },
-  { path: "/swagger.json", method: "GET" },
-  { path: "/openapi.json", method: "GET" },
-  { path: "/explorer", method: "GET" },
+  { path: "/dialer", method: "POST", body: { from: "9999", to: "000" } },
+  { path: "/dialer/call", method: "POST", body: { from: "9999", to: "000" } },
+  { path: "/dialer/dial", method: "POST", body: { from: "9999", to: "000" } },
+  { path: "/dialer/click2call", method: "POST", body: { from: "9999", to: "000" } },
+  { path: "/dialer/originate", method: "POST", body: { from: "9999", to: "000" } },
+  { path: "/dialers", method: "GET" },
+  { path: "/dialer/x", method: "GET" },
 ];
 
 Deno.serve(async () => {
@@ -26,12 +20,7 @@ Deno.serve(async () => {
         headers: { Authorization: TOKEN, Accept: "application/json", "Content-Type": "application/json" },
         body: t.body ? JSON.stringify(t.body) : undefined,
       });
-      out.push({
-        ...t,
-        status: res.status,
-        allow: res.headers.get("allow"),
-        response: (await res.text()).slice(0, 400),
-      });
+      out.push({ ...t, status: res.status, response: (await res.text()).slice(0, 500) });
     } catch (e) {
       out.push({ ...t, error: String(e) });
     }
