@@ -289,6 +289,8 @@ export default function ProdutividadeSDRTab({
           sdr: p.full_name,
           shortName,
           total: counts.get(p.user_id) || 0,
+          sdrsAtivos: 0,
+          mediaPorSdr: 0,
           mediaMovel: undefined as number | undefined,
         };
       })
@@ -300,6 +302,16 @@ export default function ProdutividadeSDRTab({
     const days = eachDayOfInterval({ start: parseISO(range.from), end: parseISO(range.to) }).length || 1;
     return totalGeral / days;
   }, [totalGeral, range]);
+
+  /** Média de agendamentos por SDR ativo (média dos dias com pelo menos 1 SDR ativo). */
+  const showMediaPorSdr = isDailyView && selectedSdr === "all";
+  const mediaPorSdrAtivo = useMemo(() => {
+    if (!showMediaPorSdr) return 0;
+    const dias = chartData.filter((c) => (c.sdrsAtivos || 0) > 0);
+    if (dias.length === 0) return 0;
+    return dias.reduce((s, c) => s + c.total / c.sdrsAtivos, 0) / dias.length;
+  }, [chartData, showMediaPorSdr]);
+
 
 
   // ─── KPIs (totais de Criadas / Compareceu / Não compareceu)  ──
