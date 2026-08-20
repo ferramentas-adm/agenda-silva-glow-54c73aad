@@ -13,14 +13,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-const HIDE_ON_PREFIXES = ["/agendar", "/cancelar-reuniao", "/venda/", "/lead-detalhes"];
+// Somente as telas necessárias para RESOLVER a pendência ficam liberadas.
+const HIDE_ON_PREFIXES = ["/cancelar-reuniao", "/venda/", "/lead-detalhes"];
 
 const STATUS_LABEL: Record<string, string> = {
-  agendada: "Agendada",
+  agendada: "Sem confirmar",
   confirmada: "Confirmada",
+  nao_confirmada: "Não confirmada",
+  pendente: "Aguardando atribuição",
 };
 
 type DirectStatus = "no_show" | "cancelada";
+
 
 export default function OverdueMeetingsLockOverlay() {
   const { overdue, count, myCloserId, refetch } = useOverdueMeetings();
