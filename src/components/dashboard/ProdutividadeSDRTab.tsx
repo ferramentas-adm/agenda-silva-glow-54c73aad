@@ -224,6 +224,25 @@ export default function ProdutividadeSDRTab({
     });
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
+  // ─── Modo taxa (Compareceu / Não compareceu) ─────────────────
+  // Nesses filtros exibimos, além do volume, a taxa sobre o total de reuniões
+  // marcadas para o mesmo recorte (mesmo dia / mesmo turno / mesmo SDR).
+  const isRateMode = filter === "compareceu" || filter === "nao_compareceu";
+  const rateLabel = filter === "nao_compareceu" ? "Taxa de não comparecimento" : "Taxa de comparecimento";
+
+  /** Denominador: todas as reuniões agendadas PARA o período (qualquer status). */
+  const basePool = useMemo(() => {
+    if (!isRateMode) return [] as AgendamentoMetric[];
+    return agendamentos.filter(
+      (a) =>
+        effectiveSdrId(a) &&
+        a.scheduled_date >= range.from &&
+        a.scheduled_date <= range.to,
+    );
+  }, [agendamentos, sdrIds, range, isRateMode]);
+
+  const pct = (value: number, base: number) => (base > 0 ? (value / base) * 100 : 0);
+
   // ─── Dados do gráfico ─────────────────────────────────────────
   // - SDR individual selecionado: cada coluna = um dia do período.
   // - Todos + intervalo: cada coluna = um dia, somando todos os SDRs.
@@ -236,6 +255,13 @@ export default function ProdutividadeSDRTab({
     [pool, selectedSdr, sdrIds],
   );
 
+  /** Denominador do gráfico (todas as marcadas) para o modo taxa. */
+  const chartBasePool = useMemo(
+    () =>
+      selectedSdr === "all" ? basePool : basePool.filter((a) => effectiveSdrId(a) === selectedSdr),
+    [basePool, selectedSdr, sdrIds],
+  );
+
   const chartData = useMemo(() => {
     if (isDailyView) {
       // Iteramos cada dia do intervalo e contamos a partir do pool.
@@ -244,6 +270,7 @@ export default function ProdutividadeSDRTab({
         end: parseISO(range.to),
       });
       const dayCounts = new Map<string, number>();
+      const dayBase = new Map<string, number>();
       const daySdrs = new Map<string, Set<string>>();
       chartPool.forEach((a) => {
         const day =
@@ -255,15 +282,21 @@ export default function ProdutividadeSDRTab({
           daySdrs.get(day)!.add(sid);
         }
       });
+      chartBasePool.forEach((a) => {
+        dayBase.set(a.scheduled_date, (dayBase.get(a.scheduled_date) || 0) + 1);
+      });
       const rows = days.map((d) => {
         const key = format(d, "yyyy-MM-dd");
         const total = dayCounts.get(key) || 0;
         const sdrsAtivos = daySdrs.get(key)?.size || 0;
+        const base = dayBase.get(key) || 0;
         return {
           sdr: format(d, "EEEE, dd/MM/yyyy", { locale: ptBR }),
           shortName: format(d, "dd/MM"),
           total,
           sdrsAtivos,
+          base,
+          taxa: isRateMode ? Number(pct(total, base).toFixed(1)) : 0,
           mediaPorSdr: sdrsAtivos > 0 ? Number((total / sdrsAtivos).toFixed(1)) : 0,
         };
       });
@@ -282,24 +315,36 @@ export default function ProdutividadeSDRTab({
       if (!key) return;
       counts.set(key, (counts.get(key) || 0) + 1);
     });
+    const bases = new Map<string, number>();
+    chartBasePool.forEach((a) => {
+      const key = effectiveSdrId(a);
+      if (!key) return;
+      bases.set(key, (bases.get(key) || 0) + 1);
+    });
     return filteredSdrProfiles
       .map((p) => {
         const parts = p.full_name.trim().split(/\s+/);
         const shortName =
           parts.length >= 2 ? `${parts[0]} ${parts[1].charAt(0).toUpperCase()}.` : parts[0];
+        const total = counts.get(p.user_id) || 0;
+        const base = bases.get(p.user_id) || 0;
         return {
           sdr: p.full_name,
           shortName,
-          total: counts.get(p.user_id) || 0,
+          total,
           sdrsAtivos: 0,
+          base,
+          taxa: isRateMode ? Number(pct(total, base).toFixed(1)) : 0,
           mediaPorSdr: 0,
           mediaMovel: undefined as number | undefined,
         };
       })
       .sort((a, b) => b.total - a.total);
-  }, [chartPool, filteredSdrProfiles, isDailyView, range, filter]);
+  }, [chartPool, chartBasePool, filteredSdrProfiles, isDailyView, range, filter, isRateMode]);
 
   const totalGeral = chartData.reduce((s, c) => s + c.total, 0);
+  const totalBaseGrafico = chartData.reduce((s, c) => s + (c.base || 0), 0);
+  const taxaGrafico = pct(totalGeral, totalBaseGrafico);
   const mediaPorDia = useMemo(() => {
     const days = eachDayOfInterval({ start: parseISO(range.from), end: parseISO(range.to) }).length || 1;
     return totalGeral / days;
@@ -370,8 +415,7 @@ export default function ProdutividadeSDRTab({
   //    HORÁRIO AGENDADO (scheduled_time).
   // Para "Compareceu" e "Não compareceu" no dia de hoje, ainda aplicamos
   // o corte temporal: só conta se o horário agendado já tiver chegado.
-  const shiftCounts = useMemo(() => {
-    const acc = { madrugada: 0, manha: 0, tarde: 0, noite: 0 };
+  const { shiftCounts, shiftBase } = useMemo(() => {
     const now = new Date();
     const todayStr = brDateFmt.format(now);
     const nowParts = new Intl.DateTimeFormat("en-GB", {
@@ -383,48 +427,52 @@ export default function ProdutividadeSDRTab({
     const nowHour = Number(nowParts.find((p) => p.type === "hour")?.value ?? 0);
     const nowMin = Number(nowParts.find((p) => p.type === "minute")?.value ?? 0);
 
-    pool.forEach((a) => {
-      let hour: number | null;
-      let minute = 0;
+    const tally = (list: AgendamentoMetric[]) => {
+      const acc = { madrugada: 0, manha: 0, tarde: 0, noite: 0 };
+      list.forEach((a) => {
+        let hour: number | null;
+        let minute = 0;
 
-      if (filter === "criadas") {
-        // Hora de criação no fuso de Brasília
-        const parts = new Intl.DateTimeFormat("en-GB", {
-          timeZone: BR_TZ,
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }).formatToParts(new Date(a.created_at));
-        hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
-        minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
-      } else {
-        hour = getHourFromTime(a.scheduled_time);
-        const m = /^(\d{1,2}):(\d{2})/.exec(a.scheduled_time || "");
-        minute = m ? Number(m[2]) : 0;
-      }
+        if (filter === "criadas") {
+          // Hora de criação no fuso de Brasília
+          const parts = new Intl.DateTimeFormat("en-GB", {
+            timeZone: BR_TZ,
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).formatToParts(new Date(a.created_at));
+          hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+          minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+        } else {
+          hour = getHourFromTime(a.scheduled_time);
+          const m = /^(\d{1,2}):(\d{2})/.exec(a.scheduled_time || "");
+          minute = m ? Number(m[2]) : 0;
+        }
 
-      const shift = getShift(hour);
-      if (shift === "outros") return;
+        const shift = getShift(hour);
+        if (shift === "outros") return;
 
-      // Corte temporal somente para Compareceu / Não compareceu no dia de hoje.
-      if (
-        (filter === "compareceu" || filter === "nao_compareceu") &&
-        a.scheduled_date === todayStr &&
-        hour !== null
-      ) {
-        if (hour > nowHour || (hour === nowHour && minute > nowMin)) return;
-      }
-      if (
-        (filter === "compareceu" || filter === "nao_compareceu") &&
-        a.scheduled_date > todayStr
-      ) {
-        return;
-      }
+        // Corte temporal somente para Compareceu / Não compareceu no dia de hoje.
+        if (isRateMode && a.scheduled_date === todayStr && hour !== null) {
+          if (hour > nowHour || (hour === nowHour && minute > nowMin)) return;
+        }
+        if (isRateMode && a.scheduled_date > todayStr) return;
 
-      acc[shift] += 1;
-    });
-    return acc;
-  }, [pool, filter]);
+        acc[shift] += 1;
+      });
+      return acc;
+    };
+
+    return {
+      shiftCounts: tally(pool),
+      shiftBase: isRateMode ? tally(basePool) : null,
+    };
+  }, [pool, basePool, filter, isRateMode]);
+
+  const shiftTotal = shiftCounts.madrugada + shiftCounts.manha + shiftCounts.tarde + shiftCounts.noite;
+  const shiftBaseTotal = shiftBase
+    ? shiftBase.madrugada + shiftBase.manha + shiftBase.tarde + shiftBase.noite
+    : 0;
 
   const periodLabel = useMemo(() => {
     if (isIntervalMode) {
@@ -492,11 +540,9 @@ export default function ProdutividadeSDRTab({
           value={kpis.compareceu}
           accent="emerald"
           active={filter === "compareceu"}
-          sub={
-            kpis.foraSdr > 0
-              ? `somente agendas de SDR (${kpis.foraSdr} de closer/gestor fora)`
-              : "somente agendas de SDR"
-          }
+          sub={`Taxa de comparecimento: ${pct(kpis.compareceu, kpis.para).toFixed(1)}% (${kpis.compareceu}/${kpis.para})${
+            kpis.foraSdr > 0 ? ` · ${kpis.foraSdr} de closer/gestor fora` : ""
+          }`}
         />
         <SummaryCard
           icon={XCircle}
@@ -504,7 +550,9 @@ export default function ProdutividadeSDRTab({
           value={kpis.naoCompareceu}
           accent="destructive"
           active={filter === "nao_compareceu"}
+          sub={`Taxa de não comparecimento: ${pct(kpis.naoCompareceu, kpis.para).toFixed(1)}% (${kpis.naoCompareceu}/${kpis.para})`}
         />
+
       </div>
 
       {/* Produtividade por hora — orientada pelo filtro único da página */}
@@ -556,6 +604,22 @@ export default function ProdutividadeSDRTab({
                 <span className="font-bold text-foreground">{mediaPorSdrAtivo.toFixed(1)}</span>
               </span>
             )}
+            {isRateMode && (
+              <span title={`${totalGeral} de ${totalBaseGrafico} reuniões marcadas no recorte`}>
+                {rateLabel}:{" "}
+                <span
+                  className={cn(
+                    "font-bold",
+                    filter === "compareceu"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-destructive",
+                  )}
+                >
+                  {taxaGrafico.toFixed(1)}%
+                </span>{" "}
+                ({totalGeral}/{totalBaseGrafico})
+              </span>
+            )}
 
           </div>
         </div>
@@ -577,9 +641,19 @@ export default function ProdutividadeSDRTab({
                   height={chartData.length > 6 ? 60 : 30}
                 />
                 <YAxis
+                  yAxisId="left"
                   allowDecimals={false}
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                 />
+                {isRateMode && (
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    domain={[0, 100]}
+                    unit="%"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                  />
+                )}
                 <Tooltip
                   cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
                   contentStyle={{
@@ -607,6 +681,21 @@ export default function ProdutividadeSDRTab({
                         "Média por SDR ativo",
                       ];
                     }
+                    if (name === "taxa") {
+                      const base = (item?.payload as { base?: number })?.base ?? 0;
+                      const tot = (item?.payload as { total?: number })?.total ?? 0;
+                      return [
+                        <span
+                          style={{
+                            color:
+                              filter === "compareceu" ? "hsl(160 84% 45%)" : "hsl(var(--destructive))",
+                          }}
+                        >
+                          {`${Number(value).toFixed(1)}% (${tot} de ${base} marcadas)`}
+                        </span>,
+                        rateLabel,
+                      ];
+                    }
                     return [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel];
                   }}
 
@@ -615,14 +704,15 @@ export default function ProdutividadeSDRTab({
                     return entry?.sdr ?? label;
                   }}
                 />
-                {isDailyView && <Legend wrapperStyle={{ fontSize: 11 }} />}
-                <Bar dataKey="total" name={filterLabel} radius={[6, 6, 0, 0]}>
+                {(isDailyView || isRateMode) && <Legend wrapperStyle={{ fontSize: 11 }} />}
+                <Bar yAxisId="left" dataKey="total" name={filterLabel} radius={[6, 6, 0, 0]}>
                   {chartData.map((_, idx) => (
                     <Cell key={idx} fill="hsl(var(--primary))" fillOpacity={0.85} />
                   ))}
                 </Bar>
                 {isDailyView && (
                   <Line
+                    yAxisId="left"
                     type="monotone"
                     dataKey="mediaMovel"
                     name="Média móvel (7d)"
@@ -633,6 +723,7 @@ export default function ProdutividadeSDRTab({
                 )}
                 {showMediaPorSdr && (
                   <Line
+                    yAxisId="left"
                     type="monotone"
                     dataKey="mediaPorSdr"
                     name="Média por SDR ativo"
@@ -640,6 +731,17 @@ export default function ProdutividadeSDRTab({
                     strokeWidth={2}
                     strokeDasharray="4 3"
                     dot={false}
+                  />
+                )}
+                {isRateMode && (
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="taxa"
+                    name={`${rateLabel} (%)`}
+                    stroke={filter === "compareceu" ? "hsl(160 84% 39%)" : "hsl(var(--destructive))"}
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
                   />
                 )}
 
@@ -656,7 +758,8 @@ export default function ProdutividadeSDRTab({
           label="Madrugada"
           range="00h — 06h"
           value={shiftCounts.madrugada}
-          totalPeriodo={pool.length}
+          totalPeriodo={shiftTotal}
+          rate={shiftBase ? { label: rateLabel, value: pct(shiftCounts.madrugada, shiftBase.madrugada), base: shiftBase.madrugada, positive: filter === "compareceu" } : undefined}
           color="sky"
         />
         <ShiftCard
@@ -664,7 +767,8 @@ export default function ProdutividadeSDRTab({
           label="Manhã"
           range="06h — 12h"
           value={shiftCounts.manha}
-          totalPeriodo={pool.length}
+          totalPeriodo={shiftTotal}
+          rate={shiftBase ? { label: rateLabel, value: pct(shiftCounts.manha, shiftBase.manha), base: shiftBase.manha, positive: filter === "compareceu" } : undefined}
           color="amber"
         />
         <ShiftCard
@@ -672,7 +776,8 @@ export default function ProdutividadeSDRTab({
           label="Tarde"
           range="12h — 18h"
           value={shiftCounts.tarde}
-          totalPeriodo={pool.length}
+          totalPeriodo={shiftTotal}
+          rate={shiftBase ? { label: rateLabel, value: pct(shiftCounts.tarde, shiftBase.tarde), base: shiftBase.tarde, positive: filter === "compareceu" } : undefined}
           color="orange"
         />
         <ShiftCard
@@ -680,7 +785,8 @@ export default function ProdutividadeSDRTab({
           label="Noite"
           range="18h — 24h"
           value={shiftCounts.noite}
-          totalPeriodo={pool.length}
+          totalPeriodo={shiftTotal}
+          rate={shiftBase ? { label: rateLabel, value: pct(shiftCounts.noite, shiftBase.noite), base: shiftBase.noite, positive: filter === "compareceu" } : undefined}
           color="indigo"
         />
       </div>
@@ -771,6 +877,7 @@ function ShiftCard({
   value,
   totalPeriodo,
   color,
+  rate,
 }: {
   icon: typeof Sun;
   label: string;
@@ -778,6 +885,7 @@ function ShiftCard({
   value: number;
   totalPeriodo: number;
   color: "sky" | "amber" | "orange" | "indigo";
+  rate?: { label: string; value: number; base: number; positive: boolean };
 }) {
   const colorMap = {
     sky: "text-sky-400 bg-sky-500/10 border-sky-500/30",
@@ -805,6 +913,17 @@ function ShiftCard({
       <p className="text-[11px] opacity-80">
         {pct.toFixed(0)}% do total do período
       </p>
+      {rate && (
+        <p className="text-[11px] font-semibold text-foreground/90">
+          {rate.label}:{" "}
+          <span className={rate.positive ? "text-emerald-500" : "text-destructive"}>
+            {rate.value.toFixed(1)}%
+          </span>{" "}
+          <span className="font-normal opacity-80">
+            ({value} de {rate.base} marcadas)
+          </span>
+        </p>
+      )}
     </div>
   );
 }
