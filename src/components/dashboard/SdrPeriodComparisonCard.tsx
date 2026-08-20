@@ -38,15 +38,16 @@ const localDateOf = (iso: string) => brDateFmt.format(new Date(iso));
 function periods(win: WindowDays) {
   const today = parseISO(brTodayYMD());
   const fmt = (d: Date) => format(d, "yyyy-MM-dd");
-  const curFrom = subDays(today, win);
+  const curFrom = subDays(today, win - 1);
   const prevTo = subDays(curFrom, 1);
-  const prevFrom = subDays(prevTo, win);
+  const prevFrom = subDays(prevTo, win - 1);
   return {
     current: { from: fmt(curFrom), to: fmt(today) },
     previous: { from: fmt(prevFrom), to: fmt(prevTo) },
-    days: win + 1,
+    days: win,
   };
 }
+
 
 interface Metrics {
   criadas: number;
