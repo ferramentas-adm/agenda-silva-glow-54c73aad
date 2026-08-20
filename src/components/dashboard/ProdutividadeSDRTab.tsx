@@ -604,6 +604,22 @@ export default function ProdutividadeSDRTab({
                 <span className="font-bold text-foreground">{mediaPorSdrAtivo.toFixed(1)}</span>
               </span>
             )}
+            {isRateMode && (
+              <span title={`${totalGeral} de ${totalBaseGrafico} reuniões marcadas no recorte`}>
+                {rateLabel}:{" "}
+                <span
+                  className={cn(
+                    "font-bold",
+                    filter === "compareceu"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-destructive",
+                  )}
+                >
+                  {taxaGrafico.toFixed(1)}%
+                </span>{" "}
+                ({totalGeral}/{totalBaseGrafico})
+              </span>
+            )}
 
           </div>
         </div>
@@ -625,9 +641,19 @@ export default function ProdutividadeSDRTab({
                   height={chartData.length > 6 ? 60 : 30}
                 />
                 <YAxis
+                  yAxisId="left"
                   allowDecimals={false}
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                 />
+                {isRateMode && (
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    domain={[0, 100]}
+                    unit="%"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                  />
+                )}
                 <Tooltip
                   cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
                   contentStyle={{
@@ -655,6 +681,21 @@ export default function ProdutividadeSDRTab({
                         "Média por SDR ativo",
                       ];
                     }
+                    if (name === "taxa") {
+                      const base = (item?.payload as { base?: number })?.base ?? 0;
+                      const tot = (item?.payload as { total?: number })?.total ?? 0;
+                      return [
+                        <span
+                          style={{
+                            color:
+                              filter === "compareceu" ? "hsl(160 84% 45%)" : "hsl(var(--destructive))",
+                          }}
+                        >
+                          {`${Number(value).toFixed(1)}% (${tot} de ${base} marcadas)`}
+                        </span>,
+                        rateLabel,
+                      ];
+                    }
                     return [`${value} agendamento${value !== 1 ? "s" : ""}`, filterLabel];
                   }}
 
@@ -663,14 +704,15 @@ export default function ProdutividadeSDRTab({
                     return entry?.sdr ?? label;
                   }}
                 />
-                {isDailyView && <Legend wrapperStyle={{ fontSize: 11 }} />}
-                <Bar dataKey="total" name={filterLabel} radius={[6, 6, 0, 0]}>
+                {(isDailyView || isRateMode) && <Legend wrapperStyle={{ fontSize: 11 }} />}
+                <Bar yAxisId="left" dataKey="total" name={filterLabel} radius={[6, 6, 0, 0]}>
                   {chartData.map((_, idx) => (
                     <Cell key={idx} fill="hsl(var(--primary))" fillOpacity={0.85} />
                   ))}
                 </Bar>
                 {isDailyView && (
                   <Line
+                    yAxisId="left"
                     type="monotone"
                     dataKey="mediaMovel"
                     name="Média móvel (7d)"
@@ -681,6 +723,7 @@ export default function ProdutividadeSDRTab({
                 )}
                 {showMediaPorSdr && (
                   <Line
+                    yAxisId="left"
                     type="monotone"
                     dataKey="mediaPorSdr"
                     name="Média por SDR ativo"
@@ -688,6 +731,17 @@ export default function ProdutividadeSDRTab({
                     strokeWidth={2}
                     strokeDasharray="4 3"
                     dot={false}
+                  />
+                )}
+                {isRateMode && (
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="taxa"
+                    name={`${rateLabel} (%)`}
+                    stroke={filter === "compareceu" ? "hsl(160 84% 39%)" : "hsl(var(--destructive))"}
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
                   />
                 )}
 
