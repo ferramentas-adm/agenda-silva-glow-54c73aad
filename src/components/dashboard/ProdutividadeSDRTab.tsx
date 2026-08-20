@@ -224,6 +224,25 @@ export default function ProdutividadeSDRTab({
     });
   }, [agendamentos, createdAgs, sdrIds, range, filter]);
 
+  // ─── Modo taxa (Compareceu / Não compareceu) ─────────────────
+  // Nesses filtros exibimos, além do volume, a taxa sobre o total de reuniões
+  // marcadas para o mesmo recorte (mesmo dia / mesmo turno / mesmo SDR).
+  const isRateMode = filter === "compareceu" || filter === "nao_compareceu";
+  const rateLabel = filter === "nao_compareceu" ? "Taxa de não comparecimento" : "Taxa de comparecimento";
+
+  /** Denominador: todas as reuniões agendadas PARA o período (qualquer status). */
+  const basePool = useMemo(() => {
+    if (!isRateMode) return [] as AgendamentoMetric[];
+    return agendamentos.filter(
+      (a) =>
+        effectiveSdrId(a) &&
+        a.scheduled_date >= range.from &&
+        a.scheduled_date <= range.to,
+    );
+  }, [agendamentos, sdrIds, range, isRateMode]);
+
+  const pct = (value: number, base: number) => (base > 0 ? (value / base) * 100 : 0);
+
   // ─── Dados do gráfico ─────────────────────────────────────────
   // - SDR individual selecionado: cada coluna = um dia do período.
   // - Todos + intervalo: cada coluna = um dia, somando todos os SDRs.
