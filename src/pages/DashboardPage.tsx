@@ -2228,8 +2228,11 @@ const DayView = memo(function DayView({
       )}
       <div ref={scrollRef} className="overflow-x-auto rounded-xl border border-primary/10 bg-card">
         <div
-          className="grid"
-          style={{ gridTemplateColumns: `${TIME_COL}px repeat(${closers.length}, ${colWidth}px)` }}
+          className="grid w-max min-w-full"
+          style={{
+            gridTemplateColumns: `${TIME_COL}px repeat(${closers.length}, ${colWidth}px)`,
+            width: TIME_COL + closers.length * colWidth,
+          }}
         >
         {/* Header */}
         <div className="sticky left-0 z-30 border-b border-primary/10 bg-card p-2" />
