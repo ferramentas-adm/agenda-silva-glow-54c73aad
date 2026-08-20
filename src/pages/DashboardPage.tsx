@@ -201,6 +201,11 @@ export function CalendarContent() {
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
+  // Reverter status para o anterior (registro de auditoria) — gestor/moderador/supervisor
+  const [prevStatus, setPrevStatus] = useState<string | null>(null);
+  const [revertOpen, setRevertOpen] = useState(false);
+  const [revertReason, setRevertReason] = useState("");
+  const [reverting, setReverting] = useState(false);
   
   const [editMode, setEditMode] = useState(false);
   const [editTime, setEditTime] = useState<string | null>(null);
