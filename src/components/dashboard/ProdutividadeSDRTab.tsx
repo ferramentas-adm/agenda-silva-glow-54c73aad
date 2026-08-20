@@ -146,6 +146,8 @@ export default function ProdutividadeSDRTab({
   const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
   const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
   const [selectedSdr, setSelectedSdr] = useState<string>("all");
+  /** No modo intervalo: agrupar o gráfico por SDR (uma coluna por SDR) em vez de por dia. */
+  const [groupBySdr, setGroupBySdr] = useState(false);
 
   // ─── Lookup: somente user_ids de SDRs (filtrado por time se selecionado) ─
   const filteredSdrProfiles = useMemo(
