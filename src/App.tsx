@@ -34,6 +34,9 @@ const queryClient = new QueryClient({
       // C3: garbage-collect cached query data after 10 min of inactivity
       // para evitar acúmulo de memória em sessões longas.
       gcTime: 10 * 60_000,
+      // P1: nenhum polling roda com a aba em background — abas de TV/dashboard
+      // deixadas abertas eram a maior fonte de tráfego repetido ao banco.
+      refetchIntervalInBackground: false,
       retry: (failureCount, error: unknown) => {
         const status = (error as any)?.status;
         if (typeof status === "number" && status >= 400 && status < 500) return false;
