@@ -55,14 +55,8 @@ export default function GoogleCalendarBanner() {
     },
   });
 
-  // Refetch when window regains focus (after OAuth popup closes)
-  useEffect(() => {
-    const onFocus = () => {
-      queryClient.invalidateQueries({ queryKey: ["closer-has-google-token", closerMatch?.id] });
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [queryClient, closerMatch?.id]);
+  // Sem listener de `focus`: o `refetchOnWindowFocus` da query acima já cobre o
+  // retorno do popup de OAuth, respeitando o staleTime de 5 min.
 
   // Only show for closers without token
   if (!closerMatch || hasToken) return null;
