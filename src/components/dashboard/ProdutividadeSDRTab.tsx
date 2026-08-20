@@ -370,7 +370,7 @@ export default function ProdutividadeSDRTab({
   // Para "Compareceu" e "Não compareceu" no dia de hoje, ainda aplicamos
   // o corte temporal: só conta se o horário agendado já tiver chegado.
   const shiftCounts = useMemo(() => {
-    const acc = { manha: 0, tarde: 0, noite: 0 };
+    const acc = { madrugada: 0, manha: 0, tarde: 0, noite: 0 };
     const now = new Date();
     const todayStr = brDateFmt.format(now);
     const nowParts = new Intl.DateTimeFormat("en-GB", {
