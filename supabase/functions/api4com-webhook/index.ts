@@ -15,6 +15,15 @@ function json(body: unknown, status = 200) {
 
 /** Códigos/status da API4COM → texto legível em português. */
 const STATUS_LABELS: Record<string, string> = {
+  // hangup_cause (FreeSWITCH) documentado pela API4COM
+  NORMAL_CLEARING: "Atendida",
+  USER_BUSY: "Ocupado",
+  UNALLOCATED_NUMBER: "Número não encontrado",
+  NUMBER_CHANGED: "Caixa postal",
+  ORIGINATOR_CANCEL: "Cancelamento da ligação",
+  ALLOTTED_TIMEOUT: "Tempo expirado",
+  NO_USER_RESPONSE: "Não atendeu",
+  NO_ANSWER_TIMEOUT: "Não atendeu",
   ANSWER: "Atendeu",
   ANSWERED: "Atendeu",
   COMPLETED: "Atendeu",
