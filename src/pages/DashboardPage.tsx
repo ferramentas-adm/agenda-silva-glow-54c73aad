@@ -239,38 +239,12 @@ export function CalendarContent() {
   const { data: slotCounts } = useSlotCounts(dateStr);
   const { limit: slotLimit } = useSlotLimit();
 
-  // Horário comercial global = união dos ranges dos closers ativos.
-  const { data: activeHours } = useQuery({
-    queryKey: ["closers-active-hours"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("business_hours_start, business_hours_end, business_hours_ranges")
-        .eq("active", true);
-      return data ?? [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const businessRange = useMemo(() => {
-    // Retorna [minStartHour, maxEndHour) em horas inteiras.
-    let minStart = 24;
-    let maxEnd = 0;
-    for (const c of (activeHours ?? []) as any[]) {
-      const ranges =
-        Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
-          ? c.business_hours_ranges
-          : [{ start: c.business_hours_start || "09:00", end: c.business_hours_end || "23:00" }];
-      for (const r of ranges) {
-        const sh = parseInt(String(r.start ?? "09:00").slice(0, 2), 10);
-        const eh = parseInt(String(r.end ?? "23:00").slice(0, 2), 10);
-        if (!Number.isNaN(sh) && sh < minStart) minStart = sh;
-        if (!Number.isNaN(eh) && eh > maxEnd) maxEnd = eh;
-      }
-    }
-    if (minStart === 24 || maxEnd === 0) return { minStart: 9, maxEnd: 23 };
-    return { minStart, maxEnd };
-  }, [activeHours]);
+  // Horário comercial global vem de Administração > Configurações Gerais.
+  const { startHour: bhStart, endHour: bhEnd } = useBusinessHours();
+  const businessRange = useMemo(
+    () => ({ minStart: bhStart, maxEnd: bhEnd + 1 }),
+    [bhStart, bhEnd],
+  );
 
   const slotAlerts = useMemo(() => {
     const full: { time: string; count: number }[] = [];
