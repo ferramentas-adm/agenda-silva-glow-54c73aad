@@ -78,7 +78,7 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
       }));
     },
     staleTime: 60_000,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 
   // Vendas agrupadas por canal — usa a lista vinda da VendasTab (que já

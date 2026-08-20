@@ -60,7 +60,7 @@ export default function ErrosCloserTab({ currentDate, dateRange }: Props) {
       if (error) throw error;
       return (data ?? []) as ReviewRow[];
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const agendamentoIds = useMemo(() => reviews.map((r) => r.agendamento_id), [reviews]);

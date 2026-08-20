@@ -82,7 +82,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: pendingAssignmentCount = 0 } = useQuery({
     queryKey: ["pending-closer-assignment-count"],
     enabled: can("assign_closer"),
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
     queryFn: async () => {
       const d = new Date();
       const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

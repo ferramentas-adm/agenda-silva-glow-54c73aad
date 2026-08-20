@@ -223,7 +223,7 @@ export default function DashboardComercialPage() {
         q.gte("scheduled_date", minDate).lte("scheduled_date", maxDate).order("scheduled_date")
       );
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   // Previous month for comparison
@@ -252,7 +252,7 @@ export default function DashboardComercialPage() {
           .order("created_at", { ascending: false })
       );
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   // Vendas (vendeu=true) para os agendamentos atuais — usado para coluna "Vendas / Taxa"
@@ -283,7 +283,7 @@ export default function DashboardComercialPage() {
       }
       return out;
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const soldSet = useMemo(() => new Set(soldVendas.map(v => v.agendamento_id)), [soldVendas]);
