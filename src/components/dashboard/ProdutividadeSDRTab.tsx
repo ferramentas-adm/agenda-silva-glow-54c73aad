@@ -40,6 +40,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
 import ProdutividadePorHoraCard from "@/components/dashboard/ProdutividadePorHoraCard";
+import SdrPeriodComparisonCard from "@/components/dashboard/SdrPeriodComparisonCard";
 
 import CriadasPorDiaDialog, { type CriadasDayGroup } from "@/components/dashboard/CriadasPorDiaDialog";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
@@ -568,6 +569,16 @@ export default function ProdutividadeSDRTab({
 
       {/* Tendência preditiva — apenas para gestores/moderadores */}
       {isManager && <TrendCardSDR range={range} />}
+
+      {/* Comparação de períodos — somente na visão individual de um SDR */}
+      {selectedSdr !== "all" && (
+        <SdrPeriodComparisonCard
+          sdrId={selectedSdr}
+          sdrName={sdrNameById.get(selectedSdr) ?? "SDR"}
+        />
+      )}
+
+
 
 
 
