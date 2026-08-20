@@ -23,9 +23,12 @@ import { cn } from "@/lib/utils";
 import CancelReasonDialog from "@/components/CancelReasonDialog";
 
 const STATUS_LABEL: Record<string, string> = {
-  agendada: "Agendada",
+  agendada: "Sem confirmar",
   confirmada: "Confirmada",
+  nao_confirmada: "Não confirmada",
+  pendente: "Aguardando atribuição",
 };
+
 
 type ResolveStatus = "realizada" | "no_show" | "cancelada";
 

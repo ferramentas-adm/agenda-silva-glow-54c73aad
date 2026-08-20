@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2, Eye, ArrowRightLeft } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { logAudit } from "@/services/auditLog";
+
 import { formatBRDate } from "@/lib/timezone";
 import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,14 +13,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-const HIDE_ON_PREFIXES = ["/agendar", "/cancelar-reuniao", "/venda/", "/lead-detalhes"];
+// Somente as telas necessárias para RESOLVER a pendência ficam liberadas.
+const HIDE_ON_PREFIXES = ["/cancelar-reuniao", "/venda/", "/lead-detalhes"];
 
 const STATUS_LABEL: Record<string, string> = {
-  agendada: "Agendada",
+  agendada: "Sem confirmar",
   confirmada: "Confirmada",
+  nao_confirmada: "Não confirmada",
+  pendente: "Aguardando atribuição",
 };
 
 type DirectStatus = "no_show" | "cancelada";
+
 
 export default function OverdueMeetingsLockOverlay() {
   const { overdue, count, myCloserId, refetch } = useOverdueMeetings();
@@ -60,40 +64,8 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
-  const handleHandoff = async (m: OverdueMeeting, direction: "sdr_to_closer" | "closer_to_sdr") => {
-    setUpdatingId(m.id);
-    try {
-      const patch: any =
-        direction === "sdr_to_closer"
-          ? { sdr_handoff_at: new Date().toISOString() }
-          : { closer_handoff_at: new Date().toISOString() };
-      const { data, error } = await supabase
-        .from("agendamentos")
-        .update(patch)
-        .eq("id", m.id)
-        .select("id");
-      if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Sem permissão para transferir.");
-      await logAudit("handoff", "agendamento", m.id, {
-        lead_name: m.lead_name,
-        direction,
-        scheduled_date: m.scheduled_date,
-        scheduled_time: m.scheduled_time,
-      });
-      toast.success(
-        direction === "sdr_to_closer"
-          ? "Reunião transferida para o Closer"
-          : "Reunião transferida para o SDR",
-      );
-      await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-      await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao transferir");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
+  // Transferência (handoff) removida: ninguém sai do bloqueio sem dar desfecho.
+
 
 
 
@@ -115,8 +87,12 @@ export default function OverdueMeetingsLockOverlay() {
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Reuniões passam a exigir atualização <strong>1h05 após o horário agendado</strong>.
-                  Defina o desfecho de cada uma abaixo — a tela libera assim que todas estiverem resolvidas.
+                  Toda reunião em <strong>Sem confirmar</strong>, <strong>Não confirmada</strong>,{" "}
+                  <strong>Confirmada</strong> ou <strong>Aguardando atribuição</strong> precisa de desfecho
+                  (Realizada, No-show ou Cancelada). Não há transferência nem como pular: a tela só libera
+                  quando todas estiverem resolvidas.
                 </p>
+
               </div>
             </div>
             <div className="mt-3 flex justify-end">
@@ -180,7 +156,7 @@ export default function OverdueMeetingsLockOverlay() {
                       Realizada
                     </Button>
                   )}
-                  {isSdrOfThis && (
+                  {(isSdrOfThis || isCloserOfThis) && (
                     <>
                       <Button
                         size="sm"
@@ -212,46 +188,13 @@ export default function OverdueMeetingsLockOverlay() {
                       </Button>
                     </>
                   )}
-                  {isCloserOfThis && !m.closer_handoff_at && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={updatingId === m.id}
-                      onClick={() => handleHandoff(m, "closer_to_sdr")}
-                      className="h-8 text-xs gap-1"
-                      title="Transfere a responsabilidade ao SDR (uso único)"
-                    >
-                      {updatingId === m.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                      )}
-                      Transferir para SDR
-                    </Button>
-                  )}
-                  {isSdrOfThis && !m.sdr_handoff_at && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={updatingId === m.id}
-                      onClick={() => handleHandoff(m, "sdr_to_closer")}
-                      className="h-8 text-xs gap-1"
-                      title="Transfere a responsabilidade ao Closer (uso único)"
-                    >
-                      {updatingId === m.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                      )}
-                      Transferir para Closer
-                    </Button>
-                  )}
                   {!isSdrOfThis && !isCloserOfThis && (
                     <p className="text-xs text-muted-foreground italic">
                       Aguardando ação do SDR ou Closer responsável.
                     </p>
                   )}
                 </div>
+
               </div>
               );
             })}
