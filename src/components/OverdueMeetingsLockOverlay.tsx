@@ -152,7 +152,7 @@ export default function OverdueMeetingsLockOverlay() {
                       Realizada
                     </Button>
                   )}
-                  {isSdrOfThis && (
+                  {(isSdrOfThis || isCloserOfThis) && (
                     <>
                       <Button
                         size="sm"
@@ -184,46 +184,13 @@ export default function OverdueMeetingsLockOverlay() {
                       </Button>
                     </>
                   )}
-                  {isCloserOfThis && !m.closer_handoff_at && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={updatingId === m.id}
-                      onClick={() => handleHandoff(m, "closer_to_sdr")}
-                      className="h-8 text-xs gap-1"
-                      title="Transfere a responsabilidade ao SDR (uso único)"
-                    >
-                      {updatingId === m.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                      )}
-                      Transferir para SDR
-                    </Button>
-                  )}
-                  {isSdrOfThis && !m.sdr_handoff_at && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={updatingId === m.id}
-                      onClick={() => handleHandoff(m, "sdr_to_closer")}
-                      className="h-8 text-xs gap-1"
-                      title="Transfere a responsabilidade ao Closer (uso único)"
-                    >
-                      {updatingId === m.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                      )}
-                      Transferir para Closer
-                    </Button>
-                  )}
                   {!isSdrOfThis && !isCloserOfThis && (
                     <p className="text-xs text-muted-foreground italic">
                       Aguardando ação do SDR ou Closer responsável.
                     </p>
                   )}
                 </div>
+
               </div>
               );
             })}
