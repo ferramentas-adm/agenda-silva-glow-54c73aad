@@ -1199,6 +1199,50 @@ function UsersSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Ramal API4COM dialog */}
+      <AlertDialog open={!!ramalTarget} onOpenChange={(open) => { if (!open) setRamalTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ramal API4COM</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ramal usado para iniciar ligações para o lead em nome de <strong>{ramalTarget?.name}</strong>. Deixe em branco para o sistema tentar descobrir automaticamente pelo e-mail cadastrado na API4COM.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Input
+              placeholder="Ex: 1001"
+              value={editRamal}
+              onChange={(e) => setEditRamal(e.target.value.trim())}
+              className="font-mono text-sm"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingRamal}
+              onClick={async () => {
+                if (!ramalTarget) return;
+                setSavingRamal(true);
+                try {
+                  const { error } = await supabase.from("profiles")
+                    .update({ api4com_extension: editRamal || null } as any)
+                    .eq("user_id", ramalTarget.userId);
+                  if (error) throw error;
+                  toast.success("Ramal atualizado!");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  setRamalTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao salvar ramal");
+                }
+                setSavingRamal(false);
+              }}
+            >
+              {savingRamal ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
