@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useBusinessHours } from "@/hooks/useBusinessHours";
 
 /**
  * Informação de lotação por horário (HH:MM) em um dia específico.
