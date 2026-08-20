@@ -260,15 +260,27 @@ export default function DashboardComercialPage() {
     const s = new Set<string>();
     agendamentos.forEach(a => s.add(a.id));
     createdAgs.forEach(a => s.add(a.id));
-    return Array.from(s);
+    return Array.from(s).sort();
   }, [agendamentos, createdAgs]);
 
+  // Assinatura estável do conjunto de IDs: a chave anterior usava apenas
+  // (length, primeiro, último) e podia reaproveitar cache de conjuntos diferentes.
+  const vendaAgIdsKey = useMemo(() => {
+    let h = 0;
+    for (const id of vendaAgIds) {
+      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+    }
+    return `${vendaAgIds.length}:${h}`;
+  }, [vendaAgIds]);
+
   const { data: soldVendas = [] } = useQuery<{ agendamento_id: string; valor: number | null }[]>({
-    queryKey: ["dashboard-comercial-vendas", vendaAgIds.length, vendaAgIds[0], vendaAgIds[vendaAgIds.length - 1]],
+    queryKey: ["dashboard-comercial-vendas", vendaAgIdsKey],
     enabled: vendaAgIds.length > 0,
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const out: { agendamento_id: string; valor: number | null }[] = [];
-      const chunkSize = 500;
+      // Blocos maiores = menos requisições em série.
+      const chunkSize = 1000;
       for (let i = 0; i < vendaAgIds.length; i += chunkSize) {
         const chunk = vendaAgIds.slice(i, i + chunkSize);
         const { data, error } = await supabase
