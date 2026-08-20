@@ -2070,7 +2070,7 @@ export default function DashboardPage() {
 }
 
 // ─── Day View ────────────────────────────────────────────────────
-const DAY_HOURS = Array.from({ length: 15 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
+// Horas exibidas vêm do horário comercial configurado (Administração > Configurações Gerais).
 
 const DayView = memo(function DayView({
   date,
@@ -2256,7 +2256,7 @@ const DayView = memo(function DayView({
           style={{ gridTemplateColumns: `${TIME_COL}px repeat(${closers.length}, ${colWidth}px)` }}
         >
         {/* Header */}
-        <div className="border-b border-primary/10 p-2" />
+        <div className="sticky left-0 z-30 border-b border-primary/10 bg-card p-2" />
         {closers.map((c) => {
           const idx = closerIndexMap.get(c.id) ?? 0;
           const color = getCloserColor(c.id, idx);
@@ -2272,7 +2272,7 @@ const DayView = memo(function DayView({
           const hourPrefix = hour.slice(0, 2);
           return (
             <Fragment key={`row-${hour}`}>
-              <div className="border-b border-primary/5 px-2 py-1 text-right flex items-start pt-3">
+              <div className="sticky left-0 z-20 border-b border-r border-primary/5 bg-card px-2 py-1 text-right flex items-start pt-3">
                 <span className="text-sm text-muted-foreground font-mono font-medium">{hour}</span>
               </div>
               {closers.map((c) => {
