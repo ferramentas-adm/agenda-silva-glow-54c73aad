@@ -158,11 +158,12 @@ export default function ReunioesListPage() {
     },
   });
 
-  // Janela server-side: por padrão, últimos 180 dias. Quando o usuário escolhe
-  // uma data inicial mais antiga, a janela é estendida para cobrir o filtro.
+  // Janela server-side: por padrão, últimos 60 dias (antes 180 — trazia milhares de
+  // linhas em cada carga). Quando o usuário escolhe uma data inicial mais antiga,
+  // a janela é estendida para cobrir o filtro.
   const meetingWindowStart = useMemo(() => {
     const defaultStart = new Date();
-    defaultStart.setDate(defaultStart.getDate() - 180);
+    defaultStart.setDate(defaultStart.getDate() - 60);
     if (filterMeetingDateFrom && filterMeetingDateFrom < defaultStart) {
       return format(filterMeetingDateFrom, "yyyy-MM-dd");
     }
@@ -198,40 +199,41 @@ export default function ReunioesListPage() {
     gcTime: 5 * 60_000,
   });
 
-  // Set de agendamento_ids com venda fechada (vendeu = true)
-  const { data: vendaAgendamentoIds = new Set<string>() } = useQuery({
-    queryKey: ["vendas-agendamento-ids"],
-    queryFn: async () => {
-      const { data } = await supabase.from("vendas").select("agendamento_id").eq("vendeu", true);
-      return new Set<string>((data || []).map((v: any) => v.agendamento_id).filter(Boolean));
-    },
-  });
+  const agendamentoIds = useMemo(() => agendamentos.map((a: any) => a.id), [agendamentos]);
 
-  // Map de agendamento_id -> { vendeu, valor, produto } para filtros de oferta
+  // Map de agendamento_id -> { vendeu, valor, produto } para filtros de oferta.
+  // Restrito aos agendamentos da janela carregada (antes baixava a tabela `vendas` inteira).
   const { data: vendaOfertaMap = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>() } = useQuery({
-    queryKey: ["vendas-oferta-map"],
+    queryKey: ["vendas-oferta-map", meetingWindowStart, agendamentoIds.length],
+    enabled: agendamentoIds.length > 0,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
-      const PAGE = 1000;
-      const all: any[] = [];
-      let from = 0;
-      while (true) {
+      const m = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>();
+      const CHUNK = 500;
+      for (let i = 0; i < agendamentoIds.length; i += CHUNK) {
+        const chunk = agendamentoIds.slice(i, i + CHUNK);
         const { data, error } = await supabase
           .from("vendas")
           .select("agendamento_id, vendeu, valor, produto")
-          .range(from, from + PAGE - 1);
+          .in("agendamento_id", chunk);
         if (error) throw error;
-        const batch = data || [];
-        all.push(...batch);
-        if (batch.length < PAGE) break;
-        from += PAGE;
+        (data || []).forEach((v: any) => {
+          if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor, produto: v.produto ?? null });
+        });
       }
-      const m = new Map<string, { vendeu: boolean; valor: number | null; produto: string | null }>();
-      all.forEach((v: any) => {
-        if (v.agendamento_id) m.set(v.agendamento_id, { vendeu: !!v.vendeu, valor: v.valor, produto: v.produto ?? null });
-      });
       return m;
     },
   });
+
+  // Set de agendamento_ids com venda fechada — derivado do map acima (sem query extra).
+  const vendaAgendamentoIds = useMemo(() => {
+    const s = new Set<string>();
+    vendaOfertaMap.forEach((v, id) => {
+      if (v.vendeu) s.add(id);
+    });
+    return s;
+  }, [vendaOfertaMap]);
 
   // Lista canônica de produtos (app_settings) + fallback dos produtos já ofertados
   const { items: produtosCadastrados } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
