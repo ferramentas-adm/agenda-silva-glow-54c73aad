@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import LigarLeadButton from "@/components/LigarLeadButton";
+import LeadChamadasHistorico from "@/components/LeadChamadasHistorico";
 
 interface Agendamento {
   id: string;

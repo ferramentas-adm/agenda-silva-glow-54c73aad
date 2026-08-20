@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PhoneCall } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatInSaoPaulo } from "@/lib/timezone";
+import { formatBRDateTime } from "@/lib/timezone";
 
 interface Chamada {
   id: string;
@@ -54,7 +54,7 @@ export default function LeadChamadasHistorico({ agendamentoId, refreshKey = 0 }:
         {rows.map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
             <span className="text-muted-foreground">
-              {formatInSaoPaulo(r.started_at, "dd/MM HH:mm")}
+              {formatBRDateTime(r.started_at)}
               {r.caller_name ? ` · ${r.caller_name}` : ""}
             </span>
             <span className="font-medium">
