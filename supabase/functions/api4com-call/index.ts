@@ -148,9 +148,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ─── originação ─────────────────────────────────────────
-    const result = await originateCall(extension, destination);
-
+    // ─── registro da chamada (antes, para enviar no metadata) ──
     const { data: chamada } = await admin
       .from("chamadas")
       .insert({
@@ -159,12 +157,29 @@ Deno.serve(async (req) => {
         lead_phone: rawPhone,
         called_by: user.id,
         caller_extension: extension,
-        provider_call_id: result.callId,
-        status: result.ok ? "iniciada" : "falha_originacao",
-        raw_payload: (result.raw ?? { attempts: result.attempts }) as Record<string, unknown>,
+        status: "iniciada",
       })
       .select("id")
       .single();
+
+    // ─── originação ─────────────────────────────────────────
+    const result = await originateCall(extension, destination, {
+      chamada_id: chamada?.id ?? null,
+      agendamento_id: agendamentoId,
+      user_id: user.id,
+      lead_name: leadName,
+    });
+
+    if (chamada?.id) {
+      await admin
+        .from("chamadas")
+        .update({
+          provider_call_id: result.callId,
+          status: result.ok ? "iniciada" : "falha_originacao",
+          raw_payload: (result.raw ?? { attempts: result.attempts }) as Record<string, unknown>,
+        })
+        .eq("id", chamada.id);
+    }
 
     // ─── log de auditoria ───────────────────────────────────
     const { data: log } = await admin
