@@ -1,54 +1,40 @@
-# Inativação de usuários: o que os logs mostram e o que ajustar
+# Queda do sistema — 20/08/2026, ~18:35 às 19:00 (horário de Brasília)
 
-## Resultado da verificação (feita agora, sobre os dados reais)
+## O que aconteceu (confirmado nos logs)
 
-Não existe rotina automática que inative contas. Só dois caminhos alteram `profiles.active`: o botão da página "Usuários" e a função `manage-user` (ação `toggle_active`). Nenhum agendamento/cron/trigger faz isso.
+O login e a renovação de sessão pararam de responder. Nos registros de autenticação aparecem, na janela do incidente, erros como `context deadline exceeded` em `/token` (login) e dezenas de `failed to connect to ... user=supabase_auth_admin ... operation was canceled` em `/user`. Ou seja: **o serviço de autenticação ficou sem conseguir falar com o banco** — por isso a tela simplesmente não abriu para ninguém, mesmo com o banco e a aplicação "de pé".
 
-O que os registros de auditoria mostram nos últimos 30 dias (179 inativações/reativações):
+No mesmo intervalo, a integração de Google Agenda disparou uma avalanche de chamadas: 143, 144, 190, 167, 165 e 52 chamadas por minuto, sendo **97 delas estouradas no tempo limite de 150 segundos** (erro 504) e 6 com erro 503. Cada uma dessas chamadas mantém abertas conexões com o banco durante os 150 segundos.
 
-- Praticamente **todas as desativações têm a mesma autora: Leticia Rabelo (Administradora)** — inclusive em blocos (7 usuários desativados entre 17:02 e 17:03 de 12/08).
-- Em seguida, **Gustavo Martha e Kauan Soares reativam os mesmos usuários** (Cleber Silva, Anderson Silva, Edson Junior, Giovanna Pereira, Julliane, Rafael Alvarenga, Gabriel Cardoso, Bruno Casari…). Só hoje isso aconteceu 6 vezes.
-- Ou seja: para o usuário final parece "o sistema me inativou sozinho", mas é ação manual de administrador — e o clique é irreversível sem confirmação nenhuma.
+Agora (19:00) o banco voltou ao normal: 44 conexões, fila de webhooks zerada, backend respondendo.
 
-Consistência dos dados: 90 usuários ativos, 48 inativos, **zero divergências** entre `profiles.active` e o registro de Closer correspondente, e nenhum Closer duplicado por e-mail. A base está íntegra.
+## Causa raiz
 
-## O que está confirmado e o que não está (transparência)
+A tela "Calendário" faz **uma chamada separada por closer** para buscar a agenda do Google. Com ~20 closers selecionados, cada operador com a tela aberta gera ~20 chamadas simultâneas, e isso se repete a cada 5 minutos e a cada troca de dia/seleção. Com vários operadores online, chega a ~180 chamadas por minuto.
 
-Confirmado por consulta direta:
+Essa função **não tem tempo limite na chamada ao Google**. Quando o Google ficou lento, cada chamada travou por 150 segundos segurando conexão com o banco. O acúmulo esgotou a capacidade de conexão, e o serviço de autenticação — que disputa o mesmo banco — ficou sem conseguir conectar. Resultado: ninguém consegue entrar.
 
-- Só a página "Usuários" e a função `manage-user` gravam `profiles.active` — nenhum cron, gatilho ou webhook faz isso.
-- Os nomes dos autores nos registros conferem com o cadastro (comparei `user_id` do log com `profiles`): Leticia 109 ações, Gustavo 45, Kauan 36, João Matias 32 nos últimos 60 dias.
-- Para praticamente todos os 48 usuários inativos, a data de alteração do cadastro coincide (diferença de ~1 segundo) com um registro de inativação feito por um administrador. Ou seja, há autor humano identificado.
+Em resumo: não foi o banco que caiu nem uma alteração de estrutura; foi **excesso de chamadas simultâneas ao Google Agenda sem tempo limite**, que sufocou a autenticação.
 
-Não confirmado / limitações desta análise:
+## Problemas encontrados, por severidade
 
-- Quatro casos (Victor Lima, Matheus Ranite, Pedro Lopes, Maria Eduarda) têm alteração recente do cadastro sem registro de inativação correspondente na mesma data — provavelmente edição de outro campo (nome, ramal, time), mas não consigo afirmar pelo log atual, porque o log não guarda o campo alterado nem o status anterior.
-- O registro de auditoria é gravado pelo navegador **depois** da mudança. Se o navegador fechar ou falhar no meio, a inativação acontece e o log não é criado — então o histórico pode ser incompleto (não confiável como prova definitiva).
-- Não tenho acesso à tabela interna de autenticação neste ambiente, então não pude confirmar o estado de bloqueio de login de cada conta nem verificar expiração de sessão. A afirmação de que "a sessão só cai quando o token expira" é baseada no código do app (não há checagem de `active` durante a navegação), não em medição.
-- Analisei os últimos 30–60 dias. Se o relato dos usuários for anterior a isso, precisa de nova consulta.
+### Crítico — causa da queda
+1. **Sem tempo limite na chamada ao Google** (`supabase/functions/google-calendar-events/index.ts`): as duas chamadas externas (renovar token e buscar eventos) não têm `AbortSignal.timeout`. Correção: 8 s para o token, 10 s para os eventos, respondendo "não conectado" em caso de estouro.
+2. **Uma chamada por closer, todas ao mesmo tempo** (`src/pages/DashboardPage.tsx`, bloco `google-busy-blocks`): `Promise.allSettled` dispara ~20 chamadas de uma vez. Correção: enviar a lista de closers em **uma única chamada** (a função passa a aceitar `closer_ids[]` e resolve em lotes internos, com tempo limite por closer).
+3. **Sem proteção contra repetição em falha**: a consulta não define `retry` nem `refetchOnWindowFocus`. Em cenário de lentidão, cada troca de aba multiplica a avalanche. Correção: `retry: 0`, `refetchOnWindowFocus: false` e intervalo de atualização só com a aba visível.
 
-Conclusão honesta: **não encontrei nenhuma inativação automática de contas**, mas encontrei um efeito automático real (Closer desativado e reuniões futuras devolvidas ao pool quando alguém troca a função ou remove da agenda) e um histórico frágil, que é o que impede provar caso a caso.
+### Moderado
+4. **Busca de lead quebrada por consumo duplo do corpo da resposta** (`supabase/functions/datacrazy-proxy/index.ts`, `fetchWithRetry` linha 75 + uso na linha 181): quando o DataCrazy responde 429 (limite de uso), a função lê o corpo para descartar e, esgotadas as tentativas, devolve essa mesma resposta já consumida — daí o erro `TypeError: Body already consumed` registrado hoje 7 vezes. Correção: `fetchWithRetry` passa a devolver o texto já lido, e o chamador usa esse texto. Efeito colateral do 429: o DataCrazy está limitando nosso volume — reduzir o paralelismo de 5 para 3 nas páginas.
+5. **Nenhuma degradação suave na tela**: se a agenda do Google falha, o operador não recebe nenhum aviso e pode agendar sobre um horário ocupado. Correção: aviso discreto de "agenda do Google indisponível" no topo do calendário.
 
-## Anomalias reais encontradas na página "Usuários"
+### Baixo
+6. **26 erros de chave duplicada em `vendas_agendamento_id_key`** no banco hoje: alguém clicou duas vezes em salvar o resultado da reunião, ou tentou registrar resultado de uma reunião que já tinha. Não derrubou nada, mas gera erro na tela do closer. Correção: tratar esse caso específico como atualização do registro existente, com mensagem clara.
 
-1. **Chave (switch) de ativo sem confirmação.** Um clique acidental bane o login do usuário, desativa o registro de Closer e faz as reuniões futuras dele voltarem para "Aguardando atribuição" (efeito da trigger já existente). Ele fica encostado a outros ícones pequenos da mesma linha (agenda, função, SDR), o que favorece o clique errado.
-2. **Efeito colateral silencioso ao trocar a função ou o "liberar para agenda".** Nesses casos o registro de Closer é desativado automaticamente e as reuniões futuras são devolvidas ao pool — sem aviso na tela. É exatamente o que um Closer percebe como "fui inativado automaticamente".
-3. **Escrita duplicada do status do Closer.** A tela chama a função `manage-user` (que já ajusta o Closer) e, em seguida, grava `closers.active` de novo no cliente usando o valor antigo da lista. Redundante e sujeito a inverter o status se a lista estiver desatualizada.
-4. **Registro de auditoria pouco confiável.** O log é gravado pelo navegador, com o valor deduzido do estado local (`new_active`), e o nome do autor vem dos metadados do login (pode divergir do cadastro). Não guarda o status anterior nem quantas reuniões foram devolvidas.
-5. **Sessão do usuário inativado não cai na hora.** O app não verifica `profiles.active` durante a navegação; a pessoa continua usando até o token expirar, e depois é derrubada de repente — reforçando a sensação de inativação aleatória.
+## Detalhes técnicos das mudanças
 
-## O que vou implementar
+- `supabase/functions/google-calendar-events/index.ts`: aceitar `closer_ids: string[]` (mantendo compatibilidade com `closer_id`), buscar tokens em uma consulta, processar em lotes de 5 com `AbortSignal.timeout`, e devolver `{ results: [{ closer_id, connected, expired, events }] }`.
+- `src/hooks/useGoogleCalendar.ts` e `src/pages/DashboardPage.tsx`: uma única invocação com a lista de closers; `retry: 0`, `refetchOnWindowFocus: false`, `refetchIntervalInBackground: false`.
+- `supabase/functions/datacrazy-proxy/index.ts`: `fetchWithRetry` devolve `{ res, text }`; `CONCURRENCY` de 5 → 3.
+- `src/components/VendaDialog.tsx`: tratar violação de unicidade (código `23505`) como atualização.
 
-1. **Confirmação obrigatória para desativar** (diálogo com nome do usuário e aviso do que acontece: perde acesso, sai da agenda, reuniões futuras voltam para "Aguardando atribuição"). Reativar continua com um clique.
-2. **Aviso antes de trocar função de Closer para outra função** e antes de remover da agenda, explicando que as reuniões futuras serão devolvidas.
-3. **Auditoria confiável**: passar a registrar a inativação no servidor (na `manage-user`), com status anterior e novo, autor pelo cadastro e quantidade de reuniões devolvidas.
-4. **Remover a escrita duplicada** de `closers.active` na tela; a função `manage-user` passa a ser a única fonte.
-5. **Bloqueio imediato de conta inativa**: verificação de `profiles.active` no login e na sessão ativa, com mensagem clara ("sua conta foi desativada, procure um administrador") em vez de erro genérico.
-6. **Painel de histórico na própria página "Usuários"**: últimas ativações/inativações (quem, quem foi afetado, quando), para o time enxergar que a ação foi humana e resolver o conflito entre administradores.
-
-## Detalhes técnicos
-
-- `src/pages/AdminPage.tsx`: `AlertDialog` de confirmação em `handleToggleActive` (apenas para desativar) e em `handleChangeSdrTeam`/`handleToggleScheduling`/troca de função quando o alvo é Closer; remoção do `supabase.from("closers").update({ active: !user.active })` redundante; bloco "Histórico de ativações" lendo `audit_logs` (`action = 'toggle_active'`) com `limit 50`.
-- `supabase/functions/manage-user/index.ts`: na ação `toggle_active`, inserir o registro em `audit_logs` no servidor (status anterior/novo, autor via `profiles.full_name` do chamador, contagem retornada por `unassign_agendamentos_from_closer`) e retornar essa contagem para exibir no aviso de sucesso.
-- `src/contexts/AuthContext.tsx` + `src/components/ProtectedRoute.tsx`: incluir `active` na leitura do perfil; se `active = false`, encerrar a sessão e exibir mensagem específica (mesmo padrão do evento `auth-blocked` já usado no login Google).
-- Nenhuma mudança de schema é necessária.
+Nenhuma alteração de estrutura de banco, política de acesso ou regra de negócio é necessária.
