@@ -158,17 +158,25 @@ export default function ReunioesListPage() {
     },
   });
 
-  // Janela server-side: por padrão, últimos 60 dias (antes 180 — trazia milhares de
-  // linhas em cada carga). Quando o usuário escolhe uma data inicial mais antiga,
-  // a janela é estendida para cobrir o filtro.
+  // Janela server-side: por padrão, últimos 90 dias. Se o usuário filtrar por uma
+  // data de reunião OU de criação mais antiga, a janela é estendida para cobrir o
+  // filtro — nunca pode "esconder" registros que o filtro deveria mostrar.
   const meetingWindowStart = useMemo(() => {
     const defaultStart = new Date();
-    defaultStart.setDate(defaultStart.getDate() - 60);
-    if (filterMeetingDateFrom && filterMeetingDateFrom < defaultStart) {
-      return format(filterMeetingDateFrom, "yyyy-MM-dd");
+    defaultStart.setDate(defaultStart.getDate() - 90);
+    const candidates = [filterMeetingDateFrom, filterCreatedDateFrom].filter(
+      (d): d is Date => !!d && d < defaultStart,
+    );
+    if (candidates.length > 0) {
+      const oldest = candidates.reduce((a, b) => (a < b ? a : b));
+      // Criação anterior à reunião é possível: recua 30 dias extras de margem.
+      const start = new Date(oldest);
+      start.setDate(start.getDate() - 30);
+      return format(start, "yyyy-MM-dd");
     }
     return format(defaultStart, "yyyy-MM-dd");
-  }, [filterMeetingDateFrom]);
+  }, [filterMeetingDateFrom, filterCreatedDateFrom]);
+
 
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ["reunioes-list", meetingWindowStart],
