@@ -131,11 +131,6 @@ export default function ProdutividadeSDRTab({
   const isManager = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
   const [filter, setFilter] = useState<FilterType>("criadas");
   const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
-  const [customRange, setCustomRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined,
-  });
-  const [dateOpen, setDateOpen] = useState(false);
   const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
   const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
 
