@@ -99,7 +99,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     })();
   }, [open, agendamentoId]);
 
-  const canSubmit = !!vendeuCloser && !!leadRevenue && (vendeuCloser === "sim" || !!motivo);
+  const JUSTIFICATION_MIN = 100;
+  const justificationLength = observacoes.trim().length;
+  const justificationOk = vendeuCloser !== "nao" || justificationLength >= JUSTIFICATION_MIN;
+  const canSubmit =
+    !!vendeuCloser && !!leadRevenue && (vendeuCloser === "sim" || !!motivo) && justificationOk;
 
   const handleSubmit = async () => {
     if (!canSubmit || !user) return;
