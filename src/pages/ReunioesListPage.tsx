@@ -126,7 +126,7 @@ export default function ReunioesListPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("resumo_venda, explicacao_nao_fechamento, vendeu, valor, produto")
+        .select("resumo_venda, explicacao_nao_fechamento, motivo_nao_fechamento, observacoes, vendeu, valor, produto")
         .eq("agendamento_id", detailTarget!.id)
         .maybeSingle();
       return data;
