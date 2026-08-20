@@ -227,6 +227,80 @@ export type Database = {
         }
         Relationships: []
       }
+      chamadas: {
+        Row: {
+          agendamento_id: string | null
+          answered_at: string | null
+          audit_log_id: string | null
+          called_by: string
+          caller_extension: string | null
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          lead_name: string | null
+          lead_phone: string
+          provider: string
+          provider_call_id: string | null
+          raw_payload: Json | null
+          started_at: string
+          status: string
+          status_code: string | null
+          status_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          answered_at?: string | null
+          audit_log_id?: string | null
+          called_by: string
+          caller_extension?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_name?: string | null
+          lead_phone: string
+          provider?: string
+          provider_call_id?: string | null
+          raw_payload?: Json | null
+          started_at?: string
+          status?: string
+          status_code?: string | null
+          status_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          answered_at?: string | null
+          audit_log_id?: string | null
+          called_by?: string
+          caller_extension?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_name?: string | null
+          lead_phone?: string
+          provider?: string
+          provider_call_id?: string | null
+          raw_payload?: Json | null
+          started_at?: string
+          status?: string
+          status_code?: string | null
+          status_label?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chamadas_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closer_blocks: {
         Row: {
           block_date: string
@@ -639,6 +713,7 @@ export type Database = {
       profiles: {
         Row: {
           active: boolean
+          api4com_extension: string | null
           available_for_scheduling: boolean
           created_at: string
           datacrazy_id: string | null
@@ -654,6 +729,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          api4com_extension?: string | null
           available_for_scheduling?: boolean
           created_at?: string
           datacrazy_id?: string | null
@@ -669,6 +745,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          api4com_extension?: string | null
           available_for_scheduling?: boolean
           created_at?: string
           datacrazy_id?: string | null
