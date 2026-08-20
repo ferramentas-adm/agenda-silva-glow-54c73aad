@@ -507,6 +507,19 @@ export default function DashboardComercialPage() {
   const goNext = () => { setDateRange(undefined); setCurrentDate(d => addDays(d, 1)); };
   const goToday = () => { setDateRange(undefined); setCurrentDate(new Date()); };
 
+  /** Desloca o período atual: 1 dia (dia único) ou o tamanho do intervalo. */
+  const shiftPeriod = (direction: -1 | 1) => {
+    const from = dateRange?.from ?? currentDate;
+    const to = dateRange?.to ?? currentDate;
+    const span = differenceInCalendarDays(to, from) + 1;
+    const newFrom = addDays(from, direction * span);
+    const newTo = addDays(to, direction * span);
+    setCurrentDate(newFrom);
+    if (span <= 1) setDateRange(undefined);
+    else setDateRange({ from: newFrom, to: newTo });
+  };
+
+
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-metrics"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard-comercial-prev"] });
