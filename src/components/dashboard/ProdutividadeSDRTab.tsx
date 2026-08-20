@@ -593,6 +593,17 @@ export default function ProdutividadeSDRTab({
                 ))}
             </SelectContent>
           </Select>
+          {isIntervalMode && selectedSdr === "all" && (
+            <Button
+              variant={groupBySdr ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setGroupBySdr((v) => !v)}
+              title="Agrupar o período inteiro por SDR (uma coluna por SDR)"
+            >
+              {groupBySdr ? "Por SDR" : "Por dia"}
+            </Button>
+          )}
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
             <span>
               Total: <span className="font-bold text-foreground">{totalGeral}</span>
