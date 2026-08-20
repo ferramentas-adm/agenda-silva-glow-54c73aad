@@ -22,8 +22,9 @@ export type SlotInfo = {
 };
 
 export function useSlotCounts(dateStr: string | null | undefined) {
+  const { slots: businessSlots } = useBusinessHours();
   return useQuery<Map<string, SlotInfo>>({
-    queryKey: ["slot-counts-v2", dateStr],
+    queryKey: ["slot-counts-v2", dateStr, businessSlots.join(",")],
     enabled: !!dateStr,
     staleTime: 30 * 1000,
     queryFn: async () => {
@@ -79,9 +80,9 @@ export function useSlotCounts(dateStr: string | null | undefined) {
         return blocked.size;
       };
 
-      // Garante entradas para todos os slots padrão (09..23), além dos já presentes.
+      // Garante entradas para todos os slots do horário comercial configurado.
       const slots = new Set<string>(byTime.keys());
-      for (let h = 9; h <= 23; h++) slots.add(`${String(h).padStart(2, "0")}:00`);
+      for (const s of businessSlots) slots.add(s);
 
       const result = new Map<string, SlotInfo>();
       for (const slot of slots) {
