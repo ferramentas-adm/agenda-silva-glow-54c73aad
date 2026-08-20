@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -593,16 +595,18 @@ export default function ProdutividadeSDRTab({
                 ))}
             </SelectContent>
           </Select>
-          {isIntervalMode && selectedSdr === "all" && (
-            <Button
-              variant={groupBySdr ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => setGroupBySdr((v) => !v)}
-              title="Agrupar o período inteiro por SDR (uma coluna por SDR)"
-            >
-              {groupBySdr ? "Por SDR" : "Por dia"}
-            </Button>
+          {selectedSdr === "all" && (
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
+              <Switch
+                id="group-by-sdr"
+                checked={groupBySdr || !isIntervalMode}
+                disabled={!isIntervalMode}
+                onCheckedChange={setGroupBySdr}
+              />
+              <Label htmlFor="group-by-sdr" className="text-xs cursor-pointer whitespace-nowrap">
+                Por SDR (período todo)
+              </Label>
+            </div>
           )}
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
             <span>
