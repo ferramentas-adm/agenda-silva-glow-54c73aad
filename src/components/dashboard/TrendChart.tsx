@@ -56,8 +56,9 @@ interface TrendChartProps {
   showTrendline?: boolean;
   /** Mostra badge de comparação metade-recente vs metade-anterior. */
   showComparison?: boolean;
-  windowDays: TrendWindow;
-  onWindowChange: (w: TrendWindow) => void;
+  windowDays?: TrendWindow;
+  onWindowChange?: (w: TrendWindow) => void;
+
   /** Eixo Y direito é necessário? Define o range/formatter dele. */
   rightAxisFormatter?: (v: number) => string;
   emptyMessage?: string;
