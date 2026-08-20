@@ -87,9 +87,18 @@ Deno.serve(async (req) => {
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Localiza a chamada: por id do provedor ou pela última chamada aberta do telefone.
+    // Localiza a chamada: metadata.chamada_id (enviado na originação) → id do provedor → telefone.
     let chamada: any = null;
-    if (callId) {
+    const metaChamadaId = pick<string>(data, ["metadata.chamada_id", "meta.chamada_id", "chamada_id"]);
+    if (metaChamadaId) {
+      const { data: byMeta } = await admin
+        .from("chamadas")
+        .select("id, audit_log_id, lead_name, lead_phone")
+        .eq("id", String(metaChamadaId))
+        .maybeSingle();
+      chamada = byMeta ?? null;
+    }
+    if (!chamada && callId) {
       const { data: byId } = await admin
         .from("chamadas")
         .select("id, audit_log_id, lead_name, lead_phone")
