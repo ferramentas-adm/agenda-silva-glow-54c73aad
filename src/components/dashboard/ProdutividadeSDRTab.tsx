@@ -649,7 +649,15 @@ export default function ProdutividadeSDRTab({
       </div>
 
       {/* Quadros por turno */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <ShiftCard
+          icon={MoonStar}
+          label="Madrugada"
+          range="00h — 06h"
+          value={shiftCounts.madrugada}
+          totalPeriodo={pool.length}
+          color="sky"
+        />
         <ShiftCard
           icon={Sun}
           label="Manhã"
@@ -675,6 +683,7 @@ export default function ProdutividadeSDRTab({
           color="indigo"
         />
       </div>
+
 
       <CriadasPorDiaDialog
         open={criadasDiasOpen}
