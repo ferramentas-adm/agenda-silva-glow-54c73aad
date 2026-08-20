@@ -805,6 +805,82 @@ export function CalendarContent() {
     setUpdatingStatus(false);
   };
 
+  // Descobre o status anterior (última troca registrada na auditoria) para permitir
+  // reverter cliques errados. Apenas gestor/moderador/supervisor/apresentador.
+  useEffect(() => {
+    if (!detailAg || !isAdminLike) {
+      setPrevStatus(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("audit_logs")
+        .select("details, created_at")
+        .eq("entity_type", "agendamento")
+        .eq("entity_id", detailAg.id)
+        .eq("action", "update_status")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      const details = (data?.[0]?.details ?? null) as any;
+      const oldStatus = details?.old_status ?? null;
+      const newStatus = details?.new_status ?? null;
+      // Só oferece reversão se o último registro corresponde ao status atual.
+      setPrevStatus(oldStatus && newStatus === detailAg.status ? oldStatus : null);
+    })();
+    return () => { cancelled = true; };
+  }, [detailAg?.id, detailAg?.status, isAdminLike]);
+
+  const handleRevertStatus = async () => {
+    if (!detailAg || !prevStatus || !revertReason.trim()) return;
+    setReverting(true);
+    const fromStatus = detailAg.status;
+    try {
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update({ status: prevStatus } as any)
+        .eq("id", detailAg.id)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para reverter o status deste agendamento.");
+      }
+
+      // Limpa a declaração do closer para que a reunião volte ao fluxo normal
+      // (Vendeu? → motivo → justificativa). A venda oficial é preservada.
+      await supabase
+        .from("vendas")
+        .update({
+          vendeu_closer: null,
+          motivo_nao_fechamento: null,
+          observacoes: null,
+        } as any)
+        .eq("agendamento_id", detailAg.id);
+
+      await logAudit("reverter_status", "agendamento", detailAg.id, {
+        lead_name: detailAg.lead_name,
+        from_status: fromStatus,
+        to_status: prevStatus,
+        reason: revertReason.trim(),
+      });
+
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, status: prevStatus }));
+      setDetailAg({ ...detailAg, status: prevStatus });
+      setPrevStatus(null);
+      setRevertOpen(false);
+      setRevertReason("");
+      toast.success(`Status revertido para ${STATUS_LABELS[prevStatus] ?? prevStatus}`);
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao reverter status");
+    }
+    setReverting(false);
+  };
+
+
+
   // Open edit mode
   const startEdit = () => {
     if (!detailAg) return;
