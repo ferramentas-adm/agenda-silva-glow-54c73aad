@@ -64,40 +64,8 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
-  const handleHandoff = async (m: OverdueMeeting, direction: "sdr_to_closer" | "closer_to_sdr") => {
-    setUpdatingId(m.id);
-    try {
-      const patch: any =
-        direction === "sdr_to_closer"
-          ? { sdr_handoff_at: new Date().toISOString() }
-          : { closer_handoff_at: new Date().toISOString() };
-      const { data, error } = await supabase
-        .from("agendamentos")
-        .update(patch)
-        .eq("id", m.id)
-        .select("id");
-      if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Sem permissão para transferir.");
-      await logAudit("handoff", "agendamento", m.id, {
-        lead_name: m.lead_name,
-        direction,
-        scheduled_date: m.scheduled_date,
-        scheduled_time: m.scheduled_time,
-      });
-      toast.success(
-        direction === "sdr_to_closer"
-          ? "Reunião transferida para o Closer"
-          : "Reunião transferida para o SDR",
-      );
-      await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
-      await queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao transferir");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
+  // Transferência (handoff) removida: ninguém sai do bloqueio sem dar desfecho.
+
 
 
 
