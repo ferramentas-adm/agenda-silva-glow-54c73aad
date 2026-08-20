@@ -653,7 +653,11 @@ export default function DashboardComercialPage() {
                 className="h-7 ml-1"
                 buttonSize="sm"
               />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => shiftPeriod(1)} title="Período seguinte">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7 ml-1" onClick={handleRefresh} title="Atualizar dados">
+
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
