@@ -20,12 +20,12 @@ function digits(v: string) {
   return (v || "").replace(/\D/g, "");
 }
 
-/** Normaliza número brasileiro para discagem (DDD + número, sem +55). */
+/** Normaliza para E.164 brasileiro (ex: +5511999998888). */
 function normalizeBr(phone: string) {
-  let d = digits(phone);
-  if (d.startsWith("55") && d.length >= 12) d = d.slice(2);
-  d = d.replace(/^0+/, "");
-  return d;
+  let d = digits(phone).replace(/^0+/, "");
+  if (!d) return "";
+  if (!d.startsWith("55")) d = "55" + d;
+  return "+" + d;
 }
 
 async function api4com(path: string, init: RequestInit = {}) {
