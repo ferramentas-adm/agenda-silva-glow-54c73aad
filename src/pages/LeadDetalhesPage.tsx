@@ -43,6 +43,7 @@ export default function LeadDetalhesPage() {
   const [items, setItems] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<Agendamento | null>(null);
+  const [callsKey, setCallsKey] = useState(0);
 
   useEffect(() => {
     (async () => {
