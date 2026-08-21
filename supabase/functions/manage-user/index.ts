@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Toggle active
+    // Toggle active — estado desejado explícito e idempotente.
     if (action === "toggle_active") {
       const { data: profile } = await supabaseAdmin
         .from("profiles")
@@ -136,13 +136,33 @@ Deno.serve(async (req) => {
         .eq("user_id", user_id)
         .single();
 
-      const newActive = !(profile?.active ?? true);
-      const { error } = await supabaseAdmin
+      // Compatibilidade: sem `active` no corpo, inverte o valor atual.
+      const newActive = typeof body.active === "boolean" ? body.active : !(profile?.active ?? true);
+
+      // Chamada duplicada/atrasada não pode reverter o status.
+      if ((profile?.active ?? true) === newActive) {
+        return new Response(JSON.stringify({ message: "Status já estava atualizado", active: newActive, noop: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: updated, error } = await supabaseAdmin
         .from("profiles")
         .update({ active: newActive })
-        .eq("user_id", user_id);
+        .eq("user_id", user_id)
+        .eq("active", !newActive)
+        .select("user_id");
 
       if (error) throw error;
+
+      if (!updated || updated.length === 0) {
+        return new Response(JSON.stringify({ message: "Status já estava atualizado", active: newActive, noop: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
 
       if (!newActive) {
         await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "876600h" });

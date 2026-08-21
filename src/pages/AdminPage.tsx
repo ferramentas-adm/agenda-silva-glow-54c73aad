@@ -171,6 +171,7 @@ function UsersSection() {
 
   // Toggle active
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<any | null>(null);
 
   // Password change state
   const [passwordChangeTarget, setPasswordChangeTarget] = useState<{ userId: string; name: string } | null>(null);
@@ -422,30 +423,31 @@ function UsersSection() {
     setDeleteTarget(null);
   };
 
-  const handleToggleActive = async (user: any) => {
+  const handleToggleActive = async (user: any, desiredActive: boolean) => {
+    if (togglingId) return; // impede cliques duplicados (evitava flip de status)
     setTogglingId(user.userId);
     try {
       if (user.type === "closer") {
         // Legacy closer without auth account
         const { error } = await supabase.from("closers")
-          .update({ active: !user.active })
+          .update({ active: desiredActive })
           .eq("id", user.id);
         if (error) throw error;
       } else {
-        // Profile-based user: toggle profile active
-        await invokeEdgeFunction("manage-user", { user_id: user.userId, action: "toggle_active" });
+        // Profile-based user: envia o estado desejado explicitamente
+        await invokeEdgeFunction("manage-user", { user_id: user.userId, action: "toggle_active", active: desiredActive });
 
         // If this user is a closer with a linked closer record, also toggle it
         if (user.role === "closer" && user.closerId) {
           await supabase.from("closers")
-            .update({ active: !user.active })
+            .update({ active: desiredActive })
             .eq("id", user.closerId);
         }
       }
       queryClient.invalidateQueries({ queryKey: ["closers"] });
       queryClient.invalidateQueries({ queryKey: ["closers-active"] });
-      await logAudit("toggle_active", user.type === "closer" ? "closer" : "user", user.userId || user.id, { name: user.name, new_active: !user.active });
-      toast.success(!user.active ? "Usuário ativado" : "Usuário desativado");
+      await logAudit("toggle_active", user.type === "closer" ? "closer" : "user", user.userId || user.id, { name: user.name, new_active: desiredActive });
+      toast.success(desiredActive ? "Usuário ativado" : "Usuário desativado");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao alterar status");
@@ -823,7 +825,10 @@ function UsersSection() {
                         {canActOn(u.role) && (
                           <Switch
                             checked={u.active}
-                            onCheckedChange={() => handleToggleActive(u)}
+                            onCheckedChange={(v) => {
+                              if (v) handleToggleActive(u, true);
+                              else setDeactivateTarget(u);
+                            }}
                             disabled={togglingId === u.userId}
                           />
                         )}
@@ -1239,6 +1244,32 @@ function UsersSection() {
               }}
             >
               {savingRamal ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmação de desativação de usuário */}
+      <AlertDialog open={!!deactivateTarget} onOpenChange={(open) => { if (!open) setDeactivateTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deactivateTarget?.name}</strong> perderá o acesso ao sistema imediatamente e, se for Closer,
+              as reuniões futuras dele voltam para "Aguardando atribuição". Essa ação fica registrada no histórico.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!!togglingId}
+              onClick={async () => {
+                const target = deactivateTarget;
+                setDeactivateTarget(null);
+                if (target) await handleToggleActive(target, false);
+              }}
+            >
+              Desativar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
