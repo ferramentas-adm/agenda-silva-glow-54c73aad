@@ -42,7 +42,9 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const since = url.searchParams.get("since");
+  const until = url.searchParams.get("until");
   const vendeuParam = url.searchParams.get("vendeu");
+  const origemParam = (url.searchParams.get("origem") ?? "").trim().toLowerCase();
   const limitParam = url.searchParams.get("limit");
   const vendeu = vendeuParam === null ? true : vendeuParam === "true";
   const limit = limitParam ? parseInt(limitParam, 10) : null;
@@ -57,18 +59,28 @@ Deno.serve(async (req) => {
     .select(`
       id, valor, valor_total_projeto, produto, resumo_venda,
       segunda_reuniao, follow_up, motivo_nao_fechamento, vendeu,
+      venda_origem, closed_at,
       agendamento_id, created_at,
       agendamentos!inner (
         scheduled_date, scheduled_time, lead_name, lead_phone, is_venda_avulsa, is_5k,
-        channel_type, meeting_reason,
+        channel_type, meeting_reason, deleted_at,
         closers ( name, email )
       )
     `)
     .eq("vendeu", vendeu)
     .order("created_at", { ascending: false });
 
+  // A data da VENDA é closed_at (fallback: created_at). Filtrar pela data da
+  // reunião escondia as vendas de follow-up (reunião antiga, venda recente).
   if (since) {
-    query = query.gte("agendamentos.scheduled_date", since);
+    query = query.or(
+      `closed_at.gte.${since},and(closed_at.is.null,created_at.gte.${since}T00:00:00Z)`,
+    );
+  }
+  if (until) {
+    query = query.or(
+      `closed_at.lte.${until},and(closed_at.is.null,created_at.lte.${until}T23:59:59Z)`,
+    );
   }
   if (limit && limit > 0) {
     query = query.limit(limit);
@@ -82,33 +94,47 @@ Deno.serve(async (req) => {
     });
   }
 
-  const vendas = (data ?? []).map((v: any) => {
-    const ag = v.agendamentos ?? {};
-    const closer = ag.closers ?? {};
-    const data_str = ag.scheduled_date
-      ? toBRDate(ag.scheduled_date)
-      : isoToBRDate(v.created_at);
-    return {
-      closer: closer.name ?? null,
-      closer_email: closer.email ?? null,
-      lead: ag.lead_name ?? null,
-      lead_whatsapp: ag.lead_phone ?? null,
-      data: data_str,
-      hora_reuniao: ag.scheduled_time ?? null,
-      valor: v.valor,
-      valor_total_projeto: v.valor_total_projeto,
-      is_venda_avulsa: ag.is_venda_avulsa ?? false,
-      is_5k: ag.is_5k ?? false,
-      channel_type: ag.channel_type ?? null,
-      meeting_reason: ag.meeting_reason ?? null,
-      produto: v.produto,
-      resumo_venda: v.resumo_venda,
-      segunda_reuniao: v.segunda_reuniao ?? false,
-      follow_up: v.follow_up ?? false,
-      motivo_nao_fechamento: v.motivo_nao_fechamento,
-      agendamento_id: v.agendamento_id,
-    };
-  });
+  const vendas = (data ?? [])
+    .filter((v: any) => !v.agendamentos?.deleted_at)
+    .map((v: any) => {
+      const ag = v.agendamentos ?? {};
+      const closer = ag.closers ?? {};
+      const data_venda = v.closed_at ?? (v.created_at ? v.created_at.slice(0, 10) : null);
+      const origem = v.venda_origem
+        ? v.venda_origem
+        : v.segunda_reuniao || (v.closed_at && ag.scheduled_date && v.closed_at > ag.scheduled_date)
+          ? "follow_up"
+          : "primeira_call";
+      return {
+        closer: closer.name ?? null,
+        closer_email: closer.email ?? null,
+        lead: ag.lead_name ?? null,
+        lead_whatsapp: ag.lead_phone ?? null,
+        // "data" = data da venda (compatibilidade)
+        data: data_venda ? toBRDate(data_venda) : isoToBRDate(v.created_at),
+        data_venda_iso: data_venda,
+        data_reuniao: ag.scheduled_date ? toBRDate(ag.scheduled_date) : null,
+        data_reuniao_iso: ag.scheduled_date ?? null,
+        hora_reuniao: ag.scheduled_time ?? null,
+        valor: v.valor,
+        valor_total_projeto: v.valor_total_projeto,
+        is_venda_avulsa: ag.is_venda_avulsa ?? false,
+        is_5k: ag.is_5k ?? false,
+        channel_type: ag.channel_type ?? null,
+        meeting_reason: ag.meeting_reason ?? null,
+        produto: v.produto,
+        resumo_venda: v.resumo_venda,
+        venda_origem: origem,
+        origem_label: origem === "follow_up" ? "Venda de follow-up" : "Venda de 1ª call",
+        segunda_reuniao: v.segunda_reuniao ?? false,
+        follow_up: v.follow_up ?? false,
+        motivo_nao_fechamento: v.motivo_nao_fechamento,
+        agendamento_id: v.agendamento_id,
+        venda_id: v.id,
+      };
+    })
+    .filter((v: any) => !origemParam || v.venda_origem === origemParam);
+
 
   const total_faturado = vendas.reduce(
     (sum, v) => sum + Number(v.valor_total_projeto ?? v.valor ?? 0),
