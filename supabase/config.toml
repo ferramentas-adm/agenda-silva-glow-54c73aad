@@ -14,3 +14,7 @@ verify_jwt = false
 
 [functions.mcp]
 verify_jwt = false
+
+[functions.silva-followups]
+verify_jwt = false
+
