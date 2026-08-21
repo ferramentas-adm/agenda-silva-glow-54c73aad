@@ -144,10 +144,13 @@ Deno.serve(async (req) => {
   return new Response(
     JSON.stringify({
       count: vendas.length,
+      count_primeira_call: vendas.filter((v: any) => v.venda_origem === "primeira_call").length,
+      count_follow_up: vendas.filter((v: any) => v.venda_origem === "follow_up").length,
       total_faturado,
       sincronizado_em: new Date().toISOString(),
       vendas,
     }),
+
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });
