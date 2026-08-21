@@ -109,79 +109,27 @@ Deno.serve(async (req) => {
     const generatedPassword = generateRandomPassword();
 
     // Create auth user
-    let { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: generatedPassword,
       email_confirm: true,
       user_metadata: { full_name },
     });
 
-    let recovered = false;
-
     if (createError) {
-      const alreadyExists = createError.message?.includes("already been registered")
-        || createError.message?.toLowerCase().includes("already exists");
-
-      if (alreadyExists) {
-        // The auth account may exist without a profile (orphan from a failed delete).
-        // In that case we re-adopt it instead of blocking the re-registration.
-        const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-        const existing = list?.users?.find(
-          (u: { id: string; email?: string }) => (u.email ?? "").toLowerCase() === String(email).toLowerCase(),
-        );
-
-        if (existing) {
-          const { data: existingProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("user_id")
-            .eq("user_id", existing.id)
-            .maybeSingle();
-
-          if (existingProfile) {
-            return new Response(JSON.stringify({ error: "Este e-mail já está cadastrado no sistema." }), {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-
-          // Orphan account: restore access and rebuild profile/role.
-          const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {
-            password: generatedPassword,
-            email_confirm: true,
-            ban_duration: "none",
-            user_metadata: { full_name },
-          });
-          if (updErr) {
-            return new Response(JSON.stringify({ error: updErr.message }), {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-
-          await supabaseAdmin.from("profiles").upsert(
-            { user_id: existing.id, full_name, email, active: true, must_change_password: true },
-            { onConflict: "user_id" },
-          );
-
-          newUser = { user: existing } as typeof newUser;
-          createError = null;
-          recovered = true;
-        }
-      }
-
-      if (createError) {
-        return new Response(JSON.stringify({ error: createError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const msg = createError.message?.includes("already been registered")
+        ? "Este e-mail já está cadastrado no sistema."
+        : createError.message;
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Assign role
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", newUser!.user.id);
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: newUser!.user.id, role });
+      .insert({ user_id: newUser.user.id, role });
 
     if (roleError) {
       return new Response(JSON.stringify({ error: roleError.message }), {
@@ -193,36 +141,25 @@ Deno.serve(async (req) => {
     // Set must_change_password = true on profile
     await supabaseAdmin
       .from("profiles")
-      .update({ must_change_password: true, active: true })
-      .eq("user_id", newUser!.user.id);
+      .update({ must_change_password: true })
+      .eq("user_id", newUser.user.id);
 
     // If closer, also create entry in closers table linked by email
     if (role === "closer") {
-      const { data: existingCloser } = await supabaseAdmin
-        .from("closers")
-        .select("id")
-        .eq("email", email)
-        .maybeSingle();
-      if (existingCloser) {
-        await supabaseAdmin.from("closers").update({ active: true, name: full_name }).eq("id", existingCloser.id);
-      } else {
-        await supabaseAdmin.from("closers").insert({ name: full_name, email });
-      }
+      await supabaseAdmin.from("closers").insert({
+        name: full_name,
+        email,
+      });
     }
-
 
     return new Response(
       JSON.stringify({
-        message: recovered
-          ? "Conta existente sem cadastro foi recuperada e reativada com nova senha temporária."
-          : "Usuário criado com sucesso",
-        user_id: newUser!.user.id,
+        message: "Usuário criado com sucesso",
+        user_id: newUser.user.id,
         generated_password: generatedPassword,
-        recovered,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,

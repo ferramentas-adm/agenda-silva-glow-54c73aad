@@ -85,74 +85,48 @@ Deno.serve(async (req) => {
 
     // Delete user
     if (action === "delete") {
-      console.log(`[delete] Deleting user ${user_id}, checking dependencies...`);
-
+      console.log(`[delete] Deleting user ${user_id}, cleaning up dependent records...`);
+      
       // Get profile to find associated closer
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("email, full_name")
+        .select("email")
         .eq("user_id", user_id)
-        .maybeSingle();
+        .single();
 
-      // Historical references to auth.users prevent a hard delete.
-      // If they exist we keep the record and disable access instead, so the user
-      // never becomes an "invisible" orphan (auth account without profile).
-      const [{ count: createdCount }, { count: errorCount }] = await Promise.all([
-        supabaseAdmin.from("agendamentos").select("id", { count: "exact", head: true }).eq("created_by", user_id),
-        supabaseAdmin.from("agendamentos").select("id", { count: "exact", head: true }).eq("sdr_error_by", user_id),
-      ]);
-      const hasHistory = (createdCount ?? 0) > 0 || (errorCount ?? 0) > 0;
-
-      if (hasHistory) {
-        console.log(`[delete] User ${user_id} has history (${createdCount}/${errorCount}) — deactivating instead.`);
-        await supabaseAdmin.from("profiles").update({ active: false, available_for_scheduling: false }).eq("user_id", user_id);
-        if (profile?.email) {
-          await supabaseAdmin.from("closers").update({ active: false }).eq("email", profile.email);
-        }
-        await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "876000h" });
-        return new Response(
-          JSON.stringify({
-            message: "Usuário possui histórico de agendamentos e foi desativado (acesso bloqueado) para preservar os dados.",
-            deactivated: true,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      // No history: safe to hard delete. Delete the auth account FIRST so a
-      // failure never leaves an account without profile.
-      console.log(`[delete] Deleting auth user ${user_id}...`);
-      const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
-      if (error) {
-        console.error(`[delete] Auth delete error:`, error);
-        throw error;
-      }
-
+      // Clean up closer-related records if user has an email match
       if (profile?.email) {
         const { data: closer } = await supabaseAdmin
           .from("closers")
           .select("id")
           .eq("email", profile.email)
           .maybeSingle();
-
+        
         if (closer) {
           console.log(`[delete] Found closer ${closer.id}, cleaning closer data...`);
           await supabaseAdmin.from("closer_blocks").delete().eq("closer_id", closer.id);
           await supabaseAdmin.from("closer_google_tokens").delete().eq("closer_id", closer.id);
+          // closer_id on agendamentos will be SET NULL automatically by FK cascade
           await supabaseAdmin.from("closers").delete().eq("id", closer.id);
         }
       }
 
+      // Clean up user records
       await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
       await supabaseAdmin.from("profiles").delete().eq("user_id", user_id);
 
+      console.log(`[delete] Deleting auth user ${user_id}...`);
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
+      if (error) {
+        console.error(`[delete] Auth delete error:`, error);
+        throw error;
+      }
       console.log(`[delete] User ${user_id} deleted successfully`);
       return new Response(JSON.stringify({ message: "Usuário excluído" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
 
     // Toggle active
     if (action === "toggle_active") {
