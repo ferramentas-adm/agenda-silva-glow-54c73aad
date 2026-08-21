@@ -213,12 +213,16 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        message: "Usuário criado com sucesso",
-        user_id: newUser.user.id,
+        message: recovered
+          ? "Conta existente sem cadastro foi recuperada e reativada com nova senha temporária."
+          : "Usuário criado com sucesso",
+        user_id: newUser!.user.id,
         generated_password: generatedPassword,
+        recovered,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
