@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
   const motivoFilter = (url.searchParams.get("motivo") ?? "").trim().toLowerCase();
   const onlyAtrasados = url.searchParams.get("atrasados") === "true";
   const limitParam = url.searchParams.get("limit");
-  const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : null;
+  const limit = limitParam ? Math.min(1000, Math.max(1, parseInt(limitParam, 10))) : 500;
+
 
   const wantAcomp = bloco === "todos" || bloco === "em_acompanhamento";
   const wantNao = bloco === "todos" || bloco === "nao_acompanhados";
