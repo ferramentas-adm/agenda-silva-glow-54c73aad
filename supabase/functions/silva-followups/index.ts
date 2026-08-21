@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
-  const expected = Deno.env.get("SILVA_FOLLOWUPS_API_KEY");
+  const expected = Deno.env.get("SILVA_VENDAS_API_KEY");
   if (!expected || req.headers.get("x-api-key") !== expected) {
     return json({ error: "Unauthorized" }, 401);
   }
