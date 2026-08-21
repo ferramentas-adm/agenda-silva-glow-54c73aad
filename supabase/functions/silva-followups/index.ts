@@ -133,10 +133,11 @@ Deno.serve(async (req) => {
       q = q.order("created_at", { ascending: false });
     }
 
-    const { data, error } = await q;
+    const { data, error } = await q.limit(2000);
     if (error) throw new Error(error.message);
     const rows = applyFilters(data ?? []);
-    return limit ? rows.slice(0, limit) : rows;
+    return rows.slice(0, limit);
+
   };
 
   try {
