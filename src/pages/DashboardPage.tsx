@@ -1372,9 +1372,14 @@ export function CalendarContent() {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
               <User className="h-5 w-5 text-primary" />
               {detailAg?.lead_name}
+              {detailAg?.meta_lead_id && (
+                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  Lead ID: {detailAg.meta_lead_id}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription>Detalhes do agendamento</DialogDescription>
           </DialogHeader>
