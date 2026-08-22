@@ -67,6 +67,12 @@ function DynamicListsSection() {
           description="Opções de categoria ao apontar um erro do Closer nos motivos de não fechamento."
           defaults={["Discovery raso", "Não criou urgência", "Objeção mal contornada", "Quebra de rapport", "Não ofertou preço"]}
         />
+        <DynamicListManager
+          settingKey={APP_SETTING_KEYS.cancellation_reasons}
+          title="Motivos de cancelamento"
+          description="Opções exibidas ao cancelar uma reunião em 'Detalhes do agendamento'."
+          defaults={["Imprevisto do lead", "Sem motivo explícito", "Desistiu", "Sem closer disponível", "Outros"]}
+        />
 
 
 
