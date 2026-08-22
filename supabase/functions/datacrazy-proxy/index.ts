@@ -212,6 +212,47 @@ serve(async (req) => {
       return null;
     };
 
+    // ── GET /leads/meta-lead-id?leadId=...
+    // Lê o campo adicional "Lead ID" (GS-XXXX) do lead na API do CRM.
+    // Feito sob demanda (1 lead por vez) para não impactar a listagem.
+    const metaIdMatch = normalizedPath.match(/^\/leads\/meta-lead-id\?leadId=([^&]+)/);
+    if (method === "GET" && metaIdMatch) {
+      const leadId = decodeURIComponent(metaIdMatch[1]);
+      const key = `METAID ${leadId}`;
+      const hit = cacheHit(key);
+      if (hit) return hit;
+
+      let metaLeadId: string | null = null;
+      try {
+        const res = await fetch(
+          `${DATACRAZY_CRM_URL}/additional-fields/lead/${encodeURIComponent(leadId)}?take=1000&skip=0`,
+          { method: "GET", headers: dcHeadersAgg, signal: AbortSignal.timeout(8_000) },
+        );
+        if (res.ok) {
+          const parsed = await res.json().catch(() => null);
+          const rows: any[] = Array.isArray(parsed) ? parsed : parsed?.data || [];
+          // 1) match exato pelo ID do campo
+          let row = rows.find((r) => r?.additionalField?.id === LEAD_ID_FIELD_ID);
+          // 2) fallback pelo nome do campo
+          if (!row?.value) {
+            row = rows.find(
+              (r) => String(r?.additionalField?.name || "").trim().toLowerCase() === "lead id",
+            );
+          }
+          const raw = typeof row?.value === "string" ? row.value.trim() : "";
+          if (raw) {
+            const m = raw.match(GS_ID_RE);
+            metaLeadId = (m ? m[0] : raw).toUpperCase();
+          }
+        }
+      } catch (_e) {
+        metaLeadId = null;
+      }
+
+      return jsonCached(key, JSON.stringify({ meta_lead_id: metaLeadId }));
+    }
+
+
     // ── Agregador: GET /leads/by-tag-page?tagId=...&page=N
     // Devolve UMA página compacta + total, para carga incremental no cliente.
     const pageMatch = normalizedPath.match(/^\/leads\/by-tag-page\?tagId=([^&]+)&page=(\d+)/);
