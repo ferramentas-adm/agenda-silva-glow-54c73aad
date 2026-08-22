@@ -20,6 +20,7 @@ export interface Lead {
   name: string;
   phone: string;
   dataCrazyId?: string;
+  meta_lead_id?: string | null;
   tags?: { id: string; name: string }[];
 }
 
@@ -34,6 +35,7 @@ const toLead = (l: StoreLead): Lead => ({
   name: l.name,
   phone: l.phone,
   dataCrazyId: l.id,
+  meta_lead_id: l.meta_lead_id,
   tags: l.tags,
 });
 
@@ -68,6 +70,7 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
         phone:
           (l.phone as string) ||
           (Array.isArray(l.phones) && l.phones[0]?.phone ? String(l.phones[0].phone) : ""),
+        meta_lead_id: l.meta_lead_id,
         tags: l.tags,
       }));
     },

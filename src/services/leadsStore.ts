@@ -9,6 +9,7 @@ export interface StoreLead {
   id: string;
   name: string;
   phone: string;
+  meta_lead_id?: string | null;
   tags?: { id: string; name: string }[];
 }
 
@@ -58,6 +59,7 @@ function mapLead(l: DataCrazyLead): StoreLead {
     id: l.id,
     name: l.name,
     phone: typeof phone === "string" ? phone : String(phone),
+    meta_lead_id: l.meta_lead_id,
     tags: l.tags,
   };
 }
