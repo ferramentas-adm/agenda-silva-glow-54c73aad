@@ -71,6 +71,7 @@ interface Agendamento {
   original_agendamento_id: string | null;
   duration_minutes: number | null;
   is_5k: boolean | null;
+  meta_lead_id: string | null;
 }
 
 // ─── Status efetivo ──────────────────────────────────────────────
@@ -300,7 +301,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -1371,9 +1372,14 @@ export function CalendarContent() {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
               <User className="h-5 w-5 text-primary" />
               {detailAg?.lead_name}
+              {detailAg?.meta_lead_id && (
+                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  Lead ID: {detailAg.meta_lead_id}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription>Detalhes do agendamento</DialogDescription>
           </DialogHeader>
