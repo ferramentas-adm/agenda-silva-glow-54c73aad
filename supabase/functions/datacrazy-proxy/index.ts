@@ -362,8 +362,8 @@ serve(async (req) => {
           name: l.name,
           phone: typeof phone === "string" ? phone : String(phone),
           tags: Array.isArray(l.tags)
-
             ? l.tags.map((t: any) => ({ id: t.id, name: t.name }))
+
             : [],
         });
       }
