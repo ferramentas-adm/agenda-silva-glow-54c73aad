@@ -25,6 +25,8 @@ import { Switch } from "@/components/ui/switch";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
 import { collectLeadMetaFields } from "@/lib/metaTracking";
+import { buscarMetaLeadId } from "@/services/datacrazy";
+
 
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
