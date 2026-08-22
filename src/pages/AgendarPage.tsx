@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
+import { collectLeadMetaFields } from "@/lib/metaTracking";
 
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
@@ -417,6 +418,9 @@ function AgendarPageInner() {
       const isSameDayReschedule =
         !!editId && !!editData?.scheduled_date && editData.scheduled_date === dateStr;
 
+      // Rastreamento Meta (fbp/fbc + dados de contato) capturado no agendamento.
+      const metaFields = collectLeadMetaFields(lead);
+
       let insertedData: { id: string } | null = null;
 
       if (isSameDayReschedule) {
@@ -433,6 +437,7 @@ function AgendarPageInner() {
             meeting_reason: resolvedReason,
             channel_type: channelType || null,
             is_5k: is5k,
+            ...metaFields,
           } as any)
           .eq("id", editId!)
           .select("id")
@@ -468,6 +473,7 @@ function AgendarPageInner() {
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
         is_5k: is5k,
+        ...metaFields,
       } as any).select("id").single();
 
       if (error) throw error;

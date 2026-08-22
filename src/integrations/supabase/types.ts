@@ -21,6 +21,8 @@ export type Database = {
           briefing_read_by: string | null
           cancellation_reason: string | null
           channel_type: string | null
+          client_ip_address: string | null
+          client_user_agent: string | null
           closer_handoff_at: string | null
           closer_id: string | null
           created_at: string
@@ -29,14 +31,19 @@ export type Database = {
           deleted_by: string | null
           deletion_reason: string | null
           duration_minutes: number
+          fbc: string | null
+          fbp: string | null
           google_event_id: string | null
           id: string
           is_5k: boolean
           is_venda_avulsa: boolean
+          lead_email: string | null
           lead_name: string
           lead_phone: string
+          lead_state: string | null
           meet_link: string | null
           meeting_reason: string | null
+          meta_lead_id: string | null
           observation: string | null
           original_agendamento_id: string | null
           scheduled_date: string
@@ -59,6 +66,8 @@ export type Database = {
           briefing_read_by?: string | null
           cancellation_reason?: string | null
           channel_type?: string | null
+          client_ip_address?: string | null
+          client_user_agent?: string | null
           closer_handoff_at?: string | null
           closer_id?: string | null
           created_at?: string
@@ -67,14 +76,19 @@ export type Database = {
           deleted_by?: string | null
           deletion_reason?: string | null
           duration_minutes?: number
+          fbc?: string | null
+          fbp?: string | null
           google_event_id?: string | null
           id?: string
           is_5k?: boolean
           is_venda_avulsa?: boolean
+          lead_email?: string | null
           lead_name: string
           lead_phone: string
+          lead_state?: string | null
           meet_link?: string | null
           meeting_reason?: string | null
+          meta_lead_id?: string | null
           observation?: string | null
           original_agendamento_id?: string | null
           scheduled_date: string
@@ -97,6 +111,8 @@ export type Database = {
           briefing_read_by?: string | null
           cancellation_reason?: string | null
           channel_type?: string | null
+          client_ip_address?: string | null
+          client_user_agent?: string | null
           closer_handoff_at?: string | null
           closer_id?: string | null
           created_at?: string
@@ -105,14 +121,19 @@ export type Database = {
           deleted_by?: string | null
           deletion_reason?: string | null
           duration_minutes?: number
+          fbc?: string | null
+          fbp?: string | null
           google_event_id?: string | null
           id?: string
           is_5k?: boolean
           is_venda_avulsa?: boolean
+          lead_email?: string | null
           lead_name?: string
           lead_phone?: string
+          lead_state?: string | null
           meet_link?: string | null
           meeting_reason?: string | null
+          meta_lead_id?: string | null
           observation?: string | null
           original_agendamento_id?: string | null
           scheduled_date?: string
@@ -586,6 +607,42 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_capi_events: {
+        Row: {
+          agendamento_id: string | null
+          created_at: string
+          event_id: string
+          event_name: string
+          response_body: string | null
+          response_code: number | null
+          status: string
+          updated_at: string
+          venda_id: string | null
+        }
+        Insert: {
+          agendamento_id?: string | null
+          created_at?: string
+          event_id: string
+          event_name: string
+          response_body?: string | null
+          response_code?: number | null
+          status?: string
+          updated_at?: string
+          venda_id?: string | null
+        }
+        Update: {
+          agendamento_id?: string | null
+          created_at?: string
+          event_id?: string
+          event_name?: string
+          response_body?: string | null
+          response_code?: number | null
+          status?: string
+          updated_at?: string
+          venda_id?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1039,6 +1096,14 @@ export type Database = {
           audit_logs_removidos: number
           notificacoes_removidas: number
         }[]
+      }
+      notify_meta_capi: {
+        Args: {
+          _agendamento_id: string
+          _event_name: string
+          _venda_id: string
+        }
+        Returns: undefined
       }
       transfer_agendamento_closer: {
         Args: { _agendamento_id: string; _new_closer_id: string }
