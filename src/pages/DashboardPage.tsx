@@ -71,6 +71,7 @@ interface Agendamento {
   original_agendamento_id: string | null;
   duration_minutes: number | null;
   is_5k: boolean | null;
+  meta_lead_id: string | null;
 }
 
 // ─── Status efetivo ──────────────────────────────────────────────
