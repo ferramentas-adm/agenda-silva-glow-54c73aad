@@ -161,42 +161,12 @@ serve(async (req) => {
       Authorization: DATACRAZY_API_TOKEN,
     };
 
-    // Extrai o primeiro valor no formato GS-XXXX encontrado no objeto do lead,
-    // procurando em campos customizados e aninhamentos comuns do DataCrazy.
+    // Campo adicional "Lead ID" do DataCrazy (entity: lead, type: string).
+    // Os valores NÃO vêm no payload de /leads — só na API do CRM:
+    //   GET https://crm.g1.datacrazy.io/api/crm/additional-fields/lead/{leadId}
+    const DATACRAZY_CRM_URL = "https://crm.g1.datacrazy.io/api/crm";
+    const LEAD_ID_FIELD_ID = "9aced571-21e8-403f-aa22-33922db57f22";
     const GS_ID_RE = /GS-[A-Z0-9]{4,}/i;
-    function extractMetaLeadId(value: unknown, depth = 0): string | null {
-      if (depth > 4 || value === null || value === undefined) return null;
-      if (typeof value === "string") {
-        const m = value.match(GS_ID_RE);
-        return m ? m[0].toUpperCase() : null;
-      }
-      if (typeof value === "number") {
-        const m = String(value).match(GS_ID_RE);
-        return m ? m[0].toUpperCase() : null;
-      }
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          const found = extractMetaLeadId(item, depth + 1);
-          if (found) return found;
-        }
-        return null;
-      }
-      if (typeof value === "object") {
-        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-          const key = k.toLowerCase();
-          // Prioriza chaves que parecem ser o campo "Lead ID".
-          if (key.includes("lead") && key.includes("id")) {
-            const direct = extractMetaLeadId(v, depth + 1);
-            if (direct) return direct;
-          }
-        }
-        for (const v of Object.values(value as Record<string, unknown>)) {
-          const found = extractMetaLeadId(v, depth + 1);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
 
     const compactLead = (l: any) => {
       const phone = l.phone || (Array.isArray(l.phones) && l.phones[0]?.phone) || "";
@@ -204,10 +174,10 @@ serve(async (req) => {
         id: l.id,
         name: l.name,
         phone: typeof phone === "string" ? phone : String(phone),
-        meta_lead_id: extractMetaLeadId(l),
         tags: Array.isArray(l.tags) ? l.tags.map((t: any) => ({ id: t.id, name: t.name })) : [],
       };
     };
+
     const fetchLeadsUrl = async (
       relative: string,
     ): Promise<{ items: any[]; count: number | null }> => {
