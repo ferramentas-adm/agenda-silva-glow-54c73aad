@@ -391,6 +391,7 @@ serve(async (req) => {
           id: l.id,
           name: l.name,
           phone: typeof phone === "string" ? phone : String(phone),
+          meta_lead_id: extractMetaLeadId(l),
           tags: Array.isArray(l.tags)
             ? l.tags.map((t: any) => ({ id: t.id, name: t.name }))
             : [],
