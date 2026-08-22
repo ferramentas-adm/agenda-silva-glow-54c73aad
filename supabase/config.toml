@@ -18,3 +18,6 @@ verify_jwt = false
 [functions.silva-followups]
 verify_jwt = false
 
+
+[functions.meta-capi-forward]
+verify_jwt = false
