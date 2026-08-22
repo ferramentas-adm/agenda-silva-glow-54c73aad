@@ -49,6 +49,15 @@ export function collectLeadMetaFields(lead: unknown): LeadMetaFields {
   let ip: string | null = null;
   let ua: string | null = null;
 
+  // Se o lead já veio com o campo "Lead ID" do DataCrazy extraído pelo proxy,
+  // usamos ele diretamente (formato GS-XXXX).
+  if (lead && typeof lead === "object" && "meta_lead_id" in lead) {
+    const direct = (lead as Record<string, unknown>).meta_lead_id;
+    if (typeof direct === "string" && direct.trim()) {
+      metaLeadId = direct.trim().toUpperCase();
+    }
+  }
+
   walk(lead, (key, raw) => {
     const val = raw.trim();
     if (!val) return;

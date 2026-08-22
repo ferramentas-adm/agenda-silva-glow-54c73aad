@@ -190,6 +190,7 @@ export interface DataCrazyLead {
   name: string;
   phone?: string;
   phones?: { phone: string }[];
+  meta_lead_id?: string | null;
   tags?: { id: string; name: string }[];
   [key: string]: unknown;
 }
