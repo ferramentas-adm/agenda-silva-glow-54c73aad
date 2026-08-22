@@ -25,6 +25,8 @@ import { Switch } from "@/components/ui/switch";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
 import { collectLeadMetaFields } from "@/lib/metaTracking";
+import { buscarMetaLeadId } from "@/services/datacrazy";
+
 
 
 type Step = "lead" | "closer" | "datetime" | "confirm";
@@ -420,6 +422,15 @@ function AgendarPageInner() {
 
       // Rastreamento Meta (fbp/fbc + dados de contato) capturado no agendamento.
       const metaFields = collectLeadMetaFields(lead);
+
+      // O campo adicional "Lead ID" (GS-XXXX) só existe na API do CRM do
+      // DataCrazy — buscamos sob demanda para o lead selecionado.
+      const leadIdCrm = (lead as { id?: string } | null)?.id;
+      if (!metaFields.meta_lead_id && leadIdCrm) {
+        const crmMetaLeadId = await buscarMetaLeadId(leadIdCrm);
+        if (crmMetaLeadId) metaFields.meta_lead_id = crmMetaLeadId;
+      }
+
 
       let insertedData: { id: string } | null = null;
 

@@ -258,6 +258,35 @@ export async function buscarLeadsPorTermo(tagId: string, q: string): Promise<Dat
   return Array.isArray((data as any)?.data) ? ((data as any).data as DataCrazyLead[]) : [];
 }
 
+/**
+ * Busca o campo adicional "Lead ID" (formato GS-XXXX) de um lead no CRM.
+ * Sob demanda: os valores de campos adicionais não vêm no payload de /leads.
+ * Nunca lança — em caso de falha devolve null para não travar o agendamento.
+ */
+const metaLeadIdCache = new Map<string, string | null>();
+
+export async function buscarMetaLeadId(leadId: string): Promise<string | null> {
+  if (!leadId) return null;
+  if (metaLeadIdCache.has(leadId)) return metaLeadIdCache.get(leadId) ?? null;
+  try {
+    const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
+      body: {
+        method: "GET",
+        path: `/leads/meta-lead-id?leadId=${encodeURIComponent(leadId)}`,
+      },
+    });
+    if (error) return null;
+    const value = (data as any)?.meta_lead_id;
+    const result = typeof value === "string" && value.trim() ? value.trim().toUpperCase() : null;
+    metaLeadIdCache.set(leadId, result);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+
+
 
 /** @deprecated Use buscarLeadsComTagId instead */
 export async function buscarLeadsComTag(tagName: string): Promise<DataCrazyLead[]> {
