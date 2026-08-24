@@ -368,7 +368,7 @@ export default function OverdueMeetingsLockOverlay() {
                         <CalendarClock className="h-3.5 w-3.5" />
                         Reagendar
                       </Button>
-                      {m.closer_id && m.stage === "sdr" && (
+                      {m.closer_id && m.stage === "sdr" && !m.closer_returned_at && (
                         <Button
                           size="sm"
                           variant="outline"
