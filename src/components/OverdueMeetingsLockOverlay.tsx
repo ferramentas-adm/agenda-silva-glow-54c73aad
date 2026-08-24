@@ -297,8 +297,8 @@ export default function OverdueMeetingsLockOverlay() {
                   </div>
                 </div>
 
-                {/* ETAPA 1 — SDR */}
-                {m.stage === "sdr" && (
+                {/* ETAPA 1 — SDR (também aparece no modo combinado) */}
+                {canSdr && (
                   <>
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                       <Button
