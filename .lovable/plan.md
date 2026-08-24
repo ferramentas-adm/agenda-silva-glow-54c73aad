@@ -1,50 +1,53 @@
-# Plano: Webhook de resultado de venda para URL separada no DataCrazy
+# Plano: Garantir que toda reunião seja gravada (lembrete forçado no painel)
 
-## Objetivo
-Permitir que o "Webhook de resultado de venda (disparado pelo frontend)" seja enviado para uma URL diferente da URL usada pelo webhook de status de agendamento, possibilitando um segundo fluxo no DataCrazy.
+## Como funciona a abordagem escolhida
 
-## Estado atual
-- O webhook de venda é disparado pelo frontend via Edge Function `datacrazy-venda-webhook`.
-- Hoje essa Edge Function lê a variável de ambiente `DATACRAZY_WEBHOOK_URL`, a mesma usada pelo webhook de status de agendamento (`datacrazy-webhook`).
-- A URL já é editável pela tela Administração > Configurações Gerais (chave `datacrazy_webhook_url` em `app_settings`), mas é única para os dois webhooks.
+A ideia é usar o próprio painel para tornar impossível o closer "esquecer" de gravar. Em vez de depender da memória, o sistema cobra a gravação em três momentos:
 
-## Mudanças propostas
+1. **Antes de entrar na call** — no momento de abrir o link do Meet.
+2. **Durante a janela da reunião** — aviso persistente no painel do closer.
+3. **No fechamento do resultado** — o closer só consegue registrar o resultado da reunião depois de declarar que gravou (ou justificar por que não gravou).
 
-### 1. Nova configuração em `app_settings`
-- Criar a chave `datacrazy_venda_webhook_url` na tabela `app_settings`.
-- A URL de status (`datacrazy_webhook_url`) continua existindo e funcionando normalmente.
+O sistema não liga a gravação sozinho (isso o Google não permite via API no Business Standard), mas cria uma barreira operacional e um registro auditável de quem gravou e quem não gravou.
 
-### 2. Tela "Administração" > "Configurações Gerais"
-- Adicionar um segundo campo de URL logo abaixo do campo existente:
-  - Rótulo: "URL do webhook de resultado de venda DataCrazy"
-  - Placeholder: `https://...`
-  - Salva em `datacrazy_venda_webhook_url`.
-- Manter o campo atual renomeado/clarificado como "URL do webhook de status de agendamento DataCrazy" (chave `datacrazy_webhook_url`).
+## O que será implementado
 
-### 3. Edge Function `supabase/functions/datacrazy-venda-webhook/index.ts`
-- Adicionar cliente Supabase com `service_role` para ler `app_settings`.
-- Buscar o valor de `datacrazy_venda_webhook_url`.
-- Ordem de prioridade da URL:
-  1. `datacrazy_venda_webhook_url` em `app_settings`.
-  2. Variável de ambiente `DATACRAZY_VENDA_WEBHOOK_URL` (nova, opcional).
-  3. Fallback para `DATACRAZY_WEBHOOK_URL` (mantém compatibilidade se a nova URL não estiver configurada).
-- Se nenhuma URL for encontrada, retornar erro informativo.
-- Manter o payload atual (`event: "venda_resultado"` + campos do resultado da venda).
+### 1. Confirmação ao entrar na reunião
+- Ao clicar no link do Meet (nos detalhes do agendamento, no calendário e no travamento de reunião atrasada), abre um passo intermediário curto:
+  - Instrução visual: "Ao entrar, clique em Atividades > Gravação > Iniciar gravação e ativar transcrição."
+  - Botão "Entendi, entrar na reunião" — só então o Meet abre em nova aba.
+- Fica registrado o horário em que o closer viu o aviso.
 
-### 4. Variável de ambiente opcional
-- Adicionar suporte à variável `DATACRAZY_VENDA_WEBHOOK_URL` na Edge Function, servindo como segunda opção de fallback/controlada por secret.
+### 2. Aviso persistente durante a reunião
+- Enquanto houver reunião do closer em andamento (do horário de início até o fim previsto), aparece uma faixa fixa no topo do painel:
+  - "Reunião em andamento com {lead} — a gravação está ativa?" com botão "Sim, estou gravando".
+- Ao confirmar, a faixa some para aquela reunião. Sem confirmar, a faixa permanece.
 
-### 5. Validação
-- Testar o salvamento da nova URL na tela de administração.
-- Testar o lançamento de uma venda e confirmar que o payload chega na nova URL configurada.
-- Confirmar que o webhook de status de agendamento continua indo para a URL antiga sem mudanças.
+### 3. Bloqueio no registro do resultado da reunião
+- No modal "Resultado da Reunião" (usado pelo closer, inclusive no travamento pós-horário), adicionar campo obrigatório:
+  - "A reunião foi gravada?" → **Sim** / **Não**
+  - Se **Não**: exigir justificativa em texto (mínimo de caracteres, como já é feito na justificativa de não-venda).
+- Sem responder, o botão de salvar continua desabilitado — mesmo comportamento das outras validações do modal.
 
-## Arquivos envolvidos
-- `src/pages/AdminPage.tsx`
-- `supabase/functions/datacrazy-venda-webhook/index.ts`
-- Banco: tabela `public.app_settings` (inserir chave `datacrazy_venda_webhook_url`)
+### 4. Registro e visibilidade para gestão
+- Guardar na reunião: se foi gravada, quem confirmou e quando, e a justificativa quando não gravada.
+- Registrar no log de auditoria.
+- Na Lista de Reuniões: coluna/badge indicando "Gravada" ou "Sem gravação", e filtro "Apenas sem gravação".
+- Notificação para gestores/moderadores/supervisores quando um closer registra reunião sem gravação.
 
-## Notas
-- Nenhuma mudança no formato do payload de venda.
-- Nenhuma mudança no webhook de status de agendamento (`datacrazy-webhook`).
-- A alteração é retrocompatível: se a nova URL não for configurada, o comportamento atual é preservado.
+### 5. Indicador de aderência
+- No painel de gestão, um card simples: percentual de reuniões realizadas com gravação confirmada no período, e ranking por closer.
+
+## Detalhes técnicos
+
+- Banco: novas colunas em `agendamentos` — `recording_confirmed_at` (timestamp), `recording_confirmed_by` (uuid), `recording_missing_reason` (text). Colunas nulas por padrão, sem impacto em dados existentes.
+- Frontend:
+  - Novo componente de diálogo de confirmação antes de abrir o `meet_link`, aplicado nos pontos que hoje abrem o link (detalhes do agendamento no Dashboard/Calendário e `OverdueMeetingsLockOverlay.tsx`).
+  - Nova faixa de reunião em andamento, no mesmo padrão do `OverdueFollowUpsBanner.tsx`.
+  - Campo obrigatório de gravação em `VendaDialog.tsx`, seguindo a validação já existente de `canSubmit`.
+  - Coluna, badge e filtro em `ReunioesListPage.tsx`.
+- Notificação de reunião sem gravação via trigger na tabela `agendamentos`, no mesmo padrão dos avisos existentes para gestores.
+
+## Limitação a registrar
+
+No Google Workspace Business Standard, ativar gravação e transcrição automaticamente exige a API do Google Meet (v2beta) com novo consentimento OAuth de cada closer, e a transcrição automática depende do tier. Se em algum momento quiser o caminho nativo, ele pode ser adicionado depois em cima dessa mesma base — o controle de aderência continua útil nos dois cenários.
