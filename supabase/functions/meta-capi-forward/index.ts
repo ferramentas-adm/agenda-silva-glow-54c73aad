@@ -31,7 +31,7 @@ function splitName(full: string | null): { first: string | null; last: string | 
 }
 
 interface Body {
-  event_name?: "ReuniaoRealizada" | "Purchase";
+  event_name?: "ReuniaoRealizada" | "Purchase" | "Schedule";
   agendamento_id?: string;
   venda_id?: string | null;
 }
@@ -96,7 +96,12 @@ Deno.serve(async (req) => {
   }
 
   // event_id único e estável → o destino faz a desduplicação no Meta.
-  const eventId = eventName === "Purchase" ? `venda-${venda!.id}` : `reuniao-${ag.id}`;
+  const eventId =
+    eventName === "Purchase"
+      ? `venda-${venda!.id}`
+      : eventName === "Schedule"
+        ? `agendado-${ag.id}`
+        : `reuniao-${ag.id}`;
 
   // Guarda local: evita reenvio se já registramos o mesmo event_id com sucesso.
   const { data: claimed, error: claimErr } = await supabase
