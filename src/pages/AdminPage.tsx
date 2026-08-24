@@ -73,6 +73,13 @@ function DynamicListsSection() {
           description="Opções exibidas ao cancelar uma reunião em 'Detalhes do agendamento'."
           defaults={["Imprevisto do lead", "Sem motivo explícito", "Desistiu", "Sem closer disponível", "Outros"]}
         />
+        <DynamicListManager
+          settingKey={APP_SETTING_KEYS.order_bumps}
+          title="Order bumps"
+          description="Itens adicionais que podem ser marcados no registro da venda (nome + valor)."
+          defaults={DEFAULT_ORDER_BUMPS}
+        />
+
 
 
 
