@@ -313,6 +313,12 @@ function UsersSection() {
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
           autoRecordingEnabled: closerInfo?.autoRecordingEnabled === true,
+          googleConnected: closerInfo?.closerId ? googleTokenMap.has(closerInfo.closerId) : false,
+          googleHasMeetScope: closerInfo?.closerId
+            ? googleTokenMap.get(closerInfo.closerId)?.hasMeetScope === true
+            : false,
+
+
 
           api4comExtension: (p as any).api4com_extension || "",
           availableForScheduling: p.available_for_scheduling ?? false,
