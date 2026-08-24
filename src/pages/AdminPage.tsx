@@ -259,6 +259,17 @@ function UsersSection() {
         .from("closers")
         .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id, auto_recording_enabled")
         .order("name");
+      // Conexões Google dos closers (para status/desconexão no painel do gestor)
+      const { data: googleTokens } = await supabase
+        .from("closer_google_tokens")
+        .select("closer_id, granted_scopes");
+      const googleTokenMap = new Map<string, { hasMeetScope: boolean }>();
+      (googleTokens ?? []).forEach((t: any) => {
+        googleTokenMap.set(t.closer_id, {
+          hasMeetScope: typeof t.granted_scopes === "string" && t.granted_scopes.includes(MEET_SPACE_SCOPE),
+        });
+      });
+
 
       // Build a map of closer info by email
       const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean }>();
