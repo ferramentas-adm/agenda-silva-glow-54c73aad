@@ -19,7 +19,7 @@ export default function GoogleCalendarBanner() {
   const [connecting, setConnecting] = useState(false);
 
   // Check if current user's email matches a closer
-  const { data: closerMatch } = useQuery({
+  const { data: closerMatch, isSuccess: closerChecked } = useQuery({
     queryKey: ["closer-match", user?.email],
     enabled: !!user?.email,
     queryFn: async () => {
@@ -37,11 +37,12 @@ export default function GoogleCalendarBanner() {
   // Check if closer has google tokens
   // C1: sem polling de 5s — atualizamos por window focus (abaixo) e
   // invalidação manual após o callback do OAuth.
-  const { data: hasToken } = useQuery({
+  const { data: hasToken, isSuccess: tokenChecked } = useQuery({
     queryKey: ["closer-has-google-token", closerMatch?.id],
     enabled: !!closerMatch?.id,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("closer_google_tokens")
@@ -59,7 +60,9 @@ export default function GoogleCalendarBanner() {
   // retorno do popup de OAuth, respeitando o staleTime de 5 min.
 
   // Only show for closers without token
-  if (!closerMatch || hasToken) return null;
+  // Só exibe quando ambas as verificações terminaram e não há token.
+  if (!closerChecked || !closerMatch) return null;
+  if (!tokenChecked || hasToken !== false) return null;
 
   const handleConnect = async () => {
     setConnecting(true);
