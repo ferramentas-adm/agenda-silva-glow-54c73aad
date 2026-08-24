@@ -1190,7 +1190,66 @@ function UsersSection() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Piloto: gravação automática do Meet */}
+      <AlertDialog open={!!autoRecTarget} onOpenChange={(open) => { if (!open) setAutoRecTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {autoRecTarget?.enable ? "Ativar gravação automática (piloto)" : "Desativar gravação automática"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                {autoRecTarget?.enable ? (
+                  <>
+                    <p>
+                      As novas reuniões de <strong>{autoRecTarget?.name}</strong> passarão a ser criadas com
+                      gravação (e transcrição, quando o plano permitir) iniciando automaticamente.
+                    </p>
+                    <p className="text-muted-foreground">
+                      Importante: o closer precisa reconectar o Google para conceder a nova permissão.
+                      Enquanto isso não acontecer, o sistema continua criando as reuniões do jeito atual —
+                      nada deixa de funcionar.
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    As novas reuniões de <strong>{autoRecTarget?.name}</strong> voltarão a ser criadas
+                    normalmente, sem gravação automática. Reuniões já criadas não são alteradas.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingAutoRec}
+              onClick={async () => {
+                if (!autoRecTarget) return;
+                setSavingAutoRec(true);
+                try {
+                  const { error } = await supabase.from("closers")
+                    .update({ auto_recording_enabled: autoRecTarget.enable } as any)
+                    .eq("id", autoRecTarget.closerId);
+                  if (error) throw error;
+                  toast.success(autoRecTarget.enable ? "Gravação automática ativada!" : "Gravação automática desativada.");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  queryClient.invalidateQueries({ queryKey: ["closers"] });
+                  setAutoRecTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao salvar");
+                }
+                setSavingAutoRec(false);
+              }}
+            >
+              {savingAutoRec ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* DataCrazy ID dialog */}
+
       <AlertDialog open={!!datacrazyTarget} onOpenChange={(open) => { if (!open) setDatacrazyTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
