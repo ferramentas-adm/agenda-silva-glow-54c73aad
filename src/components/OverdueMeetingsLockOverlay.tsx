@@ -312,6 +312,21 @@ export default function OverdueMeetingsLockOverlay() {
                 {/* ETAPA 1 — SDR (também aparece no modo combinado) */}
                 {canSdr && (
                   <>
+                    {m.closer_returned_at && (
+                      <div className="mt-3 rounded-md border border-orange-500/30 bg-orange-500/10 p-2.5 text-xs">
+                        <span className="font-semibold text-orange-500">
+                          Devolvida pelo Closer {m.closer_name ?? ""}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          — não foi ele quem atendeu. Resolva o status ou remaneje o lead para o
+                          closer correto pela agenda.
+                        </span>
+                        {m.closer_return_reason && (
+                          <p className="mt-1 text-muted-foreground">Obs.: {m.closer_return_reason}</p>
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                       <Button
                         size="sm"
