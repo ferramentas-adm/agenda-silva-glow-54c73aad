@@ -14,8 +14,11 @@ export interface OverdueMeeting {
   status: string;
   closer_id: string | null;
   created_by: string | null;
+  sdr_responsavel_id: string | null;
   sdr_handoff_at: string | null;
   closer_handoff_at: string | null;
+  closer_returned_at: string | null;
+  closer_return_reason: string | null;
   closer_name: string | null;
   creator_name: string | null;
   /** Quem está com a responsabilidade AGORA: primeiro o SDR, depois o Closer.
@@ -76,7 +79,7 @@ export function useOverdueMeetings() {
     queryFn: async () => {
       let q = supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_responsavel_id, sdr_handoff_at, closer_handoff_at, closer_returned_at, closer_return_reason")
         .is("deleted_at", null)
         // "pendente" (Aguardando atribuição) NÃO trava ninguém: é responsabilidade
         // exclusiva de gestores/moderadores atribuir o closer.
@@ -86,7 +89,10 @@ export function useOverdueMeetings() {
         .order("scheduled_time", { ascending: true });
 
       const orParts: string[] = [];
-      if (user?.id) orParts.push(`created_by.eq.${user.id}`);
+      if (user?.id) {
+        orParts.push(`created_by.eq.${user.id}`);
+        orParts.push(`sdr_responsavel_id.eq.${user.id}`);
+      }
       if (myCloserId) orParts.push(`closer_id.eq.${myCloserId}`);
       if (orParts.length === 0) return [];
       q = q.or(orParts.join(","));
@@ -102,22 +108,30 @@ export function useOverdueMeetings() {
       );
 
       // Fluxo em ETAPAS (nunca os dois ao mesmo tempo):
-      //  1) SDR criador é travado primeiro (Cancelar / No-show / Reagendar).
+      //  1) SDR responsável (ou criador) é travado primeiro (Cancelar / No-show / Reagendar).
       //  2) Se nada for factível, ele encaminha para o Closer (`sdr_handoff_at`),
-      //     e a trava passa para o Closer (Realizada ou transferir para outro closer).
+      //     e a trava passa para o Closer (Realizada ou devolver para o SDR).
+      //  3) Se o Closer devolve (`closer_returned_at`), a trava volta para o SDR.
       //  Exceção: quando o criador é TAMBÉM o closer da reunião, não há handoff
       //  possível — a trava vira etapa única ("both") com todas as ações.
       const overdue = overdueAll
         .map((m) => {
-          const isCreator = !!user?.id && m.created_by === user.id;
+          const isSdr =
+            !!user?.id && (m.created_by === user.id || m.sdr_responsavel_id === user.id);
           const isCloser = !!myCloserId && m.closer_id === myCloserId;
-          const stage: "sdr" | "closer" | "both" =
-            !m.sdr_handoff_at && isCreator && isCloser ? "both" : m.sdr_handoff_at ? "closer" : "sdr";
+          const stage: "sdr" | "closer" | "both" = m.closer_returned_at
+            ? "sdr"
+            : !m.sdr_handoff_at && isSdr && isCloser
+              ? "both"
+              : m.sdr_handoff_at
+                ? "closer"
+                : "sdr";
           return { ...m, stage };
         })
         .filter((m) => {
           if (m.stage === "both") return true;
-          if (m.stage === "sdr") return !!user?.id && m.created_by === user.id;
+          if (m.stage === "sdr")
+            return !!user?.id && (m.created_by === user.id || m.sdr_responsavel_id === user.id);
           return !!myCloserId && m.closer_id === myCloserId;
         });
 
@@ -171,7 +185,10 @@ export function useOverdueMeetings() {
     if (!enabled) return;
     const filters: string[] = [];
     if (myCloserId) filters.push(`closer_id=eq.${myCloserId}`);
-    if (user?.id) filters.push(`created_by=eq.${user.id}`);
+    if (user?.id) {
+      filters.push(`created_by=eq.${user.id}`);
+      filters.push(`sdr_responsavel_id=eq.${user.id}`);
+    }
     if (filters.length === 0) return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;

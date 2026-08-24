@@ -25,6 +25,8 @@ export type Database = {
           client_user_agent: string | null
           closer_handoff_at: string | null
           closer_id: string | null
+          closer_return_reason: string | null
+          closer_returned_at: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -70,6 +72,8 @@ export type Database = {
           client_user_agent?: string | null
           closer_handoff_at?: string | null
           closer_id?: string | null
+          closer_return_reason?: string | null
+          closer_returned_at?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -115,6 +119,8 @@ export type Database = {
           client_user_agent?: string | null
           closer_handoff_at?: string | null
           closer_id?: string | null
+          closer_return_reason?: string | null
+          closer_returned_at?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null

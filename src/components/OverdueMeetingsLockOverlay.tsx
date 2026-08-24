@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,7 +9,7 @@ import {
   Loader2,
   Eye,
   CalendarClock,
-  ArrowRightLeft,
+  Undo2,
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBRDate } from "@/lib/timezone";
 import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
 import { useAuth } from "@/contexts/AuthContext";
+import { logAudit } from "@/services/auditLog";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,23 +63,9 @@ export default function OverdueMeetingsLockOverlay() {
   const [rescheduleFor, setRescheduleFor] = useState<string | null>(null);
   const [newDate, setNewDate] = useState<string>("");
   const [newTime, setNewTime] = useState<string>("");
-  const [transferFor, setTransferFor] = useState<string | null>(null);
-  const [transferTo, setTransferTo] = useState<string>("");
-  const [activeClosers, setActiveClosers] = useState<{ id: string; name: string }[]>([]);
+  const [returnFor, setReturnFor] = useState<string | null>(null);
+  const [returnReason, setReturnReason] = useState<string>("");
 
-  const hasCloserStage = overdue.some((m) => m.stage === "closer");
-
-  useEffect(() => {
-    if (!hasCloserStage || activeClosers.length > 0) return;
-    (async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id, name")
-        .eq("active", true)
-        .order("name");
-      setActiveClosers(data ?? []);
-    })();
-  }, [hasCloserStage, activeClosers.length]);
 
   if (count === 0) return null;
   if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
@@ -194,25 +181,49 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
-  // Closer transfere para outro closer ativo (via função segura no banco).
-  const handleTransfer = async (m: OverdueMeeting) => {
-    if (!transferTo) {
-      toast.error("Escolha o closer de destino");
-      return;
-    }
+  // Closer devolve a reunião para o SDR responsável ("não fui eu que atendi").
+  const handleReturnToSdr = async (m: OverdueMeeting) => {
     setUpdatingId(m.id);
     try {
-      const { error } = await supabase.rpc("transfer_agendamento_closer", {
-        _agendamento_id: m.id,
-        _new_closer_id: transferTo,
-      } as any);
+      const reason = returnReason.trim();
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update({
+          closer_returned_at: new Date().toISOString(),
+          closer_return_reason: reason || null,
+          sdr_handoff_at: null,
+        } as any)
+        .eq("id", m.id)
+        .select("id");
       if (error) throw error;
-      toast.success("Reunião transferida para outro closer");
-      setTransferFor(null);
-      setTransferTo("");
+      if (!data || data.length === 0) throw new Error("Sem permissão para devolver este agendamento.");
+
+      const targetSdr = m.sdr_responsavel_id ?? m.created_by;
+      if (targetSdr) {
+        await supabase.from("notifications").insert({
+          user_id: targetSdr,
+          type: "closer_returned_meeting",
+          title: "Reunião devolvida pelo Closer",
+          message: `${m.closer_name ?? "O Closer"} informou que não atendeu a reunião com ${m.lead_name}.${reason ? ` Obs.: ${reason}` : ""}`,
+          entity_type: "agendamento",
+          entity_id: m.id,
+        } as any);
+      }
+
+      await logAudit("closer_return_to_sdr", "agendamento", m.id, {
+        lead_name: m.lead_name,
+        closer_name: m.closer_name ?? "",
+        scheduled_date: m.scheduled_date,
+        scheduled_time: m.scheduled_time,
+        reason: reason || null,
+      });
+
+      toast.success("Reunião devolvida para o SDR responsável");
+      setReturnFor(null);
+      setReturnReason("");
       await invalidateAll();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao transferir");
+      toast.error(err?.message || "Erro ao devolver a reunião");
     } finally {
       setUpdatingId(null);
     }
@@ -236,7 +247,8 @@ export default function OverdueMeetingsLockOverlay() {
                 Reuniões exigem atualização <strong>1h05 após o horário agendado</strong>. Primeiro o{" "}
                 <strong>SDR</strong> resolve (Cancelar, No-show ou Reagendar). Se nenhuma opção for
                 factível, ele encaminha para o <strong>Closer</strong>, que marca{" "}
-                <strong>Realizada</strong> ou transfere para outro closer ativo. Quando a agenda foi
+                <strong>Realizada</strong> ou, se não foi ele quem atendeu, devolve a reunião para o{" "}
+                <strong>SDR responsável</strong> resolver ou remanejar na agenda. Quando a agenda foi
                 criada pelo próprio closer da reunião, todas as opções aparecem juntas.
               </p>
             </div>
@@ -300,6 +312,21 @@ export default function OverdueMeetingsLockOverlay() {
                 {/* ETAPA 1 — SDR (também aparece no modo combinado) */}
                 {canSdr && (
                   <>
+                    {m.closer_returned_at && (
+                      <div className="mt-3 rounded-md border border-orange-500/30 bg-orange-500/10 p-2.5 text-xs">
+                        <span className="font-semibold text-orange-500">
+                          Devolvida pelo Closer {m.closer_name ?? ""}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          — não foi ele quem atendeu. Resolva o status ou remaneje o lead para o
+                          closer correto pela agenda.
+                        </span>
+                        {m.closer_return_reason && (
+                          <p className="mt-1 text-muted-foreground">Obs.: {m.closer_return_reason}</p>
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                       <Button
                         size="sm"
@@ -341,7 +368,7 @@ export default function OverdueMeetingsLockOverlay() {
                         <CalendarClock className="h-3.5 w-3.5" />
                         Reagendar
                       </Button>
-                      {m.closer_id && m.stage === "sdr" && (
+                      {m.closer_id && m.stage === "sdr" && !m.closer_returned_at && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -409,38 +436,32 @@ export default function OverdueMeetingsLockOverlay() {
                         variant="outline"
                         disabled={busy}
                         onClick={() => {
-                          setTransferFor(transferFor === m.id ? null : m.id);
-                          setTransferTo("");
+                          setReturnFor(returnFor === m.id ? null : m.id);
+                          setReturnReason("");
                         }}
                         className="h-8 text-xs gap-1"
                       >
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                        Transferir para outro closer
+                        <Undo2 className="h-3.5 w-3.5" />
+                        Não fui eu que atendi
                       </Button>
                     </div>
 
-                    {transferFor === m.id && (
+                    {returnFor === m.id && (
                       <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[11px] text-muted-foreground">Closer de destino</span>
-                          <Select value={transferTo} onValueChange={setTransferTo}>
-                            <SelectTrigger className="h-8 text-xs w-[220px]">
-                              <SelectValue placeholder="Selecione o closer" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {activeClosers
-                                .filter((c) => c.id !== m.closer_id)
-                                .map((c) => (
-                                  <SelectItem key={c.id} value={c.id} className="text-xs">
-                                    {c.name}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+                          <span className="text-[11px] text-muted-foreground">
+                            Observação (opcional) — a reunião volta para o SDR responsável
+                          </span>
+                          <Input
+                            value={returnReason}
+                            onChange={(e) => setReturnReason(e.target.value)}
+                            placeholder="Ex.: estava em outra call, o SDR remanejou o lead"
+                            className="h-8 text-xs"
+                          />
                         </div>
-                        <Button size="sm" className="h-8 text-xs" disabled={busy} onClick={() => handleTransfer(m)}>
+                        <Button size="sm" className="h-8 text-xs" disabled={busy} onClick={() => handleReturnToSdr(m)}>
                           {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-                          Confirmar transferência
+                          Devolver para o SDR
                         </Button>
                       </div>
                     )}
