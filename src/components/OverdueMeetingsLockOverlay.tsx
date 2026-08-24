@@ -236,7 +236,8 @@ export default function OverdueMeetingsLockOverlay() {
                 Reuniões exigem atualização <strong>1h05 após o horário agendado</strong>. Primeiro o{" "}
                 <strong>SDR</strong> resolve (Cancelar, No-show ou Reagendar). Se nenhuma opção for
                 factível, ele encaminha para o <strong>Closer</strong>, que marca{" "}
-                <strong>Realizada</strong> ou transfere para outro closer ativo.
+                <strong>Realizada</strong> ou transfere para outro closer ativo. Quando a agenda foi
+                criada pelo próprio closer da reunião, todas as opções aparecem juntas.
               </p>
             </div>
           </div>
@@ -256,6 +257,8 @@ export default function OverdueMeetingsLockOverlay() {
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {overdue.map((m) => {
             const busy = updatingId === m.id;
+            const canSdr = m.stage === "sdr" || m.stage === "both";
+            const canCloser = m.stage === "closer" || m.stage === "both";
             return (
               <div key={m.id} className="rounded-lg border border-destructive/20 bg-background p-4">
                 <div className="flex items-start gap-3 flex-wrap">
@@ -274,7 +277,11 @@ export default function OverdueMeetingsLockOverlay() {
                         {STATUS_LABEL[m.status] ?? m.status}
                       </Badge>
                       <Badge variant="outline" className="text-[10px] border-muted-foreground/30">
-                        {m.stage === "sdr" ? "Etapa: SDR" : "Etapa: Closer"}
+                        {m.stage === "sdr"
+                          ? "Etapa: SDR"
+                          : m.stage === "closer"
+                            ? "Etapa: Closer"
+                            : "Etapa: SDR + Closer"}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -290,8 +297,8 @@ export default function OverdueMeetingsLockOverlay() {
                   </div>
                 </div>
 
-                {/* ETAPA 1 — SDR */}
-                {m.stage === "sdr" && (
+                {/* ETAPA 1 — SDR (também aparece no modo combinado) */}
+                {canSdr && (
                   <>
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                       <Button
@@ -334,7 +341,7 @@ export default function OverdueMeetingsLockOverlay() {
                         <CalendarClock className="h-3.5 w-3.5" />
                         Reagendar
                       </Button>
-                      {m.closer_id && (
+                      {m.closer_id && m.stage === "sdr" && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -383,8 +390,8 @@ export default function OverdueMeetingsLockOverlay() {
                   </>
                 )}
 
-                {/* ETAPA 2 — Closer */}
-                {m.stage === "closer" && (
+                {/* ETAPA 2 — Closer (também aparece no modo combinado) */}
+                {canCloser && (
                   <>
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                       <Button
