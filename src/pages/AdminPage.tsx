@@ -29,6 +29,8 @@ import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
+import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
+
 
 /* ─── Listas dinâmicas (Canais / Motivos / Justificativas) ───── */
 function DynamicListsSection() {
