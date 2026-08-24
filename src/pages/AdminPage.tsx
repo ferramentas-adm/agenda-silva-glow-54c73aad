@@ -349,6 +349,9 @@ function UsersSection() {
             ranges,
             datacrazyId: c.datacrazy_id || "",
             autoRecordingEnabled: c.auto_recording_enabled === true,
+            googleConnected: googleTokenMap.has(c.id),
+            googleHasMeetScope: googleTokenMap.get(c.id)?.hasMeetScope === true,
+
 
           };
         });
