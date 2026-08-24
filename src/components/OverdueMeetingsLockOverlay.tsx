@@ -63,23 +63,9 @@ export default function OverdueMeetingsLockOverlay() {
   const [rescheduleFor, setRescheduleFor] = useState<string | null>(null);
   const [newDate, setNewDate] = useState<string>("");
   const [newTime, setNewTime] = useState<string>("");
-  const [transferFor, setTransferFor] = useState<string | null>(null);
-  const [transferTo, setTransferTo] = useState<string>("");
-  const [activeClosers, setActiveClosers] = useState<{ id: string; name: string }[]>([]);
+  const [returnFor, setReturnFor] = useState<string | null>(null);
+  const [returnReason, setReturnReason] = useState<string>("");
 
-  const hasCloserStage = overdue.some((m) => m.stage === "closer");
-
-  useEffect(() => {
-    if (!hasCloserStage || activeClosers.length > 0) return;
-    (async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id, name")
-        .eq("active", true)
-        .order("name");
-      setActiveClosers(data ?? []);
-    })();
-  }, [hasCloserStage, activeClosers.length]);
 
   if (count === 0) return null;
   if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
