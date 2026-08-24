@@ -879,7 +879,21 @@ function UsersSection() {
                               : <UserCog className={`h-3.5 w-3.5 ${u.isSdrOverride ? 'text-primary' : 'text-muted-foreground'}`} />}
                           </Button>
                         )}
+                        {u.role === "closer" && u.closerId && canActOn(u.role) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title={u.autoRecordingEnabled
+                              ? "Gravação automática do Meet: ATIVA (piloto) — clique para desativar"
+                              : "Gravação automática do Meet: desativada — clique para ativar (piloto)"}
+                            onClick={() => setAutoRecTarget({ closerId: u.closerId!, name: u.name, enable: !u.autoRecordingEnabled })}
+                          >
+                            <Video className={`h-3.5 w-3.5 ${u.autoRecordingEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                          </Button>
+                        )}
                         {u.role === "closer" && u.closerId && (
+
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Horário de trabalho"
                             onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, ranges: u.ranges }); setEditRanges([...u.ranges]); }}>
                             <Clock className="h-3.5 w-3.5" />
