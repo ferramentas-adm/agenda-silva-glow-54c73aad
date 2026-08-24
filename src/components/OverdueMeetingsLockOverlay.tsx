@@ -276,7 +276,11 @@ export default function OverdueMeetingsLockOverlay() {
                         {STATUS_LABEL[m.status] ?? m.status}
                       </Badge>
                       <Badge variant="outline" className="text-[10px] border-muted-foreground/30">
-                        {m.stage === "sdr" ? "Etapa: SDR" : "Etapa: Closer"}
+                        {m.stage === "sdr"
+                          ? "Etapa: SDR"
+                          : m.stage === "closer"
+                            ? "Etapa: Closer"
+                            : "Etapa: SDR + Closer"}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
