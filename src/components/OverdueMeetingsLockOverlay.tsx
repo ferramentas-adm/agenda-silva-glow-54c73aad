@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,7 +9,7 @@ import {
   Loader2,
   Eye,
   CalendarClock,
-  ArrowRightLeft,
+  Undo2,
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBRDate } from "@/lib/timezone";
 import { useOverdueMeetings, type OverdueMeeting } from "@/hooks/useOverdueMeetings";
 import { useAuth } from "@/contexts/AuthContext";
+import { logAudit } from "@/services/auditLog";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
