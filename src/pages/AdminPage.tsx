@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -912,6 +912,29 @@ function UsersSection() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
+                            title={!u.googleConnected
+                              ? "Google não conectado — o closer deve conectar pelo painel"
+                              : u.googleHasMeetScope
+                                ? "Google conectado (com permissão de gravação automática) — clique para desconectar"
+                                : "Google conectado, mas SEM a permissão de gravação automática — clique para desconectar e pedir que reconecte"}
+                            disabled={!u.googleConnected}
+                            onClick={() => setDisconnectGoogleTarget({ closerId: u.closerId!, name: u.name, hasMeetScope: u.googleHasMeetScope === true })}
+                          >
+                            <CalendarX className={`h-3.5 w-3.5 ${
+                              !u.googleConnected
+                                ? 'text-muted-foreground'
+                                : u.googleHasMeetScope
+                                  ? 'text-primary'
+                                  : 'text-yellow-500'
+                            }`} />
+                          </Button>
+                        )}
+                        {u.role === "closer" && u.closerId && canActOn(u.role) && (
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
                             title={u.autoRecordingEnabled
                               ? "Gravação automática do Meet: ATIVA (piloto) — clique para desativar"
                               : "Gravação automática do Meet: desativada — clique para ativar (piloto)"}
@@ -1256,12 +1279,13 @@ function UsersSection() {
                     .delete()
                     .eq("closer_id", disconnectGoogleTarget.closerId);
                   if (error) throw error;
-                  await logAudit({
-                    action: "google_disconnect",
-                    entityType: "closer",
-                    entityId: disconnectGoogleTarget.closerId,
-                    details: { closer_name: disconnectGoogleTarget.name },
-                  });
+                  await logAudit(
+                    "google_disconnect",
+                    "closer",
+                    disconnectGoogleTarget.closerId,
+                    { closer_name: disconnectGoogleTarget.name },
+                  );
+
                   toast.success("Conta Google desconectada. O closer poderá reconectar no painel.");
                   queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
                   queryClient.invalidateQueries({ queryKey: ["closer-has-google-token"] });
