@@ -32,3 +32,4 @@ Também corrige um ponto correlato: hoje a etapa SDR só considera **quem criou*
   - Insere notificação em `public.notifications` para `sdr_responsavel_id ?? created_by`, tipo `closer_returned_meeting`.
   - Na etapa SDR: mostrar aviso "Devolvida pelo Closer: <motivo>" quando `closer_returned_at` existir, e esconder o botão "Encaminhar para o Closer" nesse caso.
   - Atualizar o texto explicativo do cabeçalho para descrever a devolução.
+  - Botão "Não fui eu que atendi": reaproveita `handleTransfer` (RPC `transfer_agendamento_closer`), com rótulo/legenda novos ("Quem atendeu essa reunião?") e, após sucesso, `update({ sdr_handoff_at: new Date().toISOString(), closer_returned_at: null })` para que a trava caia direto na etapa Closer do novo responsável, mais `logAudit` (`closer_actual_attendee`) e notificação para o novo closer (via `profiles.email` do closer destino, quando houver correspondência).
