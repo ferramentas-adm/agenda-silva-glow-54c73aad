@@ -209,6 +209,12 @@ function UsersSection() {
   const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [savingHours, setSavingHours] = useState(false);
 
+  // Piloto: gravação/transcrição automática do Google Meet por closer
+  const [autoRecTarget, setAutoRecTarget] = useState<{ closerId: string; name: string; enable: boolean } | null>(null);
+  const [savingAutoRec, setSavingAutoRec] = useState(false);
+
+
+
   // DataCrazy ID edit state
   const [datacrazyTarget, setDatacrazyTarget] = useState<{ userId: string; name: string; type: string; currentId: string; closerId?: string } | null>(null);
   const [editDatacrazyId, setEditDatacrazyId] = useState("");
