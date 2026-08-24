@@ -196,13 +196,39 @@ serve(async (req) => {
     const endTimeStr = `${pad(sp.getUTCHours())}:${pad(sp.getUTCMinutes())}`;
     const endDateTime = `${endDateStr}T${endTimeStr}:00-03:00`;
 
+    // ── Piloto de gravação automática ──────────────────────────────────────
+    // Só entra neste caminho quando o closer tem a flag ligada E o token dele
+    // contém o escopo do Meet. Qualquer falha cai no fluxo padrão do Calendar.
+    let autoSpace: { uri: string; transcription: boolean } | null = null;
+    let autoRecordingMode: 'auto' | 'fallback' | 'off' = 'off';
+
+    const { data: closerRow } = await supabaseAdmin
+      .from('closers')
+      .select('auto_recording_enabled')
+      .eq('id', closer_id)
+      .maybeSingle();
+
+    if (closerRow?.auto_recording_enabled === true) {
+      const scopes = (tokenData.granted_scopes ?? '') as string;
+      if (scopes.includes(MEET_SPACE_SCOPE)) {
+        autoSpace = await createAutoRecordingSpace(accessToken);
+        autoRecordingMode = autoSpace ? 'auto' : 'fallback';
+      } else {
+        console.warn('[auto-recording] closer sem escopo do Meet — usando fluxo padrão:', closer_id);
+        autoRecordingMode = 'fallback';
+      }
+    }
+
     const description = [
       `Lead: ${lead_name}`,
       lead_phone ? `Telefone: ${lead_phone}` : '',
       sdr_name ? `SDR: ${sdr_name}` : '',
+      autoSpace
+        ? `\nLink da reunião: ${autoSpace.uri}\n(Gravação${autoSpace.transcription ? ' e transcrição' : ''} automática ativada)`
+        : '',
     ].filter(Boolean).join('\n');
 
-    const event = {
+    const event: Record<string, unknown> = {
       summary: `Grupo Silva & ${lead_name}`,
       description,
       start: {
@@ -213,13 +239,19 @@ serve(async (req) => {
         dateTime: endDateTime,
         timeZone: 'America/Sao_Paulo',
       },
-      conferenceData: {
+    };
+
+    if (autoSpace) {
+      // Reutiliza a sala já criada com gravação automática.
+      event.location = autoSpace.uri;
+    } else {
+      event.conferenceData = {
         createRequest: {
           requestId: crypto.randomUUID(),
           conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
-      },
-    };
+      };
+    }
 
     const calendarId = tokenData.calendar_id || 'primary';
     const calRes = await fetch(
@@ -243,17 +275,48 @@ serve(async (req) => {
     }
 
     const calData = await calRes.json();
-    const meetLink = calData.conferenceData?.entryPoints?.find(
-      (ep: any) => ep.entryPointType === 'video'
-    )?.uri || calData.hangoutLink || null;
+    const meetLink = autoSpace?.uri
+      || calData.conferenceData?.entryPoints?.find(
+        (ep: any) => ep.entryPointType === 'video'
+      )?.uri
+      || calData.hangoutLink
+      || null;
+
+    // Auditoria do piloto: registra se o agendamento saiu no modo automático
+    // ou caiu no fallback, para medir a taxa de sucesso.
+    if (autoRecordingMode !== 'off') {
+      try {
+        const userId = (claims.claims as Record<string, unknown>).sub as string | undefined;
+        const email = (claims.claims as Record<string, unknown>).email as string | undefined;
+        await supabaseAdmin.from('audit_logs').insert({
+          user_id: userId ?? '00000000-0000-0000-0000-000000000000',
+          user_name: email ?? 'Sistema',
+          user_email: email ?? null,
+          action: 'meet_auto_recording',
+          entity_type: 'agendamento',
+          entity_id: calData.id ?? null,
+          details: {
+            lead_name,
+            closer_id,
+            mode: autoRecordingMode,
+            transcription: autoSpace?.transcription ?? false,
+          },
+        });
+      } catch (logErr) {
+        console.error('[auto-recording] falha ao registrar auditoria:', logErr);
+      }
+    }
 
     return new Response(JSON.stringify({
       success: true,
       meet_link: meetLink,
       event_id: calData.id,
+      auto_recording: autoRecordingMode === 'auto',
+      auto_transcription: autoSpace?.transcription ?? false,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
     console.error('Error creating calendar event:', error);
     return new Response(JSON.stringify({ success: false, error: 'internal_error' }), {
