@@ -256,6 +256,8 @@ export default function OverdueMeetingsLockOverlay() {
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {overdue.map((m) => {
             const busy = updatingId === m.id;
+            const canSdr = m.stage === "sdr" || m.stage === "both";
+            const canCloser = m.stage === "closer" || m.stage === "both";
             return (
               <div key={m.id} className="rounded-lg border border-destructive/20 bg-background p-4">
                 <div className="flex items-start gap-3 flex-wrap">
