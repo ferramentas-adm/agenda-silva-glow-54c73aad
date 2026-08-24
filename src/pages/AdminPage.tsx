@@ -31,6 +31,9 @@ import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
 
+// Escopo do Google necessário para criar salas do Meet com gravação automática.
+const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
+
 
 /* ─── Listas dinâmicas (Canais / Motivos / Justificativas) ───── */
 function DynamicListsSection() {
