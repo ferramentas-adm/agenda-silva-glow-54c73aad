@@ -99,6 +99,7 @@ export const APP_SETTING_KEYS = {
   produtos: "produtos",
   closer_error_categories: "closer_error_categories",
   cancellation_reasons: "cancellation_reasons",
+  order_bumps: "order_bumps",
 } as const;
 
 export const APP_SETTING_LABELS: Record<string, string> = {
@@ -109,5 +110,6 @@ export const APP_SETTING_LABELS: Record<string, string> = {
   produtos: "Produtos",
   closer_error_categories: "Categorias de erro do Closer",
   cancellation_reasons: "Motivos de cancelamento",
+  order_bumps: "Order bumps",
 };
 
