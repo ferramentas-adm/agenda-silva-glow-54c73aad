@@ -1,53 +1,67 @@
-# Plano: Garantir que toda reunião seja gravada (lembrete forçado no painel)
+# Plano: Gravação e transcrição automáticas no Meet (piloto com 1 closer)
 
-## Como funciona a abordagem escolhida
+## Objetivo
+Ao criar o agendamento, gerar a reunião do Meet já configurada para **iniciar gravação e transcrição automaticamente**, sem depender do closer clicar em nada. Ativado inicialmente para **um único closer de teste**, com fallback total para o fluxo atual caso algo falhe.
 
-A ideia é usar o próprio painel para tornar impossível o closer "esquecer" de gravar. Em vez de depender da memória, o sistema cobra a gravação em três momentos:
+## Como funciona tecnicamente
 
-1. **Antes de entrar na call** — no momento de abrir o link do Meet.
-2. **Durante a janela da reunião** — aviso persistente no painel do closer.
-3. **No fechamento do resultado** — o closer só consegue registrar o resultado da reunião depois de declarar que gravou (ou justificar por que não gravou).
+Hoje o `google-create-event` cria o Meet junto do evento, pela API do Google Calendar (`conferenceData.createRequest`). O Calendar **não** tem campo para gravação automática.
 
-O sistema não liga a gravação sozinho (isso o Google não permite via API no Business Standard), mas cria uma barreira operacional e um registro auditável de quem gravou e quem não gravou.
+O caminho novo, para o closer do piloto, passa a ser em duas etapas:
 
-## O que será implementado
+```text
+1) Google Meet API v2beta -> spaces.create
+   config.artifactConfig.recordingConfig.autoRecordingGeneration    = ON
+   config.artifactConfig.transcriptionConfig.autoTranscriptionGeneration = ON
+   -> devolve o meetingUri (link da sala)
 
-### 1. Confirmação ao entrar na reunião
-- Ao clicar no link do Meet (nos detalhes do agendamento, no calendário e no travamento de reunião atrasada), abre um passo intermediário curto:
-  - Instrução visual: "Ao entrar, clique em Atividades > Gravação > Iniciar gravação e ativar transcrição."
-  - Botão "Entendi, entrar na reunião" — só então o Meet abre em nova aba.
-- Fica registrado o horário em que o closer viu o aviso.
+2) Google Calendar -> events.insert
+   sem createRequest de Meet; o link da sala do passo 1 é anexado
+   ao evento e gravado normalmente em agendamentos.meet_link
+```
 
-### 2. Aviso persistente durante a reunião
-- Enquanto houver reunião do closer em andamento (do horário de início até o fim previsto), aparece uma faixa fixa no topo do painel:
-  - "Reunião em andamento com {lead} — a gravação está ativa?" com botão "Sim, estou gravando".
-- Ao confirmar, a faixa some para aquela reunião. Sem confirmar, a faixa permanece.
+Quando o closer entra, a gravação e a transcrição começam sozinhas. Os arquivos caem no Drive do closer, como já acontece hoje quando ele grava manualmente.
 
-### 3. Bloqueio no registro do resultado da reunião
-- No modal "Resultado da Reunião" (usado pelo closer, inclusive no travamento pós-horário), adicionar campo obrigatório:
-  - "A reunião foi gravada?" → **Sim** / **Não**
-  - Se **Não**: exigir justificativa em texto (mínimo de caracteres, como já é feito na justificativa de não-venda).
-- Sem responder, o botão de salvar continua desabilitado — mesmo comportamento das outras validações do modal.
+## Rollout controlado (ponto central do plano)
 
-### 4. Registro e visibilidade para gestão
-- Guardar na reunião: se foi gravada, quem confirmou e quando, e a justificativa quando não gravada.
-- Registrar no log de auditoria.
-- Na Lista de Reuniões: coluna/badge indicando "Gravada" ou "Sem gravação", e filtro "Apenas sem gravação".
-- Notificação para gestores/moderadores/supervisores quando um closer registra reunião sem gravação.
+- Nova coluna `auto_recording_enabled` (boolean, default **false**) na tabela `closers`.
+- O fluxo novo só é usado quando essa flag está **true** para aquele closer. Todos os outros continuam exatamente no fluxo atual, byte por byte.
+- Toggle na página Administração, na lista de closers: "Gravação automática do Meet (piloto)".
+- **Fallback obrigatório**: se qualquer etapa nova falhar (escopo faltando, erro da Meet API, plano sem suporte, timeout), a função registra o erro no log e cai automaticamente no fluxo atual do Calendar, criando o Meet normal. Nenhum agendamento deixa de ser criado por causa disso.
 
-### 5. Indicador de aderência
-- No painel de gestão, um card simples: percentual de reuniões realizadas com gravação confirmada no período, e ranking por closer.
+## Consentimento OAuth
 
-## Detalhes técnicos
+- Adicionar o escopo `https://www.googleapis.com/auth/meetings.space.created` na geração da URL de autorização.
+- Como o escopo é novo, o closer do piloto precisa **reconectar o Google** uma vez (o botão de conexão do Google já existe na tela dele).
+- Guardar em `closer_google_tokens` uma marca de quais escopos aquele token tem; se o token do closer não tiver o escopo do Meet, o sistema já usa o fallback sem nem tentar a chamada nova.
+- Os tokens dos outros closers não são invalidados nem alterados.
 
-- Banco: novas colunas em `agendamentos` — `recording_confirmed_at` (timestamp), `recording_confirmed_by` (uuid), `recording_missing_reason` (text). Colunas nulas por padrão, sem impacto em dados existentes.
-- Frontend:
-  - Novo componente de diálogo de confirmação antes de abrir o `meet_link`, aplicado nos pontos que hoje abrem o link (detalhes do agendamento no Dashboard/Calendário e `OverdueMeetingsLockOverlay.tsx`).
-  - Nova faixa de reunião em andamento, no mesmo padrão do `OverdueFollowUpsBanner.tsx`.
-  - Campo obrigatório de gravação em `VendaDialog.tsx`, seguindo a validação já existente de `canSubmit`.
-  - Coluna, badge e filtro em `ReunioesListPage.tsx`.
-- Notificação de reunião sem gravação via trigger na tabela `agendamentos`, no mesmo padrão dos avisos existentes para gestores.
+## Etapas de implementação
 
-## Limitação a registrar
+1. **Banco**: `closers.auto_recording_enabled` (boolean, default false) e coluna de escopos concedidos em `closer_google_tokens`.
+2. **`google-auth-url`**: incluir o escopo do Meet na lista.
+3. **`google-callback`**: salvar os escopos retornados pelo Google no registro do token.
+4. **`google-create-event`**: quando a flag do closer estiver ligada e o token tiver o escopo, criar o espaço via Meet API v2beta com gravação e transcrição automáticas e usar esse link no evento; qualquer falha → fluxo atual.
+5. **Administração**: toggle por closer, com aviso de que é piloto e exige reconectar o Google.
+6. **Visibilidade**: badge nos detalhes do agendamento indicando "Gravação automática ativa", para o gestor conferir se o piloto pegou.
+7. **Logs**: registrar em auditoria se o agendamento foi criado no modo automático ou no fallback, para medirmos a taxa de sucesso do piloto.
 
-No Google Workspace Business Standard, ativar gravação e transcrição automaticamente exige a API do Google Meet (v2beta) com novo consentimento OAuth de cada closer, e a transcrição automática depende do tier. Se em algum momento quiser o caminho nativo, ele pode ser adicionado depois em cima dessa mesma base — o controle de aderência continua útil nos dois cenários.
+## Como validaremos
+
+- Ligar a flag para o closer de teste e pedir que ele reconecte o Google.
+- Criar um agendamento de teste para ele e conferir nos logs se veio no modo automático.
+- Entrar na sala e confirmar que gravação e transcrição iniciam sozinhas.
+- Criar um agendamento para outro closer e confirmar que nada mudou no fluxo dele.
+
+## Riscos e mitigação
+
+| Risco | Mitigação |
+|---|---|
+| Meet API recusar a configuração no Business Standard | Fallback automático; identificamos pelo log e avaliamos upgrade só se necessário |
+| Closer não reconectar o Google | Sistema detecta escopo ausente e usa o fluxo atual |
+| Erro inesperado na criação da sala | Fallback cria o Meet como hoje; agendamento nunca falha |
+| Impacto nos outros closers | Nenhum caminho de código novo é executado com a flag desligada |
+
+## Observação sobre transcrição
+
+No Business Standard a gravação automática é o recurso principal; a transcrição automática pode não estar habilitada em todos os casos. A implementação pede as duas, e se o Google recusar apenas a transcrição, mantemos a gravação — isso ficará visível nos logs do piloto.
