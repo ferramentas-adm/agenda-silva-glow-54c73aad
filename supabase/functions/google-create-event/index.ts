@@ -25,6 +25,85 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
   return { access_token: data.access_token, expires_in: data.expires_in };
 }
 
+const MEET_SPACE_SCOPE = 'https://www.googleapis.com/auth/meetings.space.created';
+
+/**
+ * Cria um espaço do Google Meet já configurado para iniciar gravação
+ * (e transcrição, quando o plano permitir) automaticamente.
+ *
+ * Usado apenas para closers com `auto_recording_enabled = true` (piloto).
+ * Qualquer falha retorna null — o chamador cai no fluxo padrão do Calendar.
+ */
+async function createAutoRecordingSpace(
+  accessToken: string,
+): Promise<{ uri: string; transcription: boolean } | null> {
+  const attempts: Array<{ transcription: boolean; body: Record<string, unknown> }> = [
+    {
+      transcription: true,
+      body: {
+        config: {
+          accessType: 'TRUSTED',
+          entryPointAccess: 'ALL',
+          artifactConfig: {
+            recordingConfig: { autoRecordingGeneration: 'ON' },
+            transcriptionConfig: { autoTranscriptionGeneration: 'ON' },
+          },
+        },
+      },
+    },
+    // Se o Google recusar a transcrição automática (depende do tier),
+    // tenta novamente pedindo apenas a gravação.
+    {
+      transcription: false,
+      body: {
+        config: {
+          accessType: 'TRUSTED',
+          entryPointAccess: 'ALL',
+          artifactConfig: {
+            recordingConfig: { autoRecordingGeneration: 'ON' },
+          },
+        },
+      },
+    },
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch('https://meet.googleapis.com/v2beta/spaces', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(attempt.body),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(
+          `[auto-recording] Meet spaces.create falhou (transcription=${attempt.transcription}) [${res.status}]:`,
+          errBody,
+        );
+        continue;
+      }
+
+      const data = await res.json();
+      const uri: string | null = data.meetingUri ?? null;
+      if (!uri) {
+        console.error('[auto-recording] Meet spaces.create sem meetingUri:', JSON.stringify(data));
+        continue;
+      }
+      return { uri, transcription: attempt.transcription };
+    } catch (err) {
+      console.error('[auto-recording] Erro na chamada da Meet API:', err);
+    }
+  }
+
+  return null;
+}
+
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
