@@ -216,6 +216,11 @@ function UsersSection() {
   const [autoRecTarget, setAutoRecTarget] = useState<{ closerId: string; name: string; enable: boolean } | null>(null);
   const [savingAutoRec, setSavingAutoRec] = useState(false);
 
+  // Desconexão da conta Google de um closer (ação do gestor)
+  const [disconnectGoogleTarget, setDisconnectGoogleTarget] = useState<{ closerId: string; name: string; hasMeetScope: boolean } | null>(null);
+  const [savingDisconnectGoogle, setSavingDisconnectGoogle] = useState(false);
+
+
 
 
   // DataCrazy ID edit state
@@ -1213,7 +1218,69 @@ function UsersSection() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Desconectar conta Google do closer */}
+      <AlertDialog open={!!disconnectGoogleTarget} onOpenChange={(open) => { if (!open) setDisconnectGoogleTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desconectar a conta Google do closer</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  A conexão Google de <strong>{disconnectGoogleTarget?.name}</strong> será removida.
+                  Até ele conectar novamente, a agenda dele não será lida e novos eventos não serão
+                  criados no Google Calendar.
+                </p>
+                <p className="text-muted-foreground">
+                  Ao atualizar a página do painel, o closer verá o aviso "Sua agenda Google não está
+                  conectada" e poderá conectar de novo
+                  {disconnectGoogleTarget && !disconnectGoogleTarget.hasMeetScope
+                    ? " — é isso que concede a permissão de gravação automática do Meet."
+                    : "."}
+                </p>
+                <p className="text-muted-foreground">
+                  Agendamentos, eventos já criados e histórico não são alterados.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingDisconnectGoogle}
+              onClick={async () => {
+                if (!disconnectGoogleTarget) return;
+                setSavingDisconnectGoogle(true);
+                try {
+                  const { error } = await supabase
+                    .from("closer_google_tokens")
+                    .delete()
+                    .eq("closer_id", disconnectGoogleTarget.closerId);
+                  if (error) throw error;
+                  await logAudit({
+                    action: "google_disconnect",
+                    entityType: "closer",
+                    entityId: disconnectGoogleTarget.closerId,
+                    details: { closer_name: disconnectGoogleTarget.name },
+                  });
+                  toast.success("Conta Google desconectada. O closer poderá reconectar no painel.");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  queryClient.invalidateQueries({ queryKey: ["closer-has-google-token"] });
+                  queryClient.invalidateQueries({ queryKey: ["closers"] });
+                  setDisconnectGoogleTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao desconectar a conta Google");
+                }
+                setSavingDisconnectGoogle(false);
+              }}
+            >
+              {savingDisconnectGoogle ? <Loader2 className="h-4 w-4 animate-spin" /> : "Desconectar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Piloto: gravação automática do Meet */}
+
       <AlertDialog open={!!autoRecTarget} onOpenChange={(open) => { if (!open) setAutoRecTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
