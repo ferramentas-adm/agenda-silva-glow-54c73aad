@@ -447,6 +447,7 @@ export type Database = {
           calendar_id: string
           closer_id: string
           created_at: string
+          granted_scopes: string | null
           id: string
           refresh_token: string
           token_expiry: string
@@ -457,6 +458,7 @@ export type Database = {
           calendar_id?: string
           closer_id: string
           created_at?: string
+          granted_scopes?: string | null
           id?: string
           refresh_token: string
           token_expiry: string
@@ -467,6 +469,7 @@ export type Database = {
           calendar_id?: string
           closer_id?: string
           created_at?: string
+          granted_scopes?: string | null
           id?: string
           refresh_token?: string
           token_expiry?: string
@@ -485,6 +488,7 @@ export type Database = {
       closers: {
         Row: {
           active: boolean
+          auto_recording_enabled: boolean
           business_hours_end: string
           business_hours_ranges: Json | null
           business_hours_start: string
@@ -496,6 +500,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          auto_recording_enabled?: boolean
           business_hours_end?: string
           business_hours_ranges?: Json | null
           business_hours_start?: string
@@ -507,6 +512,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          auto_recording_enabled?: boolean
           business_hours_end?: string
           business_hours_ranges?: Json | null
           business_hours_start?: string

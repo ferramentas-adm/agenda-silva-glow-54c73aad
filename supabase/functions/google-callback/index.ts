@@ -55,7 +55,8 @@ serve(async (req) => {
 
     const expiryDate = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
-    // Upsert token
+    // Upsert token — guarda também os escopos concedidos, para o
+    // google-create-event saber se pode usar a Meet API (gravação automática).
     const { error } = await supabaseAdmin
       .from('closer_google_tokens')
       .upsert({
@@ -63,7 +64,9 @@ serve(async (req) => {
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
         token_expiry: expiryDate,
+        granted_scopes: typeof tokenData.scope === 'string' ? tokenData.scope : null,
       }, { onConflict: 'closer_id' });
+
 
     if (error) {
       console.error('Error saving token:', error);

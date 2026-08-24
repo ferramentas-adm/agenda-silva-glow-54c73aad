@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -209,6 +209,12 @@ function UsersSection() {
   const [editRanges, setEditRanges] = useState<{ start: string; end: string }[]>([{ start: "09:00", end: "23:00" }]);
   const [savingHours, setSavingHours] = useState(false);
 
+  // Piloto: gravação/transcrição automática do Google Meet por closer
+  const [autoRecTarget, setAutoRecTarget] = useState<{ closerId: string; name: string; enable: boolean } | null>(null);
+  const [savingAutoRec, setSavingAutoRec] = useState(false);
+
+
+
   // DataCrazy ID edit state
   const [datacrazyTarget, setDatacrazyTarget] = useState<{ userId: string; name: string; type: string; currentId: string; closerId?: string } | null>(null);
   const [editDatacrazyId, setEditDatacrazyId] = useState("");
@@ -251,11 +257,11 @@ function UsersSection() {
         .select("user_id, role");
       const { data: closers } = await supabase
         .from("closers")
-        .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id")
+        .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id, auto_recording_enabled")
         .order("name");
 
       // Build a map of closer info by email
-      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string }>();
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean }>();
       (closers ?? []).forEach((c: any) => {
         if (c.email) {
           const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
@@ -267,9 +273,11 @@ function UsersSection() {
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
             datacrazyId: c.datacrazy_id || "",
+            autoRecordingEnabled: c.auto_recording_enabled === true,
           });
         }
       });
+
 
       // Profile-based users (SDR, Gestor, Closer with auth)
       const profileEmails = new Set<string>();
@@ -290,6 +298,8 @@ function UsersSection() {
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
+          autoRecordingEnabled: closerInfo?.autoRecordingEnabled === true,
+
           api4comExtension: (p as any).api4com_extension || "",
           availableForScheduling: p.available_for_scheduling ?? false,
           isSdrOverride: (p as any).is_sdr_override === true,
@@ -318,6 +328,8 @@ function UsersSection() {
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
             datacrazyId: c.datacrazy_id || "",
+            autoRecordingEnabled: c.auto_recording_enabled === true,
+
           };
         });
 
@@ -867,7 +879,21 @@ function UsersSection() {
                               : <UserCog className={`h-3.5 w-3.5 ${u.isSdrOverride ? 'text-primary' : 'text-muted-foreground'}`} />}
                           </Button>
                         )}
+                        {u.role === "closer" && u.closerId && canActOn(u.role) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title={u.autoRecordingEnabled
+                              ? "Gravação automática do Meet: ATIVA (piloto) — clique para desativar"
+                              : "Gravação automática do Meet: desativada — clique para ativar (piloto)"}
+                            onClick={() => setAutoRecTarget({ closerId: u.closerId!, name: u.name, enable: !u.autoRecordingEnabled })}
+                          >
+                            <Video className={`h-3.5 w-3.5 ${u.autoRecordingEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                          </Button>
+                        )}
                         {u.role === "closer" && u.closerId && (
+
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Horário de trabalho"
                             onClick={() => { setHoursTarget({ closerId: u.closerId!, name: u.name, ranges: u.ranges }); setEditRanges([...u.ranges]); }}>
                             <Clock className="h-3.5 w-3.5" />
@@ -1164,7 +1190,66 @@ function UsersSection() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Piloto: gravação automática do Meet */}
+      <AlertDialog open={!!autoRecTarget} onOpenChange={(open) => { if (!open) setAutoRecTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {autoRecTarget?.enable ? "Ativar gravação automática (piloto)" : "Desativar gravação automática"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                {autoRecTarget?.enable ? (
+                  <>
+                    <p>
+                      As novas reuniões de <strong>{autoRecTarget?.name}</strong> passarão a ser criadas com
+                      gravação (e transcrição, quando o plano permitir) iniciando automaticamente.
+                    </p>
+                    <p className="text-muted-foreground">
+                      Importante: o closer precisa reconectar o Google para conceder a nova permissão.
+                      Enquanto isso não acontecer, o sistema continua criando as reuniões do jeito atual —
+                      nada deixa de funcionar.
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    As novas reuniões de <strong>{autoRecTarget?.name}</strong> voltarão a ser criadas
+                    normalmente, sem gravação automática. Reuniões já criadas não são alteradas.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingAutoRec}
+              onClick={async () => {
+                if (!autoRecTarget) return;
+                setSavingAutoRec(true);
+                try {
+                  const { error } = await supabase.from("closers")
+                    .update({ auto_recording_enabled: autoRecTarget.enable } as any)
+                    .eq("id", autoRecTarget.closerId);
+                  if (error) throw error;
+                  toast.success(autoRecTarget.enable ? "Gravação automática ativada!" : "Gravação automática desativada.");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  queryClient.invalidateQueries({ queryKey: ["closers"] });
+                  setAutoRecTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao salvar");
+                }
+                setSavingAutoRec(false);
+              }}
+            >
+              {savingAutoRec ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* DataCrazy ID dialog */}
+
       <AlertDialog open={!!datacrazyTarget} onOpenChange={(open) => { if (!open) setDatacrazyTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
