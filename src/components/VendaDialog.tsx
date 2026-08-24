@@ -16,6 +16,8 @@ import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
+import OrderBumpsField from "@/components/OrderBumpsField";
+import { OrderBump, parseOrderBumpsColumn } from "@/lib/orderBumps";
 
 interface VendaDialogProps {
   open: boolean;
@@ -50,6 +52,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [motivo, setMotivo] = useState<string>("");
   const [observacoes, setObservacoes] = useState<string>("");
+  const [orderBumps, setOrderBumps] = useState<OrderBump[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
@@ -66,6 +69,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setLeadRevenue("");
     setMotivo("");
     setObservacoes("");
+    setOrderBumps([]);
     setIsEditing(false);
     setExisting(null);
   };
@@ -94,6 +98,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
         setMotivo((data as { motivo_nao_fechamento?: string | null }).motivo_nao_fechamento ?? "");
         setObservacoes((data as { observacoes?: string | null }).observacoes ?? "");
+        setOrderBumps(parseOrderBumpsColumn((data as { order_bumps?: unknown }).order_bumps));
       }
       setLoadingExisting(false);
     })();
@@ -114,6 +119,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         lead_revenue: leadRevenue || null,
         motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
         observacoes: observacoes.trim() || null,
+        order_bumps: vendeuCloser === "sim" && orderBumps.length ? orderBumps : null,
       };
 
       if (existing) {
@@ -248,6 +254,10 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
               O lançamento oficial da venda é feito pelo gestor/supervisor.
             </p>
           </div>
+
+          {vendeuCloser === "sim" && (
+            <OrderBumpsField value={orderBumps} onChange={setOrderBumps} idPrefix="closer-ob" />
+          )}
 
           {vendeuCloser === "nao" && (
             <div className="space-y-2">
