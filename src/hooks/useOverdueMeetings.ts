@@ -14,8 +14,11 @@ export interface OverdueMeeting {
   status: string;
   closer_id: string | null;
   created_by: string | null;
+  sdr_responsavel_id: string | null;
   sdr_handoff_at: string | null;
   closer_handoff_at: string | null;
+  closer_returned_at: string | null;
+  closer_return_reason: string | null;
   closer_name: string | null;
   creator_name: string | null;
   /** Quem está com a responsabilidade AGORA: primeiro o SDR, depois o Closer.
