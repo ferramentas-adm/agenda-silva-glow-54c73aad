@@ -390,8 +390,8 @@ export default function OverdueMeetingsLockOverlay() {
                   </>
                 )}
 
-                {/* ETAPA 2 — Closer */}
-                {m.stage === "closer" && (
+                {/* ETAPA 2 — Closer (também aparece no modo combinado) */}
+                {canCloser && (
                   <>
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                       <Button
