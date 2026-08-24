@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -30,6 +30,9 @@ import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
+
+// Escopo do Google necessário para criar salas do Meet com gravação automática.
+const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
 
 
 /* ─── Listas dinâmicas (Canais / Motivos / Justificativas) ───── */
@@ -213,6 +216,11 @@ function UsersSection() {
   const [autoRecTarget, setAutoRecTarget] = useState<{ closerId: string; name: string; enable: boolean } | null>(null);
   const [savingAutoRec, setSavingAutoRec] = useState(false);
 
+  // Desconexão da conta Google de um closer (ação do gestor)
+  const [disconnectGoogleTarget, setDisconnectGoogleTarget] = useState<{ closerId: string; name: string; hasMeetScope: boolean } | null>(null);
+  const [savingDisconnectGoogle, setSavingDisconnectGoogle] = useState(false);
+
+
 
 
   // DataCrazy ID edit state
@@ -259,6 +267,17 @@ function UsersSection() {
         .from("closers")
         .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id, auto_recording_enabled")
         .order("name");
+      // Conexões Google dos closers (para status/desconexão no painel do gestor)
+      const { data: googleTokens } = await supabase
+        .from("closer_google_tokens")
+        .select("closer_id, granted_scopes");
+      const googleTokenMap = new Map<string, { hasMeetScope: boolean }>();
+      (googleTokens ?? []).forEach((t: any) => {
+        googleTokenMap.set(t.closer_id, {
+          hasMeetScope: typeof t.granted_scopes === "string" && t.granted_scopes.includes(MEET_SPACE_SCOPE),
+        });
+      });
+
 
       // Build a map of closer info by email
       const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean }>();
@@ -299,6 +318,12 @@ function UsersSection() {
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
           autoRecordingEnabled: closerInfo?.autoRecordingEnabled === true,
+          googleConnected: closerInfo?.closerId ? googleTokenMap.has(closerInfo.closerId) : false,
+          googleHasMeetScope: closerInfo?.closerId
+            ? googleTokenMap.get(closerInfo.closerId)?.hasMeetScope === true
+            : false,
+
+
 
           api4comExtension: (p as any).api4com_extension || "",
           availableForScheduling: p.available_for_scheduling ?? false,
@@ -329,6 +354,9 @@ function UsersSection() {
             ranges,
             datacrazyId: c.datacrazy_id || "",
             autoRecordingEnabled: c.auto_recording_enabled === true,
+            googleConnected: googleTokenMap.has(c.id),
+            googleHasMeetScope: googleTokenMap.get(c.id)?.hasMeetScope === true,
+
 
           };
         });
@@ -884,6 +912,29 @@ function UsersSection() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
+                            title={!u.googleConnected
+                              ? "Google não conectado — o closer deve conectar pelo painel"
+                              : u.googleHasMeetScope
+                                ? "Google conectado (com permissão de gravação automática) — clique para desconectar"
+                                : "Google conectado, mas SEM a permissão de gravação automática — clique para desconectar e pedir que reconecte"}
+                            disabled={!u.googleConnected}
+                            onClick={() => setDisconnectGoogleTarget({ closerId: u.closerId!, name: u.name, hasMeetScope: u.googleHasMeetScope === true })}
+                          >
+                            <CalendarX className={`h-3.5 w-3.5 ${
+                              !u.googleConnected
+                                ? 'text-muted-foreground'
+                                : u.googleHasMeetScope
+                                  ? 'text-primary'
+                                  : 'text-yellow-500'
+                            }`} />
+                          </Button>
+                        )}
+                        {u.role === "closer" && u.closerId && canActOn(u.role) && (
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
                             title={u.autoRecordingEnabled
                               ? "Gravação automática do Meet: ATIVA (piloto) — clique para desativar"
                               : "Gravação automática do Meet: desativada — clique para ativar (piloto)"}
@@ -1190,7 +1241,70 @@ function UsersSection() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Desconectar conta Google do closer */}
+      <AlertDialog open={!!disconnectGoogleTarget} onOpenChange={(open) => { if (!open) setDisconnectGoogleTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desconectar a conta Google do closer</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  A conexão Google de <strong>{disconnectGoogleTarget?.name}</strong> será removida.
+                  Até ele conectar novamente, a agenda dele não será lida e novos eventos não serão
+                  criados no Google Calendar.
+                </p>
+                <p className="text-muted-foreground">
+                  Ao atualizar a página do painel, o closer verá o aviso "Sua agenda Google não está
+                  conectada" e poderá conectar de novo
+                  {disconnectGoogleTarget && !disconnectGoogleTarget.hasMeetScope
+                    ? " — é isso que concede a permissão de gravação automática do Meet."
+                    : "."}
+                </p>
+                <p className="text-muted-foreground">
+                  Agendamentos, eventos já criados e histórico não são alterados.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingDisconnectGoogle}
+              onClick={async () => {
+                if (!disconnectGoogleTarget) return;
+                setSavingDisconnectGoogle(true);
+                try {
+                  const { error } = await supabase
+                    .from("closer_google_tokens")
+                    .delete()
+                    .eq("closer_id", disconnectGoogleTarget.closerId);
+                  if (error) throw error;
+                  await logAudit(
+                    "google_disconnect",
+                    "closer",
+                    disconnectGoogleTarget.closerId,
+                    { closer_name: disconnectGoogleTarget.name },
+                  );
+
+                  toast.success("Conta Google desconectada. O closer poderá reconectar no painel.");
+                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+                  queryClient.invalidateQueries({ queryKey: ["closer-has-google-token"] });
+                  queryClient.invalidateQueries({ queryKey: ["closers"] });
+                  setDisconnectGoogleTarget(null);
+                } catch (err: any) {
+                  toast.error(err.message || "Erro ao desconectar a conta Google");
+                }
+                setSavingDisconnectGoogle(false);
+              }}
+            >
+              {savingDisconnectGoogle ? <Loader2 className="h-4 w-4 animate-spin" /> : "Desconectar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Piloto: gravação automática do Meet */}
+
       <AlertDialog open={!!autoRecTarget} onOpenChange={(open) => { if (!open) setAutoRecTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
