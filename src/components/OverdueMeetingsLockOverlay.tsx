@@ -436,38 +436,32 @@ export default function OverdueMeetingsLockOverlay() {
                         variant="outline"
                         disabled={busy}
                         onClick={() => {
-                          setTransferFor(transferFor === m.id ? null : m.id);
-                          setTransferTo("");
+                          setReturnFor(returnFor === m.id ? null : m.id);
+                          setReturnReason("");
                         }}
                         className="h-8 text-xs gap-1"
                       >
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                        Transferir para outro closer
+                        <Undo2 className="h-3.5 w-3.5" />
+                        Não fui eu que atendi
                       </Button>
                     </div>
 
-                    {transferFor === m.id && (
+                    {returnFor === m.id && (
                       <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[11px] text-muted-foreground">Closer de destino</span>
-                          <Select value={transferTo} onValueChange={setTransferTo}>
-                            <SelectTrigger className="h-8 text-xs w-[220px]">
-                              <SelectValue placeholder="Selecione o closer" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {activeClosers
-                                .filter((c) => c.id !== m.closer_id)
-                                .map((c) => (
-                                  <SelectItem key={c.id} value={c.id} className="text-xs">
-                                    {c.name}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+                          <span className="text-[11px] text-muted-foreground">
+                            Observação (opcional) — a reunião volta para o SDR responsável
+                          </span>
+                          <Input
+                            value={returnReason}
+                            onChange={(e) => setReturnReason(e.target.value)}
+                            placeholder="Ex.: estava em outra call, o SDR remanejou o lead"
+                            className="h-8 text-xs"
+                          />
                         </div>
-                        <Button size="sm" className="h-8 text-xs" disabled={busy} onClick={() => handleTransfer(m)}>
+                        <Button size="sm" className="h-8 text-xs" disabled={busy} onClick={() => handleReturnToSdr(m)}>
                           {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-                          Confirmar transferência
+                          Devolver para o SDR
                         </Button>
                       </div>
                     )}
