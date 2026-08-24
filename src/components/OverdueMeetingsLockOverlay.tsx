@@ -181,25 +181,49 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
-  // Closer transfere para outro closer ativo (via função segura no banco).
-  const handleTransfer = async (m: OverdueMeeting) => {
-    if (!transferTo) {
-      toast.error("Escolha o closer de destino");
-      return;
-    }
+  // Closer devolve a reunião para o SDR responsável ("não fui eu que atendi").
+  const handleReturnToSdr = async (m: OverdueMeeting) => {
     setUpdatingId(m.id);
     try {
-      const { error } = await supabase.rpc("transfer_agendamento_closer", {
-        _agendamento_id: m.id,
-        _new_closer_id: transferTo,
-      } as any);
+      const reason = returnReason.trim();
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .update({
+          closer_returned_at: new Date().toISOString(),
+          closer_return_reason: reason || null,
+          sdr_handoff_at: null,
+        } as any)
+        .eq("id", m.id)
+        .select("id");
       if (error) throw error;
-      toast.success("Reunião transferida para outro closer");
-      setTransferFor(null);
-      setTransferTo("");
+      if (!data || data.length === 0) throw new Error("Sem permissão para devolver este agendamento.");
+
+      const targetSdr = m.sdr_responsavel_id ?? m.created_by;
+      if (targetSdr) {
+        await supabase.from("notifications").insert({
+          user_id: targetSdr,
+          type: "closer_returned_meeting",
+          title: "Reunião devolvida pelo Closer",
+          message: `${m.closer_name ?? "O Closer"} informou que não atendeu a reunião com ${m.lead_name}.${reason ? ` Obs.: ${reason}` : ""}`,
+          entity_type: "agendamento",
+          entity_id: m.id,
+        } as any);
+      }
+
+      await logAudit("closer_return_to_sdr", "agendamento", m.id, {
+        lead_name: m.lead_name,
+        closer_name: m.closer_name ?? "",
+        scheduled_date: m.scheduled_date,
+        scheduled_time: m.scheduled_time,
+        reason: reason || null,
+      });
+
+      toast.success("Reunião devolvida para o SDR responsável");
+      setReturnFor(null);
+      setReturnReason("");
       await invalidateAll();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao transferir");
+      toast.error(err?.message || "Erro ao devolver a reunião");
     } finally {
       setUpdatingId(null);
     }
