@@ -89,7 +89,10 @@ export function useOverdueMeetings() {
         .order("scheduled_time", { ascending: true });
 
       const orParts: string[] = [];
-      if (user?.id) orParts.push(`created_by.eq.${user.id}`);
+      if (user?.id) {
+        orParts.push(`created_by.eq.${user.id}`);
+        orParts.push(`sdr_responsavel_id.eq.${user.id}`);
+      }
       if (myCloserId) orParts.push(`closer_id.eq.${myCloserId}`);
       if (orParts.length === 0) return [];
       q = q.or(orParts.join(","));
@@ -105,22 +108,30 @@ export function useOverdueMeetings() {
       );
 
       // Fluxo em ETAPAS (nunca os dois ao mesmo tempo):
-      //  1) SDR criador é travado primeiro (Cancelar / No-show / Reagendar).
+      //  1) SDR responsável (ou criador) é travado primeiro (Cancelar / No-show / Reagendar).
       //  2) Se nada for factível, ele encaminha para o Closer (`sdr_handoff_at`),
-      //     e a trava passa para o Closer (Realizada ou transferir para outro closer).
+      //     e a trava passa para o Closer (Realizada ou devolver para o SDR).
+      //  3) Se o Closer devolve (`closer_returned_at`), a trava volta para o SDR.
       //  Exceção: quando o criador é TAMBÉM o closer da reunião, não há handoff
       //  possível — a trava vira etapa única ("both") com todas as ações.
       const overdue = overdueAll
         .map((m) => {
-          const isCreator = !!user?.id && m.created_by === user.id;
+          const isSdr =
+            !!user?.id && (m.created_by === user.id || m.sdr_responsavel_id === user.id);
           const isCloser = !!myCloserId && m.closer_id === myCloserId;
-          const stage: "sdr" | "closer" | "both" =
-            !m.sdr_handoff_at && isCreator && isCloser ? "both" : m.sdr_handoff_at ? "closer" : "sdr";
+          const stage: "sdr" | "closer" | "both" = m.closer_returned_at
+            ? "sdr"
+            : !m.sdr_handoff_at && isSdr && isCloser
+              ? "both"
+              : m.sdr_handoff_at
+                ? "closer"
+                : "sdr";
           return { ...m, stage };
         })
         .filter((m) => {
           if (m.stage === "both") return true;
-          if (m.stage === "sdr") return !!user?.id && m.created_by === user.id;
+          if (m.stage === "sdr")
+            return !!user?.id && (m.created_by === user.id || m.sdr_responsavel_id === user.id);
           return !!myCloserId && m.closer_id === myCloserId;
         });
 
