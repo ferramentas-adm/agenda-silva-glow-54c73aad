@@ -36,6 +36,27 @@ interface Props {
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 7); // 07h — 23h
 
+type CmpMode = "prev" | "w1" | "w2" | "w3" | "w4";
+
+const CMP_MODES: { value: CmpMode; label: string }[] = [
+  { value: "prev", label: "Período anterior" },
+  { value: "w1", label: "Última semana" },
+  { value: "w2", label: "Média 2 últimas" },
+  { value: "w3", label: "Média 3 últimas" },
+  { value: "w4", label: "Média 4 últimas" },
+];
+
+const WEEKDAY_NAMES = [
+  "domingos",
+  "segundas",
+  "terças",
+  "quartas",
+  "quintas",
+  "sextas",
+  "sábados",
+];
+
+
 const brDateFmt = new Intl.DateTimeFormat("en-CA", {
   timeZone: BR_TZ,
   year: "numeric",
