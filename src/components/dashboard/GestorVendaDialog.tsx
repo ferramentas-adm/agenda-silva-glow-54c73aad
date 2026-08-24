@@ -16,6 +16,8 @@ import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { brTodayYMD } from "@/lib/timezone";
+import OrderBumpsField from "@/components/OrderBumpsField";
+import { OrderBump, parseOrderBumpsColumn } from "@/lib/orderBumps";
 
 interface GestorVendaDialogProps {
   open: boolean;
@@ -57,6 +59,7 @@ export default function GestorVendaDialog({
   const [produto, setProduto] = useState("");
   const [valor, setValor] = useState("");
   const [vendaOrigem, setVendaOrigem] = useState<"primeira_call" | "follow_up" | null>(null);
+  const [orderBumps, setOrderBumps] = useState<OrderBump[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
@@ -68,6 +71,7 @@ export default function GestorVendaDialog({
     setProduto("");
     setValor("");
     setVendaOrigem(null);
+    setOrderBumps([]);
     setExisting(null);
   };
 
@@ -91,6 +95,7 @@ export default function GestorVendaDialog({
         if (data.valor != null) setValor(Math.round(Number(data.valor) * 100).toString());
         const origem = (data as any).venda_origem;
         if (origem === "primeira_call" || origem === "follow_up") setVendaOrigem(origem);
+        setOrderBumps(parseOrderBumpsColumn((data as { order_bumps?: unknown }).order_bumps));
       }
       setLoadingExisting(false);
     })();
@@ -140,6 +145,7 @@ export default function GestorVendaDialog({
             venda_origem: vendaOrigem,
             closed_at: brTodayYMD(),
             status_antes_venda: statusAntes,
+            order_bumps: orderBumps.length ? orderBumps : null,
           } as any)
           .eq("agendamento_id", agendamentoId);
         if (vendaError) throw vendaError;
@@ -152,6 +158,7 @@ export default function GestorVendaDialog({
           venda_origem: vendaOrigem,
           closed_at: brTodayYMD(),
           status_antes_venda: statusAntes,
+          order_bumps: orderBumps.length ? orderBumps : null,
           created_by: user.id,
         } as any);
         if (vendaError) throw vendaError;
@@ -188,6 +195,7 @@ export default function GestorVendaDialog({
         registered_at: new Date().toISOString(),
         lead_revenue: existing?.lead_revenue ?? null,
         valor_apresentado: valorNum,
+        order_bumps: orderBumps.length ? orderBumps : null,
       } as any);
 
       await logAudit("venda_lancada_gestor", "venda", agendamentoId, {
@@ -196,6 +204,7 @@ export default function GestorVendaDialog({
         produto: produto || null,
         venda_origem: vendaOrigem,
         status_antes_venda: statusAntes,
+        order_bumps: orderBumps,
       });
 
       toast.success("Venda lançada!");
@@ -223,6 +232,7 @@ export default function GestorVendaDialog({
           venda_origem: null,
           closed_at: null,
           status_antes_venda: null,
+          order_bumps: null,
         } as any)
         .eq("agendamento_id", agendamentoId);
       if (error) throw error;
@@ -308,6 +318,8 @@ export default function GestorVendaDialog({
               placeholder="0,00"
             />
           </div>
+
+          <OrderBumpsField value={orderBumps} onChange={setOrderBumps} idPrefix="gestor-ob" />
 
           <div className="space-y-2">
             <Label>Origem da venda *</Label>
