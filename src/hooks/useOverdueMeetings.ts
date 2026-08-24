@@ -79,7 +79,7 @@ export function useOverdueMeetings() {
     queryFn: async () => {
       let q = supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_handoff_at, closer_handoff_at")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id, created_by, sdr_responsavel_id, sdr_handoff_at, closer_handoff_at, closer_returned_at, closer_return_reason")
         .is("deleted_at", null)
         // "pendente" (Aguardando atribuição) NÃO trava ninguém: é responsabilidade
         // exclusiva de gestores/moderadores atribuir o closer.
