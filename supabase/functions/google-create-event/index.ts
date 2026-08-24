@@ -69,7 +69,10 @@ async function createAutoRecordingSpace(
 
   for (const attempt of attempts) {
     try {
-      const res = await fetch('https://meet.googleapis.com/v2beta/spaces', {
+      // v2 é a versão estável e a única publicada em meet.googleapis.com
+      // (v2beta retorna 404 "Method not found"). O artifactConfig com
+      // autoRecordingGeneration/autoTranscriptionGeneration existe na v2.
+      const res = await fetch('https://meet.googleapis.com/v2/spaces', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
