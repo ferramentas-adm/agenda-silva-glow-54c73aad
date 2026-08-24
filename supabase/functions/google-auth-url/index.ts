@@ -53,7 +53,12 @@ serve(async (req) => {
 
     const scopes = [
       'https://www.googleapis.com/auth/calendar',
+      // Necessário para criar espaços do Meet com gravação/transcrição automáticas
+      // (piloto de gravação automática). Escopo adicional é inofensivo para
+      // closers que não participam do piloto.
+      'https://www.googleapis.com/auth/meetings.space.created',
     ];
+
 
     const params = new URLSearchParams({
       client_id: clientId,
