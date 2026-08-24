@@ -185,7 +185,10 @@ export function useOverdueMeetings() {
     if (!enabled) return;
     const filters: string[] = [];
     if (myCloserId) filters.push(`closer_id=eq.${myCloserId}`);
-    if (user?.id) filters.push(`created_by=eq.${user.id}`);
+    if (user?.id) {
+      filters.push(`created_by=eq.${user.id}`);
+      filters.push(`sdr_responsavel_id=eq.${user.id}`);
+    }
     if (filters.length === 0) return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
