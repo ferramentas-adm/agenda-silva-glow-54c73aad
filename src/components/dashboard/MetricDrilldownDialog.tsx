@@ -15,6 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { formatOrderBumpLabel, parseOrderBumpsColumn } from "@/lib/orderBumps";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -123,7 +124,7 @@ export default function MetricDrilldownDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up, closed_at, created_at, produto")
+        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up, closed_at, created_at, produto, order_bumps")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -526,7 +527,8 @@ export default function MetricDrilldownDialog({
                     {(() => {
                       const vForBadges = vendaMap.get(d.id) as any;
                       const produto = vForBadges?.produto?.trim() || null;
-                      if (!d.channel_type && !d.meeting_reason && !produto) return null;
+                      const bumps = parseOrderBumpsColumn(vForBadges?.order_bumps);
+                      if (!d.channel_type && !d.meeting_reason && !produto && bumps.length === 0) return null;
                       return (
                         <div className="col-span-2 flex flex-wrap gap-1.5 pt-1">
                           {produto && (
@@ -534,6 +536,14 @@ export default function MetricDrilldownDialog({
                               Produto: {produto}
                             </Badge>
                           )}
+                          {bumps.map((b) => (
+                            <Badge
+                              key={b.nome}
+                              className="text-[10px] bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30 hover:bg-sky-500/15"
+                            >
+                              Bump: {formatOrderBumpLabel(b)}
+                            </Badge>
+                          ))}
                           {d.channel_type && (
                             <Badge variant="secondary" className="text-[10px]">
                               Canal: {d.channel_type}

@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   let query = supabase
     .from("vendas")
     .select(`
-      id, valor, valor_total_projeto, produto, resumo_venda,
+      id, valor, valor_total_projeto, produto, resumo_venda, order_bumps,
       segunda_reuniao, follow_up, motivo_nao_fechamento, vendeu,
       venda_origem, closed_at,
       agendamento_id, created_at,
@@ -99,6 +99,11 @@ Deno.serve(async (req) => {
     .map((v: any) => {
       const ag = v.agendamentos ?? {};
       const closer = ag.closers ?? {};
+      const order_bumps = Array.isArray(v.order_bumps)
+        ? v.order_bumps
+            .map((b: any) => ({ nome: b?.nome ?? null, valor: Number(b?.valor) || 0 }))
+            .filter((b: any) => !!b.nome)
+        : [];
       const data_venda = v.closed_at ?? (v.created_at ? v.created_at.slice(0, 10) : null);
       const origem = v.venda_origem
         ? v.venda_origem
@@ -123,6 +128,11 @@ Deno.serve(async (req) => {
         channel_type: ag.channel_type ?? null,
         meeting_reason: ag.meeting_reason ?? null,
         produto: v.produto,
+        order_bumps: order_bumps,
+        order_bumps_total: order_bumps.reduce(
+          (sum: number, b: any) => sum + (Number(b?.valor) || 0),
+          0,
+        ),
         resumo_venda: v.resumo_venda,
         venda_origem: origem,
         origem_label: origem === "follow_up" ? "Venda de follow-up" : "Venda de 1ª call",
