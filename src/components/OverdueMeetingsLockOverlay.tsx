@@ -236,7 +236,8 @@ export default function OverdueMeetingsLockOverlay() {
                 Reuniões exigem atualização <strong>1h05 após o horário agendado</strong>. Primeiro o{" "}
                 <strong>SDR</strong> resolve (Cancelar, No-show ou Reagendar). Se nenhuma opção for
                 factível, ele encaminha para o <strong>Closer</strong>, que marca{" "}
-                <strong>Realizada</strong> ou transfere para outro closer ativo.
+                <strong>Realizada</strong> ou transfere para outro closer ativo. Quando a agenda foi
+                criada pelo próprio closer da reunião, todas as opções aparecem juntas.
               </p>
             </div>
           </div>
