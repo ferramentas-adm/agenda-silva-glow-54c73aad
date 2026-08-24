@@ -105,12 +105,22 @@ export function useOverdueMeetings() {
       //  1) SDR criador é travado primeiro (Cancelar / No-show / Reagendar).
       //  2) Se nada for factível, ele encaminha para o Closer (`sdr_handoff_at`),
       //     e a trava passa para o Closer (Realizada ou transferir para outro closer).
+      //  Exceção: quando o criador é TAMBÉM o closer da reunião, não há handoff
+      //  possível — a trava vira etapa única ("both") com todas as ações.
       const overdue = overdueAll
-        .map((m) => ({ ...m, stage: (m.sdr_handoff_at ? "closer" : "sdr") as "sdr" | "closer" }))
+        .map((m) => {
+          const isCreator = !!user?.id && m.created_by === user.id;
+          const isCloser = !!myCloserId && m.closer_id === myCloserId;
+          const stage: "sdr" | "closer" | "both" =
+            !m.sdr_handoff_at && isCreator && isCloser ? "both" : m.sdr_handoff_at ? "closer" : "sdr";
+          return { ...m, stage };
+        })
         .filter((m) => {
+          if (m.stage === "both") return true;
           if (m.stage === "sdr") return !!user?.id && m.created_by === user.id;
           return !!myCloserId && m.closer_id === myCloserId;
         });
+
 
 
 
