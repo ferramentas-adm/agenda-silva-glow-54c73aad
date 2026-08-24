@@ -6,20 +6,15 @@ Na trava de reuniões vencidas, quando o SDR encaminha a agenda ("Encaminhar par
 
 ## Como fica
 
-Na etapa do Closer, a saída principal nova é **"Não fui eu que atendi"**, e ela não exige que o Closer saiba quem atendeu.
+Na etapa do Closer, o botão "Transferir para outro closer" é substituído por **"Não fui eu que atendi"**. Não há escolha de closer — o Closer A quase nunca sabe quem atendeu, e um chute erraria o histórico.
 
-Ao clicar, o Closer escolhe entre:
+Ao clicar, ele escreve uma observação curta (opcional) e confirma. A reunião volta para o **SDR responsável**, que é quem mandou o link e sabe quem atendeu, e o Closer A é liberado na hora.
 
-- **"Não sei quem atendeu"** (opção padrão) — a reunião volta para o **SDR responsável**, que é quem mandou o link e sabe quem atendeu. O Closer A é liberado na hora.
-- **"Foi o closer …"** (opcional, lista de closers ativos) — só para quando ele souber. A reunião é transferida para esse closer e a trava passa a valer para **ele**, que registra o resultado.
+Continua existindo "Realizada" para quando a reunião foi dele mesmo.
 
-Em ambos os casos há um campo de observação curta (opcional).
-
-O botão atual "Transferir para outro closer" é substituído por esse fluxo, e continua existindo "Realizada" para quando a reunião foi dele mesmo.
-
-- Quando volta para o SDR, ele reencontra a agenda com as opções dele (Cancelar, No-show, Reagendar) e o aviso "Devolvida pelo Closer <nome>" com a observação, se houver.
-- O SDR não pode encaminhar de volta ao mesmo Closer nessa segunda rodada: o botão "Encaminhar para o Closer" fica oculto quando a reunião já foi devolvida. Ele precisa resolver (cancelar/no-show/reagendar) ou remanejar o lead para o closer correto.
-- Devolução e indicação de closer geram notificação (para o SDR responsável e para o closer que recebeu, respectivamente) e registro no histórico (auditoria).
+- Do lado do SDR, a agenda reaparece com as opções dele (Cancelar, No-show, Reagendar) e o aviso "Devolvida pelo Closer <nome>" com a observação, se houver. Cabe a ele remanejar o lead para o closer correto (pela agenda) ou fechar o status.
+- O SDR não pode encaminhar de volta ao mesmo Closer nessa segunda rodada: o botão "Encaminhar para o Closer" fica oculto quando a reunião já foi devolvida.
+- A devolução gera notificação para o SDR responsável e registro no histórico (auditoria), para o gestor enxergar o vaivém.
 
 Também corrige um ponto correlato: hoje a etapa SDR só considera **quem criou** a agenda. Passa a considerar também o **SDR responsável** (`sdr_responsavel_id`) — assim a devolução chega na pessoa certa mesmo quando a agenda foi criada por outra pessoa.
 
