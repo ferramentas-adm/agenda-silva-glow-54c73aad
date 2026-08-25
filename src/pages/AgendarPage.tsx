@@ -449,8 +449,24 @@ function AgendarPageInner() {
 
       // Reagendamento para o MESMO dia = apenas troca de horário: atualiza o
       // próprio registro, sem criar duplicata nem marcar "reagendada".
-      const isSameDayReschedule =
-        !!editId && !!editData?.scheduled_date && editData.scheduled_date === dateStr;
+      // Vale também quando o lead já tem reunião em aberto na MESMA data.
+      const sameDayTargetId =
+        !!editId && !!editData?.scheduled_date && editData.scheduled_date === dateStr
+          ? editId
+          : conflict?.mode === "same_day_time_change"
+            ? conflict.prior.id
+            : null;
+      const isSameDayReschedule = !!sameDayTargetId;
+
+      // Faltam < 60 min para a reunião antiga → nova nasce vinculada a ela.
+      const linkedOriginalId =
+        conflict?.mode === "keep_as_reagendada" ? conflict.prior.id : null;
+
+      // Faltam >= 60 min → a reunião antiga é excluída e substituída pela nova.
+      if (conflict?.mode === "delete_old") {
+        await softDeletePriorMeeting(conflict.prior.id, user.id);
+      }
+
 
       // Rastreamento Meta (fbp/fbc + dados de contato) capturado no agendamento.
       const metaFields = collectLeadMetaFields(lead);
