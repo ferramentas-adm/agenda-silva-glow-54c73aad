@@ -271,7 +271,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
             <tr className="text-muted-foreground">
               <th className="text-left font-medium py-1">Hora</th>
               <th className="text-right font-medium py-1">{periodLabel}</th>
-              <th className="text-right font-medium py-1">Período anterior</th>
+              <th className="text-right font-medium py-1" title={cmpLabel}>{cmpColumnLabel}</th>
               <th className="text-right font-medium py-1">Δ</th>
             </tr>
           </thead>
