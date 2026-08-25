@@ -184,6 +184,15 @@ export async function closePriorMeeting(
   if (error) throw error;
 }
 
+/** Marca a reunião antiga como "Reagendada", mantendo data e horário originais. */
+export async function markPriorAsReagendada(priorId: string): Promise<void> {
+  const { error } = await supabase
+    .from("agendamentos")
+    .update({ status: "reagendada" } as any)
+    .eq("id", priorId);
+  if (error) throw error;
+}
+
 /** Texto de confirmação exibido ao usuário antes de gravar. */
 export function conflictMessage(conflict: PriorMeetingConflict): string {
   const [y, m, d] = conflict.prior.scheduled_date.split("-");
@@ -193,12 +202,16 @@ export function conflictMessage(conflict: PriorMeetingConflict): string {
   if (conflict.mode === "same_day_time_change") {
     return `Este lead já tem reunião em ${when} (${statusLabel}). Como é o mesmo dia, o horário dessa reunião será alterado — nenhuma reunião nova será criada.`;
   }
-  if (conflict.mode === "close_old") {
+  if (conflict.mode === "keep_as_reagendada") {
     const passou = conflict.minutesUntil < 0;
     const intro = passou
-      ? `Este lead tem reunião em ${when} (${statusLabel}) cujo horário já passou.`
-      : `Faltam menos de 1h para a reunião de ${when} (${statusLabel}).`;
-    return `${intro} Como a nova reunião é para outro dia, informe o desfecho da reunião antiga (No-show ou Cancelada). Ela será encerrada na data original e esta nova será criada como agenda nova.`;
+      ? `Este lead tem reunião hoje em ${when} (${statusLabel}) cujo horário já passou.`
+      : `Faltam menos de 1h para a reunião de hoje em ${when} (${statusLabel}).`;
+    return `${intro} Como ainda é o dia dela, ela ficará como Reagendada na data original e esta nova reunião será criada como Agendada.`;
+  }
+  if (conflict.mode === "close_old") {
+    return `Este lead tem reunião em ${when} (${statusLabel}), de um dia anterior. Como o dia dela já terminou, informe o desfecho (No-show ou Cancelada). Ela será encerrada na data original e esta nova será criada como agenda nova.`;
   }
   return `Este lead já tem reunião em ${when} (${statusLabel}). Faltam mais de 1h — a reunião antiga será excluída e substituída por esta nova.`;
 }
+
