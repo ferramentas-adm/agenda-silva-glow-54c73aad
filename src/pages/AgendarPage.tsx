@@ -615,6 +615,7 @@ function AgendarPageInner() {
     } catch (err: any) {
       toast.error(err.message || "Erro ao agendar");
     }
+    resolvedConflictRef.current = null;
     setSubmitting(false);
   };
 
