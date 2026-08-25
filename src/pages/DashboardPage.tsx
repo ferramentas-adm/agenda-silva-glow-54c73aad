@@ -2210,7 +2210,7 @@ const DayView = memo(function DayView({
   if (closers.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-primary/20 bg-card py-12 text-center">
-        <p className="text-sm text-muted-foreground">Selecione ao menos um closer para ver a agenda do dia.</p>
+        <p className="text-sm text-muted-foreground">Nenhum closer selecionado — marque ao menos um closer no filtro acima para ver a agenda do dia.</p>
       </div>
     );
   }
