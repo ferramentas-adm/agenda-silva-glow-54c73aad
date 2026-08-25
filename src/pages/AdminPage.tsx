@@ -780,17 +780,17 @@ function UsersSection() {
               .map((u: any) => {
               const isEditing = editingId === u.userId;
               return (
-                <div key={`${u.type}-${u.id}`} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3">
+                <div key={`${u.type}-${u.id}`} className="flex flex-col gap-2 rounded-lg bg-secondary/50 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
                   {isEditing ? (
                     <div className="flex flex-1 items-center gap-2">
                       <Input className="h-8 text-sm" value={editName} onChange={(e) => setEditName(e.target.value)} />
                       <Input className="h-8 text-sm" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="E-mail" />
                     </div>
                   ) : (
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{u.name}</p>
-                      <div className="flex items-center gap-2">
-                        {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
+                    <div className="min-w-0 flex-1 lg:min-w-[220px]">
+                      <p className="font-medium break-words leading-snug">{u.name}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        {u.email && <p className="text-xs text-muted-foreground break-all">{u.email}</p>}
                         {u.role === "closer" && u.closerId && (
                           <span className="text-xs text-muted-foreground">
                             ({u.ranges.map((r: any) => `${r.start}–${r.end}`).join(", ")})
@@ -799,7 +799,8 @@ function UsersSection() {
                       </div>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
+
                     {isEditing ? (
                       <>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSaveEdit(u)} disabled={savingEdit}>
