@@ -154,6 +154,16 @@ export default function GoogleCalendarBanner() {
       </div>
       <Button
         size="sm"
+        variant="outline"
+        onClick={handleRecheck}
+        disabled={tokenFetching}
+        className="shrink-0 gap-2"
+      >
+        <RefreshCw className={`h-4 w-4 ${tokenFetching ? "animate-spin" : ""}`} />
+        Já conectei
+      </Button>
+      <Button
+        size="sm"
         onClick={handleConnect}
         disabled={connecting}
         className="shrink-0 gap-2"
