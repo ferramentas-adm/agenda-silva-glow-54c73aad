@@ -1465,7 +1465,7 @@ export function CalendarContent() {
                   )}
                   {detailAg.is_5k && (
                     <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-500 border-amber-500/40 font-bold">
-                      Projeto 5K
+                      Mentoria com Antônio
                     </Badge>
                   )}
                   {((detailAg.created_by && userRolesMap.get(detailAg.created_by) === "closer") || detailAg.meeting_reason === "segunda_reuniao") && (

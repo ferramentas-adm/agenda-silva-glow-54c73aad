@@ -815,7 +815,7 @@ function AgendarPageInner() {
               ) : null}
 
 
-              {(role === "sdr" || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor") && !(isAdmin && adminAsSecondMeeting) && (
+              {(role === "sdr" || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor") && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
                     Tipo de Canal <span className="text-destructive">*</span>
@@ -838,9 +838,9 @@ function AgendarPageInner() {
               <div className="flex items-center justify-between rounded-md border border-border bg-secondary/30 px-4 py-3">
                 <div className="space-y-0.5">
                   <label htmlFor="is-5k-toggle" className="text-sm font-medium cursor-pointer">
-                    Projeto 5K
+                    Mentoria com Antônio
                   </label>
-                  <p className="text-xs text-muted-foreground">Marque para sinalizar esta reunião como Projeto 5K.</p>
+                  <p className="text-xs text-muted-foreground">Marque para sinalizar esta reunião como Mentoria com Antônio.</p>
                 </div>
                 <Switch id="is-5k-toggle" checked={is5k} onCheckedChange={setIs5k} />
               </div>

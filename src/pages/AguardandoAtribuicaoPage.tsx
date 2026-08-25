@@ -429,7 +429,7 @@ export default function AguardandoAtribuicaoPage() {
                         <span className="text-base font-semibold">{a.lead_name}</span>
                         {a.is_5k && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                            <Sparkles className="h-3 w-3" /> Projeto 5K
+                            <Sparkles className="h-3 w-3" /> Mentoria com Antônio
                           </span>
                         )}
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
