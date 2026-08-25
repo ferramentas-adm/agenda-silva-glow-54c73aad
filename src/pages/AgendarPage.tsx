@@ -44,7 +44,6 @@ import {
   type PriorMeetingConflict,
   type PriorOutcome,
 } from "@/services/reagendamento";
-import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
