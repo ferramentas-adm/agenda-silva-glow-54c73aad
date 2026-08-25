@@ -122,12 +122,28 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         order_bumps: vendeuCloser === "sim" && orderBumps.length ? orderBumps : null,
       };
 
+      const denyMessage =
+        "Você não tem permissão para registrar o resultado desta reunião — acione o gestor.";
+
+      const logBlocked = async (etapa: string) => {
+        await logAudit("call_realizada_bloqueada", "venda", agendamentoId, {
+          lead_name: leadName,
+          etapa,
+          user_id: user.id,
+        });
+      };
+
       if (existing) {
-        const { error: vendaError } = await supabase
+        const { data: updated, error: vendaError } = await supabase
           .from("vendas")
           .update(payload as any)
-          .eq("agendamento_id", agendamentoId);
+          .eq("agendamento_id", agendamentoId)
+          .select("id");
         if (vendaError) throw vendaError;
+        if (!updated || updated.length === 0) {
+          await logBlocked("update_venda");
+          throw new Error(denyMessage);
+        }
       } else {
         const { error: vendaError } = await supabase.from("vendas").insert({
           agendamento_id: agendamentoId,
@@ -139,11 +155,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       }
 
 
-      const { error: agError } = await supabase
+      const { data: agUpdated, error: agError } = await supabase
         .from("agendamentos")
         .update({ status: "realizada" })
-        .eq("id", agendamentoId);
+        .eq("id", agendamentoId)
+        .select("id");
       if (agError) throw agError;
+      if (!agUpdated || agUpdated.length === 0) {
+        await logBlocked("update_status");
+        throw new Error(denyMessage);
+      }
+
 
       // Webhook informativo de call realizada (sem alterar etapa de venda no CRM)
       const { data: agData } = await supabase
