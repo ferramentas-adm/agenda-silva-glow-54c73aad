@@ -41,6 +41,7 @@ import {
   conflictMessage,
   softDeletePriorMeeting,
   closePriorMeeting,
+  markPriorAsReagendada,
   type PriorMeetingConflict,
   type PriorOutcome,
 } from "@/services/reagendamento";
