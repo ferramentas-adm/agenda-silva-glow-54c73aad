@@ -1475,7 +1475,34 @@ export function CalendarContent() {
                   )}
 
                 </div>
+                {isAdminLike && (
+                  <div className="mt-2 flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+                    <Label htmlFor="detail-is5k-toggle" className="text-xs font-medium">
+                      Mentoria com Antônio
+                    </Label>
+                    <Switch
+                      id="detail-is5k-toggle"
+                      checked={!!detailAg.is_5k}
+                      onCheckedChange={async (checked) => {
+                        const id = detailAg.id;
+                        setDetailAg((prev) => (prev && prev.id === id ? { ...prev, is_5k: checked } : prev));
+                        const { error } = await supabase
+                          .from("agendamentos")
+                          .update({ is_5k: checked })
+                          .eq("id", id);
+                        if (error) {
+                          setDetailAg((prev) => (prev && prev.id === id ? { ...prev, is_5k: !checked } : prev));
+                          toast.error("Não foi possível alterar a flag");
+                          return;
+                        }
+                        queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+                        toast.success(checked ? "Flag adicionada" : "Flag removida");
+                      }}
+                    />
+                  </div>
+                )}
               </div>
+
 
               {detailAg.meet_link && (
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" asChild>
