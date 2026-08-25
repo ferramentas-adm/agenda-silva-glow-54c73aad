@@ -949,6 +949,34 @@ function AgendarPageInner() {
           )}
         </div>
       </div>
+
+      <AlertDialog
+        open={!!conflictPrompt}
+        onOpenChange={(open) => {
+          if (!open) setConflictPrompt(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Este lead já tem reunião em aberto</AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflictPrompt ? conflictMessage(conflictPrompt) : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                resolvedConflictRef.current = conflictPrompt;
+                setConflictPrompt(null);
+                void handleSubmit();
+              }}
+            >
+              Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
