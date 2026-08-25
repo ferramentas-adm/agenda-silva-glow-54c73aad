@@ -57,12 +57,15 @@ export default function GoogleCalendarBanner() {
     refetchOnWindowFocus: "always",
     placeholderData: (prev) => prev,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("closer_google_tokens")
         .select("id, granted_scopes")
         .eq("closer_id", closerMatch!.id)
         .limit(1)
         .maybeSingle();
+      // Não engolir erro: uma falha de permissão/rede não deve ser
+      // interpretada como "closer sem conexão Google".
+      if (error) throw error;
       return {
         connected: !!data,
         hasMeetScope:
