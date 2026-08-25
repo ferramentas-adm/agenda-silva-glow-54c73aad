@@ -70,20 +70,36 @@ const brDateFmt = new Intl.DateTimeFormat("en-CA", {
  */
 export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: Props) {
   const [cumulative, setCumulative] = useState(false);
+  const [cmpModeState, setCmpModeState] = useState<CmpMode>("prev");
 
   const from = parseISO(range.from);
   const to = parseISO(range.to);
   const days = Math.max(1, differenceInCalendarDays(to, from) + 1);
+  const isSingleDay = range.from === range.to;
+  const cmpMode: CmpMode = isSingleDay ? cmpModeState : "prev";
 
-  const periodLabel =
-    range.from === range.to
-      ? format(to, "dd/MM/yyyy")
-      : `${format(from, "dd/MM")} a ${format(to, "dd/MM")}`;
+  const periodLabel = isSingleDay
+    ? format(to, "dd/MM/yyyy")
+    : `${format(from, "dd/MM")} a ${format(to, "dd/MM")}`;
 
-  // Conjunto de dias do período e do período anterior equivalente.
-  const { baseDays, cmpDays, cmpLabel } = useMemo(() => {
+  // Conjunto de dias do período e dos dias usados na comparação.
+  const { baseDays, cmpDays, cmpDivisor, cmpLabel } = useMemo(() => {
     const base = new Set<string>();
     for (let i = 0; i < days; i++) base.add(pickedDateToYMD(subDays(to, i)));
+
+    if (cmpMode !== "prev") {
+      const weeks = Number(cmpMode.slice(1));
+      const dates = Array.from({ length: weeks }, (_, k) => subDays(to, 7 * (k + 1)));
+      const cmp = new Set(dates.map(pickedDateToYMD));
+      const weekdayName = WEEKDAY_NAMES[to.getDay()];
+      const listed = dates.map((d) => format(d, "dd/MM")).join(", ");
+      const label =
+        weeks === 1
+          ? `última ${weekdayName.replace(/s$/, "")} (${listed})`
+          : `média ${weeks} últimas ${weekdayName} (${listed})`;
+      return { baseDays: base, cmpDays: cmp, cmpDivisor: weeks, cmpLabel: label };
+    }
+
     const cmp = new Set<string>();
     const cmpTo = subDays(from, 1);
     for (let i = 0; i < days; i++) cmp.add(pickedDateToYMD(subDays(cmpTo, i)));
@@ -92,8 +108,11 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
       days === 1
         ? format(cmpTo, "dd/MM/yyyy")
         : `${format(cmpFrom, "dd/MM")} a ${format(cmpTo, "dd/MM")}`;
-    return { baseDays: base, cmpDays: cmp, cmpLabel: label };
-  }, [from, to, days]);
+    return { baseDays: base, cmpDays: cmp, cmpDivisor: 1, cmpLabel: label };
+  }, [from, to, days, cmpMode]);
+
+  const cmpColumnLabel = cmpMode === "prev" ? "Período anterior" : CMP_MODES.find((m) => m.value === cmpMode)!.label;
+
 
   const { data, totals } = useMemo(() => {
     const baseByHour = new Map<number, number>();
