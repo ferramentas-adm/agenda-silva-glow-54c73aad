@@ -31,9 +31,11 @@ export interface PriorMeeting {
 export type ConflictMode =
   /** Mesma data: apenas trocar o horário do próprio registro. */
   | "same_day_time_change"
-  /** Faltam < 60 min (ou já passou): antiga é encerrada como no-show/cancelada. */
+  /** Antiga é de dia anterior: precisa ser encerrada como no-show/cancelada. */
   | "close_old"
-  /** Faltam >= 60 min: antiga é excluída e a nova é agenda nova. */
+  /** Antiga é hoje e faltam < 60 min (ou já passou): fica "Reagendada". */
+  | "keep_as_reagendada"
+  /** Antiga é hoje/futura com >= 60 min: é excluída e a nova é agenda nova. */
   | "delete_old";
 
 export interface PriorMeetingConflict {
