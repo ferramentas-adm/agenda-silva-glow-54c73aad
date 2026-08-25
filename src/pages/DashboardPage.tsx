@@ -1297,7 +1297,7 @@ export function CalendarContent() {
 
 
         {/* Content */}
-        {isLoading || loadingAgendamentos || selectedIds.size === 0 ? (
+        {isLoading || loadingAgendamentos || (closers.length > 0 && selectedIds.size === 0) ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-20 w-full rounded-xl" />
