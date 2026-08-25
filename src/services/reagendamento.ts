@@ -103,18 +103,33 @@ export async function findPriorOpenMeeting(
   };
 }
 
-/** Classifica o conflito de acordo com a nova data escolhida. */
+/** Classifica o conflito de acordo com a nova data escolhida.
+ *
+ * Regra: "Reagendada" só vale enquanto ainda é o DIA da reunião antiga. Depois
+ * que o dia virou, a antiga precisa ser encerrada como No-show/Cancelada. */
 export function classifyConflict(
   prior: PriorMeeting,
   newDate: string,
 ): PriorMeetingConflict {
   const minutes = minutesUntilMeeting(prior.scheduled_date, prior.scheduled_time);
+  const today = brTodayYMD();
   let mode: ConflictMode;
   if (newDate === prior.scheduled_date) mode = "same_day_time_change";
-  else if (minutes < LAST_MINUTE_THRESHOLD) mode = "close_old";
+  else if (prior.scheduled_date < today) mode = "close_old";
+  else if (prior.scheduled_date === today && minutes < LAST_MINUTE_THRESHOLD)
+    mode = "keep_as_reagendada";
   else mode = "delete_old";
   return { prior, minutesUntil: minutes, mode };
 }
+
+/** Exclusão manual (SDR/Closer) só é permitida com mais de 60 min de folga. */
+export function canDeleteMeeting(date: string, time: string): boolean {
+  return minutesUntilMeeting(date, time) > LAST_MINUTE_THRESHOLD;
+}
+
+export const DELETE_BLOCKED_MESSAGE =
+  "Faltam menos de 1h para esta reunião (ou o horário já passou). Nesse caso não é possível excluir — atualize o status para No-show, Cancelada ou Reagendada (quando ainda for o mesmo dia).";
+
 
 /** Detecta e classifica em uma chamada. `null` = pode seguir sem avisos. */
 export async function detectPriorMeetingConflict(
