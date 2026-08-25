@@ -1465,7 +1465,7 @@ export function CalendarContent() {
                   )}
                   {detailAg.is_5k && (
                     <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-500 border-amber-500/40 font-bold">
-                      Projeto 5K
+                      Mentoria com Antônio
                     </Badge>
                   )}
                   {((detailAg.created_by && userRolesMap.get(detailAg.created_by) === "closer") || detailAg.meeting_reason === "segunda_reuniao") && (
@@ -2352,8 +2352,8 @@ const DayView = memo(function DayView({
                                       <span className={cn(
                                         "rounded-br-md rounded-tl-md px-1.5 py-0.5 font-bold leading-none bg-amber-500/90 text-white",
                                         isCompact ? "text-[8px]" : "text-[10px]"
-                                      )}>
-                                        5K
+                                      )} title="Mentoria com Antônio">
+                                        MA
                                       </span>
                                     )}
                                     {isCloserBooked && (
