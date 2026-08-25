@@ -458,9 +458,17 @@ function AgendarPageInner() {
             : null;
       const isSameDayReschedule = !!sameDayTargetId;
 
-      // Faltam < 60 min para a reunião antiga → nova nasce vinculada a ela.
-      const linkedOriginalId =
-        conflict?.mode === "keep_as_reagendada" ? conflict.prior.id : null;
+      // Nova reunião em outro dia nunca nasce vinculada: a antiga é encerrada.
+      const linkedOriginalId = null;
+
+      // Faltam < 60 min (ou já passou) → antiga encerrada como no-show/cancelada.
+      if (conflict?.mode === "close_old") {
+        await closePriorMeeting(
+          conflict.prior.id,
+          priorOutcomeRef.current.outcome ?? "no_show",
+          priorOutcomeRef.current.reason,
+        );
+      }
 
       // Faltam >= 60 min → a reunião antiga é excluída e substituída pela nova.
       if (conflict?.mode === "delete_old") {
