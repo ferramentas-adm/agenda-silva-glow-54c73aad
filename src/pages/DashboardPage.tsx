@@ -1759,9 +1759,8 @@ export function CalendarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Reagendar dialog — cria nova agenda em outra data/horário.
-          A original vira "Reagendada" via trigger; a nova nasce sem closer e
-          entra em "Aguardando atribuição". */}
+      {/* Alterar horário — apenas remanejo DENTRO DO MESMO DIA: atualiza o
+          próprio registro, sem duplicar nem marcar "Reagendada". */}
       <Dialog
         open={rescheduleOpen}
         onOpenChange={(o) => {
@@ -1776,44 +1775,21 @@ export function CalendarContent() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-amber-500" />
-              Reagendar reunião
+              Alterar horário
             </DialogTitle>
             <DialogDescription>
-              Escolha a nova data e horário para <strong>{detailAg?.lead_name}</strong>.
-              O agendamento original será marcado como <strong>Reagendada</strong> e a
-              nova reunião entrará em <strong>Aguardando atribuição</strong> para o
-              gestor reavaliar o Closer. Canal e duração são herdados do original.
+              Escolha o novo horário de <strong>{detailAg?.lead_name}</strong> dentro do
+              mesmo dia. Para mover a reunião para outro dia, crie uma nova reunião pelo
+              botão <strong>Agendar</strong> ou clicando no horário desejado no Calendário.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">Nova data</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {rescheduleDate ? format(rescheduleDate, "dd/MM/yyyy") : "Selecionar data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={rescheduleDate ?? undefined}
-                    onSelect={(d) => {
-                      if (d) {
-                        setRescheduleDate(d);
-                        setRescheduleTime(null);
-                      }
-                    }}
-                    locale={ptBR}
-                    disabled={(d) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return d < today;
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
+              <label className="text-xs font-medium">Data (fixa)</label>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                {rescheduleDate ? format(rescheduleDate, "dd/MM/yyyy") : "—"}
+              </div>
             </div>
             {rescheduleDate && detailAg && (
               <div className="space-y-1.5">
@@ -1836,8 +1812,11 @@ export function CalendarContent() {
               onClick={handleReschedule}
               disabled={!rescheduleDate || !rescheduleTime || rescheduling}
             >
-              {rescheduling ? "Reagendando..." : "Confirmar reagendamento"}
+              {rescheduling ? "Salvando..." : "Salvar horário"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
           </div>
         </DialogContent>
       </Dialog>
