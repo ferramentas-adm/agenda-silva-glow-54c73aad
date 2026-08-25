@@ -129,6 +129,10 @@ export default function GoogleCalendarBanner() {
 
   const handleRecheck = async () => {
     const res = await refetchToken();
+    if (res.error) {
+      toast.error("Não foi possível verificar a conexão agora. Tente novamente em instantes.");
+      return;
+    }
     if (res.data?.connected && (!closerMatch.auto_recording_enabled || res.data?.hasMeetScope)) {
       toast.success("Conexão confirmada.");
     } else {
