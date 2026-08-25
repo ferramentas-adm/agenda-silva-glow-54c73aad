@@ -23,7 +23,14 @@ O que **não** muda:
 - Reunião antiga é hoje e faltam **60 min ou mais** → continua com exclusão automática da antiga (com aviso) e nova agenda criada, como já aprovado.
 - Botão "Reagendar" no calendário → segue restrito a remanejo de horário no mesmo dia.
 
+## Trava de exclusão perto do horário
+
+Excluir uma reunião passa a ser permitido **somente quando faltam mais de 60 minutos** para o horário dela. Se faltar 60 minutos ou menos — ou o horário já tiver passado — a exclusão fica bloqueada para SDR e Closer, com aviso explicando que nesse caso a reunião deve ser encerrada como No-show, Cancelada ou Reagendada (quando ainda é o mesmo dia).
+
+Gestor, Moderador e Supervisor continuam podendo excluir em qualquer horário.
+
 ## Detalhes técnicos
+
 
 - `src/services/reagendamento.ts`: em `classifyConflict`, decidir pela data BRT (`brTodayYMD()` de `src/lib/timezone.ts`):
   - `newDate === prior.scheduled_date` → `same_day_time_change`;
@@ -32,4 +39,5 @@ O que **não** muda:
   - caso contrário → `delete_old`.
   Ajustar `conflictMessage` para os textos de cada modo e adicionar função para marcar a antiga como `reagendada` mantendo data/horário.
 - `src/pages/AgendarPage.tsx`: no `AlertDialog`, exibir a seleção de desfecho (No-show / Cancelada + motivo via `useAppSettingList("cancellation_reasons")`) **apenas** no modo `close_old`; no modo `keep_as_reagendada` apenas confirmar. No `handleSubmit`, no modo `keep_as_reagendada` marcar a antiga como `reagendada` e gravar a nova com `original_agendamento_id` = antiga; no `close_old` manter `original_agendamento_id` nulo.
-- Sem alterações de banco: os status e a coluna `cancellation_reason` já existem, e os gatilhos de auditoria/webhook cobrem esses casos.
+- Trava de exclusão: helper em `src/services/reagendamento.ts` (`canDeleteMeeting`, usando `minutesUntilMeeting`) aplicado nos pontos de exclusão — `src/pages/DashboardPage.tsx`, `src/pages/ReunioesListPage.tsx` e `src/pages/AguardandoAtribuicaoPage.tsx`: para SDR/Closer, desabilitar/bloquear o botão e o dialog de justificativa quando faltarem 60 min ou menos, exibindo o aviso; liberar para Gestor/Moderador/Supervisor via `usePermissions`.
+- Sem alterações de banco: os status e a coluna `cancellation_reason` já existem, e os gatilhos de auditoria/webhook cobrem esses casos. A exclusão automática da antiga (modo `delete_old`) segue permitida, pois só ocorre com 60 min ou mais.
