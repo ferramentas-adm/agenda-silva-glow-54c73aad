@@ -463,8 +463,19 @@ export default function ReunioesListPage() {
     link.click();
     URL.revokeObjectURL(url);
   };
+  const requestDelete = (ag: any) => {
+    if (!isAdminLike && !canDeleteMeeting(ag.scheduled_date, ag.scheduled_time)) {
+      toast.error(DELETE_BLOCKED_MESSAGE);
+      return;
+    }
+    setDeleteTarget(ag);
+  };
   const handleDelete = async () => {
     if (!deleteTarget || !deleteReason.trim()) return;
+    if (!isAdminLike && !canDeleteMeeting(deleteTarget.scheduled_date, deleteTarget.scheduled_time)) {
+      toast.error(DELETE_BLOCKED_MESSAGE);
+      return;
+    }
     setDeleting(true);
     try {
       const { error } = await supabase
