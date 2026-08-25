@@ -240,7 +240,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
             <Line
               type="monotone"
               dataKey="cmp"
-              name={`Período anterior (${cmpLabel})`}
+              name={cmpMode === "prev" ? `Período anterior (${cmpLabel})` : cmpLabel}
               stroke="hsl(38 92% 50%)"
               strokeWidth={2}
               strokeDasharray="5 5"
