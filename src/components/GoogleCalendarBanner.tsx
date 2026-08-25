@@ -57,12 +57,15 @@ export default function GoogleCalendarBanner() {
     refetchOnWindowFocus: "always",
     placeholderData: (prev) => prev,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("closer_google_tokens")
         .select("id, granted_scopes")
         .eq("closer_id", closerMatch!.id)
         .limit(1)
         .maybeSingle();
+      // Não engolir erro: uma falha de permissão/rede não deve ser
+      // interpretada como "closer sem conexão Google".
+      if (error) throw error;
       return {
         connected: !!data,
         hasMeetScope:
@@ -126,6 +129,10 @@ export default function GoogleCalendarBanner() {
 
   const handleRecheck = async () => {
     const res = await refetchToken();
+    if (res.error) {
+      toast.error("Não foi possível verificar a conexão agora. Tente novamente em instantes.");
+      return;
+    }
     if (res.data?.connected && (!closerMatch.auto_recording_enabled || res.data?.hasMeetScope)) {
       toast.success("Conexão confirmada.");
     } else {
