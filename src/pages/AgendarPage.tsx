@@ -26,6 +26,22 @@ import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
 import { collectLeadMetaFields } from "@/lib/metaTracking";
 import { buscarMetaLeadId } from "@/services/datacrazy";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  detectPriorMeetingConflict,
+  conflictMessage,
+  softDeletePriorMeeting,
+  type PriorMeetingConflict,
+} from "@/services/reagendamento";
 
 
 
