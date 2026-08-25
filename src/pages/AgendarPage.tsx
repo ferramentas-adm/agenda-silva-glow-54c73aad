@@ -146,7 +146,7 @@ function AgendarPageInner() {
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
-  const [adminAsSecondMeeting, setAdminAsSecondMeeting] = useState(false);
+  
 
 
 
@@ -305,11 +305,11 @@ function AgendarPageInner() {
   // mas isso é salvo no campo `observation` (não em meeting_reason).
   const needsReason = false;
   const isReasonRequired = false;
-  const resolvedReason = (isCloser || (isAdmin && adminAsSecondMeeting)) ? "segunda_reuniao" : null;
+  const resolvedReason = isCloser ? "segunda_reuniao" : null;
 
   // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
-  // Em 2ª reunião (closer ou admin marcando), o canal é herdado do 1º agendamento.
-  const channelTypeRequired = (isSdrRole || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor") && !(isAdmin && adminAsSecondMeeting);
+  // Em 2ª reunião do closer, o canal é herdado do 1º agendamento.
+  const channelTypeRequired = (isSdrRole || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor");
 
   const handleSubmit = async () => {
     if (!lead || !date || !time || !user) return;
@@ -479,7 +479,7 @@ function AgendarPageInner() {
         meet_link: meetLink,
         google_event_id: googleEventId,
         created_by: user.id,
-        sdr_responsavel_id: isAdmin && !adminAsSecondMeeting ? (selectedSdrId || user.id) : null,
+        sdr_responsavel_id: isAdmin ? (selectedSdrId || user.id) : null,
         original_agendamento_id: editId || null,
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
