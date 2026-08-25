@@ -327,6 +327,10 @@ function AgendarPageInner() {
   // Em 2ª reunião do closer, o canal é herdado do 1º agendamento.
   const channelTypeRequired = (isSdrRole || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor");
 
+  // Conflito com reunião anterior em aberto (mesmo telefone) — regra de reagendamento.
+  const [conflictPrompt, setConflictPrompt] = useState<PriorMeetingConflict | null>(null);
+  const resolvedConflictRef = useRef<PriorMeetingConflict | null>(null);
+
   const handleSubmit = async () => {
     if (!lead || !date || !time || !user) return;
     // Closer continua precisando justificar (vai para `observation`).
@@ -351,6 +355,18 @@ function AgendarPageInner() {
     const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
+      // Regra de reagendamento: detecta reunião anterior em aberto do mesmo lead.
+      // Closers (2ª reunião) e o fluxo de reagendamento explícito ficam fora.
+      let conflict = resolvedConflictRef.current;
+      if (!isCloser && !editId && !conflict) {
+        const detected = await detectPriorMeetingConflict(lead.phone, dateStr, null);
+        if (detected) {
+          setConflictPrompt(detected);
+          setSubmitting(false);
+          return;
+        }
+      }
+
       // Validação anti-corrida: reconta capacidade real do slot imediatamente antes do INSERT.
       // Capacidade = closers ativos − closers com bloqueio pessoal cobrindo o horário.
       // SDR é bloqueado apenas se TODOS os closers ativos disponíveis já estiverem ocupados.
