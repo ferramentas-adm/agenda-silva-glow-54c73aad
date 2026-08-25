@@ -1914,7 +1914,7 @@ export default function AdminPage() {
 
   return (
     <AppLayout>
-      <div className="animate-fade-in space-y-6 max-w-3xl mx-auto">
+      <div className="animate-fade-in space-y-6 w-full max-w-3xl xl:max-w-none mx-auto">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Administração</h1>
           <p className="text-sm text-muted-foreground">Gerencie usuários e configurações.</p>
