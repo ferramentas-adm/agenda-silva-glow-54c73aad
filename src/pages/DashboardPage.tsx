@@ -1618,8 +1618,9 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
                         )}
-                        {/* Reagendar — abre dialog dedicado (cria nova agenda
-                            em outro dia/horário, original vira "Reagendada"). */}
+                        {/* Reagendar — apenas remanejo de horário DENTRO DO MESMO DIA.
+                            Para outro dia, cria-se nova reunião pelo "Agendar" ou
+                            clicando no horário desejado no Calendário. */}
                         {detailAg.status !== "reagendada" && detailAg.status !== "realizada" && (
                           <Button
                             variant="outline"
@@ -1627,12 +1628,12 @@ export function CalendarContent() {
                             className="gap-1.5 text-xs border-purple-500/30 text-purple-500 hover:bg-purple-500/10"
                             disabled={updatingStatus}
                             onClick={() => {
-                              setRescheduleDate(null);
+                              setRescheduleDate(new Date(`${detailAg.scheduled_date}T12:00:00`));
                               setRescheduleTime(null);
                               setRescheduleOpen(true);
                             }}
                           >
-                            <RotateCcw className="h-3.5 w-3.5" />Reagendar
+                            <RotateCcw className="h-3.5 w-3.5" />Alterar horário
                           </Button>
                         )}
 
