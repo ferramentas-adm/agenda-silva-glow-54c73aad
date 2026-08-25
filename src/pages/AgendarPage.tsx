@@ -760,65 +760,34 @@ function AgendarPageInner() {
               </div>
 
               {isAdmin && (
-                <>
-                  <div className="flex items-center justify-between rounded-md border border-border bg-secondary/30 px-4 py-3">
-                    <div className="space-y-0.5">
-                      <label htmlFor="admin-2a-toggle" className="text-sm font-medium cursor-pointer">
-                        É 2ª reunião (marcada por Closer)
-                      </label>
-                      <p className="text-xs text-muted-foreground">
-                        Ative se esta reunião está sendo marcada em nome de um Closer. Caso contrário, escolha o SDR responsável abaixo.
-                      </p>
-                    </div>
-                    <Switch
-                      id="admin-2a-toggle"
-                      checked={adminAsSecondMeeting}
-                      onCheckedChange={(v) => {
-                        setAdminAsSecondMeeting(v);
-                        if (v) {
-                          setSelectedSdrId(null);
-                        }
-                      }}
-
-                    />
-                  </div>
-
-                  {!adminAsSecondMeeting && (
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium">
-                        SDR responsável <span className="text-muted-foreground">(opcional)</span>
-                      </label>
-                      <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o SDR (ou deixe em branco para assumir)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sdrUsers.length === 0 ? (
-                            <SelectItem value="__none" disabled>
-                              Nenhum SDR cadastrado
-                            </SelectItem>
-                          ) : (
-                            sdrUsers.map((s) => (
-                              <SelectItem key={s.user_id} value={s.user_id}>
-                                {s.full_name}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {!selectedSdrId && (
-                        <p className="text-xs text-muted-foreground">Se nenhum SDR for selecionado, você será registrado como o SDR responsável.</p>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    SDR responsável <span className="text-muted-foreground">(opcional)</span>
+                  </label>
+                  <Select value={selectedSdrId ?? ""} onValueChange={(v) => setSelectedSdrId(v || null)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o SDR (ou deixe em branco para assumir)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sdrUsers.length === 0 ? (
+                        <SelectItem value="__none" disabled>
+                          Nenhum SDR cadastrado
+                        </SelectItem>
+                      ) : (
+                        sdrUsers.map((s) => (
+                          <SelectItem key={s.user_id} value={s.user_id}>
+                            {s.full_name}
+                          </SelectItem>
+                        ))
                       )}
-                    </div>
+                    </SelectContent>
+                  </Select>
+                  {!selectedSdrId && (
+                    <p className="text-xs text-muted-foreground">Se nenhum SDR for selecionado, você será registrado como o SDR responsável.</p>
                   )}
-
-
-                  {adminAsSecondMeeting && channelType && (
-                    <SummaryRow label="Tipo de canal" value={channelType} />
-                  )}
-
-                </>
+                </div>
               )}
+
 
               {/* Closer: campo "Justificar Reagendamento" aparece em qualquer agendamento (novo ou reagendamento) */}
               {isCloser && (
