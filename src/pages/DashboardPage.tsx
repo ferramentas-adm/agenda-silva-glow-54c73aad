@@ -1970,7 +1970,11 @@ export function CalendarContent() {
             setDetailAg((d) => (d && d.id === vendaDialogAg.id ? { ...d, status: "realizada" } : d));
             queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
             queryClient.invalidateQueries({ queryKey: ["vendas"] });
+            queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
+            queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });
+            queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
           }}
+
         />
       )}
 
