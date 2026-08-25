@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGoogleAuthUrl } from "@/hooks/useGoogleCalendar";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
@@ -20,9 +20,10 @@ const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created
 export default function GoogleCalendarBanner() {
   const { user } = useAuth();
   const { getAuthUrl } = useGoogleAuthUrl();
+  const queryClient = useQueryClient();
 
-  
   const [connecting, setConnecting] = useState(false);
+  const pollRef = useRef<number | null>(null);
 
   // Check if current user's email matches a closer
   const { data: closerMatch, isSuccess: closerChecked } = useQuery({
@@ -40,14 +41,20 @@ export default function GoogleCalendarBanner() {
     },
   });
 
-  // Check if closer has google tokens
-  // C1: sem polling de 5s — atualizamos por window focus (abaixo) e
-  // invalidação manual após o callback do OAuth.
-  const { data: tokenInfo, isSuccess: tokenChecked } = useQuery({
+  // Estado da conexão Google do closer.
+  // staleTime 0 + refetchOnWindowFocus garante que, ao voltar do popup de OAuth,
+  // o banner reflita imediatamente a conexão recém-criada.
+  const {
+    data: tokenInfo,
+    isSuccess: tokenChecked,
+    refetch: refetchToken,
+    isFetching: tokenFetching,
+  } = useQuery({
     queryKey: ["closer-has-google-token", closerMatch?.id],
     enabled: !!closerMatch?.id,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: true,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
     placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data } = await supabase
@@ -65,8 +72,12 @@ export default function GoogleCalendarBanner() {
     },
   });
 
-  // Sem listener de `focus`: o `refetchOnWindowFocus` da query acima já cobre o
-  // retorno do popup de OAuth, respeitando o staleTime de 5 min.
+  // Limpa o polling ao desmontar
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+    };
+  }, []);
 
   // Só exibe quando ambas as verificações terminaram.
   if (!closerChecked || !closerMatch) return null;
@@ -79,17 +90,49 @@ export default function GoogleCalendarBanner() {
 
   if (tokenInfo.connected && !needsRecordingScope) return null;
 
+  const startPolling = () => {
+    if (pollRef.current) window.clearInterval(pollRef.current);
+    let ticks = 0;
+    pollRef.current = window.setInterval(async () => {
+      ticks += 1;
+      const res = await refetchToken();
+      const ok =
+        res.data?.connected &&
+        (!closerMatch.auto_recording_enabled || res.data?.hasMeetScope);
+      if (ok || ticks > 60) {
+        if (pollRef.current) window.clearInterval(pollRef.current);
+        pollRef.current = null;
+        setConnecting(false);
+        if (ok) {
+          queryClient.invalidateQueries({ queryKey: ["google-calendar-events"] });
+          toast.success("Google conectado com sucesso.");
+        }
+      }
+    }, 3000);
+  };
+
   const handleConnect = async () => {
     setConnecting(true);
     try {
       const url = await getAuthUrl(closerMatch.id);
       window.open(url, "_blank", "width=600,height=700");
       toast.info("Complete a autorização na janela aberta.");
+      startPolling();
     } catch (err: any) {
       toast.error(err.message || "Erro ao iniciar conexão com Google");
+      setConnecting(false);
     }
-    setConnecting(false);
   };
+
+  const handleRecheck = async () => {
+    const res = await refetchToken();
+    if (res.data?.connected && (!closerMatch.auto_recording_enabled || res.data?.hasMeetScope)) {
+      toast.success("Conexão confirmada.");
+    } else {
+      toast.info("Ainda não encontramos a autorização. Conclua o fluxo do Google.");
+    }
+  };
+
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-[hsl(0_0%_20%)] px-4 py-3 text-sm">
@@ -109,6 +152,16 @@ export default function GoogleCalendarBanner() {
           </>
         )}
       </div>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleRecheck}
+        disabled={tokenFetching}
+        className="shrink-0 gap-2"
+      >
+        <RefreshCw className={`h-4 w-4 ${tokenFetching ? "animate-spin" : ""}`} />
+        Já conectei
+      </Button>
       <Button
         size="sm"
         onClick={handleConnect}
