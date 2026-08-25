@@ -498,7 +498,7 @@ function AgendarPageInner() {
             is_5k: is5k,
             ...metaFields,
           } as any)
-          .eq("id", editId!)
+          .eq("id", sameDayTargetId!)
           .select("id")
           .maybeSingle();
         if (updateError) throw updateError;
@@ -507,7 +507,7 @@ function AgendarPageInner() {
         }
         insertedData = updatedData;
 
-        await logAudit("reschedule_same_day", "agendamento", editId, {
+        await logAudit("reschedule_same_day", "agendamento", sameDayTargetId, {
           lead_name: lead.name,
           closer_name: closerName,
           scheduled_date: dateStr,
