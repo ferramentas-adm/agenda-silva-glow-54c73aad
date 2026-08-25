@@ -176,14 +176,31 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
                 ? "text-destructive border-destructive/30 bg-destructive/10"
                 : "text-muted-foreground border-border bg-muted/40",
           )}
-          title={`Período: ${totals.base} · Período anterior: ${totals.cmp}`}
+          title={`Período: ${totals.base} · Comparação: ${totals.cmp.toFixed(1)}`}
         >
           {delta > 0 ? <TrendingUp className="h-3 w-3" /> : delta < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
           {delta > 0 ? "+" : ""}
-          {delta.toFixed(0)}% vs período anterior
+          {delta.toFixed(0)}% vs {cmpMode === "prev" ? "período anterior" : cmpColumnLabel.toLowerCase()}
         </span>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1 flex-wrap">
+          {CMP_MODES.map((m) => (
+            <Button
+              key={m.value}
+              variant={cmpMode === m.value ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs px-2"
+              disabled={!isSingleDay && m.value !== "prev"}
+              title={
+                !isSingleDay && m.value !== "prev"
+                  ? "Disponível apenas quando o filtro está em um único dia"
+                  : undefined
+              }
+              onClick={() => setCmpModeState(m.value)}
+            >
+              {m.label}
+            </Button>
+          ))}
           <Button
             variant={cumulative ? "default" : "outline"}
             size="sm"
@@ -196,9 +213,11 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Agendas novas criadas por SDRs, pela hora de criação (BRT), somando o período do filtro. Comparação:
-        período anterior equivalente ({cmpLabel}).
+        Agendas novas criadas por SDRs, pela hora de criação (BRT), somando o período do filtro. Comparação:{" "}
+        {cmpMode === "prev" ? `período anterior equivalente (${cmpLabel})` : cmpLabel}.
+        {!isSingleDay && " Comparação por dia da semana disponível apenas com um único dia selecionado."}
       </p>
+
 
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
