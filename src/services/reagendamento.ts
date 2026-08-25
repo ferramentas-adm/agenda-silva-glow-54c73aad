@@ -5,8 +5,9 @@
  * - Para outro dia, cria-se uma NOVA reunião pelo "Agendar" / clique no Calendário.
  *   Nesse caso o sistema resolve a reunião antiga (mesmo telefone, ainda
  *   "agendada"/"confirmada", dentro dos últimos 7 dias):
- *     • faltam MENOS de 60 min (ou já passou) → antiga fica "Reagendada" e a nova
- *       nasce vinculada a ela (`original_agendamento_id`);
+ *     • faltam MENOS de 60 min (ou já passou) → o usuário escolhe encerrar a
+ *       antiga como "No-show" ou "Cancelada" (com motivo) e a nova nasce como
+ *       agenda nova, SEM vínculo;
  *     • faltam 60 min OU MAIS → antiga é excluída (exclusão lógica) e a nova é
  *       criada como agenda nova, sem vínculo.
  * - Mesma data com horário diferente → troca de horário no próprio registro.
@@ -30,8 +31,8 @@ export interface PriorMeeting {
 export type ConflictMode =
   /** Mesma data: apenas trocar o horário do próprio registro. */
   | "same_day_time_change"
-  /** Faltam < 60 min: antiga vira "Reagendada", nova nasce vinculada. */
-  | "keep_as_reagendada"
+  /** Faltam < 60 min (ou já passou): antiga é encerrada como no-show/cancelada. */
+  | "close_old"
   /** Faltam >= 60 min: antiga é excluída e a nova é agenda nova. */
   | "delete_old";
 
@@ -110,7 +111,7 @@ export function classifyConflict(
   const minutes = minutesUntilMeeting(prior.scheduled_date, prior.scheduled_time);
   let mode: ConflictMode;
   if (newDate === prior.scheduled_date) mode = "same_day_time_change";
-  else if (minutes < LAST_MINUTE_THRESHOLD) mode = "keep_as_reagendada";
+  else if (minutes < LAST_MINUTE_THRESHOLD) mode = "close_old";
   else mode = "delete_old";
   return { prior, minutesUntil: minutes, mode };
 }
@@ -142,6 +143,29 @@ export async function softDeletePriorMeeting(
   if (error) throw error;
 }
 
+export type PriorOutcome = "no_show" | "cancelada";
+
+/**
+ * Encerra a reunião antiga na data original com o desfecho escolhido
+ * (No-show ou Cancelada, com motivo).
+ */
+export async function closePriorMeeting(
+  priorId: string,
+  outcome: PriorOutcome,
+  cancellationReason?: string | null,
+): Promise<void> {
+  const payload: Record<string, unknown> = { status: outcome };
+  if (outcome === "cancelada") {
+    payload.cancellation_reason =
+      cancellationReason?.trim() || "Lead reagendou para outro dia";
+  }
+  const { error } = await supabase
+    .from("agendamentos")
+    .update(payload as any)
+    .eq("id", priorId);
+  if (error) throw error;
+}
+
 /** Texto de confirmação exibido ao usuário antes de gravar. */
 export function conflictMessage(conflict: PriorMeetingConflict): string {
   const [y, m, d] = conflict.prior.scheduled_date.split("-");
@@ -151,11 +175,12 @@ export function conflictMessage(conflict: PriorMeetingConflict): string {
   if (conflict.mode === "same_day_time_change") {
     return `Este lead já tem reunião em ${when} (${statusLabel}). Como é o mesmo dia, o horário dessa reunião será alterado — nenhuma reunião nova será criada.`;
   }
-  if (conflict.mode === "keep_as_reagendada") {
+  if (conflict.mode === "close_old") {
     const passou = conflict.minutesUntil < 0;
-    return passou
-      ? `Este lead tem reunião em ${when} (${statusLabel}) cujo horário já passou. Ela ficará como Reagendada e esta nova reunião será criada.`
-      : `Faltam menos de 1h para a reunião de ${when} (${statusLabel}). Ela ficará como Reagendada e esta nova reunião será criada.`;
+    const intro = passou
+      ? `Este lead tem reunião em ${when} (${statusLabel}) cujo horário já passou.`
+      : `Faltam menos de 1h para a reunião de ${when} (${statusLabel}).`;
+    return `${intro} Como a nova reunião é para outro dia, informe o desfecho da reunião antiga (No-show ou Cancelada). Ela será encerrada na data original e esta nova será criada como agenda nova.`;
   }
   return `Este lead já tem reunião em ${when} (${statusLabel}). Faltam mais de 1h — a reunião antiga será excluída e substituída por esta nova.`;
 }

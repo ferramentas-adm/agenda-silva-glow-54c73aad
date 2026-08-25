@@ -40,8 +40,12 @@ import {
   detectPriorMeetingConflict,
   conflictMessage,
   softDeletePriorMeeting,
+  closePriorMeeting,
   type PriorMeetingConflict,
+  type PriorOutcome,
 } from "@/services/reagendamento";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 
 
@@ -330,6 +334,16 @@ function AgendarPageInner() {
   // Conflito com reunião anterior em aberto (mesmo telefone) — regra de reagendamento.
   const [conflictPrompt, setConflictPrompt] = useState<PriorMeetingConflict | null>(null);
   const resolvedConflictRef = useRef<PriorMeetingConflict | null>(null);
+  const [priorOutcome, setPriorOutcome] = useState<PriorOutcome | "">("");
+  const [priorCancelReason, setPriorCancelReason] = useState("");
+  const priorOutcomeRef = useRef<{ outcome: PriorOutcome | null; reason: string | null }>({
+    outcome: null,
+    reason: null,
+  });
+  const { items: cancellationReasons } = useAppSettingList(
+    APP_SETTING_KEYS.cancellation_reasons,
+    ["Imprevisto do lead", "Sem motivo explícito", "Desistiu", "Sem closer disponível", "Outros"],
+  );
 
   const handleSubmit = async () => {
     if (!lead || !date || !time || !user) return;
@@ -458,9 +472,17 @@ function AgendarPageInner() {
             : null;
       const isSameDayReschedule = !!sameDayTargetId;
 
-      // Faltam < 60 min para a reunião antiga → nova nasce vinculada a ela.
-      const linkedOriginalId =
-        conflict?.mode === "keep_as_reagendada" ? conflict.prior.id : null;
+      // Nova reunião em outro dia nunca nasce vinculada: a antiga é encerrada.
+      const linkedOriginalId = null;
+
+      // Faltam < 60 min (ou já passou) → antiga encerrada como no-show/cancelada.
+      if (conflict?.mode === "close_old") {
+        await closePriorMeeting(
+          conflict.prior.id,
+          priorOutcomeRef.current.outcome ?? "no_show",
+          priorOutcomeRef.current.reason,
+        );
+      }
 
       // Faltam >= 60 min → a reunião antiga é excluída e substituída pela nova.
       if (conflict?.mode === "delete_old") {
@@ -963,11 +985,71 @@ function AgendarPageInner() {
               {conflictPrompt ? conflictMessage(conflictPrompt) : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {conflictPrompt?.mode === "close_old" && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Desfecho da reunião antiga</Label>
+                <RadioGroup
+                  value={priorOutcome}
+                  onValueChange={(v) => {
+                    setPriorOutcome(v as PriorOutcome);
+                    if (v !== "cancelada") setPriorCancelReason("");
+                  }}
+                  className="gap-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="no_show" id="prior-no-show" />
+                    <Label htmlFor="prior-no-show" className="font-normal">No-show</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="cancelada" id="prior-cancelada" />
+                    <Label htmlFor="prior-cancelada" className="font-normal">Cancelada</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {priorOutcome === "cancelada" && (
+                <div className="space-y-2">
+                  <Label>Motivo do cancelamento</Label>
+                  <Select value={priorCancelReason} onValueChange={setPriorCancelReason}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o motivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cancellationReasons.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel
+              onClick={() => {
+                setPriorOutcome("");
+                setPriorCancelReason("");
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
+              disabled={
+                conflictPrompt?.mode === "close_old" &&
+                (!priorOutcome || (priorOutcome === "cancelada" && !priorCancelReason))
+              }
               onClick={() => {
                 resolvedConflictRef.current = conflictPrompt;
+                priorOutcomeRef.current =
+                  conflictPrompt?.mode === "close_old"
+                    ? {
+                        outcome: (priorOutcome || "no_show") as PriorOutcome,
+                        reason: priorOutcome === "cancelada" ? priorCancelReason : null,
+                      }
+                    : { outcome: null, reason: null };
                 setConflictPrompt(null);
                 void handleSubmit();
               }}
