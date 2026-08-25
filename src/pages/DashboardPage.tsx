@@ -723,9 +723,22 @@ export function CalendarContent() {
     }
   };
 
+  // Exclusão: SDR/Closer só podem excluir com mais de 60 min de folga.
+  const requestDelete = (target: DeleteTarget) => {
+    if (!isAdminLike && !canDeleteMeeting(target.scheduled_date, target.scheduled_time)) {
+      toast.error(DELETE_BLOCKED_MESSAGE);
+      return;
+    }
+    setDeleteTarget(target);
+  };
+
   // Delete handler
   const handleDelete = async () => {
     if (!deleteTarget || !deleteReason.trim()) return;
+    if (!isAdminLike && !canDeleteMeeting(deleteTarget.scheduled_date, deleteTarget.scheduled_time)) {
+      toast.error(DELETE_BLOCKED_MESSAGE);
+      return;
+    }
     setDeleting(true);
     try {
       const { data, error } = await supabase
