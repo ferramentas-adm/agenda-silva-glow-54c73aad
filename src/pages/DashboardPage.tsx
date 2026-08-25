@@ -1817,9 +1817,6 @@ export function CalendarContent() {
           </div>
         </DialogContent>
       </Dialog>
-          </div>
-        </DialogContent>
-      </Dialog>
 
 
       {/* Justificativa do reagendamento (closer) — janela dedicada similar ao briefing */}
