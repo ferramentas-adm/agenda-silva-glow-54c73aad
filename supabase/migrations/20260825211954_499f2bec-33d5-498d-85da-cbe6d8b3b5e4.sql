@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.detect_and_mark_reschedule() FROM PUBLIC, anon, authenticated;
