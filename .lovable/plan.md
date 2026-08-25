@@ -23,7 +23,14 @@ O que **não** muda:
 - Reunião antiga é hoje e faltam **60 min ou mais** → continua com exclusão automática da antiga (com aviso) e nova agenda criada, como já aprovado.
 - Botão "Reagendar" no calendário → segue restrito a remanejo de horário no mesmo dia.
 
+## Trava de exclusão perto do horário
+
+Excluir uma reunião passa a ser permitido **somente quando faltam mais de 60 minutos** para o horário dela. Se faltar 60 minutos ou menos — ou o horário já tiver passado — a exclusão fica bloqueada para SDR e Closer, com aviso explicando que nesse caso a reunião deve ser encerrada como No-show, Cancelada ou Reagendada (quando ainda é o mesmo dia).
+
+Gestor, Moderador e Supervisor continuam podendo excluir em qualquer horário.
+
 ## Detalhes técnicos
+
 
 - `src/services/reagendamento.ts`: em `classifyConflict`, decidir pela data BRT (`brTodayYMD()` de `src/lib/timezone.ts`):
   - `newDate === prior.scheduled_date` → `same_day_time_change`;
