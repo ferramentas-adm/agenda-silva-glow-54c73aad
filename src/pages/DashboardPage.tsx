@@ -920,7 +920,6 @@ export function CalendarContent() {
     setRescheduling(true);
     try {
       const newDateStr = `${rescheduleDate.getFullYear()}-${String(rescheduleDate.getMonth() + 1).padStart(2, "0")}-${String(rescheduleDate.getDate()).padStart(2, "0")}`;
-      const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
 
       // MESMO dia = apenas troca de horário: atualiza o próprio agendamento,
       // sem criar duplicata nem marcar a original como "reagendada".
