@@ -528,7 +528,7 @@ function AgendarPageInner() {
         google_event_id: googleEventId,
         created_by: user.id,
         sdr_responsavel_id: isAdmin ? (selectedSdrId || user.id) : null,
-        original_agendamento_id: editId || null,
+        original_agendamento_id: editId || linkedOriginalId || null,
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
         is_5k: is5k,
