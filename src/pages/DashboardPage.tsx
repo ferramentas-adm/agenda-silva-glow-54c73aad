@@ -2352,8 +2352,8 @@ const DayView = memo(function DayView({
                                       <span className={cn(
                                         "rounded-br-md rounded-tl-md px-1.5 py-0.5 font-bold leading-none bg-amber-500/90 text-white",
                                         isCompact ? "text-[8px]" : "text-[10px]"
-                                      )}>
-                                        5K
+                                      )} title="Mentoria com Antônio">
+                                        MA
                                       </span>
                                     )}
                                     {isCloserBooked && (
