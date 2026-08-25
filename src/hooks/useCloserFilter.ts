@@ -34,36 +34,37 @@ export function useCloserFilter() {
   // Initialize from localStorage or select all (closers only see their own)
   useEffect(() => {
     if (initialized || !user || role === null) return;
+    // Espera a lista de closers carregar de verdade — inicializar com lista vazia
+    // deixava a seleção vazia ("Selecione ao menos um closer...") até um reload.
+    if (isLoading || closers.length === 0) return;
     const allIds = closers.map((c) => c.id);
 
     // Closers can only see their own calendar
-    if (role === "closer" && user?.email) {
+    if (role === "closer") {
+      if (!user.email) return;
       const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
-      if (myCloser) {
-        setSelectedIds(new Set([myCloser.id]));
-        setInitialized(true);
-        return;
-      }
+      if (!myCloser) return; // tenta de novo quando a lista atualizar
+      setSelectedIds(new Set([myCloser.id]));
+      setInitialized(true);
+      return;
     }
 
-    if (user) {
-      try {
-        const saved = localStorage.getItem(getStorageKey(user.id));
-        if (saved) {
-          const parsed: string[] = JSON.parse(saved);
-          const valid = parsed.filter((id) => allIds.includes(id));
-          if (valid.length > 0) {
-            setSelectedIds(new Set(valid));
-            setInitialized(true);
-            return;
-          }
+    try {
+      const saved = localStorage.getItem(getStorageKey(user.id));
+      if (saved) {
+        const parsed: string[] = JSON.parse(saved);
+        const valid = parsed.filter((id) => allIds.includes(id));
+        if (valid.length > 0) {
+          setSelectedIds(new Set(valid));
+          setInitialized(true);
+          return;
         }
-      } catch {}
-    }
+      }
+    } catch {}
 
     setSelectedIds(new Set(allIds));
     setInitialized(true);
-  }, [closers, user, initialized, role]);
+  }, [closers, user, initialized, role, isLoading]);
 
   // Sync selectedIds com a lista de closers ativos:
   //  - remove ids que ficaram inativos/deletados
@@ -72,7 +73,14 @@ export function useCloserFilter() {
   // depois da última seleção ficavam invisíveis na Dashboard.
   useEffect(() => {
     if (!initialized || !closers.length) return;
-    if (role === "closer") return; // closer só vê o próprio
+    if (role === "closer") {
+      // Reconciliação: se por qualquer motivo a seleção do closer ficou vazia
+      // (corrida de carregamento), repõe o próprio registro.
+      if (selectedIds.size > 0 || !user?.email) return;
+      const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
+      if (myCloser) setSelectedIds(new Set([myCloser.id]));
+      return;
+    }
     const activeIds = closers.map((c) => c.id);
     setSelectedIds((prev) => {
       const next = new Set([...prev].filter((id) => activeIds.includes(id)));
@@ -86,7 +94,8 @@ export function useCloserFilter() {
       if (next.size === 0) return new Set(activeIds);
       return changed ? next : prev;
     });
-  }, [closers, initialized, role]);
+  }, [closers, initialized, role, selectedIds, user?.email]);
+
 
   // Persist to localStorage
   useEffect(() => {
