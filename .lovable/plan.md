@@ -42,13 +42,14 @@ ou, no caso de menos de 1h:
 - Webhooks para o CRM: a antiga dispara "Reagendada" (caso < 60min) ou "Excluída" (caso >= 60min); a nova dispara "Agendado" quando o Closer for atribuído. Mesmo padrão de payload atual, sem novos formatos.
 - Google Calendar: o evento da reunião excluída/reagendada é removido da agenda do Closer, como já ocorre hoje em exclusão/cancelamento.
 
-## 4. Pontos que preciso que você valide
+## 4. Decisões confirmadas
 
-1. **Exclusão automática** da reunião antiga (>= 60 min): confirma que pode ser automática, ou prefere que o sistema apenas **cancele** a antiga (mantendo no histórico como "Cancelada") em vez de excluir?
-2. **Reunião antiga já passada** (horário venceu, ainda "Agendada"/"Confirmada"): trato como "< 60 min" (vira "Reagendada")? Ou deve seguir o fluxo normal de no-show/cancelamento antes?
-3. **Nova data igual à data da antiga** criada pelo Calendário (mesmo dia, outro horário): trato como troca de horário no próprio registro (igual ao "Reagendar"), sem duplicar. Confirma?
-4. **Quem pode disparar isso**: SDR, Moderador, Gestor e Supervisor — todos com a mesma regra? Ou o aviso/decisão fica só para Gestor/Moderador?
-5. **Janela de detecção**: hoje o gatilho olha reuniões dos últimos 7 dias. Mantenho 7 dias ou considero qualquer reunião futura em aberto do mesmo telefone (sem limite)?
+1. **Exclusão automática** da reunião antiga no caso ">= 60 min", sempre com aviso de confirmação antes de gravar.
+2. **Reunião antiga já vencida** (horário passou e ainda está "Agendada"/"Confirmada") entra na regra de "< 60 min": vira **Reagendada** e a nova é criada vinculada a ela.
+3. **Mesma data, outro horário** (pelo Calendário ou pelo Agendar): troca de horário no próprio registro, sem duplicar.
+4. **Regra igual para todos** os perfis que criam agenda: SDR, Moderador, Gestor e Supervisor.
+5. **Janela de detecção mantida em 7 dias** (reuniões do mesmo telefone nos últimos 7 dias).
+
 
 ## 5. Detalhes técnicos (para referência)
 
