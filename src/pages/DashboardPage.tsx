@@ -1297,13 +1297,14 @@ export function CalendarContent() {
 
 
         {/* Content */}
-        {isLoading || loadingAgendamentos ? (
+        {isLoading || loadingAgendamentos || selectedIds.size === 0 ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-20 w-full rounded-xl" />
             ))}
           </div>
         ) : (
+
           <DayView
             date={currentDate}
             closers={closers.filter((c) => selectedIds.has(c.id))}
