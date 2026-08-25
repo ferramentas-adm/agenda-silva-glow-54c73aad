@@ -7,9 +7,15 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 
+const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
+
 /**
  * Shows a banner for closer users who haven't connected Google Calendar yet.
  * Only rendered for users with role "closer" or closers matching their email.
+ *
+ * Também avisa o closer que já está no piloto de gravação automática
+ * (`auto_recording_enabled = true`) mas cujo token não tem o escopo do Meet —
+ * nesse caso ele precisa reautorizar uma vez para a gravação começar sozinha.
  */
 export default function GoogleCalendarBanner() {
   const { user } = useAuth();
@@ -25,44 +31,53 @@ export default function GoogleCalendarBanner() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, email")
+        .select("id, email, auto_recording_enabled")
         .eq("email", user!.email!)
         .eq("active", true)
         .limit(1)
         .maybeSingle();
-      return data;
+      return data as { id: string; email: string; auto_recording_enabled: boolean } | null;
     },
   });
 
   // Check if closer has google tokens
   // C1: sem polling de 5s — atualizamos por window focus (abaixo) e
   // invalidação manual após o callback do OAuth.
-  const { data: hasToken, isSuccess: tokenChecked } = useQuery({
+  const { data: tokenInfo, isSuccess: tokenChecked } = useQuery({
     queryKey: ["closer-has-google-token", closerMatch?.id],
     enabled: !!closerMatch?.id,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("closer_google_tokens")
-        .select("id")
+        .select("id, granted_scopes")
         .eq("closer_id", closerMatch!.id)
         .limit(1)
         .maybeSingle();
-      // If no row found, data is null → return false
-      // If row found, return true
-      return !!data;
+      return {
+        connected: !!data,
+        hasMeetScope:
+          typeof (data as any)?.granted_scopes === "string" &&
+          (data as any).granted_scopes.includes(MEET_SPACE_SCOPE),
+      };
     },
   });
 
   // Sem listener de `focus`: o `refetchOnWindowFocus` da query acima já cobre o
   // retorno do popup de OAuth, respeitando o staleTime de 5 min.
 
-  // Only show for closers without token
-  // Só exibe quando ambas as verificações terminaram e não há token.
+  // Só exibe quando ambas as verificações terminaram.
   if (!closerChecked || !closerMatch) return null;
-  if (!tokenChecked || hasToken !== false) return null;
+  if (!tokenChecked || !tokenInfo) return null;
+
+  const needsRecordingScope =
+    tokenInfo.connected &&
+    closerMatch.auto_recording_enabled === true &&
+    !tokenInfo.hasMeetScope;
+
+  if (tokenInfo.connected && !needsRecordingScope) return null;
 
   const handleConnect = async () => {
     setConnecting(true);
@@ -80,8 +95,19 @@ export default function GoogleCalendarBanner() {
     <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-[hsl(0_0%_20%)] px-4 py-3 text-sm">
       <AlertTriangle className="h-5 w-5 text-primary shrink-0" />
       <div className="flex-1 text-foreground">
-        <strong>⚠ Sua agenda Google não está conectada.</strong>{" "}
-        Conecte para que os SDRs vejam sua disponibilidade e criem eventos.
+        {needsRecordingScope ? (
+          <>
+            <strong>⚠ Reautorize o Google para ativar a gravação automática.</strong>{" "}
+            Sua agenda está conectada, mas falta a permissão de gravação/transcrição
+            automática do Meet. Autorize uma vez e suas próximas reuniões começam a
+            gravar sozinhas.
+          </>
+        ) : (
+          <>
+            <strong>⚠ Sua agenda Google não está conectada.</strong>{" "}
+            Conecte para que os SDRs vejam sua disponibilidade e criem eventos.
+          </>
+        )}
       </div>
       <Button
         size="sm"
@@ -89,7 +115,11 @@ export default function GoogleCalendarBanner() {
         disabled={connecting}
         className="shrink-0 gap-2"
       >
-        {connecting ? "Conectando..." : "Conectar Google Calendar"}
+        {connecting
+          ? "Conectando..."
+          : needsRecordingScope
+            ? "Reautorizar Google"
+            : "Conectar Google Calendar"}
       </Button>
     </div>
   );

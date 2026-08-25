@@ -27,6 +27,7 @@ import DynamicListManager from "@/components/DynamicListManager";
 import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
+import MeetRolloutPanel from "@/components/admin/MeetRolloutPanel";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
@@ -818,6 +819,28 @@ function UsersSection() {
                             </span>
                           )}
                         </span>
+                        {u.role === "closer" && u.closerId && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                              !u.googleConnected
+                                ? "bg-destructive/10 text-destructive"
+                                : u.googleHasMeetScope
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-yellow-500/10 text-yellow-500"
+                            }`}
+                            title={!u.googleConnected
+                              ? "Google não conectado"
+                              : u.googleHasMeetScope
+                                ? "Google conectado com permissão de gravação automática"
+                                : "Google conectado, mas sem a permissão de gravação automática — pedir reconexão"}
+                          >
+                            {!u.googleConnected
+                              ? "sem Google"
+                              : u.googleHasMeetScope
+                                ? "Google + gravação"
+                                : "Google (sem gravação)"}
+                          </span>
+                        )}
                         {u.isSdrOverride && u.role !== "sdr" && (
                           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-500" title="Atua também como SDR (override)">
                             + SDR
@@ -1898,7 +1921,7 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 bg-secondary">
+            <TabsList className="grid w-full grid-cols-5 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
@@ -1915,6 +1938,10 @@ export default function AdminPage() {
                 <Plus className="h-3.5 w-3.5" />
                 Listas
               </TabsTrigger>
+              <TabsTrigger value="gravacao" className="gap-1.5 text-xs sm:text-sm">
+                <Video className="h-3.5 w-3.5" />
+                Gravação
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -1928,6 +1955,9 @@ export default function AdminPage() {
             </TabsContent>
             <TabsContent value="lists">
               <DynamicListsSection />
+            </TabsContent>
+            <TabsContent value="gravacao">
+              <MeetRolloutPanel />
             </TabsContent>
           </Tabs>
         ) : isModerador ? (
