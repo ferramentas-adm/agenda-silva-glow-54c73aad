@@ -43,6 +43,7 @@ import VendaDialog from "@/components/VendaDialog";
 import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
+import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamento";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useBusinessHours } from "@/hooks/useBusinessHours";
