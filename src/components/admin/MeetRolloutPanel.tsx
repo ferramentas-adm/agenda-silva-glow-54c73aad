@@ -110,11 +110,12 @@ export default function MeetRolloutPanel() {
       if (error) throw error;
 
       const names = rows.filter((r) => ids.includes(r.id)).map((r) => r.name);
-      await logAudit({
-        action: enable ? "meet_auto_recording_bulk_enable" : "meet_auto_recording_bulk_disable",
-        entityType: "closer",
-        details: { closer_ids: ids, closers: names, total: ids.length },
-      });
+      await logAudit(
+        enable ? "meet_auto_recording_bulk_enable" : "meet_auto_recording_bulk_disable",
+        "closer",
+        undefined,
+        { closer_ids: ids, closers: names, total: ids.length },
+      );
 
       toast.success(
         `${enable ? "Gravação automática ativada" : "Gravação automática desativada"} para ${ids.length} closer(s).`,
