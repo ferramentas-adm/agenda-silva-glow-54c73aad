@@ -920,7 +920,6 @@ export function CalendarContent() {
     setRescheduling(true);
     try {
       const newDateStr = `${rescheduleDate.getFullYear()}-${String(rescheduleDate.getMonth() + 1).padStart(2, "0")}-${String(rescheduleDate.getDate()).padStart(2, "0")}`;
-      const sdrId = (detailAg as any).sdr_responsavel_id || detailAg.created_by;
 
       // MESMO dia = apenas troca de horário: atualiza o próprio agendamento,
       // sem criar duplicata nem marcar a original como "reagendada".
@@ -958,29 +957,11 @@ export function CalendarContent() {
         return;
       }
 
-      const { error } = await supabase.from("agendamentos").insert({
-        lead_name: detailAg.lead_name,
-        lead_phone: detailAg.lead_phone,
-        scheduled_date: newDateStr,
-        scheduled_time: rescheduleTime,
-        status: "agendada",
-        closer_id: null,
-        original_agendamento_id: detailAg.id,
-        briefing: detailAg.briefing,
-        meeting_reason: detailAg.meeting_reason,
-        channel_type: detailAg.channel_type,
-        duration_minutes: detailAg.duration_minutes,
-        sdr_responsavel_id: sdrId,
-        created_by: user?.id,
-      } as any);
-      if (error) throw error;
-      toast.success("Reagendamento criado. Reunião enviada para Aguardando atribuição.");
-      setRescheduleOpen(false);
-      setRescheduleDate(null);
-      setRescheduleTime(null);
-      setDetailAg(null);
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-      queryClient.invalidateQueries({ queryKey: ["pending-assignments"] });
+      // Outro dia não é permitido por aqui: nova data = nova reunião.
+      throw new Error(
+        "Alteração de horário só vale para o mesmo dia. Para outro dia, crie uma nova reunião em Agendar ou no Calendário.",
+      );
+
     } catch (err: any) {
       toast.error(err.message || "Erro ao reagendar");
     }
@@ -1618,8 +1599,9 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
                         )}
-                        {/* Reagendar — abre dialog dedicado (cria nova agenda
-                            em outro dia/horário, original vira "Reagendada"). */}
+                        {/* Reagendar — apenas remanejo de horário DENTRO DO MESMO DIA.
+                            Para outro dia, cria-se nova reunião pelo "Agendar" ou
+                            clicando no horário desejado no Calendário. */}
                         {detailAg.status !== "reagendada" && detailAg.status !== "realizada" && (
                           <Button
                             variant="outline"
@@ -1627,12 +1609,12 @@ export function CalendarContent() {
                             className="gap-1.5 text-xs border-purple-500/30 text-purple-500 hover:bg-purple-500/10"
                             disabled={updatingStatus}
                             onClick={() => {
-                              setRescheduleDate(null);
+                              setRescheduleDate(new Date(`${detailAg.scheduled_date}T12:00:00`));
                               setRescheduleTime(null);
                               setRescheduleOpen(true);
                             }}
                           >
-                            <RotateCcw className="h-3.5 w-3.5" />Reagendar
+                            <RotateCcw className="h-3.5 w-3.5" />Alterar horário
                           </Button>
                         )}
 
@@ -1758,9 +1740,8 @@ export function CalendarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Reagendar dialog — cria nova agenda em outra data/horário.
-          A original vira "Reagendada" via trigger; a nova nasce sem closer e
-          entra em "Aguardando atribuição". */}
+      {/* Alterar horário — apenas remanejo DENTRO DO MESMO DIA: atualiza o
+          próprio registro, sem duplicar nem marcar "Reagendada". */}
       <Dialog
         open={rescheduleOpen}
         onOpenChange={(o) => {
@@ -1775,44 +1756,21 @@ export function CalendarContent() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-amber-500" />
-              Reagendar reunião
+              Alterar horário
             </DialogTitle>
             <DialogDescription>
-              Escolha a nova data e horário para <strong>{detailAg?.lead_name}</strong>.
-              O agendamento original será marcado como <strong>Reagendada</strong> e a
-              nova reunião entrará em <strong>Aguardando atribuição</strong> para o
-              gestor reavaliar o Closer. Canal e duração são herdados do original.
+              Escolha o novo horário de <strong>{detailAg?.lead_name}</strong> dentro do
+              mesmo dia. Para mover a reunião para outro dia, crie uma nova reunião pelo
+              botão <strong>Agendar</strong> ou clicando no horário desejado no Calendário.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">Nova data</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {rescheduleDate ? format(rescheduleDate, "dd/MM/yyyy") : "Selecionar data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={rescheduleDate ?? undefined}
-                    onSelect={(d) => {
-                      if (d) {
-                        setRescheduleDate(d);
-                        setRescheduleTime(null);
-                      }
-                    }}
-                    locale={ptBR}
-                    disabled={(d) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return d < today;
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
+              <label className="text-xs font-medium">Data (fixa)</label>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                {rescheduleDate ? format(rescheduleDate, "dd/MM/yyyy") : "—"}
+              </div>
             </div>
             {rescheduleDate && detailAg && (
               <div className="space-y-1.5">
@@ -1835,7 +1793,7 @@ export function CalendarContent() {
               onClick={handleReschedule}
               disabled={!rescheduleDate || !rescheduleTime || rescheduling}
             >
-              {rescheduling ? "Reagendando..." : "Confirmar reagendamento"}
+              {rescheduling ? "Salvando..." : "Salvar horário"}
             </Button>
           </div>
         </DialogContent>

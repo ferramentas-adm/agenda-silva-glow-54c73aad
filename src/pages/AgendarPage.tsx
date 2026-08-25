@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -26,6 +26,22 @@ import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
 import { collectLeadMetaFields } from "@/lib/metaTracking";
 import { buscarMetaLeadId } from "@/services/datacrazy";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  detectPriorMeetingConflict,
+  conflictMessage,
+  softDeletePriorMeeting,
+  type PriorMeetingConflict,
+} from "@/services/reagendamento";
 
 
 
@@ -311,6 +327,10 @@ function AgendarPageInner() {
   // Em 2ª reunião do closer, o canal é herdado do 1º agendamento.
   const channelTypeRequired = (isSdrRole || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor");
 
+  // Conflito com reunião anterior em aberto (mesmo telefone) — regra de reagendamento.
+  const [conflictPrompt, setConflictPrompt] = useState<PriorMeetingConflict | null>(null);
+  const resolvedConflictRef = useRef<PriorMeetingConflict | null>(null);
+
   const handleSubmit = async () => {
     if (!lead || !date || !time || !user) return;
     // Closer continua precisando justificar (vai para `observation`).
@@ -335,6 +355,18 @@ function AgendarPageInner() {
     const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
+      // Regra de reagendamento: detecta reunião anterior em aberto do mesmo lead.
+      // Closers (2ª reunião) e o fluxo de reagendamento explícito ficam fora.
+      let conflict = resolvedConflictRef.current;
+      if (!isCloser && !editId && !conflict) {
+        const detected = await detectPriorMeetingConflict(lead.phone, dateStr, null);
+        if (detected) {
+          setConflictPrompt(detected);
+          setSubmitting(false);
+          return;
+        }
+      }
+
       // Validação anti-corrida: reconta capacidade real do slot imediatamente antes do INSERT.
       // Capacidade = closers ativos − closers com bloqueio pessoal cobrindo o horário.
       // SDR é bloqueado apenas se TODOS os closers ativos disponíveis já estiverem ocupados.
@@ -417,8 +449,24 @@ function AgendarPageInner() {
 
       // Reagendamento para o MESMO dia = apenas troca de horário: atualiza o
       // próprio registro, sem criar duplicata nem marcar "reagendada".
-      const isSameDayReschedule =
-        !!editId && !!editData?.scheduled_date && editData.scheduled_date === dateStr;
+      // Vale também quando o lead já tem reunião em aberto na MESMA data.
+      const sameDayTargetId =
+        !!editId && !!editData?.scheduled_date && editData.scheduled_date === dateStr
+          ? editId
+          : conflict?.mode === "same_day_time_change"
+            ? conflict.prior.id
+            : null;
+      const isSameDayReschedule = !!sameDayTargetId;
+
+      // Faltam < 60 min para a reunião antiga → nova nasce vinculada a ela.
+      const linkedOriginalId =
+        conflict?.mode === "keep_as_reagendada" ? conflict.prior.id : null;
+
+      // Faltam >= 60 min → a reunião antiga é excluída e substituída pela nova.
+      if (conflict?.mode === "delete_old") {
+        await softDeletePriorMeeting(conflict.prior.id, user.id);
+      }
+
 
       // Rastreamento Meta (fbp/fbc + dados de contato) capturado no agendamento.
       const metaFields = collectLeadMetaFields(lead);
@@ -450,7 +498,7 @@ function AgendarPageInner() {
             is_5k: is5k,
             ...metaFields,
           } as any)
-          .eq("id", editId!)
+          .eq("id", sameDayTargetId!)
           .select("id")
           .maybeSingle();
         if (updateError) throw updateError;
@@ -459,7 +507,7 @@ function AgendarPageInner() {
         }
         insertedData = updatedData;
 
-        await logAudit("reschedule_same_day", "agendamento", editId, {
+        await logAudit("reschedule_same_day", "agendamento", sameDayTargetId, {
           lead_name: lead.name,
           closer_name: closerName,
           scheduled_date: dateStr,
@@ -480,7 +528,7 @@ function AgendarPageInner() {
         google_event_id: googleEventId,
         created_by: user.id,
         sdr_responsavel_id: isAdmin ? (selectedSdrId || user.id) : null,
-        original_agendamento_id: editId || null,
+        original_agendamento_id: editId || linkedOriginalId || null,
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
         is_5k: is5k,
@@ -567,6 +615,7 @@ function AgendarPageInner() {
     } catch (err: any) {
       toast.error(err.message || "Erro ao agendar");
     }
+    resolvedConflictRef.current = null;
     setSubmitting(false);
   };
 
@@ -900,6 +949,34 @@ function AgendarPageInner() {
           )}
         </div>
       </div>
+
+      <AlertDialog
+        open={!!conflictPrompt}
+        onOpenChange={(open) => {
+          if (!open) setConflictPrompt(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Este lead já tem reunião em aberto</AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflictPrompt ? conflictMessage(conflictPrompt) : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                resolvedConflictRef.current = conflictPrompt;
+                setConflictPrompt(null);
+                void handleSubmit();
+              }}
+            >
+              Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
