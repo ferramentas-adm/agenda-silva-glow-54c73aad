@@ -43,6 +43,7 @@ import VendaDialog from "@/components/VendaDialog";
 import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 import CancelReasonDialog from "@/components/CancelReasonDialog";
 import { useCan } from "@/hooks/usePermissions";
+import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamento";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useBusinessHours } from "@/hooks/useBusinessHours";
@@ -723,9 +724,22 @@ export function CalendarContent() {
     }
   };
 
+  // Exclusão: SDR/Closer só podem excluir com mais de 60 min de folga.
+  const requestDelete = (target: DeleteTarget) => {
+    if (!isAdminLike && !canDeleteMeeting(target.scheduled_date, target.scheduled_time)) {
+      toast.error(DELETE_BLOCKED_MESSAGE);
+      return;
+    }
+    setDeleteTarget(target);
+  };
+
   // Delete handler
   const handleDelete = async () => {
     if (!deleteTarget || !deleteReason.trim()) return;
+    if (!isAdminLike && !canDeleteMeeting(deleteTarget.scheduled_date, deleteTarget.scheduled_time)) {
+      toast.error(DELETE_BLOCKED_MESSAGE);
+      return;
+    }
     setDeleting(true);
     try {
       const { data, error } = await supabase
@@ -1294,7 +1308,7 @@ export function CalendarContent() {
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
-            onDelete={role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor" || role === "sdr" ? setDeleteTarget : undefined}
+            onDelete={role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor" || role === "sdr" ? requestDelete : undefined}
             onClickAg={setDetailAg}
             onClickEmptySlot={(closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");

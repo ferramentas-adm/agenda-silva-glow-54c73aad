@@ -14,6 +14,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { brTodayYMD } from "@/lib/timezone";
 
 /** Janela de busca da reunião anterior (em dias). */
 export const PRIOR_MEETING_WINDOW_DAYS = 7;
@@ -31,9 +32,11 @@ export interface PriorMeeting {
 export type ConflictMode =
   /** Mesma data: apenas trocar o horário do próprio registro. */
   | "same_day_time_change"
-  /** Faltam < 60 min (ou já passou): antiga é encerrada como no-show/cancelada. */
+  /** Antiga é de dia anterior: precisa ser encerrada como no-show/cancelada. */
   | "close_old"
-  /** Faltam >= 60 min: antiga é excluída e a nova é agenda nova. */
+  /** Antiga é hoje e faltam < 60 min (ou já passou): fica "Reagendada". */
+  | "keep_as_reagendada"
+  /** Antiga é hoje/futura com >= 60 min: é excluída e a nova é agenda nova. */
   | "delete_old";
 
 export interface PriorMeetingConflict {
@@ -103,18 +106,33 @@ export async function findPriorOpenMeeting(
   };
 }
 
-/** Classifica o conflito de acordo com a nova data escolhida. */
+/** Classifica o conflito de acordo com a nova data escolhida.
+ *
+ * Regra: "Reagendada" só vale enquanto ainda é o DIA da reunião antiga. Depois
+ * que o dia virou, a antiga precisa ser encerrada como No-show/Cancelada. */
 export function classifyConflict(
   prior: PriorMeeting,
   newDate: string,
 ): PriorMeetingConflict {
   const minutes = minutesUntilMeeting(prior.scheduled_date, prior.scheduled_time);
+  const today = brTodayYMD();
   let mode: ConflictMode;
   if (newDate === prior.scheduled_date) mode = "same_day_time_change";
-  else if (minutes < LAST_MINUTE_THRESHOLD) mode = "close_old";
+  else if (prior.scheduled_date < today) mode = "close_old";
+  else if (prior.scheduled_date === today && minutes < LAST_MINUTE_THRESHOLD)
+    mode = "keep_as_reagendada";
   else mode = "delete_old";
   return { prior, minutesUntil: minutes, mode };
 }
+
+/** Exclusão manual (SDR/Closer) só é permitida com mais de 60 min de folga. */
+export function canDeleteMeeting(date: string, time: string): boolean {
+  return minutesUntilMeeting(date, time) > LAST_MINUTE_THRESHOLD;
+}
+
+export const DELETE_BLOCKED_MESSAGE =
+  "Faltam menos de 1h para esta reunião (ou o horário já passou). Nesse caso não é possível excluir — atualize o status para No-show, Cancelada ou Reagendada (quando ainda for o mesmo dia).";
+
 
 /** Detecta e classifica em uma chamada. `null` = pode seguir sem avisos. */
 export async function detectPriorMeetingConflict(
@@ -166,6 +184,15 @@ export async function closePriorMeeting(
   if (error) throw error;
 }
 
+/** Marca a reunião antiga como "Reagendada", mantendo data e horário originais. */
+export async function markPriorAsReagendada(priorId: string): Promise<void> {
+  const { error } = await supabase
+    .from("agendamentos")
+    .update({ status: "reagendada" } as any)
+    .eq("id", priorId);
+  if (error) throw error;
+}
+
 /** Texto de confirmação exibido ao usuário antes de gravar. */
 export function conflictMessage(conflict: PriorMeetingConflict): string {
   const [y, m, d] = conflict.prior.scheduled_date.split("-");
@@ -175,12 +202,16 @@ export function conflictMessage(conflict: PriorMeetingConflict): string {
   if (conflict.mode === "same_day_time_change") {
     return `Este lead já tem reunião em ${when} (${statusLabel}). Como é o mesmo dia, o horário dessa reunião será alterado — nenhuma reunião nova será criada.`;
   }
-  if (conflict.mode === "close_old") {
+  if (conflict.mode === "keep_as_reagendada") {
     const passou = conflict.minutesUntil < 0;
     const intro = passou
-      ? `Este lead tem reunião em ${when} (${statusLabel}) cujo horário já passou.`
-      : `Faltam menos de 1h para a reunião de ${when} (${statusLabel}).`;
-    return `${intro} Como a nova reunião é para outro dia, informe o desfecho da reunião antiga (No-show ou Cancelada). Ela será encerrada na data original e esta nova será criada como agenda nova.`;
+      ? `Este lead tem reunião hoje em ${when} (${statusLabel}) cujo horário já passou.`
+      : `Faltam menos de 1h para a reunião de hoje em ${when} (${statusLabel}).`;
+    return `${intro} Como ainda é o dia dela, ela ficará como Reagendada na data original e esta nova reunião será criada como Agendada.`;
+  }
+  if (conflict.mode === "close_old") {
+    return `Este lead tem reunião em ${when} (${statusLabel}), de um dia anterior. Como o dia dela já terminou, informe o desfecho (No-show ou Cancelada). Ela será encerrada na data original e esta nova será criada como agenda nova.`;
   }
   return `Este lead já tem reunião em ${when} (${statusLabel}). Faltam mais de 1h — a reunião antiga será excluída e substituída por esta nova.`;
 }
+

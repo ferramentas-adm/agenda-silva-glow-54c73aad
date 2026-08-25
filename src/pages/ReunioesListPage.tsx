@@ -30,6 +30,7 @@ import {
   PaginationNext, PaginationPrevious, PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
+import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamento";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import { useSdrGlobalVisibility } from "@/hooks/useSdrGlobalVisibility";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
@@ -463,8 +464,19 @@ export default function ReunioesListPage() {
     link.click();
     URL.revokeObjectURL(url);
   };
+  const requestDelete = (ag: any) => {
+    if (!isAdminLike && !canDeleteMeeting(ag.scheduled_date, ag.scheduled_time)) {
+      toast.error(DELETE_BLOCKED_MESSAGE);
+      return;
+    }
+    setDeleteTarget(ag);
+  };
   const handleDelete = async () => {
     if (!deleteTarget || !deleteReason.trim()) return;
+    if (!isAdminLike && !canDeleteMeeting(deleteTarget.scheduled_date, deleteTarget.scheduled_time)) {
+      toast.error(DELETE_BLOCKED_MESSAGE);
+      return;
+    }
     setDeleting(true);
     try {
       const { error } = await supabase
@@ -1061,7 +1073,7 @@ export default function ReunioesListPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={() => setDeleteTarget(ag)}
+                                onClick={() => requestDelete(ag)}
                                 title="Excluir"
                               >
                                 <Trash2 className="h-4 w-4" />

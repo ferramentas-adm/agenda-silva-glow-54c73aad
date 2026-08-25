@@ -41,6 +41,7 @@ import {
   conflictMessage,
   softDeletePriorMeeting,
   closePriorMeeting,
+  markPriorAsReagendada,
   type PriorMeetingConflict,
   type PriorOutcome,
 } from "@/services/reagendamento";
@@ -472,10 +473,16 @@ function AgendarPageInner() {
             : null;
       const isSameDayReschedule = !!sameDayTargetId;
 
-      // Nova reunião em outro dia nunca nasce vinculada: a antiga é encerrada.
-      const linkedOriginalId = null;
+      // Antiga é de hoje e faltando < 60 min (ou já passou) → fica "Reagendada"
+      // e a nova nasce vinculada a ela (remanejo de última hora).
+      const linkedOriginalId =
+        conflict?.mode === "keep_as_reagendada" ? conflict.prior.id : null;
 
-      // Faltam < 60 min (ou já passou) → antiga encerrada como no-show/cancelada.
+      if (conflict?.mode === "keep_as_reagendada") {
+        await markPriorAsReagendada(conflict.prior.id);
+      }
+
+      // Antiga é de dia anterior → encerrada como no-show/cancelada.
       if (conflict?.mode === "close_old") {
         await closePriorMeeting(
           conflict.prior.id,
@@ -488,6 +495,7 @@ function AgendarPageInner() {
       if (conflict?.mode === "delete_old") {
         await softDeletePriorMeeting(conflict.prior.id, user.id);
       }
+
 
 
       // Rastreamento Meta (fbp/fbc + dados de contato) capturado no agendamento.
