@@ -14,6 +14,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { brTodayYMD } from "@/lib/timezone";
 
 /** Janela de busca da reunião anterior (em dias). */
 export const PRIOR_MEETING_WINDOW_DAYS = 7;
