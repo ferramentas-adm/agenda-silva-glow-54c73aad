@@ -36,6 +36,27 @@ interface Props {
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 7); // 07h — 23h
 
+type CmpMode = "prev" | "w1" | "w2" | "w3" | "w4";
+
+const CMP_MODES: { value: CmpMode; label: string }[] = [
+  { value: "prev", label: "Período anterior" },
+  { value: "w1", label: "Última semana" },
+  { value: "w2", label: "Média 2 últimas" },
+  { value: "w3", label: "Média 3 últimas" },
+  { value: "w4", label: "Média 4 últimas" },
+];
+
+const WEEKDAY_NAMES = [
+  "domingos",
+  "segundas",
+  "terças",
+  "quartas",
+  "quintas",
+  "sextas",
+  "sábados",
+];
+
+
 const brDateFmt = new Intl.DateTimeFormat("en-CA", {
   timeZone: BR_TZ,
   year: "numeric",
@@ -49,20 +70,36 @@ const brDateFmt = new Intl.DateTimeFormat("en-CA", {
  */
 export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: Props) {
   const [cumulative, setCumulative] = useState(false);
+  const [cmpModeState, setCmpModeState] = useState<CmpMode>("prev");
 
   const from = parseISO(range.from);
   const to = parseISO(range.to);
   const days = Math.max(1, differenceInCalendarDays(to, from) + 1);
+  const isSingleDay = range.from === range.to;
+  const cmpMode: CmpMode = isSingleDay ? cmpModeState : "prev";
 
-  const periodLabel =
-    range.from === range.to
-      ? format(to, "dd/MM/yyyy")
-      : `${format(from, "dd/MM")} a ${format(to, "dd/MM")}`;
+  const periodLabel = isSingleDay
+    ? format(to, "dd/MM/yyyy")
+    : `${format(from, "dd/MM")} a ${format(to, "dd/MM")}`;
 
-  // Conjunto de dias do período e do período anterior equivalente.
-  const { baseDays, cmpDays, cmpLabel } = useMemo(() => {
+  // Conjunto de dias do período e dos dias usados na comparação.
+  const { baseDays, cmpDays, cmpDivisor, cmpLabel } = useMemo(() => {
     const base = new Set<string>();
     for (let i = 0; i < days; i++) base.add(pickedDateToYMD(subDays(to, i)));
+
+    if (cmpMode !== "prev") {
+      const weeks = Number(cmpMode.slice(1));
+      const dates = Array.from({ length: weeks }, (_, k) => subDays(to, 7 * (k + 1)));
+      const cmp = new Set(dates.map(pickedDateToYMD));
+      const weekdayName = WEEKDAY_NAMES[to.getDay()];
+      const listed = dates.map((d) => format(d, "dd/MM")).join(", ");
+      const label =
+        weeks === 1
+          ? `última ${weekdayName.replace(/s$/, "")} (${listed})`
+          : `média ${weeks} últimas ${weekdayName} (${listed})`;
+      return { baseDays: base, cmpDays: cmp, cmpDivisor: weeks, cmpLabel: label };
+    }
+
     const cmp = new Set<string>();
     const cmpTo = subDays(from, 1);
     for (let i = 0; i < days; i++) cmp.add(pickedDateToYMD(subDays(cmpTo, i)));
@@ -71,8 +108,11 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
       days === 1
         ? format(cmpTo, "dd/MM/yyyy")
         : `${format(cmpFrom, "dd/MM")} a ${format(cmpTo, "dd/MM")}`;
-    return { baseDays: base, cmpDays: cmp, cmpLabel: label };
-  }, [from, to, days]);
+    return { baseDays: base, cmpDays: cmp, cmpDivisor: 1, cmpLabel: label };
+  }, [from, to, days, cmpMode]);
+
+  const cmpColumnLabel = cmpMode === "prev" ? "Período anterior" : CMP_MODES.find((m) => m.value === cmpMode)!.label;
+
 
   const { data, totals } = useMemo(() => {
     const baseByHour = new Map<number, number>();
@@ -95,7 +135,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
     let accCmp = 0;
     const rows = HOURS.map((h) => {
       const b = baseByHour.get(h) || 0;
-      const c = cmpByHour.get(h) || 0;
+      const c = (cmpByHour.get(h) || 0) / cmpDivisor;
       accBase += b;
       accCmp += c;
       return {
@@ -107,7 +147,8 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
     });
 
     return { data: rows, totals: { base: accBase, cmp: accCmp } };
-  }, [createdAgs, sdrIds, baseDays, cmpDays, cumulative]);
+  }, [createdAgs, sdrIds, baseDays, cmpDays, cmpDivisor, cumulative]);
+
 
   const delta = totals.cmp > 0 ? ((totals.base - totals.cmp) / totals.cmp) * 100 : totals.base > 0 ? 100 : 0;
 
@@ -135,14 +176,31 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
                 ? "text-destructive border-destructive/30 bg-destructive/10"
                 : "text-muted-foreground border-border bg-muted/40",
           )}
-          title={`Período: ${totals.base} · Período anterior: ${totals.cmp}`}
+          title={`Período: ${totals.base} · Comparação: ${totals.cmp.toFixed(1)}`}
         >
           {delta > 0 ? <TrendingUp className="h-3 w-3" /> : delta < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
           {delta > 0 ? "+" : ""}
-          {delta.toFixed(0)}% vs período anterior
+          {delta.toFixed(0)}% vs {cmpMode === "prev" ? "período anterior" : cmpColumnLabel.toLowerCase()}
         </span>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1 flex-wrap">
+          {CMP_MODES.map((m) => (
+            <Button
+              key={m.value}
+              variant={cmpMode === m.value ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs px-2"
+              disabled={!isSingleDay && m.value !== "prev"}
+              title={
+                !isSingleDay && m.value !== "prev"
+                  ? "Disponível apenas quando o filtro está em um único dia"
+                  : undefined
+              }
+              onClick={() => setCmpModeState(m.value)}
+            >
+              {m.label}
+            </Button>
+          ))}
           <Button
             variant={cumulative ? "default" : "outline"}
             size="sm"
@@ -155,9 +213,11 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Agendas novas criadas por SDRs, pela hora de criação (BRT), somando o período do filtro. Comparação:
-        período anterior equivalente ({cmpLabel}).
+        Agendas novas criadas por SDRs, pela hora de criação (BRT), somando o período do filtro. Comparação:{" "}
+        {cmpMode === "prev" ? `período anterior equivalente (${cmpLabel})` : cmpLabel}.
+        {!isSingleDay && " Comparação por dia da semana disponível apenas com um único dia selecionado."}
       </p>
+
 
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -180,7 +240,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
             <Line
               type="monotone"
               dataKey="cmp"
-              name={`Período anterior (${cmpLabel})`}
+              name={cmpMode === "prev" ? `Período anterior (${cmpLabel})` : cmpLabel}
               stroke="hsl(38 92% 50%)"
               strokeWidth={2}
               strokeDasharray="5 5"
@@ -211,7 +271,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
             <tr className="text-muted-foreground">
               <th className="text-left font-medium py-1">Hora</th>
               <th className="text-right font-medium py-1">{periodLabel}</th>
-              <th className="text-right font-medium py-1">Período anterior</th>
+              <th className="text-right font-medium py-1" title={cmpLabel}>{cmpColumnLabel}</th>
               <th className="text-right font-medium py-1">Δ</th>
             </tr>
           </thead>
