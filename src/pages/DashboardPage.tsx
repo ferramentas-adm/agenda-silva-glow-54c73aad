@@ -958,29 +958,11 @@ export function CalendarContent() {
         return;
       }
 
-      const { error } = await supabase.from("agendamentos").insert({
-        lead_name: detailAg.lead_name,
-        lead_phone: detailAg.lead_phone,
-        scheduled_date: newDateStr,
-        scheduled_time: rescheduleTime,
-        status: "agendada",
-        closer_id: null,
-        original_agendamento_id: detailAg.id,
-        briefing: detailAg.briefing,
-        meeting_reason: detailAg.meeting_reason,
-        channel_type: detailAg.channel_type,
-        duration_minutes: detailAg.duration_minutes,
-        sdr_responsavel_id: sdrId,
-        created_by: user?.id,
-      } as any);
-      if (error) throw error;
-      toast.success("Reagendamento criado. Reunião enviada para Aguardando atribuição.");
-      setRescheduleOpen(false);
-      setRescheduleDate(null);
-      setRescheduleTime(null);
-      setDetailAg(null);
-      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-      queryClient.invalidateQueries({ queryKey: ["pending-assignments"] });
+      // Outro dia não é permitido por aqui: nova data = nova reunião.
+      throw new Error(
+        "Alteração de horário só vale para o mesmo dia. Para outro dia, crie uma nova reunião em Agendar ou no Calendário.",
+      );
+
     } catch (err: any) {
       toast.error(err.message || "Erro ao reagendar");
     }
