@@ -135,7 +135,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
     let accCmp = 0;
     const rows = HOURS.map((h) => {
       const b = baseByHour.get(h) || 0;
-      const c = cmpByHour.get(h) || 0;
+      const c = (cmpByHour.get(h) || 0) / cmpDivisor;
       accBase += b;
       accCmp += c;
       return {
@@ -147,7 +147,8 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
     });
 
     return { data: rows, totals: { base: accBase, cmp: accCmp } };
-  }, [createdAgs, sdrIds, baseDays, cmpDays, cumulative]);
+  }, [createdAgs, sdrIds, baseDays, cmpDays, cmpDivisor, cumulative]);
+
 
   const delta = totals.cmp > 0 ? ((totals.base - totals.cmp) / totals.cmp) * 100 : totals.base > 0 ? 100 : 0;
 
