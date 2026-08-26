@@ -111,7 +111,7 @@ export default function OverdueMeetingsLockOverlay() {
     refetch();
   };
 
-  const handleDirect = async (m: OverdueMeeting, reason?: string) => {
+  const handleDirect = async (m: OverdueMeeting, reason?: string): Promise<boolean> => {
     setUpdatingId(m.id);
     try {
       const patch: any = { status: "no_show" };
@@ -129,12 +129,15 @@ export default function OverdueMeetingsLockOverlay() {
       // Mesmo pós-processamento da tela de detalhes: refetch do dia para não deixar o cartão fantasma.
       await queryClient.refetchQueries({ queryKey: ["agendamentos", m.scheduled_date], exact: true });
       await invalidateAll();
+      return true;
     } catch (err: any) {
       toast.error(err?.message || "Erro ao atualizar status");
+      return false;
     } finally {
       setUpdatingId(null);
     }
   };
+
 
   // Encaminha a responsabilidade para o Closer (SDR sai da trava, Closer entra).
   const handleForwardToCloser = async (m: OverdueMeeting) => {
