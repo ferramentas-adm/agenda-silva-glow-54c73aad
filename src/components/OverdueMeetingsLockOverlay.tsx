@@ -237,11 +237,14 @@ export default function OverdueMeetingsLockOverlay() {
 
 
   return (
+    <>
+      {showPanel && (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/95 backdrop-blur-md"
       role="alertdialog"
       aria-modal="true"
     >
+
       <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col rounded-xl border-2 border-destructive/40 bg-card shadow-2xl">
         <div className="px-6 py-5 border-b border-destructive/20 bg-destructive/5">
           <div className="flex items-start gap-3">
