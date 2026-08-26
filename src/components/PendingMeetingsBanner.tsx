@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Ban, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { usePendingMeetings, type PendingWithMeta } from "@/hooks/usePendingMeetings";
