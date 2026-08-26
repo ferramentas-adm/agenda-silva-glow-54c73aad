@@ -145,12 +145,19 @@ function AgendarPageInner() {
   // Determine initial step based on URL params
   const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
 
-  const [step, setStep] = useState<Step>(isReschedule ? (canPickCloser ? "closer" : "datetime") : hasPreselection ? "lead" : "lead");
+  // `lead_name`/`lead_phone` na URL também funcionam SEM `edit`: é o fluxo de
+  // "Não compareceu" → "Agendar novamente" (nova reunião com dados carregados).
+  const hasLeadFromUrl = !!rescheduleLeadName;
+
+  const [step, setStep] = useState<Step>(
+    isReschedule ? (canPickCloser ? "closer" : "datetime") : hasLeadFromUrl ? (canPickCloser ? "closer" : "datetime") : "lead",
+  );
   const [lead, setLead] = useState<Lead | null>(
-    isReschedule && rescheduleLeadName
-      ? { id: "reschedule", name: decodeURIComponent(rescheduleLeadName), phone: decodeURIComponent(rescheduleLeadPhone || "") }
+    hasLeadFromUrl
+      ? { id: "reschedule", name: decodeURIComponent(rescheduleLeadName!), phone: decodeURIComponent(rescheduleLeadPhone || "") }
       : null
   );
+
   const [closerId, setCloserId] = useState<string | null>(canPickCloser ? (preCloserId || null) : null);
   const [date, setDate] = useState<Date | undefined>(
     preDateStr ? new Date(preDateStr + "T12:00:00") : undefined
