@@ -307,7 +307,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id, cancellation_reason")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -1049,7 +1049,7 @@ export function CalendarContent() {
             <div className="space-y-2">
               <div className={cn(
                 "grid grid-cols-2 sm:grid-cols-4 gap-3",
-                isCloserView ? "xl:grid-cols-9" : "xl:grid-cols-12"
+                isCloserView ? "xl:grid-cols-8" : "xl:grid-cols-11"
               )}>
 
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
