@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ export function useCloserFilter() {
   const { user, role } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+  const lastReconciledRef = useRef("");
 
   const { data: closers = [], isLoading } = useQuery({
     queryKey: ["closers-active"],
@@ -71,7 +72,6 @@ export function useCloserFilter() {
   //  - ADICIONA closers novos que ainda não estavam na seleção salva
   // Sem isso, agendas (incluindo "confirmadas") de closers adicionados
   // depois da última seleção ficavam invisíveis na Dashboard.
-  const lastReconciledRef = useMemo(() => ({ current: "" }), []);
   useEffect(() => {
     if (!initialized || !closers.length) return;
     if (role === "closer") {
@@ -103,7 +103,7 @@ export function useCloserFilter() {
       if (next.size === 0) return new Set(activeIds);
       return changed ? next : prev;
     });
-  }, [closers, initialized, role, user?.email, lastReconciledRef]);
+  }, [closers, initialized, role, user?.email]);
 
 
 
