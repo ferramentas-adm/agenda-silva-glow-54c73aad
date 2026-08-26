@@ -2351,12 +2351,15 @@ const DayView = memo(function DayView({
       if (cancelled) return;
       const card = el.querySelector<HTMLElement>(`[data-ag-id="${highlightAgId}"]`);
       if (!card) return;
+      // vertical: centraliza a linha do horário na viewport
+      card.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      // horizontal: centraliza a coluna do closer dentro da grade
       const cardRect = card.getBoundingClientRect();
       const containerRect = el.getBoundingClientRect();
       const targetLeft =
         el.scrollLeft + (cardRect.left - containerRect.left) - (el.clientWidth - cardRect.width) / 2;
       el.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
-      card.scrollIntoView({ block: "center", behavior: "smooth" });
+
     });
     return () => {
       cancelled = true;
