@@ -41,7 +41,9 @@ import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
 import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
-import CancelReasonDialog from "@/components/CancelReasonDialog";
+import NaoCompareceuDialog from "@/components/NaoCompareceuDialog";
+import NovoAgendamentoPromptDialog, { type NovoAgendamentoLead } from "@/components/NovoAgendamentoPromptDialog";
+
 import { useCan } from "@/hooks/usePermissions";
 import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamento";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
