@@ -12,9 +12,11 @@ Você está certo. A ação acontece **depois** da reunião: recriar evento/Meet
   - a marca de "devolvida pelo closer" é limpa;
   - **nenhuma** chamada ao Google: o `meet_link` e o `google_event_id` originais são preservados como histórico;
   - fica registrado em auditoria quem transferiu, de qual closer para qual;
-  - o novo closer recebe uma notificação para registrar a reunião.
+  - o novo closer recebe uma notificação para registrar a reunião;
+  - **um novo payload é enviado ao DataCrazy** com os mesmos dados do agendamento original (lead, telefone, data/hora, SDR, motivo, etc.), mudando apenas o **nome do closer** para o que efetivamente atendeu.
 - Textos ajustados: o aviso "o evento será recriado na agenda dele" sai e passa a explicar que é apenas para registro do resultado.
 - O aviso de reunião devolvida passa a orientar: peça a um gestor/supervisor para definir o closer que atendeu.
+
 
 ## Detalhes técnicos
 
@@ -24,3 +26,10 @@ Você está certo. A ação acontece **depois** da reunião: recriar evento/Meet
 - Inserir notificação (`type: "meeting_reassigned_for_result"`) para o usuário do novo closer, quando houver perfil vinculado.
 - Auditoria: `logAudit("reassign_closer_for_result", ...)` com lead, data/hora, closer de origem e destino.
 - Invalidar os caches do dia/trava após a operação (`invalidateAll`), como já é feito hoje.
+
+## Envio ao DataCrazy
+
+- A função de banco também dispara, via `net.http_post`, o mesmo webhook usado por `notify_status_change_webhook` (URL de `app_settings`), reaproveitando exatamente o mesmo formato de 30 chaves do agendamento.
+- O payload é montado a partir do agendamento **já atualizado**: todos os campos originais permanecem iguais, apenas `closer_name` (e o `closer_id`/`datacrazy_id` correspondente) refletem o novo closer. O `status` enviado é o status atual da reunião.
+- Um campo indicativo do tipo de evento (`evento: "closer_atualizado"`) acompanha o payload para o CRM distinguir do fluxo de mudança de status, sem alterar as demais chaves.
+
