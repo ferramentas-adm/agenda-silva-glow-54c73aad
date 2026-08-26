@@ -406,7 +406,7 @@ export default function OverdueMeetingsLockOverlay() {
                           onClick={() => handleTransferToNewCloser(m)}
                         >
                           {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-                          Confirmar transferência
+                          Confirmar closer que atendeu
                         </Button>
                       </div>
                     )}
