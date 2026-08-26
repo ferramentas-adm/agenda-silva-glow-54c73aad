@@ -59,8 +59,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
-          <Suspense fallback={<PageSpinner />}>
+          <ErrorBoundary>
+            <Suspense fallback={<PageSpinner />}>
             <Routes>
+
               <Route path="/login" element={<LoginPage />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
