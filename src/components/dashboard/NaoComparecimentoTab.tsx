@@ -321,7 +321,7 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {format(new Date(`${r.scheduled_date}T12:00:00`), "dd/MM/yyyy")}
                       {r.scheduled_time ? ` às ${r.scheduled_time}` : ""}
-                      {r.closer_id ? ` · ${closerNameById.get(r.closer_id) ?? "Closer"}` : ""}
+                      {` · ${sdrNameById.get(sdrIdOf(r) ?? "") ?? "SDR"}`}
                     </p>
                   </div>
                 ))}
