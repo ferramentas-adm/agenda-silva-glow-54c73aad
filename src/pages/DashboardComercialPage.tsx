@@ -23,6 +23,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { splitNaoCompareceu } from "@/lib/noShowReasons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
@@ -451,17 +452,9 @@ export default function DashboardComercialPage() {
         }));
     };
 
-    const noShowCount = sc(todayAgs, "no_show");
-    const canceladoCount = sc(todayAgs, "cancelada");
-    // "Reagendado" = qualquer agenda no período que veio de reagendamento
-    // (status='reagendada' na original OU agenda nova com original_agendamento_id).
-    // Isso garante que reagendamentos detectados automaticamente apareçam mesmo
-    // quando a original já estava em estado final (no_show/cancelada/realizada).
-    const reagendadoIdsSet = new Set<string>();
-    todayAgs.forEach(a => {
-      if (a.status === "reagendada" || a.original_agendamento_id) reagendadoIdsSet.add(a.id);
-    });
-    const reagendadoCount = reagendadoIdsSet.size;
+    const { cancelada: canceladaAgs, noShow: noShowAgs } = splitNaoCompareceu(todayAgs as any);
+    const noShowCount = noShowAgs.length;
+    const canceladoCount = canceladaAgs.length;
     const compareceuCount = sc(todayAgs, "realizada");
     // totalDia inclui canceladas — alinhado ao Dashboard.
     const totalDia = todayAgs.length;
@@ -484,7 +477,6 @@ export default function DashboardComercialPage() {
       compareceu: sc(todayAgs, "realizada"),
       noShow: noShowCount,
       cancelado: canceladoCount,
-      reagendado: reagendadoCount,
       taxaComp,
       totalDia,
       channelsToday: byChannel(todayAgs),
@@ -498,9 +490,8 @@ export default function DashboardComercialPage() {
       confirmadoIds: todayAgs.filter(a => a.status === "confirmada").map(a => a.id),
       agendadoIds: todayAgs.filter(a => a.status === "agendada").map(a => a.id),
       compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
-      noShowIds: todayAgs.filter(a => a.status === "no_show").map(a => a.id),
-      canceladoIds: todayAgs.filter(a => a.status === "cancelada").map(a => a.id),
-      reagendadoIds: Array.from(reagendadoIdsSet),
+      noShowIds: noShowAgs.map((a: any) => a.id),
+      canceladoIds: canceladaAgs.map((a: any) => a.id),
     };
   }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
 
@@ -1167,7 +1158,6 @@ function MetricasSDRsTab({
         <MetricCard title={`Compareceu — ${selectedLabel}`} value={metrics.compareceu} subtitle={subtitleSelected} onClick={() => openDrill(`Compareceu — ${selectedLabel}`, metrics.compareceuIds)} />
         <MetricCard title={`No-show — ${selectedLabel}`} value={metrics.noShow} subtitle={subtitleSelected} onClick={() => openDrill(`No-show — ${selectedLabel}`, metrics.noShowIds)} />
         <MetricCard title={`Cancelado — ${selectedLabel}`} value={metrics.cancelado} subtitle={subtitleSelected} onClick={() => openDrill(`Cancelado — ${selectedLabel}`, metrics.canceladoIds)} />
-        <MetricCard title={`Reagendado — ${selectedLabel}`} value={metrics.reagendado} subtitle={subtitleSelected} onClick={() => openDrill(`Reagendado — ${selectedLabel}`, metrics.reagendadoIds)} />
         <MetricCard
           title={`Taxa de Comparecimento — ${selectedLabel}`}
           value={`${metrics.taxaComp.toFixed(1)}%`}
