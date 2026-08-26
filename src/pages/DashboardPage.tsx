@@ -451,6 +451,73 @@ export function CalendarContent() {
     });
   }, [agendamentos, selectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
 
+  // ─── Busca de lead no calendário (dia exibido) ────────────────
+  const [leadSearch, setLeadSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [highlightAgId, setHighlightAgId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+    };
+  }, []);
+
+  const normalizeText = (v: string) =>
+    v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const searchableAgendamentos = useMemo(() => {
+    return agendamentos.filter((a) => {
+      if (!a.closer_id) return false;
+      const ownerSdr =
+        a.sdr_responsavel_id ||
+        (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
+      if (isSdrRole && onlyMySdr && user && ownerSdr !== user.id) return false;
+      if (selectedSdrId !== "all" && ownerSdr !== selectedSdrId) return false;
+      return true;
+    });
+  }, [agendamentos, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
+
+  const leadSuggestions = useMemo(() => {
+    const term = normalizeText(leadSearch.trim());
+    if (term.length < 2) return [];
+    const digits = term.replace(/\D/g, "");
+    return searchableAgendamentos
+      .filter((a) => {
+        if (normalizeText(a.lead_name || "").includes(term)) return true;
+        if (digits.length >= 3) {
+          const phone = (a.lead_phone || "").replace(/\D/g, "");
+          if (phone.includes(digits)) return true;
+        }
+        return false;
+      })
+      .slice(0, 8);
+  }, [leadSearch, searchableAgendamentos]);
+
+  const closerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    closers.forEach((c) => m.set(c.id, c.name));
+    return m;
+  }, [closers]);
+
+  const focusAgendamento = useCallback(
+    (ag: Agendamento) => {
+      if (ag.closer_id && !selectedIds.has(ag.closer_id)) {
+        toggle(ag.closer_id);
+      }
+      setHighlightAgId(ag.id);
+      setLeadSearch("");
+      setSearchOpen(false);
+      setActiveSuggestion(0);
+      if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = window.setTimeout(() => setHighlightAgId(null), 5000);
+    },
+    [selectedIds, toggle]
+  );
+
+
+
   const patchAgendamentosCache = useCallback(
     (agendamentoId: string, updater: (agendamento: Agendamento) => Agendamento | null) => {
       queryClient.setQueriesData<Agendamento[]>({ queryKey: ["agendamentos"] }, (current) => {
