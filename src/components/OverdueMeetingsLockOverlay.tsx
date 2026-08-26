@@ -36,7 +36,7 @@ import NaoCompareceuDialog from "@/components/NaoCompareceuDialog";
 import NovoAgendamentoPromptDialog, { type NovoAgendamentoLead } from "@/components/NovoAgendamentoPromptDialog";
 
 // Somente as telas necessárias para RESOLVER a pendência ficam liberadas.
-const HIDE_ON_PREFIXES = ["/cancelar-reuniao", "/venda/", "/lead-detalhes"];
+const HIDE_ON_PREFIXES = ["/venda/", "/lead-detalhes"];
 
 const STATUS_LABEL: Record<string, string> = {
   agendada: "Sem confirmar",
