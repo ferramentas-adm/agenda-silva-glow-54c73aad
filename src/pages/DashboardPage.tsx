@@ -1597,9 +1597,10 @@ export function CalendarContent() {
                   ) : (
                     <>
                       <p className="text-[10px] text-muted-foreground">
-                        Reagendar, Cancelar e No-show são mutuamente exclusivos —
-                        juntos compõem o "Não comparecimento" do dia.
+                        Para trocar horário ou registrar ausência, use "Não compareceu" —
+                        em seguida o sistema oferece criar uma nova reunião.
                       </p>
+
                       <div className="flex flex-wrap gap-2">
                         {/* Confirmar — disponível para SDR/Gestor/Mod quando status é "agendada"
                             (lead aguardando confirmação). Closer não vê o botão Confirmar. */}
