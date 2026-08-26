@@ -1316,6 +1316,86 @@ export function CalendarContent() {
           )
         )}
 
+        {/* Busca de lead no calendário do dia */}
+        <div className="relative w-full max-w-sm">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={leadSearch}
+            onChange={(e) => {
+              setLeadSearch(e.target.value);
+              setSearchOpen(true);
+              setActiveSuggestion(0);
+            }}
+            onFocus={() => setSearchOpen(true)}
+            onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setSearchOpen(false);
+                return;
+              }
+              if (!leadSuggestions.length) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActiveSuggestion((i) => (i + 1) % leadSuggestions.length);
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveSuggestion((i) => (i - 1 + leadSuggestions.length) % leadSuggestions.length);
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                const ag = leadSuggestions[activeSuggestion] ?? leadSuggestions[0];
+                if (ag) focusAgendamento(ag);
+              }
+            }}
+            placeholder="Buscar lead no calendário..."
+            className="h-9 pl-8 pr-8 text-sm"
+          />
+          {leadSearch && (
+            <button
+              type="button"
+              aria-label="Limpar busca"
+              onClick={() => { setLeadSearch(""); setSearchOpen(false); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {searchOpen && leadSearch.trim().length >= 2 && (
+            <div className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+              {leadSuggestions.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum lead encontrado neste dia.</p>
+              ) : (
+                leadSuggestions.map((ag, i) => {
+                  const eff = getEffectiveStatus(ag);
+                  return (
+                    <button
+                      key={ag.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => focusAgendamento(ag)}
+                      onMouseEnter={() => setActiveSuggestion(i)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors",
+                        i === activeSuggestion ? "bg-accent" : "hover:bg-accent/60"
+                      )}
+                    >
+                      <span className="min-w-0 flex-1 truncate font-medium">{ag.lead_name}</span>
+                      <span className="shrink-0 font-mono text-muted-foreground">{ag.scheduled_time}</span>
+                      <span className="max-w-[110px] shrink-0 truncate text-muted-foreground">
+                        {ag.closer_id ? closerNameById.get(ag.closer_id) ?? "—" : "—"}
+                      </span>
+                      <Badge variant="outline" className="shrink-0 text-[9px]">
+                        {STATUS_LABELS[eff] || eff}
+                      </Badge>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
+
+
         {/* SDR filter — só para gestor/moderador analisarem distribuição por SDR */}
         {isAdminLike && sdrUsers.length > 0 && (
           <div className="flex items-center gap-2">
