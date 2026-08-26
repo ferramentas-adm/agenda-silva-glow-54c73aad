@@ -1464,6 +1464,8 @@ export function CalendarContent() {
             date={currentDate}
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
+            highlightAgId={highlightAgId}
+
             busyBlocks={googleBusyBlocks}
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
