@@ -186,7 +186,8 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
-  // Gestor/supervisor/moderador de SDR envia a reunião para outro closer.
+  // Gestor/supervisor/moderador de SDR define qual closer efetivamente atendeu a reunião.
+  // A reunião já aconteceu: nada é criado no Google, apenas a responsabilidade de registro muda.
   const handleTransferToNewCloser = async (m: OverdueMeeting) => {
     if (!transferTarget || transferTarget === m.closer_id) {
       toast.error("Escolha um closer diferente do atual");
@@ -194,56 +195,23 @@ export default function OverdueMeetingsLockOverlay() {
     }
     setUpdatingId(m.id);
     try {
-      const { data, error } = await supabase.functions.invoke("google-transfer-event", {
-        body: { agendamento_id: m.id, new_closer_id: transferTarget },
-      });
+      const { error } = await supabase.rpc("reassign_agendamento_closer_for_result" as any, {
+        _agendamento_id: m.id,
+        _new_closer_id: transferTarget,
+      } as any);
       if (error) throw error;
-      if (!data?.success) {
-        throw new Error(data?.error || "Falha ao transferir lead");
-      }
 
-      const newMeetLink = (data?.meet_link as string | null) ?? null;
-      const warnings: string[] = data?.warnings ?? [];
-
-      // Após a transferência do Google, encaminha a responsabilidade para o novo closer.
-      const { error: updErr } = await supabase
-        .from("agendamentos")
-        .update({
-          sdr_handoff_at: new Date().toISOString(),
-          closer_returned_at: null,
-          closer_return_reason: null,
-        } as any)
-        .eq("id", m.id);
-      if (updErr) throw updErr;
-
-      await logAudit("transfer_lead", "agendamento", m.id, {
-        lead_name: m.lead_name,
-        scheduled_date: m.scheduled_date,
-        scheduled_time: m.scheduled_time,
-        from_closer: m.closer_name ?? "",
-        to_closer_id: transferTarget,
-        meet_link_new: newMeetLink,
-        source: "trava",
-        google_warnings: warnings,
-      });
-
-      if (warnings.includes("new_closer_not_connected")) {
-        toast.warning("Lead transferido, mas o novo closer não tem Google Calendar conectado.");
-      } else if (warnings.includes("create_event_failed")) {
-        toast.warning("Lead transferido, mas falhou ao criar o evento no Google.");
-      } else {
-        toast.success("Lead transferido para o novo closer");
-      }
-
+      toast.success("Closer que atendeu definido — ele já pode registrar a reunião");
       setTransferFor(null);
       setTransferTarget("");
       await invalidateAll();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao transferir lead");
+      toast.error(err?.message || "Erro ao definir o closer que atendeu");
     } finally {
       setUpdatingId(null);
     }
   };
+
 
   // Lista de closers ativos para o dialog "Enviar para novo closer".
   const { data: transferableClosers = [] } = useQuery({
