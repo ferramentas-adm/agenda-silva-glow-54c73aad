@@ -1308,7 +1308,7 @@ export function CalendarContent() {
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
-            onDelete={role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor" || role === "sdr" ? requestDelete : undefined}
+            onDelete={isAdminLike ? requestDelete : undefined}
             onClickAg={setDetailAg}
             onClickEmptySlot={(closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");
