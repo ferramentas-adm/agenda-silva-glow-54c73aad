@@ -70,7 +70,10 @@ export default function ReunioesListPage() {
   const queryClient = useQueryClient();
   const isCloser = role === "closer";
   const isSDR = role === "sdr";
-  const canDelete = isGestor || isModerador || isSupervisor || isSDR;
+  // Exclusão de reuniões: somente Gestor / Moderador / Supervisor (SDR não exclui mais).
+  const canDelete = isGestor || isModerador || isSupervisor;
+  const canEditChannel = isGestor || isModerador || isSupervisor || isSDR;
+
   const canSeeAllPeers = isGestor || isModerador || isSupervisor;
   const canTransferCloser = isGestor || isModerador || isSupervisor;
   const { data: deletionReasons = [] } = useDeletionReasons();
