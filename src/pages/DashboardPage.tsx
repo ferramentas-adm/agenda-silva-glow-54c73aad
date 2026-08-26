@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
   Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban,
-  CalendarDays, Pencil, Users, PenLine, Hourglass,
+  CalendarDays, Pencil, Users, PenLine, Hourglass, Search, X,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
@@ -17,6 +17,8 @@ import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -448,6 +450,73 @@ export function CalendarContent() {
       return true;
     });
   }, [agendamentos, selectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
+
+  // ─── Busca de lead no calendário (dia exibido) ────────────────
+  const [leadSearch, setLeadSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [highlightAgId, setHighlightAgId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+    };
+  }, []);
+
+  const normalizeText = (v: string) =>
+    v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const searchableAgendamentos = useMemo(() => {
+    return agendamentos.filter((a) => {
+      if (!a.closer_id) return false;
+      const ownerSdr =
+        a.sdr_responsavel_id ||
+        (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
+      if (isSdrRole && onlyMySdr && user && ownerSdr !== user.id) return false;
+      if (selectedSdrId !== "all" && ownerSdr !== selectedSdrId) return false;
+      return true;
+    });
+  }, [agendamentos, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
+
+  const leadSuggestions = useMemo(() => {
+    const term = normalizeText(leadSearch.trim());
+    if (term.length < 2) return [];
+    const digits = term.replace(/\D/g, "");
+    return searchableAgendamentos
+      .filter((a) => {
+        if (normalizeText(a.lead_name || "").includes(term)) return true;
+        if (digits.length >= 3) {
+          const phone = (a.lead_phone || "").replace(/\D/g, "");
+          if (phone.includes(digits)) return true;
+        }
+        return false;
+      })
+      .slice(0, 8);
+  }, [leadSearch, searchableAgendamentos]);
+
+  const closerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    closers.forEach((c) => m.set(c.id, c.name));
+    return m;
+  }, [closers]);
+
+  const focusAgendamento = useCallback(
+    (ag: Agendamento) => {
+      if (ag.closer_id && !selectedIds.has(ag.closer_id)) {
+        toggle(ag.closer_id);
+      }
+      setHighlightAgId(ag.id);
+      setLeadSearch("");
+      setSearchOpen(false);
+      setActiveSuggestion(0);
+      if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = window.setTimeout(() => setHighlightAgId(null), 5000);
+    },
+    [selectedIds, toggle]
+  );
+
+
 
   const patchAgendamentosCache = useCallback(
     (agendamentoId: string, updater: (agendamento: Agendamento) => Agendamento | null) => {
@@ -1247,6 +1316,86 @@ export function CalendarContent() {
           )
         )}
 
+        {/* Busca de lead no calendário do dia */}
+        <div className="relative w-full max-w-sm">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={leadSearch}
+            onChange={(e) => {
+              setLeadSearch(e.target.value);
+              setSearchOpen(true);
+              setActiveSuggestion(0);
+            }}
+            onFocus={() => setSearchOpen(true)}
+            onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setSearchOpen(false);
+                return;
+              }
+              if (!leadSuggestions.length) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActiveSuggestion((i) => (i + 1) % leadSuggestions.length);
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveSuggestion((i) => (i - 1 + leadSuggestions.length) % leadSuggestions.length);
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                const ag = leadSuggestions[activeSuggestion] ?? leadSuggestions[0];
+                if (ag) focusAgendamento(ag);
+              }
+            }}
+            placeholder="Buscar lead no calendário..."
+            className="h-9 pl-8 pr-8 text-sm"
+          />
+          {leadSearch && (
+            <button
+              type="button"
+              aria-label="Limpar busca"
+              onClick={() => { setLeadSearch(""); setSearchOpen(false); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {searchOpen && leadSearch.trim().length >= 2 && (
+            <div className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+              {leadSuggestions.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum lead encontrado neste dia.</p>
+              ) : (
+                leadSuggestions.map((ag, i) => {
+                  const eff = getEffectiveStatus(ag);
+                  return (
+                    <button
+                      key={ag.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => focusAgendamento(ag)}
+                      onMouseEnter={() => setActiveSuggestion(i)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors",
+                        i === activeSuggestion ? "bg-accent" : "hover:bg-accent/60"
+                      )}
+                    >
+                      <span className="min-w-0 flex-1 truncate font-medium">{ag.lead_name}</span>
+                      <span className="shrink-0 font-mono text-muted-foreground">{ag.scheduled_time}</span>
+                      <span className="max-w-[110px] shrink-0 truncate text-muted-foreground">
+                        {ag.closer_id ? closerNameById.get(ag.closer_id) ?? "—" : "—"}
+                      </span>
+                      <Badge variant="outline" className="shrink-0 text-[9px]">
+                        {STATUS_LABELS[eff] || eff}
+                      </Badge>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
+
+
         {/* SDR filter — só para gestor/moderador analisarem distribuição por SDR */}
         {isAdminLike && sdrUsers.length > 0 && (
           <div className="flex items-center gap-2">
@@ -1315,6 +1464,8 @@ export function CalendarContent() {
             date={currentDate}
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
+            highlightAgId={highlightAgId}
+
             busyBlocks={googleBusyBlocks}
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
@@ -2045,6 +2196,7 @@ const DayView = memo(function DayView({
   date,
   closers,
   agendamentos,
+  highlightAgId,
   busyBlocks,
   closerBlocks,
   closerIndexMap,
@@ -2056,12 +2208,14 @@ const DayView = memo(function DayView({
   date: Date;
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
+  highlightAgId?: string | null;
   busyBlocks: GoogleBusyBlock[];
   closerBlocks: CloserBlock[];
   closerIndexMap: Map<string, number>;
   userRolesMap: Map<string, string>;
   onDelete?: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
+
   onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
   const { slots: DAY_HOURS } = useBusinessHours();
@@ -2187,6 +2341,34 @@ const DayView = memo(function DayView({
     };
   }, []);
 
+  // Centraliza (horizontal + vertical) o card do lead pesquisado
+  useEffect(() => {
+    if (!highlightAgId) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    let cancelled = false;
+    const raf = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const card = el.querySelector<HTMLElement>(`[data-ag-id="${highlightAgId}"]`);
+      if (!card) return;
+      // vertical: centraliza a linha do horário na viewport
+      card.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      // horizontal: centraliza a coluna do closer dentro da grade
+      const cardRect = card.getBoundingClientRect();
+      const containerRect = el.getBoundingClientRect();
+      const targetLeft =
+        el.scrollLeft + (cardRect.left - containerRect.left) - (el.clientWidth - cardRect.width) / 2;
+      el.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [highlightAgId, agendamentos, closers.length]);
+
+
+
   const scrollByCol = (dir: 1 | -1) => {
     const el = scrollRef.current;
     if (!el) return;
@@ -2310,13 +2492,17 @@ const DayView = memo(function DayView({
                           return (
                             <div
                               key={ag.id}
+                              data-ag-id={ag.id}
                               className={cn(
                                 "rounded-md border text-xs group relative cursor-pointer flex-1 min-w-0 overflow-hidden",
                                 isCompact ? "px-1.5 py-1 space-y-0" : "px-2 py-2 space-y-0.5",
                                 closerColor.bg,
                                 closerColor.border,
-                                isCancelled && "opacity-60"
+                                isCancelled && "opacity-60",
+                                highlightAgId === ag.id &&
+                                  "ring-2 ring-primary ring-offset-2 ring-offset-card animate-pulse opacity-100 z-20"
                               )}
+
                               onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
                               title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[effStatus] || effStatus}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
                             >
