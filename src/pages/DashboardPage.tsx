@@ -772,15 +772,17 @@ export function CalendarContent() {
       setVendaDialogAg(detailAg);
       return;
     }
-    // Cancelada → exige motivo (1 linha)
-    if (newStatus === "cancelada" && !cancellationReason) {
-      setCancelReasonOpen(true);
+    // Não compareceu → exige motivo da lista (Admin > + Listas)
+    if (newStatus === "no_show" && !cancellationReason) {
+      setNoShowReasonOpen(true);
       return;
     }
     setUpdatingStatus(true);
     try {
       const patch: any = { status: newStatus };
-      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
+      if (cancellationReason && (newStatus === "no_show" || newStatus === "cancelada")) {
+        patch.cancellation_reason = cancellationReason;
+      }
       const { data, error } = await supabase
         .from("agendamentos")
         .update(patch)
@@ -797,8 +799,18 @@ export function CalendarContent() {
       setDetailAg(updatedAg);
       await queryClient.refetchQueries({ queryKey: ["agendamentos", detailAg.scheduled_date], exact: true });
       if (newStatus === "cancelada" || newStatus === "no_show") {
+        const leadForPrompt = {
+          lead_name: detailAg.lead_name,
+          lead_phone: detailAg.lead_phone,
+          lead_email: (detailAg as any).lead_email ?? null,
+          closer_id: detailAg.closer_id,
+          channel_type: (detailAg as any).channel_type ?? null,
+          meeting_reason: (detailAg as any).meeting_reason ?? null,
+        };
         setDetailAg(null);
+        if (newStatus === "no_show") setNovoAgendamentoLead(leadForPrompt);
       }
+
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar status");
     }
