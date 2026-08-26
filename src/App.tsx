@@ -84,7 +84,9 @@ const App = () => (
               <Route path="/lead-detalhes/:id" element={<ProtectedRoute><LeadDetalhesPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Suspense>
+            </Suspense>
+          </ErrorBoundary>
+
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
