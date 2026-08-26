@@ -2492,13 +2492,17 @@ const DayView = memo(function DayView({
                           return (
                             <div
                               key={ag.id}
+                              data-ag-id={ag.id}
                               className={cn(
                                 "rounded-md border text-xs group relative cursor-pointer flex-1 min-w-0 overflow-hidden",
                                 isCompact ? "px-1.5 py-1 space-y-0" : "px-2 py-2 space-y-0.5",
                                 closerColor.bg,
                                 closerColor.border,
-                                isCancelled && "opacity-60"
+                                isCancelled && "opacity-60",
+                                highlightAgId === ag.id &&
+                                  "ring-2 ring-primary ring-offset-2 ring-offset-card animate-pulse opacity-100 z-20"
                               )}
+
                               onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
                               title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[effStatus] || effStatus}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
                             >
