@@ -2204,6 +2204,7 @@ const DayView = memo(function DayView({
   onDelete,
   onClickAg,
   onClickEmptySlot,
+  onClearHighlight,
 }: {
   date: Date;
   closers: { id: string; name: string }[];
