@@ -511,7 +511,7 @@ export function CalendarContent() {
       setSearchOpen(false);
       setActiveSuggestion(0);
       if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
-      highlightTimerRef.current = window.setTimeout(() => setHighlightAgId(null), 5000);
+      highlightTimerRef.current = window.setTimeout(() => setHighlightAgId(null), 20000);
     },
     [selectedIds, toggle]
   );
@@ -1465,13 +1465,16 @@ export function CalendarContent() {
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
             highlightAgId={highlightAgId}
-
             busyBlocks={googleBusyBlocks}
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
             onDelete={isAdminLike ? requestDelete : undefined}
             onClickAg={setDetailAg}
+            onClearHighlight={() => {
+              setHighlightAgId(null);
+              if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+            }}
             onClickEmptySlot={(closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");
               navigate(`/agendar?closer=${closerId}&date=${dateStr}&time=${time}`);
@@ -2204,6 +2207,7 @@ const DayView = memo(function DayView({
   onDelete,
   onClickAg,
   onClickEmptySlot,
+  onClearHighlight,
 }: {
   date: Date;
   closers: { id: string; name: string }[];
@@ -2215,8 +2219,8 @@ const DayView = memo(function DayView({
   userRolesMap: Map<string, string>;
   onDelete?: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
-
   onClickEmptySlot: (closerId: string, time: string) => void;
+  onClearHighlight?: () => void;
 }) {
   const { slots: DAY_HOURS } = useBusinessHours();
 
@@ -2503,7 +2507,11 @@ const DayView = memo(function DayView({
                                   "ring-4 ring-primary ring-offset-4 ring-offset-card animate-search-highlight shadow-[0_0_28px_6px_hsl(var(--primary)/0.55)] opacity-100 z-20"
                               )}
 
-                              onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (highlightAgId === ag.id) onClearHighlight?.();
+                                onClickAg(ag);
+                              }}
                               title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[effStatus] || effStatus}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
                             >
                               {/* Briefing tag - top-right label */}
