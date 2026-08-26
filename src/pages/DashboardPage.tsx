@@ -2341,6 +2341,31 @@ const DayView = memo(function DayView({
     };
   }, []);
 
+  // Centraliza (horizontal + vertical) o card do lead pesquisado
+  useEffect(() => {
+    if (!highlightAgId) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    let cancelled = false;
+    const raf = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const card = el.querySelector<HTMLElement>(`[data-ag-id="${highlightAgId}"]`);
+      if (!card) return;
+      const cardRect = card.getBoundingClientRect();
+      const containerRect = el.getBoundingClientRect();
+      const targetLeft =
+        el.scrollLeft + (cardRect.left - containerRect.left) - (el.clientWidth - cardRect.width) / 2;
+      el.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+      card.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [highlightAgId, agendamentos, closers.length]);
+
+
+
   const scrollByCol = (dir: 1 | -1) => {
     const el = scrollRef.current;
     if (!el) return;
