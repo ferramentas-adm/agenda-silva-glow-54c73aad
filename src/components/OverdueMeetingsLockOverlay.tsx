@@ -378,8 +378,10 @@ export default function OverdueMeetingsLockOverlay() {
                       <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
                         <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
                           <span className="text-[11px] text-muted-foreground">
-                            Novo closer * — o evento será recriado na agenda dele
+                            Closer que atendeu * — apenas para registro do resultado (nada muda no
+                            Google)
                           </span>
+
                           <Select
                             value={transferTarget}
                             onValueChange={setTransferTarget}
