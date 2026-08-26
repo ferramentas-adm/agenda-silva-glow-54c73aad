@@ -231,19 +231,6 @@ export default function OverdueMeetingsLockOverlay() {
   };
 
 
-  // Lista de closers ativos para definir quem atendeu a reunião.
-  const { data: transferableClosers = [] } = useQuery({
-    queryKey: ["transferable-closers-trava"],
-    enabled: transferFor !== null,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id, name")
-        .eq("active", true)
-        .order("name", { ascending: true });
-      return data ?? [];
-    },
-  });
 
   return (
     <div
