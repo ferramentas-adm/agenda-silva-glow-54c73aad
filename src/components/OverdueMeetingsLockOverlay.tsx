@@ -368,7 +368,8 @@ export default function OverdueMeetingsLockOverlay() {
                           className="h-8 text-xs gap-1"
                         >
                           <ArrowRightLeft className="h-3.5 w-3.5" />
-                          Enviar para novo closer
+                          Definir closer que atendeu
+
                         </Button>
                       )}
                     </div>
