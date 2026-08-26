@@ -12,9 +12,11 @@ Você está certo. A ação acontece **depois** da reunião: recriar evento/Meet
   - a marca de "devolvida pelo closer" é limpa;
   - **nenhuma** chamada ao Google: o `meet_link` e o `google_event_id` originais são preservados como histórico;
   - fica registrado em auditoria quem transferiu, de qual closer para qual;
-  - o novo closer recebe uma notificação para registrar a reunião.
+  - o novo closer recebe uma notificação para registrar a reunião;
+  - **um novo payload é enviado ao DataCrazy** com os mesmos dados do agendamento original (lead, telefone, data/hora, SDR, motivo, etc.), mudando apenas o **nome do closer** para o que efetivamente atendeu.
 - Textos ajustados: o aviso "o evento será recriado na agenda dele" sai e passa a explicar que é apenas para registro do resultado.
 - O aviso de reunião devolvida passa a orientar: peça a um gestor/supervisor para definir o closer que atendeu.
+
 
 ## Detalhes técnicos
 
