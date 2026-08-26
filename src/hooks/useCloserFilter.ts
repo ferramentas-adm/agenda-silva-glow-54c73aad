@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ export function useCloserFilter() {
   const { user, role } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+  const lastReconciledRef = useRef("");
 
   const { data: closers = [], isLoading } = useQuery({
     queryKey: ["closers-active"],
@@ -74,27 +75,36 @@ export function useCloserFilter() {
   useEffect(() => {
     if (!initialized || !closers.length) return;
     if (role === "closer") {
-      // Reconciliação: se por qualquer motivo a seleção do closer ficou vazia
-      // (corrida de carregamento), repõe o próprio registro.
-      if (selectedIds.size > 0 || !user?.email) return;
-      const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
-      if (myCloser) setSelectedIds(new Set([myCloser.id]));
+      if (!user?.email) return;
+      setSelectedIds((prev) => {
+        if (prev.size > 0) return prev;
+        const myCloser = closers.find((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
+        return myCloser ? new Set([myCloser.id]) : prev;
+      });
       return;
     }
     const activeIds = closers.map((c) => c.id);
+    const signature = [...activeIds].sort().join(",");
+    if (lastReconciledRef.current === signature) return;
+    const isFirstRun = lastReconciledRef.current === "";
+    lastReconciledRef.current = signature;
     setSelectedIds((prev) => {
       const next = new Set([...prev].filter((id) => activeIds.includes(id)));
       let changed = next.size !== prev.size;
-      for (const id of activeIds) {
-        if (!next.has(id)) {
-          next.add(id);
-          changed = true;
+      // Closers novos entram na visualização só quando a lista realmente muda.
+      if (!isFirstRun) {
+        for (const id of activeIds) {
+          if (!next.has(id)) {
+            next.add(id);
+            changed = true;
+          }
         }
       }
       if (next.size === 0) return new Set(activeIds);
       return changed ? next : prev;
     });
-  }, [closers, initialized, role, selectedIds, user?.email]);
+  }, [closers, initialized, role, user?.email]);
+
 
 
   // Persist to localStorage
