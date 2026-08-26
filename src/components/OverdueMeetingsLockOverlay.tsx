@@ -95,8 +95,12 @@ export default function OverdueMeetingsLockOverlay() {
     },
   });
 
-  if (count === 0) return null;
-  if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
+  // O painel da trava só aparece quando há pendências; os diálogos ficam
+  // sempre montados para que o pop-up de novo agendamento sobreviva ao
+  // momento em que a última pendência é resolvida (count -> 0).
+  const showPanel =
+    count > 0 && !HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p));
+
 
 
   const invalidateAll = async () => {
@@ -107,7 +111,7 @@ export default function OverdueMeetingsLockOverlay() {
     refetch();
   };
 
-  const handleDirect = async (m: OverdueMeeting, reason?: string) => {
+  const handleDirect = async (m: OverdueMeeting, reason?: string): Promise<boolean> => {
     setUpdatingId(m.id);
     try {
       const patch: any = { status: "no_show" };
@@ -125,12 +129,15 @@ export default function OverdueMeetingsLockOverlay() {
       // Mesmo pós-processamento da tela de detalhes: refetch do dia para não deixar o cartão fantasma.
       await queryClient.refetchQueries({ queryKey: ["agendamentos", m.scheduled_date], exact: true });
       await invalidateAll();
+      return true;
     } catch (err: any) {
       toast.error(err?.message || "Erro ao atualizar status");
+      return false;
     } finally {
       setUpdatingId(null);
     }
   };
+
 
   // Encaminha a responsabilidade para o Closer (SDR sai da trava, Closer entra).
   const handleForwardToCloser = async (m: OverdueMeeting) => {
@@ -233,11 +240,14 @@ export default function OverdueMeetingsLockOverlay() {
 
 
   return (
+    <>
+      {showPanel && (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/95 backdrop-blur-md"
       role="alertdialog"
       aria-modal="true"
     >
+
       <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col rounded-xl border-2 border-destructive/40 bg-card shadow-2xl">
         <div className="px-6 py-5 border-b border-destructive/20 bg-destructive/5">
           <div className="flex items-start gap-3">
@@ -477,6 +487,8 @@ export default function OverdueMeetingsLockOverlay() {
           {count} reuni{count === 1 ? "ão" : "ões"} pendente{count === 1 ? "" : "s"}.
         </div>
       </div>
+    </div>
+      )}
 
       <NaoCompareceuDialog
         open={!!noShowFor}
@@ -486,8 +498,9 @@ export default function OverdueMeetingsLockOverlay() {
         onConfirm={async (reason) => {
           const target = noShowFor;
           if (!target) return;
-          await handleDirect(target, reason);
+          const ok = await handleDirect(target, reason);
           setNoShowFor(null);
+          if (!ok) return;
           setNovoAgendamentoLead({
             lead_name: target.lead_name,
             lead_phone: (target as any).lead_phone ?? null,
@@ -503,6 +516,7 @@ export default function OverdueMeetingsLockOverlay() {
         lead={novoAgendamentoLead}
         onOpenChange={(o) => { if (!o) setNovoAgendamentoLead(null); }}
       />
-    </div>
+    </>
   );
 }
+
