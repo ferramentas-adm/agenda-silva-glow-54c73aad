@@ -2218,8 +2218,6 @@ const DayView = memo(function DayView({
   onClickAg: (ag: Agendamento) => void;
   onClickEmptySlot: (closerId: string, time: string) => void;
   onClearHighlight?: () => void;
-
-  onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
   const { slots: DAY_HOURS } = useBusinessHours();
 
