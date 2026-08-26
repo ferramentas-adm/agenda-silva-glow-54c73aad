@@ -32,9 +32,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import NaoCompareceuDialog from "@/components/NaoCompareceuDialog";
+import NovoAgendamentoPromptDialog, { type NovoAgendamentoLead } from "@/components/NovoAgendamentoPromptDialog";
 
 // Somente as telas necessárias para RESOLVER a pendência ficam liberadas.
-const HIDE_ON_PREFIXES = ["/cancelar-reuniao", "/venda/", "/lead-detalhes"];
+const HIDE_ON_PREFIXES = ["/venda/", "/lead-detalhes"];
 
 const STATUS_LABEL: Record<string, string> = {
   agendada: "Sem confirmar",
@@ -63,6 +65,8 @@ export default function OverdueMeetingsLockOverlay() {
   const [rescheduleFor, setRescheduleFor] = useState<string | null>(null);
   const [newDate, setNewDate] = useState<string>("");
   const [newTime, setNewTime] = useState<string>("");
+  const [noShowFor, setNoShowFor] = useState<OverdueMeeting | null>(null);
+  const [novoAgendamentoLead, setNovoAgendamentoLead] = useState<NovoAgendamentoLead | null>(null);
   const [returnFor, setReturnFor] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState<string>("");
 
@@ -78,19 +82,21 @@ export default function OverdueMeetingsLockOverlay() {
     refetch();
   };
 
-  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus) => {
+  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus, reason?: string) => {
     setUpdatingId(m.id);
     try {
+      const patch: any = { status: newStatus };
+      if (reason) patch.cancellation_reason = reason;
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ status: newStatus } as any)
+        .update(patch)
         .eq("id", m.id)
         .select("id");
       if (error) throw error;
       if (!data || data.length === 0) {
         throw new Error("Sem permissão para alterar este agendamento.");
       }
-      toast.success(`Status atualizado para ${newStatus === "no_show" ? "No-show" : "Cancelada"}`);
+      toast.success(newStatus === "no_show" ? "Registrado como não compareceu" : "Status atualizado para Cancelada");
       await invalidateAll();
     } catch (err: any) {
       toast.error(err?.message || "Erro ao atualizar status");
@@ -332,19 +338,7 @@ export default function OverdueMeetingsLockOverlay() {
                         size="sm"
                         variant="outline"
                         disabled={busy}
-                        onClick={() =>
-                          navigate(`/cancelar-reuniao/${m.id}?lead=${encodeURIComponent(m.lead_name)}`)
-                        }
-                        className="h-8 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                        Cancelar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => handleDirect(m, "no_show")}
+                        onClick={() => setNoShowFor(m)}
                         className="h-8 text-xs gap-1 text-orange-500 hover:bg-orange-500/10 border-orange-500/30"
                       >
                         {busy ? (
@@ -352,21 +346,7 @@ export default function OverdueMeetingsLockOverlay() {
                         ) : (
                           <Ban className="h-3.5 w-3.5" />
                         )}
-                        No-show
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => {
-                          setRescheduleFor(rescheduleFor === m.id ? null : m.id);
-                          setNewDate(m.scheduled_date);
-                          setNewTime(m.scheduled_time);
-                        }}
-                        className="h-8 text-xs gap-1 text-blue-400 hover:bg-blue-500/10 border-blue-400/30"
-                      >
-                        <CalendarClock className="h-3.5 w-3.5" />
-                        Reagendar
+                        Não compareceu
                       </Button>
                       {m.closer_id && m.stage === "sdr" && !m.closer_returned_at && (
                         <Button
@@ -382,38 +362,6 @@ export default function OverdueMeetingsLockOverlay() {
                       )}
                     </div>
 
-                    {rescheduleFor === m.id && (
-                      <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[11px] text-muted-foreground">Nova data</span>
-                          <Input
-                            type="date"
-                            value={newDate}
-                            onChange={(e) => setNewDate(e.target.value)}
-                            className="h-8 text-xs w-[150px]"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[11px] text-muted-foreground">Novo horário</span>
-                          <Select value={newTime} onValueChange={setNewTime}>
-                            <SelectTrigger className="h-8 text-xs w-[110px]">
-                              <SelectValue placeholder="Horário" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {TIME_OPTIONS.map((t) => (
-                                <SelectItem key={t} value={t} className="text-xs">
-                                  {t}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button size="sm" className="h-8 text-xs" disabled={busy} onClick={() => handleReschedule(m)}>
-                          {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-                          Confirmar reagendamento
-                        </Button>
-                      </div>
-                    )}
                   </>
                 )}
 
@@ -476,6 +424,32 @@ export default function OverdueMeetingsLockOverlay() {
           {count} reuni{count === 1 ? "ão" : "ões"} pendente{count === 1 ? "" : "s"}.
         </div>
       </div>
+
+      <NaoCompareceuDialog
+        open={!!noShowFor}
+        onOpenChange={(o) => { if (!o) setNoShowFor(null); }}
+        leadName={noShowFor?.lead_name}
+        loading={updatingId === noShowFor?.id}
+        onConfirm={async (reason) => {
+          const target = noShowFor;
+          if (!target) return;
+          await handleDirect(target, "no_show", reason);
+          setNoShowFor(null);
+          setNovoAgendamentoLead({
+            lead_name: target.lead_name,
+            lead_phone: (target as any).lead_phone ?? null,
+            lead_email: (target as any).lead_email ?? null,
+            closer_id: (target as any).closer_id ?? null,
+            channel_type: (target as any).channel_type ?? null,
+            meeting_reason: (target as any).meeting_reason ?? null,
+          });
+        }}
+      />
+
+      <NovoAgendamentoPromptDialog
+        lead={novoAgendamentoLead}
+        onOpenChange={(o) => { if (!o) setNovoAgendamentoLead(null); }}
+      />
     </div>
   );
 }

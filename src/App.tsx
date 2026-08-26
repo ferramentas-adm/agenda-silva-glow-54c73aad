@@ -22,7 +22,6 @@ const MeusFollowsPage = lazy(() => import("@/pages/MeusFollowsPage"));
 const PagamentosPage = lazy(() => import("@/pages/PagamentosPage"));
 const VendaPage = lazy(() => import("@/pages/VendaPage"));
 const LeadDetalhesPage = lazy(() => import("@/pages/LeadDetalhesPage"));
-const CancelarReuniaoPage = lazy(() => import("@/pages/CancelarReuniaoPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const OAuthConsentPage = lazy(() => import("@/pages/OAuthConsentPage"));
 const BloqueioMassaPage = lazy(() => import("@/pages/BloqueioMassaPage"));
@@ -79,7 +78,6 @@ const App = () => (
               <Route path="/venda/:id" element={<ProtectedRoute><VendaPage /></ProtectedRoute>} />
               <Route path="/lead-detalhes" element={<ProtectedRoute><LeadDetalhesPage /></ProtectedRoute>} />
               <Route path="/lead-detalhes/:id" element={<ProtectedRoute><LeadDetalhesPage /></ProtectedRoute>} />
-              <Route path="/cancelar-reuniao/:id" element={<ProtectedRoute><CancelarReuniaoPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

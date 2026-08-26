@@ -41,7 +41,9 @@ import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
 import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
-import CancelReasonDialog from "@/components/CancelReasonDialog";
+import NaoCompareceuDialog from "@/components/NaoCompareceuDialog";
+import NovoAgendamentoPromptDialog, { type NovoAgendamentoLead } from "@/components/NovoAgendamentoPromptDialog";
+
 import { useCan } from "@/hooks/usePermissions";
 import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamento";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
@@ -203,7 +205,9 @@ export function CalendarContent() {
   const [deleting, setDeleting] = useState(false);
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
+  const [noShowReasonOpen, setNoShowReasonOpen] = useState(false);
+  const [novoAgendamentoLead, setNovoAgendamentoLead] = useState<NovoAgendamentoLead | null>(null);
+
   // Reverter status para o anterior (registro de auditoria) — gestor/moderador/supervisor
   const [prevStatus, setPrevStatus] = useState<string | null>(null);
   const [revertOpen, setRevertOpen] = useState(false);
@@ -772,15 +776,17 @@ export function CalendarContent() {
       setVendaDialogAg(detailAg);
       return;
     }
-    // Cancelada → exige motivo (1 linha)
-    if (newStatus === "cancelada" && !cancellationReason) {
-      setCancelReasonOpen(true);
+    // Não compareceu → exige motivo da lista (Admin > + Listas)
+    if (newStatus === "no_show" && !cancellationReason) {
+      setNoShowReasonOpen(true);
       return;
     }
     setUpdatingStatus(true);
     try {
       const patch: any = { status: newStatus };
-      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
+      if (cancellationReason && (newStatus === "no_show" || newStatus === "cancelada")) {
+        patch.cancellation_reason = cancellationReason;
+      }
       const { data, error } = await supabase
         .from("agendamentos")
         .update(patch)
@@ -797,8 +803,18 @@ export function CalendarContent() {
       setDetailAg(updatedAg);
       await queryClient.refetchQueries({ queryKey: ["agendamentos", detailAg.scheduled_date], exact: true });
       if (newStatus === "cancelada" || newStatus === "no_show") {
+        const leadForPrompt = {
+          lead_name: detailAg.lead_name,
+          lead_phone: detailAg.lead_phone,
+          lead_email: (detailAg as any).lead_email ?? null,
+          closer_id: detailAg.closer_id,
+          channel_type: (detailAg as any).channel_type ?? null,
+          meeting_reason: (detailAg as any).meeting_reason ?? null,
+        };
         setDetailAg(null);
+        if (newStatus === "no_show") setNovoAgendamentoLead(leadForPrompt);
       }
+
     } catch (err: any) {
       toast.error(err.message || "Erro ao atualizar status");
     }
@@ -1308,7 +1324,7 @@ export function CalendarContent() {
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
-            onDelete={role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor" || role === "sdr" ? requestDelete : undefined}
+            onDelete={isAdminLike ? requestDelete : undefined}
             onClickAg={setDetailAg}
             onClickEmptySlot={(closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");
@@ -1597,9 +1613,10 @@ export function CalendarContent() {
                   ) : (
                     <>
                       <p className="text-[10px] text-muted-foreground">
-                        Reagendar, Cancelar e No-show são mutuamente exclusivos —
-                        juntos compõem o "Não comparecimento" do dia.
+                        Para trocar horário ou registrar ausência, use "Não compareceu" —
+                        em seguida o sistema oferece criar uma nova reunião.
                       </p>
+
                       <div className="flex flex-wrap gap-2">
                         {/* Confirmar — disponível para SDR/Gestor/Mod quando status é "agendada"
                             (lead aguardando confirmação). Closer não vê o botão Confirmar. */}
@@ -1613,56 +1630,38 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
                         )}
-                        {/* Reagendar — apenas remanejo de horário DENTRO DO MESMO DIA.
-                            Para outro dia, cria-se nova reunião pelo "Agendar" ou
-                            clicando no horário desejado no Calendário. */}
-                        {detailAg.status !== "reagendada" && detailAg.status !== "realizada" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5 text-xs border-purple-500/30 text-purple-500 hover:bg-purple-500/10"
-                            disabled={updatingStatus}
-                            onClick={() => {
-                              setRescheduleDate(new Date(`${detailAg.scheduled_date}T12:00:00`));
-                              setRescheduleTime(null);
-                              setRescheduleOpen(true);
-                            }}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />Alterar horário
-                          </Button>
-                        )}
-
-                        {/* Cancelar e No-show:
-                            - SDR: vê quando é o criador do agendamento (sdr_responsavel_id ou created_by = user.id)
-                            - Closer: vê apenas se for o criador (created_by = user.id)
-                            - Gestor / Moderador: sempre veem */}
+                        {/* Não compareceu — substitui Cancelar / No-show / Reagendar.
+                            Alterações de horário passam por aqui (motivo
+                            "Alterou horário para o mesmo dia") + novo agendamento.
+                            - SDR: vê quando é o criador do agendamento
+                            - Closer: vê apenas se for o criador
+                            - Gestor / Moderador / Supervisor: sempre veem */}
                         {(() => {
                           const isOwnerSDR =
                             role === "sdr" &&
                             (detailAg.sdr_responsavel_id === user?.id ||
                               detailAg.created_by === user?.id);
-                          const canSeeCancelNoShow =
+                          const canSeeNoShow =
                             role === "gestor" ||
                             (role === "moderador" || role === "apresentador") ||
                             role === "supervisor" ||
                             isOwnerSDR ||
                             (role === "closer" && detailAg.created_by === user?.id);
-                          if (!canSeeCancelNoShow) return null;
+                          if (!canSeeNoShow) return null;
+                          if (detailAg.status === "no_show") return null;
                           return (
-                            <>
-                              {detailAg.status !== "cancelada" && (
-                                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
-                                  <XCircle className="h-3.5 w-3.5" />Cancelar
-                                </Button>
-                              )}
-                              {detailAg.status !== "no_show" && (
-                                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
-                                  <AlertCircle className="h-3.5 w-3.5" />No-show
-                                </Button>
-                              )}
-                            </>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10"
+                              disabled={updatingStatus}
+                              onClick={() => handleStatusChange("no_show")}
+                            >
+                              <AlertCircle className="h-3.5 w-3.5" />Não compareceu
+                            </Button>
                           );
                         })()}
+
                       </div>
                     </>
                   )}
@@ -1996,16 +1995,22 @@ export function CalendarContent() {
 
 
 
-      <CancelReasonDialog
-        open={cancelReasonOpen}
-        onOpenChange={setCancelReasonOpen}
+      <NaoCompareceuDialog
+        open={noShowReasonOpen}
+        onOpenChange={setNoShowReasonOpen}
         leadName={detailAg?.lead_name}
         loading={updatingStatus}
         onConfirm={async (reason) => {
-          setCancelReasonOpen(false);
-          await handleStatusChange("cancelada", reason);
+          setNoShowReasonOpen(false);
+          await handleStatusChange("no_show", reason);
         }}
       />
+
+      <NovoAgendamentoPromptDialog
+        lead={novoAgendamentoLead}
+        onOpenChange={(o) => { if (!o) setNovoAgendamentoLead(null); }}
+      />
+
 
       <Dialog open={revertOpen} onOpenChange={(o) => { if (!reverting) { setRevertOpen(o); if (!o) setRevertReason(""); } }}>
         <DialogContent className="sm:max-w-md">

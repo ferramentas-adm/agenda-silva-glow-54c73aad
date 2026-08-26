@@ -74,11 +74,12 @@ function DynamicListsSection() {
           defaults={["Discovery raso", "Não criou urgência", "Objeção mal contornada", "Quebra de rapport", "Não ofertou preço"]}
         />
         <DynamicListManager
-          settingKey={APP_SETTING_KEYS.cancellation_reasons}
-          title="Motivos de cancelamento"
-          description="Opções exibidas ao cancelar uma reunião em 'Detalhes do agendamento'."
-          defaults={["Imprevisto do lead", "Sem motivo explícito", "Desistiu", "Sem closer disponível", "Outros"]}
+          settingKey={APP_SETTING_KEYS.no_show_reasons}
+          title="Motivos de não comparecimento"
+          description="Opções exibidas ao marcar 'Não compareceu' em uma reunião."
+          defaults={["No-show", "Cancelou por imprevisto pessoal", "Cancelou por desistência", "Alterou horário para o mesmo dia", "Outros"]}
         />
+
         <DynamicListManager
           settingKey={APP_SETTING_KEYS.order_bumps}
           title="Order bumps"

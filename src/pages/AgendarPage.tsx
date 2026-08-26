@@ -145,12 +145,19 @@ function AgendarPageInner() {
   // Determine initial step based on URL params
   const hasPreselection = !!preCloserId && !!preDateStr && !!preTime;
 
-  const [step, setStep] = useState<Step>(isReschedule ? (canPickCloser ? "closer" : "datetime") : hasPreselection ? "lead" : "lead");
+  // `lead_name`/`lead_phone` na URL também funcionam SEM `edit`: é o fluxo de
+  // "Não compareceu" → "Agendar novamente" (nova reunião com dados carregados).
+  const hasLeadFromUrl = !!rescheduleLeadName;
+
+  const [step, setStep] = useState<Step>(
+    isReschedule ? (canPickCloser ? "closer" : "datetime") : hasLeadFromUrl ? (canPickCloser ? "closer" : "datetime") : "lead",
+  );
   const [lead, setLead] = useState<Lead | null>(
-    isReschedule && rescheduleLeadName
-      ? { id: "reschedule", name: decodeURIComponent(rescheduleLeadName), phone: decodeURIComponent(rescheduleLeadPhone || "") }
+    hasLeadFromUrl
+      ? { id: "reschedule", name: decodeURIComponent(rescheduleLeadName!), phone: decodeURIComponent(rescheduleLeadPhone || "") }
       : null
   );
+
   const [closerId, setCloserId] = useState<string | null>(canPickCloser ? (preCloserId || null) : null);
   const [date, setDate] = useState<Date | undefined>(
     preDateStr ? new Date(preDateStr + "T12:00:00") : undefined
@@ -158,9 +165,10 @@ function AgendarPageInner() {
   const [time, setTime] = useState<string | null>(preTime || null);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [observation, setObservation] = useState("");
-  const [meetingReason, setMeetingReason] = useState<string | null>(null);
+  const [meetingReason, setMeetingReason] = useState<string | null>(searchParams.get("meeting_reason"));
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
-  const [channelType, setChannelType] = useState<string | null>(null);
+  const [channelType, setChannelType] = useState<string | null>(searchParams.get("channel"));
+
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
   const [is5k, setIs5k] = useState(false);
@@ -370,17 +378,10 @@ function AgendarPageInner() {
     const sdrName = user.user_metadata?.full_name || user.email || "";
 
     try {
-      // Regra de reagendamento: detecta reunião anterior em aberto do mesmo lead.
-      // Closers (2ª reunião) e o fluxo de reagendamento explícito ficam fora.
-      let conflict = resolvedConflictRef.current;
-      if (!isCloser && !editId && !conflict) {
-        const detected = await detectPriorMeetingConflict(lead.phone, dateStr, null);
-        if (detected) {
-          setConflictPrompt(detected);
-          setSubmitting(false);
-          return;
-        }
-      }
+      // Não existe mais reagendamento automático: toda reunião criada aqui é
+      // uma reunião NOVA. Reuniões antigas são resolvidas em "Não compareceu".
+      const conflict: PriorMeetingConflict | null = null;
+
 
       // Validação anti-corrida: reconta capacidade real do slot imediatamente antes do INSERT.
       // Capacidade = closers ativos − closers com bloqueio pessoal cobrindo o horário.
@@ -980,93 +981,6 @@ function AgendarPageInner() {
         </div>
       </div>
 
-      <AlertDialog
-        open={!!conflictPrompt}
-        onOpenChange={(open) => {
-          if (!open) setConflictPrompt(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Este lead já tem reunião em aberto</AlertDialogTitle>
-            <AlertDialogDescription>
-              {conflictPrompt ? conflictMessage(conflictPrompt) : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {conflictPrompt?.mode === "close_old" && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Desfecho da reunião antiga</Label>
-                <RadioGroup
-                  value={priorOutcome}
-                  onValueChange={(v) => {
-                    setPriorOutcome(v as PriorOutcome);
-                    if (v !== "cancelada") setPriorCancelReason("");
-                  }}
-                  className="gap-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="no_show" id="prior-no-show" />
-                    <Label htmlFor="prior-no-show" className="font-normal">No-show</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="cancelada" id="prior-cancelada" />
-                    <Label htmlFor="prior-cancelada" className="font-normal">Cancelada</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {priorOutcome === "cancelada" && (
-                <div className="space-y-2">
-                  <Label>Motivo do cancelamento</Label>
-                  <Select value={priorCancelReason} onValueChange={setPriorCancelReason}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o motivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cancellationReasons.map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setPriorOutcome("");
-                setPriorCancelReason("");
-              }}
-            >
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={
-                conflictPrompt?.mode === "close_old" &&
-                (!priorOutcome || (priorOutcome === "cancelada" && !priorCancelReason))
-              }
-              onClick={() => {
-                resolvedConflictRef.current = conflictPrompt;
-                priorOutcomeRef.current =
-                  conflictPrompt?.mode === "close_old"
-                    ? {
-                        outcome: (priorOutcome || "no_show") as PriorOutcome,
-                        reason: priorOutcome === "cancelada" ? priorCancelReason : null,
-                      }
-                    : { outcome: null, reason: null };
-                setConflictPrompt(null);
-                void handleSubmit();
-              }}
-            >
-              Continuar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </AppLayout>
   );
 }

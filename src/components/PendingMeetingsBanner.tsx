@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, XCircle, Ban, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Ban, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { usePendingMeetings, type PendingWithMeta } from "@/hooks/usePendingMeetings";
@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import CancelReasonDialog from "@/components/CancelReasonDialog";
+import NaoCompareceuDialog from "@/components/NaoCompareceuDialog";
+import NovoAgendamentoPromptDialog, { type NovoAgendamentoLead } from "@/components/NovoAgendamentoPromptDialog";
 
 const STATUS_LABEL: Record<string, string> = {
   agendada: "Sem confirmar",
@@ -30,12 +31,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 
-type ResolveStatus = "realizada" | "no_show" | "cancelada";
+type ResolveStatus = "realizada" | "no_show";
 
 const RESOLVE_OPTIONS: { key: ResolveStatus; label: string; icon: typeof CheckCircle2; cls: string }[] = [
   { key: "realizada", label: "Realizada", icon: CheckCircle2, cls: "text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30" },
-  { key: "no_show", label: "No-show", icon: Ban, cls: "text-orange-500 hover:bg-orange-500/10 border-orange-500/30" },
-  { key: "cancelada", label: "Cancelada", icon: XCircle, cls: "text-destructive hover:bg-destructive/10 border-destructive/30" },
+  { key: "no_show", label: "Não compareceu", icon: Ban, cls: "text-orange-500 hover:bg-orange-500/10 border-orange-500/30" },
 ];
 
 export default function PendingMeetingsBanner() {
@@ -45,7 +45,8 @@ export default function PendingMeetingsBanner() {
   const { count, pendings, byCloser, bySdr, refetch } = usePendingMeetings();
   const [open, setOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<PendingWithMeta | null>(null);
+  const [noShowTarget, setNoShowTarget] = useState<PendingWithMeta | null>(null);
+  const [novoAgendamentoLead, setNovoAgendamentoLead] = useState<NovoAgendamentoLead | null>(null);
 
   const isManager = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
   const canResolveInline = role === "sdr" || role === "closer";
@@ -61,7 +62,7 @@ export default function PendingMeetingsBanner() {
     setUpdatingId(m.id);
     try {
       const patch: any = { status: newStatus };
-      if (newStatus === "cancelada" && cancellationReason) patch.cancellation_reason = cancellationReason;
+      if (cancellationReason) patch.cancellation_reason = cancellationReason;
       const { data, error } = await supabase
         .from("agendamentos")
         .update(patch)
@@ -117,7 +118,7 @@ export default function PendingMeetingsBanner() {
             <DialogDescription>
               Reuniões de dias passados ainda em status <strong>Agendada</strong> ou{" "}
               <strong>Confirmada</strong>. Cada uma deveria ter um desfecho:
-              Realizada, No-show ou Cancelada.
+              Realizada ou Não compareceu.
             </DialogDescription>
           </DialogHeader>
 
@@ -197,7 +198,7 @@ export default function PendingMeetingsBanner() {
                         size="sm"
                         variant="outline"
                         disabled={updatingId === m.id}
-                        onClick={() => key === "cancelada" ? setCancelTarget(m) : handleResolve(m, key)}
+                        onClick={() => key === "no_show" ? setNoShowTarget(m) : handleResolve(m, key)}
                         className={cn("h-8 text-xs gap-1", cls)}
                       >
                         {updatingId === m.id ? (
@@ -230,17 +231,33 @@ export default function PendingMeetingsBanner() {
         </DialogContent>
       </Dialog>
 
-      <CancelReasonDialog
-        open={!!cancelTarget}
-        onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
-        leadName={cancelTarget?.lead_name}
-        loading={updatingId === cancelTarget?.id}
+      <NaoCompareceuDialog
+        open={!!noShowTarget}
+        onOpenChange={(o) => { if (!o) setNoShowTarget(null); }}
+        leadName={noShowTarget?.lead_name}
+        loading={updatingId === noShowTarget?.id}
         onConfirm={async (reason) => {
-          if (!cancelTarget) return;
-          await handleResolve(cancelTarget, "cancelada", reason);
-          setCancelTarget(null);
+          const target = noShowTarget;
+          if (!target) return;
+          await handleResolve(target, "no_show", reason);
+          setNoShowTarget(null);
+          setOpen(false);
+          setNovoAgendamentoLead({
+            lead_name: target.lead_name,
+            lead_phone: (target as any).lead_phone ?? null,
+            lead_email: (target as any).lead_email ?? null,
+            closer_id: (target as any).closer_id ?? null,
+            channel_type: (target as any).channel_type ?? null,
+            meeting_reason: (target as any).meeting_reason ?? null,
+          });
         }}
       />
+
+      <NovoAgendamentoPromptDialog
+        lead={novoAgendamentoLead}
+        onOpenChange={(o) => { if (!o) setNovoAgendamentoLead(null); }}
+      />
+
     </>
   );
 }

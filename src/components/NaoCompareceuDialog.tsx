@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 
-const DEFAULT_REASONS = [
-  "Imprevisto do lead",
-  "Sem motivo explícito",
-  "Desistiu",
-  "Sem closer disponível",
+/** Motivos padrão de não comparecimento (editáveis em Admin > + Listas). */
+export const DEFAULT_NO_SHOW_REASONS = [
+  "No-show",
+  "Cancelou por imprevisto pessoal",
+  "Cancelou por desistência",
+  "Alterou horário para o mesmo dia",
   "Outros",
 ];
 
@@ -24,8 +25,13 @@ interface Props {
   loading?: boolean;
 }
 
-export default function CancelReasonDialog({ open, onOpenChange, leadName, onConfirm, loading }: Props) {
-  const { items, isLoading } = useAppSettingList(APP_SETTING_KEYS.cancellation_reasons, DEFAULT_REASONS);
+/**
+ * Diálogo único de "Não compareceu": substitui os antigos botões
+ * Cancelar / No-show / Reagendar. O status gravado é sempre `no_show`
+ * e o motivo escolhido fica registrado na reunião.
+ */
+export default function NaoCompareceuDialog({ open, onOpenChange, leadName, onConfirm, loading }: Props) {
+  const { items, isLoading } = useAppSettingList(APP_SETTING_KEYS.no_show_reasons, DEFAULT_NO_SHOW_REASONS);
   const [option, setOption] = useState("");
   const [otherText, setOtherText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +48,13 @@ export default function CancelReasonDialog({ open, onOpenChange, leadName, onCon
 
   const handleSubmit = async () => {
     if (!option) {
-      setError("Selecione o motivo do cancelamento.");
+      setError("Selecione o motivo do não comparecimento.");
       return;
     }
     if (isOther) {
       const trimmed = otherText.trim();
       if (!trimmed) {
-        setError("Descreva o motivo do cancelamento.");
+        setError("Descreva o motivo.");
         return;
       }
       if (trimmed.length > 200) {
@@ -67,21 +73,21 @@ export default function CancelReasonDialog({ open, onOpenChange, leadName, onCon
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Motivo do cancelamento</DialogTitle>
+          <DialogTitle>Não compareceu</DialogTitle>
           <DialogDescription>
             {leadName ? <>Reunião com <strong>{leadName}</strong>. </> : null}
-            Selecione o motivo do cancelamento.
+            Selecione o motivo do não comparecimento.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="cancel-reason">Motivo *</Label>
+            <Label htmlFor="no-show-reason">Motivo *</Label>
             <Select value={option} onValueChange={(v) => { setOption(v); setError(null); }} disabled={isLoading}>
-              <SelectTrigger id="cancel-reason">
+              <SelectTrigger id="no-show-reason">
                 <SelectValue placeholder={isLoading ? "Carregando..." : "Selecione um motivo"} />
               </SelectTrigger>
               <SelectContent>
-                {(items.length ? items : DEFAULT_REASONS).map((r) => (
+                {(items.length ? items : DEFAULT_NO_SHOW_REASONS).map((r) => (
                   <SelectItem key={r} value={r}>{r}</SelectItem>
                 ))}
               </SelectContent>
@@ -89,9 +95,9 @@ export default function CancelReasonDialog({ open, onOpenChange, leadName, onCon
           </div>
           {isOther && (
             <div className="space-y-2">
-              <Label htmlFor="cancel-reason-other">Descreva o motivo *</Label>
+              <Label htmlFor="no-show-reason-other">Descreva o motivo *</Label>
               <Input
-                id="cancel-reason-other"
+                id="no-show-reason-other"
                 autoFocus
                 maxLength={200}
                 placeholder="Ex.: lead pediu para remarcar via WhatsApp..."
@@ -108,7 +114,7 @@ export default function CancelReasonDialog({ open, onOpenChange, leadName, onCon
             Voltar
           </Button>
           <Button variant="destructive" onClick={handleSubmit} disabled={loading || !canSubmit}>
-            {loading ? "Cancelando..." : "Confirmar cancelamento"}
+            {loading ? "Salvando..." : "Confirmar"}
           </Button>
         </DialogFooter>
       </DialogContent>
