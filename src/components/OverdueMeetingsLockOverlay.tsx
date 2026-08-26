@@ -213,7 +213,7 @@ export default function OverdueMeetingsLockOverlay() {
   };
 
 
-  // Lista de closers ativos para o dialog "Enviar para novo closer".
+  // Lista de closers ativos para definir quem atendeu a reunião.
   const { data: transferableClosers = [] } = useQuery({
     queryKey: ["transferable-closers-trava"],
     enabled: transferFor !== null,
