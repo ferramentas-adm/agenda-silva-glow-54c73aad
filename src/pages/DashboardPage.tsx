@@ -2216,6 +2216,8 @@ const DayView = memo(function DayView({
   userRolesMap: Map<string, string>;
   onDelete?: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
+  onClickEmptySlot: (closerId: string, time: string) => void;
+  onClearHighlight?: () => void;
 
   onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
