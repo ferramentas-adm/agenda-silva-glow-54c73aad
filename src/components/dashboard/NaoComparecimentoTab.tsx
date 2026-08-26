@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { classifyNaoCompareceu, splitNaoCompareceu } from "@/lib/noShowReasons";
+import { countsAsSdr } from "@/lib/sdrOverrides";
 import { cn } from "@/lib/utils";
 
 interface Props {
