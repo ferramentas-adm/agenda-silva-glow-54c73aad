@@ -1996,16 +1996,22 @@ export function CalendarContent() {
 
 
 
-      <CancelReasonDialog
-        open={cancelReasonOpen}
-        onOpenChange={setCancelReasonOpen}
+      <NaoCompareceuDialog
+        open={noShowReasonOpen}
+        onOpenChange={setNoShowReasonOpen}
         leadName={detailAg?.lead_name}
         loading={updatingStatus}
         onConfirm={async (reason) => {
-          setCancelReasonOpen(false);
-          await handleStatusChange("cancelada", reason);
+          setNoShowReasonOpen(false);
+          await handleStatusChange("no_show", reason);
         }}
       />
+
+      <NovoAgendamentoPromptDialog
+        lead={novoAgendamentoLead}
+        onOpenChange={(o) => { if (!o) setNovoAgendamentoLead(null); }}
+      />
+
 
       <Dialog open={revertOpen} onOpenChange={(o) => { if (!reverting) { setRevertOpen(o); if (!o) setRevertReason(""); } }}>
         <DialogContent className="sm:max-w-md">
