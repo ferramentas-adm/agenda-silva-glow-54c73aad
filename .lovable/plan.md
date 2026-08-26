@@ -16,7 +16,7 @@ Nova lista padrão (editável em Administração > + Listas):
 | Cancelou por desistência | Cancelado |
 | Cancelou por imprevisto pessoal | Cancelado |
 | Sem closer disponível | Cancelado |
-| Alterou horário para o mesmo dia | Nenhum, se existir novo agendamento do mesmo lead no mesmo dia; caso contrário conta como No-show |
+| Alterou horário para o mesmo dia | Nenhum, se existir novo agendamento do mesmo lead no mesmo dia; caso contrário conta como Cancelado |
 
 O card "Não comparecimento" passa a somar apenas Cancelado + No-show (já com a regra acima).
 
