@@ -2503,7 +2503,14 @@ const DayView = memo(function DayView({
                                   "ring-4 ring-primary ring-offset-4 ring-offset-card animate-search-highlight shadow-[0_0_28px_6px_hsl(var(--primary)/0.55)] opacity-100 z-20"
                               )}
 
-                              onClick={(e) => { e.stopPropagation(); onClickAg(ag); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (highlightAgId === ag.id) {
+                                  setHighlightAgId(null);
+                                  if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+                                }
+                                onClickAg(ag);
+                              }}
                               title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[effStatus] || effStatus}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
                             >
                               {/* Briefing tag - top-right label */}
