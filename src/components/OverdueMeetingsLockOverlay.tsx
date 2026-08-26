@@ -32,6 +32,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import NaoCompareceuDialog from "@/components/NaoCompareceuDialog";
+import NovoAgendamentoPromptDialog, { type NovoAgendamentoLead } from "@/components/NovoAgendamentoPromptDialog";
 
 // Somente as telas necessárias para RESOLVER a pendência ficam liberadas.
 const HIDE_ON_PREFIXES = ["/cancelar-reuniao", "/venda/", "/lead-detalhes"];
@@ -422,6 +424,32 @@ export default function OverdueMeetingsLockOverlay() {
           {count} reuni{count === 1 ? "ão" : "ões"} pendente{count === 1 ? "" : "s"}.
         </div>
       </div>
+
+      <NaoCompareceuDialog
+        open={!!noShowFor}
+        onOpenChange={(o) => { if (!o) setNoShowFor(null); }}
+        leadName={noShowFor?.lead_name}
+        loading={updatingId === noShowFor?.id}
+        onConfirm={async (reason) => {
+          const target = noShowFor;
+          if (!target) return;
+          await handleDirect(target, "no_show", reason);
+          setNoShowFor(null);
+          setNovoAgendamentoLead({
+            lead_name: target.lead_name,
+            lead_phone: (target as any).lead_phone ?? null,
+            lead_email: (target as any).lead_email ?? null,
+            closer_id: (target as any).closer_id ?? null,
+            channel_type: (target as any).channel_type ?? null,
+            meeting_reason: (target as any).meeting_reason ?? null,
+          });
+        }}
+      />
+
+      <NovoAgendamentoPromptDialog
+        lead={novoAgendamentoLead}
+        onOpenChange={(o) => { if (!o) setNovoAgendamentoLead(null); }}
+      />
     </div>
   );
 }
