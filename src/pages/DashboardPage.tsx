@@ -1613,56 +1613,38 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
                         )}
-                        {/* Reagendar — apenas remanejo de horário DENTRO DO MESMO DIA.
-                            Para outro dia, cria-se nova reunião pelo "Agendar" ou
-                            clicando no horário desejado no Calendário. */}
-                        {detailAg.status !== "reagendada" && detailAg.status !== "realizada" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5 text-xs border-purple-500/30 text-purple-500 hover:bg-purple-500/10"
-                            disabled={updatingStatus}
-                            onClick={() => {
-                              setRescheduleDate(new Date(`${detailAg.scheduled_date}T12:00:00`));
-                              setRescheduleTime(null);
-                              setRescheduleOpen(true);
-                            }}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />Alterar horário
-                          </Button>
-                        )}
-
-                        {/* Cancelar e No-show:
-                            - SDR: vê quando é o criador do agendamento (sdr_responsavel_id ou created_by = user.id)
-                            - Closer: vê apenas se for o criador (created_by = user.id)
-                            - Gestor / Moderador: sempre veem */}
+                        {/* Não compareceu — substitui Cancelar / No-show / Reagendar.
+                            Alterações de horário passam por aqui (motivo
+                            "Alterou horário para o mesmo dia") + novo agendamento.
+                            - SDR: vê quando é o criador do agendamento
+                            - Closer: vê apenas se for o criador
+                            - Gestor / Moderador / Supervisor: sempre veem */}
                         {(() => {
                           const isOwnerSDR =
                             role === "sdr" &&
                             (detailAg.sdr_responsavel_id === user?.id ||
                               detailAg.created_by === user?.id);
-                          const canSeeCancelNoShow =
+                          const canSeeNoShow =
                             role === "gestor" ||
                             (role === "moderador" || role === "apresentador") ||
                             role === "supervisor" ||
                             isOwnerSDR ||
                             (role === "closer" && detailAg.created_by === user?.id);
-                          if (!canSeeCancelNoShow) return null;
+                          if (!canSeeNoShow) return null;
+                          if (detailAg.status === "no_show") return null;
                           return (
-                            <>
-                              {detailAg.status !== "cancelada" && (
-                                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updatingStatus} onClick={() => handleStatusChange("cancelada")}>
-                                  <XCircle className="h-3.5 w-3.5" />Cancelar
-                                </Button>
-                              )}
-                              {detailAg.status !== "no_show" && (
-                                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("no_show")}>
-                                  <AlertCircle className="h-3.5 w-3.5" />No-show
-                                </Button>
-                              )}
-                            </>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 text-xs border-orange-500/30 text-orange-500 hover:bg-orange-500/10"
+                              disabled={updatingStatus}
+                              onClick={() => handleStatusChange("no_show")}
+                            >
+                              <AlertCircle className="h-3.5 w-3.5" />Não compareceu
+                            </Button>
                           );
                         })()}
+
                       </div>
                     </>
                   )}
