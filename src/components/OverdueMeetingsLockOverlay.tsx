@@ -95,8 +95,12 @@ export default function OverdueMeetingsLockOverlay() {
     },
   });
 
-  if (count === 0) return null;
-  if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
+  // O painel da trava só aparece quando há pendências; os diálogos ficam
+  // sempre montados para que o pop-up de novo agendamento sobreviva ao
+  // momento em que a última pendência é resolvida (count -> 0).
+  const showPanel =
+    count > 0 && !HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p));
+
 
 
   const invalidateAll = async () => {
