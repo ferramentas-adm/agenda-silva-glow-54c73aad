@@ -1465,13 +1465,16 @@ export function CalendarContent() {
             closers={closers.filter((c) => selectedIds.has(c.id))}
             agendamentos={filtered}
             highlightAgId={highlightAgId}
-
             busyBlocks={googleBusyBlocks}
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
             onDelete={isAdminLike ? requestDelete : undefined}
             onClickAg={setDetailAg}
+            onClearHighlight={() => {
+              setHighlightAgId(null);
+              if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+            }}
             onClickEmptySlot={(closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");
               navigate(`/agendar?closer=${closerId}&date=${dateStr}&time=${time}`);
