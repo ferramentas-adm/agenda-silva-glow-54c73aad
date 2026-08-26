@@ -2509,10 +2509,7 @@ const DayView = memo(function DayView({
 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (highlightAgId === ag.id) {
-                                  setHighlightAgId(null);
-                                  if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
-                                }
+                                if (highlightAgId === ag.id) onClearHighlight?.();
                                 onClickAg(ag);
                               }}
                               title={`${ag.lead_name} — ${ag.scheduled_time} — ${STATUS_LABELS[effStatus] || effStatus}${ag.meeting_reason ? ` — ${ag.meeting_reason}` : ''}`}
