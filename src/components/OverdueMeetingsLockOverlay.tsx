@@ -484,6 +484,8 @@ export default function OverdueMeetingsLockOverlay() {
           {count} reuni{count === 1 ? "ão" : "ões"} pendente{count === 1 ? "" : "s"}.
         </div>
       </div>
+    </div>
+      )}
 
       <NaoCompareceuDialog
         open={!!noShowFor}
@@ -493,8 +495,9 @@ export default function OverdueMeetingsLockOverlay() {
         onConfirm={async (reason) => {
           const target = noShowFor;
           if (!target) return;
-          await handleDirect(target, reason);
+          const ok = await handleDirect(target, reason);
           setNoShowFor(null);
+          if (!ok) return;
           setNovoAgendamentoLead({
             lead_name: target.lead_name,
             lead_phone: (target as any).lead_phone ?? null,
@@ -510,6 +513,7 @@ export default function OverdueMeetingsLockOverlay() {
         lead={novoAgendamentoLead}
         onOpenChange={(o) => { if (!o) setNovoAgendamentoLead(null); }}
       />
-    </div>
+    </>
   );
 }
+
