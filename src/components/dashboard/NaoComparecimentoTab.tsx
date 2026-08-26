@@ -56,7 +56,7 @@ type DateField = "scheduled" | "created";
 
 export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAgo }: Props) {
   const [dateField, setDateField] = useState<DateField>("scheduled");
-  const [closerFilter, setCloserFilter] = useState<string>("all");
+  const [sdrFilter, setSdrFilter] = useState<string>("all");
   const [drilldown, setDrilldown] = useState<{ label: string; rows: Row[] } | null>(null);
 
   const isRange = !!(dateRange?.from && dateRange?.to);
@@ -89,24 +89,44 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
     staleTime: 60_000,
   });
 
-  const { data: closers = [] } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ["closers-nao-comparecimento"],
+  const { data: sdrProfiles = [] } = useQuery<{ user_id: string; full_name: string }[]>({
+    queryKey: ["sdr-profiles-nao-comparecimento"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("closers").select("id, name").order("name");
-      if (error) throw error;
-      return data ?? [];
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+      if (rolesError) throw rolesError;
+      const roleMap = new Map<string, string>((roles ?? []).map((r: any) => [r.user_id, r.role]));
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, is_sdr_override")
+        .eq("active", true);
+      if (profilesError) throw profilesError;
+
+      return ((profiles ?? []) as any[])
+        .filter((p) =>
+          countsAsSdr({
+            role: roleMap.get(p.user_id),
+            isOverride: p.is_sdr_override,
+            fullName: p.full_name,
+          }),
+        )
+        .map((p) => ({ user_id: p.user_id, full_name: p.full_name }));
     },
     staleTime: 5 * 60_000,
   });
 
-  const closerNameById = useMemo(
-    () => new Map(closers.map((c) => [c.id, c.name])),
-    [closers],
+  const sdrNameById = useMemo(
+    () => new Map(sdrProfiles.map((p) => [p.user_id, p.full_name])),
+    [sdrProfiles],
   );
 
+  const sdrIdOf = (r: Row) => r.sdr_responsavel_id || r.created_by || null;
+
   const filtered = useMemo(
-    () => (closerFilter === "all" ? rows : rows.filter((r) => r.closer_id === closerFilter)),
-    [rows, closerFilter],
+    () => (sdrFilter === "all" ? rows : rows.filter((r) => sdrIdOf(r) === sdrFilter)),
+    [rows, sdrFilter],
   );
 
   const slices = useMemo(() => {
