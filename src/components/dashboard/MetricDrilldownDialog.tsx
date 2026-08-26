@@ -59,7 +59,7 @@ const STATUS_LABEL: Record<string, string> = {
   confirmada: "Confirmada",
   realizada: "Realizada",
   cancelada: "Cancelada",
-  no_show: "No-show",
+  no_show: "Não compareceu",
   reagendada: "Reagendada",
   pendente: "Pendente",
   nao_confirmada: "Não confirmada",

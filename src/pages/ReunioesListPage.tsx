@@ -43,7 +43,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   realizada: { label: "Realizada", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   cancelada: { label: "Cancelada", color: "bg-red-500/20 text-red-400 border-red-500/30" },
   reagendada: { label: "Reagendada", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
-  no_show: { label: "No-show", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
+  no_show: { label: "Não compareceu", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
 };
 
 
