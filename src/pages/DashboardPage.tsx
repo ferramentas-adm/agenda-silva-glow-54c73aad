@@ -511,7 +511,7 @@ export function CalendarContent() {
       setSearchOpen(false);
       setActiveSuggestion(0);
       if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
-      highlightTimerRef.current = window.setTimeout(() => setHighlightAgId(null), 5000);
+      highlightTimerRef.current = window.setTimeout(() => setHighlightAgId(null), 20000);
     },
     [selectedIds, toggle]
   );
