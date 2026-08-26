@@ -165,9 +165,10 @@ function AgendarPageInner() {
   const [time, setTime] = useState<string | null>(preTime || null);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [observation, setObservation] = useState("");
-  const [meetingReason, setMeetingReason] = useState<string | null>(null);
+  const [meetingReason, setMeetingReason] = useState<string | null>(searchParams.get("meeting_reason"));
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
-  const [channelType, setChannelType] = useState<string | null>(null);
+  const [channelType, setChannelType] = useState<string | null>(searchParams.get("channel"));
+
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
   const [is5k, setIs5k] = useState(false);
