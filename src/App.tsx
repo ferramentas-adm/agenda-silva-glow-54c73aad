@@ -5,6 +5,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ErrorBoundary from "@/components/ErrorBoundary";
+
 
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
@@ -57,8 +59,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
-          <Suspense fallback={<PageSpinner />}>
+          <ErrorBoundary>
+            <Suspense fallback={<PageSpinner />}>
             <Routes>
+
               <Route path="/login" element={<LoginPage />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -80,7 +84,9 @@ const App = () => (
               <Route path="/lead-detalhes/:id" element={<ProtectedRoute><LeadDetalhesPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Suspense>
+            </Suspense>
+          </ErrorBoundary>
+
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

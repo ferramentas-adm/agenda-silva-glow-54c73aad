@@ -78,8 +78,26 @@ export default function OverdueMeetingsLockOverlay() {
     role === "supervisor" ||
     ((role === "moderador" || role === "apresentador") && moderadorTipo === "sdr");
 
+  // Lista de closers ativos para definir quem atendeu a reunião.
+  // IMPORTANTE: todos os hooks ficam ANTES dos returns antecipados abaixo —
+  // um hook depois de `return null` muda a ordem de hooks entre renders e
+  // derruba a árvore inteira (tela preta) quando a contagem sai de 0.
+  const { data: transferableClosers = [] } = useQuery({
+    queryKey: ["transferable-closers-trava"],
+    enabled: transferFor !== null,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name", { ascending: true });
+      return data ?? [];
+    },
+  });
+
   if (count === 0) return null;
   if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
+
 
   const invalidateAll = async () => {
     await queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
@@ -213,19 +231,6 @@ export default function OverdueMeetingsLockOverlay() {
   };
 
 
-  // Lista de closers ativos para definir quem atendeu a reunião.
-  const { data: transferableClosers = [] } = useQuery({
-    queryKey: ["transferable-closers-trava"],
-    enabled: transferFor !== null,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("closers")
-        .select("id, name")
-        .eq("active", true)
-        .order("name", { ascending: true });
-      return data ?? [];
-    },
-  });
 
   return (
     <div
