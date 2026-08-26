@@ -2196,6 +2196,7 @@ const DayView = memo(function DayView({
   date,
   closers,
   agendamentos,
+  highlightAgId,
   busyBlocks,
   closerBlocks,
   closerIndexMap,
@@ -2207,12 +2208,14 @@ const DayView = memo(function DayView({
   date: Date;
   closers: { id: string; name: string }[];
   agendamentos: Agendamento[];
+  highlightAgId?: string | null;
   busyBlocks: GoogleBusyBlock[];
   closerBlocks: CloserBlock[];
   closerIndexMap: Map<string, number>;
   userRolesMap: Map<string, string>;
   onDelete?: (target: DeleteTarget) => void;
   onClickAg: (ag: Agendamento) => void;
+
   onClickEmptySlot: (closerId: string, time: string) => void;
 }) {
   const { slots: DAY_HOURS } = useBusinessHours();
