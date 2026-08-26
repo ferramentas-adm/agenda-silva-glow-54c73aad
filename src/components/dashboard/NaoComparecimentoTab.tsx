@@ -187,14 +187,14 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
           </div>
 
           <select
-            value={closerFilter}
-            onChange={(e) => setCloserFilter(e.target.value)}
+            value={sdrFilter}
+            onChange={(e) => setSdrFilter(e.target.value)}
             className="h-7 rounded-md border bg-background px-2 text-xs"
-            aria-label="Filtrar por closer"
+            aria-label="Filtrar por SDR"
           >
-            <option value="all">Todos os closers</option>
-            {closers.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            <option value="all">Todos os SDRs</option>
+            {sdrProfiles.map((p) => (
+              <option key={p.user_id} value={p.user_id}>{p.full_name}</option>
             ))}
           </select>
 
