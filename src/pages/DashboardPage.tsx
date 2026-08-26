@@ -1643,11 +1643,10 @@ export function CalendarContent() {
                         })()}
 
                       </div>
-                    </>
-                  )}
+                  </>
                 </div>
-                );
-              })()}
+              )}
+
             </div>
           )}
 
