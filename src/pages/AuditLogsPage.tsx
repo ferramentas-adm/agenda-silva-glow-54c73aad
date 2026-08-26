@@ -444,7 +444,7 @@ const STATUS_LABELS_AG: Record<string, string> = {
   confirmada: "Confirmada",
   realizada: "Realizada",
   cancelada: "Cancelada",
-  no_show: "No-show",
+  no_show: "Não compareceu",
   reagendada: "Reagendada",
 };
 
@@ -453,7 +453,7 @@ const STATUS_LABELS_DETAIL: Record<string, string> = {
   confirmada: "Confirmada",
   realizada: "Realizada",
   cancelada: "Cancelada",
-  no_show: "No-show",
+  no_show: "Não compareceu",
   reagendada: "Reagendada",
   nao_confirmada: "Não confirmada",
 };

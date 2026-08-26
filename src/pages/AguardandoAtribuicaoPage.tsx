@@ -238,7 +238,7 @@ export default function AguardandoAtribuicaoPage() {
       confirmada: "confirmada",
       reagendada: "reagendada",
       cancelada: "cancelada",
-      no_show: "no-show",
+      no_show: "não compareceu",
     };
     return { count: prior.length, lastLabel: statusMap[last.status] ?? last.status };
   }
