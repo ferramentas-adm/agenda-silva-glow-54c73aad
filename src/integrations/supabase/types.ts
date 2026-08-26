@@ -1120,6 +1120,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      reassign_agendamento_closer_for_result: {
+        Args: { _agendamento_id: string; _new_closer_id: string }
+        Returns: boolean
+      }
       transfer_agendamento_closer: {
         Args: { _agendamento_id: string; _new_closer_id: string }
         Returns: boolean
