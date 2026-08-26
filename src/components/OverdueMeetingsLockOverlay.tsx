@@ -321,8 +321,9 @@ export default function OverdueMeetingsLockOverlay() {
                         <span className="text-muted-foreground">
                           {" "}
                           — não foi ele quem atendeu. Resolva o status ou peça a um gestor/supervisor
-                          para enviar o lead para outro closer.
+                          para definir o closer que atendeu a reunião.
                         </span>
+
                         {m.closer_return_reason && (
                           <p className="mt-1 text-muted-foreground">Obs.: {m.closer_return_reason}</p>
                         )}
