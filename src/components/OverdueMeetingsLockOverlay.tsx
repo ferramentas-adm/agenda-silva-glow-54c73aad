@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CheckCircle2,
-  XCircle,
   Ban,
   Loader2,
   Eye,
-  CalendarClock,
   Undo2,
   UserCheck,
+  ArrowRightLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,32 +43,40 @@ const STATUS_LABEL: Record<string, string> = {
   nao_confirmada: "Não confirmada",
 };
 
-type DirectStatus = "no_show" | "cancelada";
-
-const TIME_OPTIONS: string[] = (() => {
-  const out: string[] = [];
-  for (let h = 8; h <= 23; h++) {
-    out.push(`${String(h).padStart(2, "0")}:00`);
-    out.push(`${String(h).padStart(2, "0")}:30`);
-  }
-  return out;
-})();
-
 export default function OverdueMeetingsLockOverlay() {
   const { overdue, count, myCloserId, refetch } = useOverdueMeetings();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [rescheduleFor, setRescheduleFor] = useState<string | null>(null);
-  const [newDate, setNewDate] = useState<string>("");
-  const [newTime, setNewTime] = useState<string>("");
   const [noShowFor, setNoShowFor] = useState<OverdueMeeting | null>(null);
   const [novoAgendamentoLead, setNovoAgendamentoLead] = useState<NovoAgendamentoLead | null>(null);
   const [returnFor, setReturnFor] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState<string>("");
+  const [transferFor, setTransferFor] = useState<string | null>(null);
+  const [transferTarget, setTransferTarget] = useState<string>("");
 
+  const isAdminLike = role === "gestor" || role === "supervisor" || role === "moderador" || role === "apresentador";
+
+  const { data: moderadorTipo = null } = useQuery({
+    queryKey: ["my-moderador-tipo", user?.id],
+    enabled: !!user?.id && (role === "moderador" || role === "apresentador"),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("moderador_tipo")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (role === "apresentador") return "sdr" as const;
+      return ((data as any)?.moderador_tipo as "sdr" | "closer" | null) ?? null;
+    },
+  });
+
+  const canTransferToNewCloser =
+    role === "gestor" ||
+    role === "supervisor" ||
+    ((role === "moderador" || role === "apresentador") && moderadorTipo === "sdr");
 
   if (count === 0) return null;
   if (HIDE_ON_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
@@ -82,10 +89,10 @@ export default function OverdueMeetingsLockOverlay() {
     refetch();
   };
 
-  const handleDirect = async (m: OverdueMeeting, newStatus: DirectStatus, reason?: string) => {
+  const handleDirect = async (m: OverdueMeeting, reason?: string) => {
     setUpdatingId(m.id);
     try {
-      const patch: any = { status: newStatus };
+      const patch: any = { status: "no_show" };
       if (reason) patch.cancellation_reason = reason;
       const { data, error } = await supabase
         .from("agendamentos")
@@ -96,72 +103,12 @@ export default function OverdueMeetingsLockOverlay() {
       if (!data || data.length === 0) {
         throw new Error("Sem permissão para alterar este agendamento.");
       }
-      toast.success(newStatus === "no_show" ? "Registrado como não compareceu" : "Status atualizado para Cancelada");
+      toast.success("Registrado como não compareceu");
+      // Mesmo pós-processamento da tela de detalhes: refetch do dia para não deixar o cartão fantasma.
+      await queryClient.refetchQueries({ queryKey: ["agendamentos", m.scheduled_date], exact: true });
       await invalidateAll();
     } catch (err: any) {
       toast.error(err?.message || "Erro ao atualizar status");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  // Reagendar (SDR): mesmo dia → troca de horário; outro dia → cria nova agenda
-  // (a trigger marca a original como "reagendada"). Em ambos os casos a reunião
-  // volta para "Aguardando atribuição", que é responsabilidade do gestor.
-  const handleReschedule = async (m: OverdueMeeting) => {
-    if (!newDate || !newTime) {
-      toast.error("Escolha data e horário");
-      return;
-    }
-    setUpdatingId(m.id);
-    try {
-      if (newDate === m.scheduled_date) {
-        const { data, error } = await supabase
-          .from("agendamentos")
-          .update({
-            scheduled_time: newTime,
-            closer_id: null,
-            status: "agendada",
-            meet_link: null,
-            google_event_id: null,
-          } as any)
-          .eq("id", m.id)
-          .select("id");
-        if (error) throw error;
-        if (!data || data.length === 0) throw new Error("Sem permissão para alterar este agendamento.");
-      } else {
-        const { data: orig, error: origErr } = await supabase
-          .from("agendamentos")
-          .select(
-            "lead_name, lead_phone, briefing, meeting_reason, channel_type, duration_minutes, sdr_responsavel_id, created_by",
-          )
-          .eq("id", m.id)
-          .maybeSingle();
-        if (origErr) throw origErr;
-        const { error } = await supabase.from("agendamentos").insert({
-          lead_name: orig?.lead_name ?? m.lead_name,
-          lead_phone: orig?.lead_phone ?? m.lead_phone,
-          scheduled_date: newDate,
-          scheduled_time: newTime,
-          status: "agendada",
-          closer_id: null,
-          original_agendamento_id: m.id,
-          briefing: orig?.briefing ?? null,
-          meeting_reason: orig?.meeting_reason ?? null,
-          channel_type: orig?.channel_type ?? null,
-          duration_minutes: orig?.duration_minutes ?? 60,
-          sdr_responsavel_id: (orig as any)?.sdr_responsavel_id ?? orig?.created_by ?? user?.id,
-          created_by: user?.id,
-        } as any);
-        if (error) throw error;
-      }
-      toast.success("Reagendado. Reunião enviada para Aguardando atribuição.");
-      setRescheduleFor(null);
-      setNewDate("");
-      setNewTime("");
-      await invalidateAll();
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao reagendar");
     } finally {
       setUpdatingId(null);
     }
@@ -173,7 +120,11 @@ export default function OverdueMeetingsLockOverlay() {
     try {
       const { data, error } = await supabase
         .from("agendamentos")
-        .update({ sdr_handoff_at: new Date().toISOString() } as any)
+        .update({
+          sdr_handoff_at: new Date().toISOString(),
+          closer_returned_at: null,
+          closer_return_reason: null,
+        } as any)
         .eq("id", m.id)
         .select("id");
       if (error) throw error;
@@ -235,6 +186,79 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
+  // Gestor/supervisor/moderador de SDR envia a reunião para outro closer.
+  const handleTransferToNewCloser = async (m: OverdueMeeting) => {
+    if (!transferTarget || transferTarget === m.closer_id) {
+      toast.error("Escolha um closer diferente do atual");
+      return;
+    }
+    setUpdatingId(m.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-transfer-event", {
+        body: { agendamento_id: m.id, new_closer_id: transferTarget },
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error || "Falha ao transferir lead");
+      }
+
+      const newMeetLink = (data?.meet_link as string | null) ?? null;
+      const warnings: string[] = data?.warnings ?? [];
+
+      // Após a transferência do Google, encaminha a responsabilidade para o novo closer.
+      const { error: updErr } = await supabase
+        .from("agendamentos")
+        .update({
+          sdr_handoff_at: new Date().toISOString(),
+          closer_returned_at: null,
+          closer_return_reason: null,
+        } as any)
+        .eq("id", m.id);
+      if (updErr) throw updErr;
+
+      await logAudit("transfer_lead", "agendamento", m.id, {
+        lead_name: m.lead_name,
+        scheduled_date: m.scheduled_date,
+        scheduled_time: m.scheduled_time,
+        from_closer: m.closer_name ?? "",
+        to_closer_id: transferTarget,
+        meet_link_new: newMeetLink,
+        source: "trava",
+        google_warnings: warnings,
+      });
+
+      if (warnings.includes("new_closer_not_connected")) {
+        toast.warning("Lead transferido, mas o novo closer não tem Google Calendar conectado.");
+      } else if (warnings.includes("create_event_failed")) {
+        toast.warning("Lead transferido, mas falhou ao criar o evento no Google.");
+      } else {
+        toast.success("Lead transferido para o novo closer");
+      }
+
+      setTransferFor(null);
+      setTransferTarget("");
+      await invalidateAll();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao transferir lead");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Lista de closers ativos para o dialog "Enviar para novo closer".
+  const { data: transferableClosers = [] } = useQuery({
+    queryKey: ["transferable-closers-trava"],
+    enabled: transferFor !== null,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("closers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name", { ascending: true });
+      return data ?? [];
+    },
+  });
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/95 backdrop-blur-md"
@@ -250,12 +274,14 @@ export default function OverdueMeetingsLockOverlay() {
                 Atualize as reuniões vencidas para continuar
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Reuniões exigem atualização <strong>1h05 após o horário agendado</strong>. Primeiro o{" "}
-                <strong>SDR</strong> resolve (Cancelar, No-show ou Reagendar). Se nenhuma opção for
-                factível, ele encaminha para o <strong>Closer</strong>, que marca{" "}
+                Reuniões exigem atualização <strong>1h05 após o horário agendado</strong>. O{" "}
+                <strong>SDR</strong> resolve marcando <strong>Não compareceu</strong> ou encaminhando
+                para o <strong>Closer</strong>. Quando o closer original não pode atender, gestores,
+                supervisores e moderadores de SDR podem enviar a reunião para um{" "}
+                <strong>novo closer</strong>. O <strong>Closer</strong>, por sua vez, marca{" "}
                 <strong>Realizada</strong> ou, se não foi ele quem atendeu, devolve a reunião para o{" "}
-                <strong>SDR responsável</strong> resolver ou remanejar na agenda. Quando a agenda foi
-                criada pelo próprio closer da reunião, todas as opções aparecem juntas.
+                <strong>SDR responsável</strong>. Quando a agenda foi criada pelo próprio closer da
+                reunião, todas as opções aparecem juntas.
               </p>
             </div>
           </div>
@@ -325,8 +351,8 @@ export default function OverdueMeetingsLockOverlay() {
                         </span>
                         <span className="text-muted-foreground">
                           {" "}
-                          — não foi ele quem atendeu. Resolva o status ou remaneje o lead para o
-                          closer correto pela agenda.
+                          — não foi ele quem atendeu. Resolva o status ou peça a um gestor/supervisor
+                          para enviar o lead para outro closer.
                         </span>
                         {m.closer_return_reason && (
                           <p className="mt-1 text-muted-foreground">Obs.: {m.closer_return_reason}</p>
@@ -357,11 +383,60 @@ export default function OverdueMeetingsLockOverlay() {
                           className="h-8 text-xs gap-1"
                         >
                           <UserCheck className="h-3.5 w-3.5" />
-                          Encaminhar para o Closer
+                          Enviar para o closer
+                        </Button>
+                      )}
+                      {canTransferToNewCloser && m.closer_id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => {
+                            setTransferFor(transferFor === m.id ? null : m.id);
+                            setTransferTarget("");
+                          }}
+                          className="h-8 text-xs gap-1"
+                        >
+                          <ArrowRightLeft className="h-3.5 w-3.5" />
+                          Enviar para novo closer
                         </Button>
                       )}
                     </div>
 
+                    {transferFor === m.id && (
+                      <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
+                        <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+                          <span className="text-[11px] text-muted-foreground">
+                            Novo closer * — o evento será recriado na agenda dele
+                          </span>
+                          <Select
+                            value={transferTarget}
+                            onValueChange={setTransferTarget}
+                            disabled={busy}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Selecione o closer" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {transferableClosers.map((c) => (
+                                <SelectItem key={c.id} value={c.id} className="text-xs">
+                                  {c.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs"
+                          disabled={busy || !transferTarget || transferTarget === m.closer_id}
+                          onClick={() => handleTransferToNewCloser(m)}
+                        >
+                          {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                          Confirmar transferência
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -433,7 +508,7 @@ export default function OverdueMeetingsLockOverlay() {
         onConfirm={async (reason) => {
           const target = noShowFor;
           if (!target) return;
-          await handleDirect(target, "no_show", reason);
+          await handleDirect(target, reason);
           setNoShowFor(null);
           setNovoAgendamentoLead({
             lead_name: target.lead_name,
