@@ -32,6 +32,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { countsAsSdr } from "@/lib/sdrOverrides";
+import { splitNaoCompareceu } from "@/lib/noShowReasons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
@@ -306,7 +307,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id, cancellation_reason")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -1011,6 +1012,8 @@ export function CalendarContent() {
 
           const sourceCounts = isCloserView ? closerOwnStatusCounts : allStatusCounts;
           const sourceAgendamentos = isCloserView ? closerOwnAgendamentos : filtered;
+          // Cancelado/No-show são classificados pelo motivo escolhido em "Não compareceu".
+          const naoComparecimentoSplit = splitNaoCompareceu(sourceAgendamentos as any);
           const sourceTotalReal = sourceCounts["realizada"] ?? 0;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
@@ -1033,7 +1036,6 @@ export function CalendarContent() {
             { key: "realizada", label: "Realizadas", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
             { key: "cancelada", label: "Canceladas", icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
             { key: "no_show", label: "No-shows", icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" },
-            { key: "reagendada", label: "Reagendadas", icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10" },
             {
               key: "nao_comparecimento",
               label: "Não comparecimento",
@@ -1047,7 +1049,7 @@ export function CalendarContent() {
             <div className="space-y-2">
               <div className={cn(
                 "grid grid-cols-2 sm:grid-cols-4 gap-3",
-                isCloserView ? "xl:grid-cols-9" : "xl:grid-cols-12"
+                isCloserView ? "xl:grid-cols-8" : "xl:grid-cols-11"
               )}>
 
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
@@ -1056,18 +1058,11 @@ export function CalendarContent() {
                 else if (key === "total_agend") count = totalAgend;
                 else if (key === "ainda_real") count = aindaReal;
                 else if (key === "nao_comparecimento") {
-                  count =
-                    (sourceCounts["cancelada"] ?? 0) +
-                    (sourceCounts["no_show"] ?? 0) +
-                    (sourceCounts["reagendada"] ?? 0);
-                } else if (key === "reagendada") {
-                  // Conta tanto originais com status='reagendada' quanto agendas novas
-                  // com original_agendamento_id (detecção automática preserva status da original).
-                  const ids = new Set<string>();
-                  sourceAgendamentos.forEach((a) => {
-                    if (a.status === "reagendada" || (a as any).original_agendamento_id) ids.add(a.id);
-                  });
-                  count = ids.size;
+                  count = naoComparecimentoSplit.cancelada.length + naoComparecimentoSplit.noShow.length;
+                } else if (key === "cancelada") {
+                  count = naoComparecimentoSplit.cancelada.length;
+                } else if (key === "no_show") {
+                  count = naoComparecimentoSplit.noShow.length;
                 } else {
                   count = sourceCounts[key] ?? 0;
                 }
