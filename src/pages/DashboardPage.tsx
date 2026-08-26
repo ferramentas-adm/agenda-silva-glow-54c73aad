@@ -2504,7 +2504,7 @@ const DayView = memo(function DayView({
                                 closerColor.border,
                                 isCancelled && "opacity-60",
                                 highlightAgId === ag.id &&
-                                  "ring-4 ring-primary ring-offset-4 ring-offset-card animate-search-highlight shadow-[0_0_28px_6px_hsl(var(--primary)/0.55)] opacity-100 z-20"
+                                  "border-4 border-primary animate-search-highlight opacity-100 z-20"
                               )}
 
                               onClick={(e) => {
