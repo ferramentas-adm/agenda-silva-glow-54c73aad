@@ -186,7 +186,8 @@ export default function OverdueMeetingsLockOverlay() {
     }
   };
 
-  // Gestor/supervisor/moderador de SDR envia a reunião para outro closer.
+  // Gestor/supervisor/moderador de SDR define qual closer efetivamente atendeu a reunião.
+  // A reunião já aconteceu: nada é criado no Google, apenas a responsabilidade de registro muda.
   const handleTransferToNewCloser = async (m: OverdueMeeting) => {
     if (!transferTarget || transferTarget === m.closer_id) {
       toast.error("Escolha um closer diferente do atual");
@@ -194,58 +195,25 @@ export default function OverdueMeetingsLockOverlay() {
     }
     setUpdatingId(m.id);
     try {
-      const { data, error } = await supabase.functions.invoke("google-transfer-event", {
-        body: { agendamento_id: m.id, new_closer_id: transferTarget },
-      });
+      const { error } = await supabase.rpc("reassign_agendamento_closer_for_result" as any, {
+        _agendamento_id: m.id,
+        _new_closer_id: transferTarget,
+      } as any);
       if (error) throw error;
-      if (!data?.success) {
-        throw new Error(data?.error || "Falha ao transferir lead");
-      }
 
-      const newMeetLink = (data?.meet_link as string | null) ?? null;
-      const warnings: string[] = data?.warnings ?? [];
-
-      // Após a transferência do Google, encaminha a responsabilidade para o novo closer.
-      const { error: updErr } = await supabase
-        .from("agendamentos")
-        .update({
-          sdr_handoff_at: new Date().toISOString(),
-          closer_returned_at: null,
-          closer_return_reason: null,
-        } as any)
-        .eq("id", m.id);
-      if (updErr) throw updErr;
-
-      await logAudit("transfer_lead", "agendamento", m.id, {
-        lead_name: m.lead_name,
-        scheduled_date: m.scheduled_date,
-        scheduled_time: m.scheduled_time,
-        from_closer: m.closer_name ?? "",
-        to_closer_id: transferTarget,
-        meet_link_new: newMeetLink,
-        source: "trava",
-        google_warnings: warnings,
-      });
-
-      if (warnings.includes("new_closer_not_connected")) {
-        toast.warning("Lead transferido, mas o novo closer não tem Google Calendar conectado.");
-      } else if (warnings.includes("create_event_failed")) {
-        toast.warning("Lead transferido, mas falhou ao criar o evento no Google.");
-      } else {
-        toast.success("Lead transferido para o novo closer");
-      }
-
+      toast.success("Closer que atendeu definido — ele já pode registrar a reunião");
       setTransferFor(null);
       setTransferTarget("");
       await invalidateAll();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao transferir lead");
+      toast.error(err?.message || "Erro ao definir o closer que atendeu");
     } finally {
       setUpdatingId(null);
     }
   };
 
-  // Lista de closers ativos para o dialog "Enviar para novo closer".
+
+  // Lista de closers ativos para definir quem atendeu a reunião.
   const { data: transferableClosers = [] } = useQuery({
     queryKey: ["transferable-closers-trava"],
     enabled: transferFor !== null,
@@ -276,13 +244,14 @@ export default function OverdueMeetingsLockOverlay() {
               <p className="text-sm text-muted-foreground mt-1">
                 Reuniões exigem atualização <strong>1h05 após o horário agendado</strong>. O{" "}
                 <strong>SDR</strong> resolve marcando <strong>Não compareceu</strong> ou encaminhando
-                para o <strong>Closer</strong>. Quando o closer original não pode atender, gestores,
-                supervisores e moderadores de SDR podem enviar a reunião para um{" "}
-                <strong>novo closer</strong>. O <strong>Closer</strong>, por sua vez, marca{" "}
-                <strong>Realizada</strong> ou, se não foi ele quem atendeu, devolve a reunião para o{" "}
-                <strong>SDR responsável</strong>. Quando a agenda foi criada pelo próprio closer da
-                reunião, todas as opções aparecem juntas.
+                para o <strong>Closer</strong>. Quando quem atendeu foi outro closer, gestores,
+                supervisores e moderadores de SDR podem{" "}
+                <strong>definir o closer que atendeu</strong> para que ele registre o resultado. O{" "}
+                <strong>Closer</strong>, por sua vez, marca <strong>Realizada</strong> ou, se não foi
+                ele quem atendeu, devolve a reunião para o <strong>SDR responsável</strong>. Quando a
+                agenda foi criada pelo próprio closer da reunião, todas as opções aparecem juntas.
               </p>
+
             </div>
           </div>
           <div className="mt-3 flex justify-end">
@@ -352,8 +321,9 @@ export default function OverdueMeetingsLockOverlay() {
                         <span className="text-muted-foreground">
                           {" "}
                           — não foi ele quem atendeu. Resolva o status ou peça a um gestor/supervisor
-                          para enviar o lead para outro closer.
+                          para definir o closer que atendeu a reunião.
                         </span>
+
                         {m.closer_return_reason && (
                           <p className="mt-1 text-muted-foreground">Obs.: {m.closer_return_reason}</p>
                         )}
@@ -398,7 +368,8 @@ export default function OverdueMeetingsLockOverlay() {
                           className="h-8 text-xs gap-1"
                         >
                           <ArrowRightLeft className="h-3.5 w-3.5" />
-                          Enviar para novo closer
+                          Definir closer que atendeu
+
                         </Button>
                       )}
                     </div>
@@ -407,8 +378,10 @@ export default function OverdueMeetingsLockOverlay() {
                       <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
                         <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
                           <span className="text-[11px] text-muted-foreground">
-                            Novo closer * — o evento será recriado na agenda dele
+                            Closer que atendeu * — apenas para registro do resultado (nada muda no
+                            Google)
                           </span>
+
                           <Select
                             value={transferTarget}
                             onValueChange={setTransferTarget}
@@ -433,7 +406,7 @@ export default function OverdueMeetingsLockOverlay() {
                           onClick={() => handleTransferToNewCloser(m)}
                         >
                           {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-                          Confirmar transferência
+                          Confirmar closer que atendeu
                         </Button>
                       </div>
                     )}
