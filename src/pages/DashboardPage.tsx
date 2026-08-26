@@ -1587,39 +1587,24 @@ export function CalendarContent() {
 
 
 
-              {canChangeStatus && (() => {
-                // SDR só pode operar em reagendadas se ele mesmo criou o reagendamento.
-                const sdrIsOwnerOfReschedule =
-                  role === "sdr" &&
-                  (detailAg.sdr_responsavel_id === user?.id || detailAg.created_by === user?.id);
-                const sdrBlocked =
-                  detailAg.status === "reagendada" && role === "sdr" && !sdrIsOwnerOfReschedule;
-                return (
+              {canChangeStatus && (
                 <div className="space-y-2">
                   <p className="text-muted-foreground text-xs font-medium">Alterar status</p>
-                  {/* Closers mantêm acesso total a Realizada/Reagendar mesmo em
-                      reagendamentos. SDRs ficam bloqueados em reagendada quando
-                      NÃO foram os criadores do reagendamento. */}
-                  {sdrBlocked ? (
-                    <p className="text-[11px] text-muted-foreground italic rounded-md border border-primary/10 bg-muted/30 px-2 py-2">
-                      Este agendamento foi marcado como <strong>Reagendada</strong>. Para alterar o status,
-                      contate um gestor ou moderador.
-                    </p>
-                  ) : (
-                    <>
+                  <>
                       <p className="text-[10px] text-muted-foreground">
                         Para trocar horário ou registrar ausência, use "Não compareceu" —
                         em seguida o sistema oferece criar uma nova reunião.
                       </p>
 
                       <div className="flex flex-wrap gap-2">
-                        {/* Confirmar — disponível para SDR/Gestor/Mod quando status é "agendada"
-                            (lead aguardando confirmação). Closer não vê o botão Confirmar. */}
-                        {role !== "closer" && detailAg.status !== "confirmada" && detailAg.status !== "reagendada" && detailAg.status !== "realizada" && (
+                        {/* Confirmar — SDR/Gestor/Moderador/Supervisor podem confirmar
+                            enquanto a reunião não tem desfecho. Closer não vê o botão. */}
+                        {role !== "closer" && ["agendada", "nao_confirmada", "pendente"].includes(detailAg.status) && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10" disabled={updatingStatus} onClick={() => handleStatusChange("confirmada")}>
                             <CheckCircle2 className="h-3.5 w-3.5" />Confirmar
                           </Button>
                         )}
+
                         {role !== "sdr" && detailAg.status !== "realizada" && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
