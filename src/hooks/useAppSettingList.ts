@@ -99,6 +99,8 @@ export const APP_SETTING_KEYS = {
   produtos: "produtos",
   closer_error_categories: "closer_error_categories",
   cancellation_reasons: "cancellation_reasons",
+  no_show_reasons: "no_show_reasons",
+
   order_bumps: "order_bumps",
 } as const;
 
