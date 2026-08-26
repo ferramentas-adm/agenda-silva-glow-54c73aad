@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   PlusCircle, CalendarOff, ChevronLeft, ChevronRight, Video, Clock, Trash2,
   Phone, User, FileText, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban,
-  CalendarDays, Pencil, Users, PenLine, Hourglass,
+  CalendarDays, Pencil, Users, PenLine, Hourglass, Search, X,
 } from "lucide-react";
 
 import AppLayout from "@/components/AppLayout";
