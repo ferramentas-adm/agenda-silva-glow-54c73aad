@@ -31,10 +31,11 @@ import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
 import { countsAsSdr } from "@/lib/sdrOverrides";
 import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
+import NaoComparecimentoTab from "@/components/dashboard/NaoComparecimentoTab";
 import { SdrTeamBadge } from "@/components/sdr/SdrTeamBadge";
 import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr" | "nao_comparecimento";
 
 const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
@@ -44,6 +45,7 @@ const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "carga", label: "Follows Closer", gestorOnly: true },
   { key: "erros_sdr", label: "Erros", gestorOnly: true },
+  { key: "nao_comparecimento", label: "Não comparecimento", gestorOnly: true },
 ];
 const ROTATION_INTERVAL = 30000;
 
@@ -704,6 +706,13 @@ export default function DashboardComercialPage() {
         {activeTabKey === "carga" && isAdmin && <CargaClosersTab />}
         {activeTabKey === "erros_sdr" && isAdmin && (
           <ErrosTab currentDate={currentDate} dateRange={dateRange} />
+        )}
+        {activeTabKey === "nao_comparecimento" && isAdmin && (
+          <NaoComparecimentoTab
+            currentDate={currentDate}
+            dateRange={isRangeActive ? dateRange : undefined}
+            updatedAgo={updatedAgo}
+          />
         )}
         
       </div>
