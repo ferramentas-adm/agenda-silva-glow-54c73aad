@@ -112,6 +112,8 @@ export const APP_SETTING_LABELS: Record<string, string> = {
   produtos: "Produtos",
   closer_error_categories: "Categorias de erro do Closer",
   cancellation_reasons: "Motivos de cancelamento",
+  no_show_reasons: "Motivos de não comparecimento",
+
   order_bumps: "Order bumps",
 };
 
