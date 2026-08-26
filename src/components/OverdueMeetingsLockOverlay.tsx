@@ -244,13 +244,14 @@ export default function OverdueMeetingsLockOverlay() {
               <p className="text-sm text-muted-foreground mt-1">
                 Reuniões exigem atualização <strong>1h05 após o horário agendado</strong>. O{" "}
                 <strong>SDR</strong> resolve marcando <strong>Não compareceu</strong> ou encaminhando
-                para o <strong>Closer</strong>. Quando o closer original não pode atender, gestores,
-                supervisores e moderadores de SDR podem enviar a reunião para um{" "}
-                <strong>novo closer</strong>. O <strong>Closer</strong>, por sua vez, marca{" "}
-                <strong>Realizada</strong> ou, se não foi ele quem atendeu, devolve a reunião para o{" "}
-                <strong>SDR responsável</strong>. Quando a agenda foi criada pelo próprio closer da
-                reunião, todas as opções aparecem juntas.
+                para o <strong>Closer</strong>. Quando quem atendeu foi outro closer, gestores,
+                supervisores e moderadores de SDR podem{" "}
+                <strong>definir o closer que atendeu</strong> para que ele registre o resultado. O{" "}
+                <strong>Closer</strong>, por sua vez, marca <strong>Realizada</strong> ou, se não foi
+                ele quem atendeu, devolve a reunião para o <strong>SDR responsável</strong>. Quando a
+                agenda foi criada pelo próprio closer da reunião, todas as opções aparecem juntas.
               </p>
+
             </div>
           </div>
           <div className="mt-3 flex justify-end">
