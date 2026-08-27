@@ -231,6 +231,37 @@ export default function BloqueioMassaPage() {
       const { error } = await supabase.from("closer_blocks").insert(rows);
       if (error) throw error;
 
+      // Aviso: reuniões ativas que ficam dentro dos intervalos bloqueados
+      let meetingsInside = 0;
+      try {
+        const toMin = (t: string) => {
+          const [h, m] = t.split(":").map(Number);
+          return (h || 0) * 60 + (m || 0);
+        };
+        let mq = supabase
+          .from("agendamentos")
+          .select("scheduled_date, scheduled_time, duration_minutes")
+          .in("closer_id", selected)
+          .is("deleted_at", null)
+          .in("status", ["pendente", "confirmada", "nao_confirmada", "agendada", "realizada"]);
+        if (mode === "pontual") {
+          mq = mq.eq("scheduled_date", pickedDateToYMD(date!));
+        } else {
+          mq = mq.gte("scheduled_date", todayStr);
+        }
+        const { data: meetings } = await mq;
+        meetingsInside = (meetings ?? []).filter((a) => {
+          if (mode === "recorrente") {
+            const wd = new Date(`${a.scheduled_date}T12:00:00`).getDay();
+            if (!weekdays.includes(wd)) return false;
+          }
+          const aStart = toMin(String(a.scheduled_time || "00:00"));
+          const aEnd = aStart + (a.duration_minutes ?? 60);
+          return ranges.some((r) => aStart < toMin(r.end) && aEnd > toMin(r.start));
+        }).length;
+      } catch {
+        // aviso é best-effort
+      }
 
       toast.success(
         (rows.length === 1 ? "Bloqueio criado!" : `${rows.length} bloqueios criados!`) +
@@ -238,6 +269,13 @@ export default function BloqueioMassaPage() {
             ? ` ${replacedCount} bloqueio(s) anterior(es) substituído(s).`
             : "")
       );
+      if (meetingsInside > 0) {
+        toast.warning(
+          `Atenção: ${meetingsInside} reunião(ões) já agendada(s) ficam dentro dos horários bloqueados.`,
+          { duration: 8000 }
+        );
+      }
+
       setSelected([]);
       setDate(undefined);
       setWeekdays([]);
