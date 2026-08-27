@@ -14,7 +14,7 @@ Ambos veem e operam tudo do dia a dia (calendário, reuniões, follow-ups, pagam
 | Excluir reuniões, vendas e pagamentos | Sim | Sim |
 | Limpeza de logs antigos | Sim | Não |
 
-Resumo: Moderador = operação completa + gestão de usuários comuns. Gestor = tudo isso + controle de acesso (funções, permissões, ativação de contas) e cadastro de closers.
+Resumo: Moderador = operação completa + gestão de usuários comuns (incluindo ativar/inativar quem não é Moderador nem Administrador). Gestor = tudo isso + controle de acesso (funções, permissões, ativar/inativar qualquer conta) e cadastro de closers.
 
 ## O que está acontecendo com o Pedro Vieira
 
