@@ -912,15 +912,24 @@ function UsersSection() {
                           </Button>
                         )}
                         {canActOn(u.role) && (
-                          <Switch
-                            checked={u.active}
-                            onCheckedChange={(v) => {
-                              if (v) handleToggleActive(u, true);
-                              else setDeactivateTarget(u);
-                            }}
-                            disabled={togglingId === u.userId}
-                          />
+                          <span
+                            title={
+                              canToggleActive(u)
+                                ? (u.active ? "Inativar usuário" : "Ativar usuário")
+                                : "Apenas Administradores podem ativar/inativar contas de Moderador ou Administrador"
+                            }
+                          >
+                            <Switch
+                              checked={u.active}
+                              onCheckedChange={(v) => {
+                                if (v) handleToggleActive(u, true);
+                                else setDeactivateTarget(u);
+                              }}
+                              disabled={togglingId === u.userId || !canToggleActive(u)}
+                            />
+                          </span>
                         )}
+
                         {canActOn(u.role) && u.type === "profile" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
                             onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
