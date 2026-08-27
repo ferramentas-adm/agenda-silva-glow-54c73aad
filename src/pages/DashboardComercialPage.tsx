@@ -61,6 +61,7 @@ interface AgendamentoMetric {
   original_agendamento_id: string | null;
   cancellation_reason: string | null;
   lead_phone: string | null;
+  meeting_reason: string | null;
 }
 
 interface SDRProfile {
