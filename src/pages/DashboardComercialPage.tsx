@@ -205,7 +205,7 @@ export default function DashboardComercialPage() {
       const { data, error } = await build(
         supabase
           .from("agendamentos")
-          .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id, cancellation_reason, lead_phone")
+          .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id, cancellation_reason, lead_phone, meeting_reason")
           .is("deleted_at", null)
       ).range(from, from + pageSize - 1);
       if (error || !data || data.length === 0) break;
