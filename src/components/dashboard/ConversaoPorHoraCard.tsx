@@ -308,14 +308,25 @@ export default function ConversaoPorHoraCard({ range, closerId }: Props) {
               {m.label}
             </Button>
           ))}
-          <Button
-            variant={cumulative ? "default" : "outline"}
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setCumulative((v) => !v)}
-          >
-            {cumulative ? "Acumulado" : "Hora a hora"}
-          </Button>
+          <div className="inline-flex rounded-md border border-border overflow-hidden">
+            <Button
+              variant={cumulative ? "ghost" : "default"}
+              size="sm"
+              className="h-7 text-xs px-2 rounded-none"
+              onClick={() => setCumulative(false)}
+            >
+              Hora a hora
+            </Button>
+            <Button
+              variant={cumulative ? "default" : "ghost"}
+              size="sm"
+              className="h-7 text-xs px-2 rounded-none"
+              onClick={() => setCumulative(true)}
+            >
+              Acumulado
+            </Button>
+          </div>
+
         </div>
       </div>
 
