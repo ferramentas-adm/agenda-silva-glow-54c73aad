@@ -479,48 +479,43 @@ export default function DashboardComercialPage() {
         }));
     };
 
-    const { cancelada: canceladaAgs, noShow: noShowAgs } = splitNaoCompareceu(todayAgs as any);
-    const noShowCount = noShowAgs.length;
-    const canceladoCount = canceladaAgs.length;
-    const compareceuCount = sc(todayAgs, "realizada");
-    // totalDia inclui canceladas — alinhado ao Dashboard.
-    const totalDia = todayAgs.length;
-    // Taxa de Comparecimento = realizadas / total de agendamentos do período (inclui canceladas)
-    const taxaComp = totalDia > 0
-      ? (compareceuCount / totalDia) * 100
-      : 0;
+    // Contagens canônicas do dia/período (mesma função do Calendário).
+    const dayM = computeAgendaMetrics(todayAgs as any, roleMap);
+    const totalDia = dayM.totalAgend;
+    const taxaComp = totalDia > 0 ? (dayM.realizada / totalDia) * 100 : 0;
 
-    const prevMonthSdr = prevMonthAgs.filter(isSdrAg);
+    const prevMonthSdr = prevMonthAgs.filter(inScope);
 
     return {
-      todayScheduled: todayAgs.length,
+      todayScheduled: totalDia,
       todayCreated: todayCreated.length,
       yesterdayScheduled: yesterdayAgs.length,
       tomorrowScheduled: tomorrowAgs.length,
       monthTotal: monthAgs.length,
       monthDiff: monthAgs.length - prevMonthSdr.length,
-      confirmado: sc(todayAgs, "confirmada"),
-      agendado: sc(todayAgs, "agendada"),
-      compareceu: sc(todayAgs, "realizada"),
-      noShow: noShowCount,
-      cancelado: canceladoCount,
+      confirmado: dayM.confirmada,
+      agendado: dayM.agendada,
+      compareceu: dayM.realizada,
+      noShow: dayM.noShow,
+      cancelado: dayM.cancelada,
       taxaComp,
       totalDia,
       channelsToday: byChannel(todayAgs),
       channelsCreatedToday: byChannel(todayCreated),
       // IDs para drill-down
-      todayScheduledIds: todayAgs.map(a => a.id),
+      todayScheduledIds: dayM.ids.total,
       todayCreatedIds: todayCreated.map(a => a.id),
       yesterdayScheduledIds: yesterdayAgs.map(a => a.id),
       tomorrowScheduledIds: tomorrowAgs.map(a => a.id),
       monthTotalIds: monthAgs.map(a => a.id),
-      confirmadoIds: todayAgs.filter(a => a.status === "confirmada").map(a => a.id),
-      agendadoIds: todayAgs.filter(a => a.status === "agendada").map(a => a.id),
-      compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
-      noShowIds: noShowAgs.map((a: any) => a.id),
-      canceladoIds: canceladaAgs.map((a: any) => a.id),
+      confirmadoIds: dayM.ids.confirmada,
+      agendadoIds: dayM.ids.agendada,
+      compareceuIds: dayM.ids.realizada,
+      noShowIds: dayM.ids.noShow,
+      canceladoIds: dayM.ids.cancelada,
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, roleMap, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
+
 
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
