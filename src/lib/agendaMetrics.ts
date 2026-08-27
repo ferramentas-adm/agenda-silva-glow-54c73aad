@@ -57,6 +57,21 @@ export const isSecondMeetingAgenda = (a: AgendaMetricInput, roleMap: RoleMap): b
   return false;
 };
 
+/**
+ * A reunião já ocorreu? Compara `scheduled_date` + `scheduled_time` com o
+ * "agora" em BRT. Agendas de dias anteriores sempre contam como ocorridas.
+ */
+export const hasElapsed = (a: AgendaMetricInput, now = brPartsOf()): boolean => {
+  if (!a.scheduled_date) return false;
+  const nowYmd = `${now.year}-${String(now.month).padStart(2, "0")}-${String(now.day).padStart(2, "0")}`;
+  if (a.scheduled_date < nowYmd) return true;
+  if (a.scheduled_date > nowYmd) return false;
+  const [hh, mm] = (a.scheduled_time || "23:59").split(":").map((v) => Number(v) || 0);
+  return hh * 60 + mm <= now.hour * 60 + now.minute;
+};
+
+
+
 export interface AgendaMetrics {
   /** Total do dia = SDR + 2ª reunião (sem pendente). */
   totalAgend: number;
