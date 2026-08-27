@@ -379,19 +379,20 @@ export default function DashboardComercialPage() {
     });
     const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
 
-    // Pool base: agendamentos de SDR — usa MESMA regra do Dashboard (calendário):
-    // created_by é SDR OU sdr_responsavel_id está preenchido (atribuído por gestor/mod).
-    const isSdrAg = (a: AgendamentoMetric) =>
-      (!!a.created_by && sdrUserIds.has(a.created_by)) || !!a.sdr_responsavel_id;
+    // Pool base canônico: status válidos (sem `pendente`) e agenda de SDR ou 2ª
+    // reunião de closer — recorte idêntico ao do Calendário.
+    const isSdrAg = (a: AgendamentoMetric) => isSdrAgendaShared(a, roleMap);
+    const inScope = (a: AgendamentoMetric) =>
+      isCountableStatus(a.status) && (isSdrAg(a) || isSecondMeetingAgendaShared(a, roleMap));
 
-    const sdrAgs = agendamentos.filter(isSdrAg);
+    const sdrAgs = agendamentos.filter(inScope);
     // Para "Geradas/Criadas" usamos o pool fetched por created_at (createdAgs)
     // — assim incluímos reuniões criadas hoje mesmo que agendadas para fora
     // do range mensal (o pool `agendamentos` é filtrado por scheduled_date).
-    // Exclui reagendamentos (que têm original_agendamento_id) — só conta agendas novas.
     const sdrCreatedAgs = createdAgs.filter(
       a => isSdrAg(a) && !a.original_agendamento_id,
     );
+
 
     // Quando há intervalo ativo, "todayAgs"/"todayCreated" passam a ser
     // a soma agregada de todo o período selecionado. Caso contrário, mantém
