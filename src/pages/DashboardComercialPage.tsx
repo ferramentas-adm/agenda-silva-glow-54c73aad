@@ -364,10 +364,6 @@ export default function DashboardComercialPage() {
   // Regra de negócio: as contagens usam as métricas canônicas de
   // src/lib/agendaMetrics.ts — as MESMAS do Calendário (faixa superior),
   // para que os dois painéis nunca divirjam.
-  const sdrUserIds = useMemo(
-    () => new Set(sdrProfiles.map(p => p.user_id)),
-    [sdrProfiles],
-  );
 
 
   const metrics = useMemo(() => {
