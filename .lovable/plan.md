@@ -38,10 +38,13 @@ Isso explica a sensação de "não consigo fazer nada": ele entra (vários login
    - Configurações/listas: incluir Supervisor.
    - Revisão de erro de closer: permitir criação por Supervisor (já podia atualizar).
 3. Alinhar a matriz de permissões do Supervisor com o que ele realmente pode fazer (manter Admin e Logs desligados, para não prometer telas que ele não deve gerenciar).
-4. Verificação final: revisar cada permissão da matriz de Gestor, Moderador, Supervisor e Apresentador contra as regras do banco e reportar qualquer divergência restante.
+4. **Nova regra de ativação/inativação:** Moderador passa a poder ativar e inativar usuários, **exceto** contas que tenham função de Moderador ou de Administrador (Gestor) — essas continuam restritas ao Administrador. Um Moderador também não pode inativar a própria conta. A tela de Usuários passa a mostrar o botão de status para o Moderador, desabilitado com explicação quando a conta alvo for protegida, e toda mudança continua registrada nos logs de auditoria com quem fez.
+5. Verificação final: revisar cada permissão da matriz de Gestor, Moderador, Supervisor e Apresentador contra as regras do banco e reportar qualquer divergência restante.
 
 ## Detalhes técnicos
 
 - Migração para recriar as políticas de `tasks` (SELECT/INSERT/UPDATE/DELETE), `closer_blocks` (INSERT/DELETE), `app_settings` (ALL) e `closer_error_reviews` (INSERT) usando `public.is_manager()` (gestor + moderador + supervisor) em vez de listas fixas de `has_role`.
+- Ativação/inativação: atualizar `public.guard_profile_active_change()` para aceitar `is_gestor()` OU (`has_role(auth.uid(),'moderador')` E o alvo `NEW.user_id` não possuir `gestor`/`moderador` em `user_roles` E `NEW.user_id <> auth.uid()`), mantendo o `INSERT` em `audit_logs`. Ampliar a policy `Gestors can update profiles` (`profiles` UPDATE) para incluir moderador com a mesma restrição, e ajustar a edge function `manage-user` para autorizar moderador nessa ação com a mesma checagem no servidor.
+- Frontend: `src/pages/AdminPage.tsx` e `src/hooks/usePermissions.ts` — liberar o controle de status para moderador e desabilitar/explicar quando o alvo for gestor ou moderador.
 - `role_permissions`: sem mudança de esquema; apenas conferência dos valores por papel.
 - Troca de papel do Pedro via painel Administração (ou atualização direta em `user_roles`), mantendo o registro em `audit_logs`.
