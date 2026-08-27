@@ -417,8 +417,9 @@ export default function ConversaoPorHoraCard({ range, closerId }: Props) {
           <thead>
             <tr className="text-muted-foreground">
               <th className="text-left font-medium py-1">Hora</th>
-              <th className="text-right font-medium py-1">Realizadas</th>
-              <th className="text-right font-medium py-1">Vendas</th>
+              <th className="text-right font-medium py-1">{cumulative ? "Realizadas (acum.)" : "Realizadas"}</th>
+              <th className="text-right font-medium py-1">{cumulative ? "Vendas (acum.)" : "Vendas"}</th>
+
               <th className="text-right font-medium py-1">Conversão</th>
               <th className="text-right font-medium py-1" title={cmpLabel}>{cmpColumnLabel}</th>
               <th className="text-right font-medium py-1">Δ</th>
