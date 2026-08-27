@@ -385,8 +385,25 @@ export default function ConversaoPorHoraCard({ range, closerId }: Props) {
         </div>
       </div>
 
+      {diagCounts.pendentes > 0 && (
+        <div
+          className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+          title={`Vendas de 1ª call aguardando status "realizada": ${diagCounts.pendentes}. Vendas de follow-up/2ª reunião no período (fora deste card): ${diagCounts.followUps}. Vendas fechadas hoje de reuniões de outros dias aparecem no dia da reunião.`}
+        >
+          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>
+            {diagCounts.pendentes === 1
+              ? "1 venda de 1ª call ainda não entra no cálculo"
+              : `${diagCounts.pendentes} vendas de 1ª call ainda não entram no cálculo`}{" "}
+            porque a reunião não está marcada como <strong>realizada</strong>. Elas entram automaticamente
+            quando o closer atualizar o status.
+          </span>
+        </div>
+      )}
+
       <p className="text-xs text-muted-foreground">
-        Reuniões marcadas como <strong>realizadas</strong> e vendas de 1ª call, pela hora da reunião (BRT).
+        Vendas de 1ª call em reuniões marcadas como <strong>realizadas</strong>, pela hora da reunião (BRT).
+
         A conversão de cada hora é vendas ÷ reuniões realizadas naquela hora. Comparação:{" "}
         {cmpMode === "prev" ? `período anterior equivalente (${cmpLabel})` : cmpLabel}.
         {!isSingleDay && " Comparação por dia da semana disponível apenas com um único dia selecionado."}
