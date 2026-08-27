@@ -10,7 +10,7 @@ Passa a ser:
 - **Numerador** = vendas do closer no período (como hoje, incluindo vendas de follow-up e 2ª reunião).
 - O rótulo do card continua "X vendas · Y reuniões · Z% conv.", agora com Y = reuniões realizadas.
 - O filtro Geral / Social Selling / Tráfego continua valendo para os dois lados da conta.
-- Closers com reuniões realizadas e nenhuma venda passam a aparecer na lista (hoje só aparece quem tem linha em `vendas`), com 0% de conversão e ordenados ao final.
+- A lista continua mostrando **apenas closers com venda no período** — quem não vendeu não aparece.
 - Receita e tíquete médio não mudam.
 
 ## Detalhes técnicos
