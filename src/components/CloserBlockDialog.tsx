@@ -94,6 +94,45 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
     setDescription("");
   };
 
+  // Verifica se há reunião ativa do closer sobrepondo o intervalo do bloqueio
+  const findConflicts = async (): Promise<string[]> => {
+    const toMin = (t: string) => {
+      const [h, m] = t.split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const bStart = toMin(startTime);
+    const bEnd = toMin(endTime);
+
+    let query = supabase
+      .from("agendamentos")
+      .select("scheduled_date, scheduled_time, duration_minutes, lead_name, status")
+      .eq("closer_id", closerRecord!.id)
+      .is("deleted_at", null)
+      .in("status", ["pendente", "confirmada", "nao_confirmada", "agendada", "realizada"]);
+
+    if (mode === "pontual") {
+      query = query.eq("scheduled_date", format(date!, "yyyy-MM-dd"));
+    } else {
+      query = query.gte("scheduled_date", brTodayYMD());
+    }
+
+    const { data } = await query;
+    return (data ?? [])
+      .filter((a: any) => {
+        if (mode === "recorrente") {
+          const wd = getDay(new Date(`${a.scheduled_date}T12:00:00`));
+          if (!weekdays.includes(wd)) return false;
+        }
+        const aStart = toMin(String(a.scheduled_time || "00:00"));
+        const aEnd = aStart + (a.duration_minutes ?? 60);
+        return aStart < bEnd && aEnd > bStart;
+      })
+      .map(
+        (a: any) =>
+          `${format(new Date(`${a.scheduled_date}T12:00:00`), "dd/MM")} às ${a.scheduled_time} — ${a.lead_name ?? "sem nome"}`
+      );
+  };
+
   const handleSubmit = async () => {
     if (!closerRecord) return;
     if (mode === "pontual" && !date) {
@@ -115,6 +154,21 @@ export default function CloserBlockDialog({ open, onOpenChange }: CloserBlockDia
 
     setSubmitting(true);
     try {
+      const conflicts = await findConflicts();
+      if (conflicts.length > 0) {
+        toast.error("Horário já ocupado por reunião", {
+          description: `Só é possível bloquear horários vazios. Conflitos: ${conflicts.slice(0, 4).join(" | ")}${conflicts.length > 4 ? ` (+${conflicts.length - 4})` : ""}`,
+          duration: 8000,
+        });
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      // Se a checagem falhar, a trigger do banco ainda protege
+    }
+
+    try {
+
       if (mode === "pontual") {
         const dateStr = format(date!, "yyyy-MM-dd");
         const { error } = await supabase.from("closer_blocks").insert({
