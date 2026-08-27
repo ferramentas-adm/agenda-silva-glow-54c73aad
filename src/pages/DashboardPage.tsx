@@ -586,19 +586,11 @@ export function CalendarContent() {
     () => filtered.filter((a) => a.closer_id === myCloserId),
     [filtered, myCloserId]
   );
-  const closerOwnTotal = useMemo(
-    () => closerOwnAgendamentos.filter((a) => TOTAL_STATUSES.includes(a.status)).length,
-    [closerOwnAgendamentos]
+  const closerOwnMetrics = useMemo(
+    () => computeAgendaMetrics(closerOwnAgendamentos as any, userRolesMap),
+    [closerOwnAgendamentos, userRolesMap],
   );
-  const closerOwnStatusCounts = useMemo(
-    () =>
-      closerOwnAgendamentos.reduce<Record<string, number>>((acc, a) => {
-        const eff = getEffectiveStatus(a);
-        acc[eff] = (acc[eff] ?? 0) + 1;
-        return acc;
-      }, {}),
-    [closerOwnAgendamentos]
-  );
+
 
   const canChangeStatus = useMemo(() => {
     if (!detailAg) return false;
