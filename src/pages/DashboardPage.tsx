@@ -35,6 +35,12 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { countsAsSdr } from "@/lib/sdrOverrides";
 import { splitNaoCompareceu } from "@/lib/noShowReasons";
+import {
+  AGENDA_TOTAL_STATUSES,
+  computeAgendaMetrics,
+  isSdrAgenda as isSdrAgendaShared,
+  isSecondMeetingAgenda as isSecondMeetingAgendaShared,
+} from "@/lib/agendaMetrics";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
