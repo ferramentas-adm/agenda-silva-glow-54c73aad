@@ -13,6 +13,7 @@
  *   (`splitNaoCompareceu`), não do status bruto.
  */
 import { splitNaoCompareceu } from "@/lib/noShowReasons";
+import { brPartsOf } from "@/lib/timezone";
 
 /** Status considerados válidos para qualquer total/contagem dos painéis. */
 export const AGENDA_TOTAL_STATUSES = [
