@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format, parseISO, differenceInCalendarDays, subDays } from "date-fns";
-import { Clock, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Clock, TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
