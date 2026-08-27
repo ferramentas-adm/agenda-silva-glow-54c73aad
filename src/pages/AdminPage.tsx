@@ -492,6 +492,10 @@ function UsersSection() {
 
   const handleToggleActive = async (user: any, desiredActive: boolean) => {
     if (togglingId) return; // impede cliques duplicados (evitava flip de status)
+    if (!canToggleActive(user)) {
+      toast.error("Apenas Administradores podem ativar/inativar contas de Moderador ou Administrador.");
+      return;
+    }
     setTogglingId(user.userId);
     try {
       if (user.type === "closer") {
