@@ -87,6 +87,10 @@ export interface AgendaMetrics {
   cancelada: number;
   noShow: number;
   naoComparecimento: number;
+  /** Reuniões cujo horário já passou (base da Taxa de Comparecimento). */
+  ocorridas: number;
+  /** Realizadas dentro do recorte de reuniões já ocorridas. */
+  ocorridasRealizada: number;
   ids: {
     total: string[];
     sdr: string[];
@@ -96,7 +100,10 @@ export interface AgendaMetrics {
     realizada: string[];
     cancelada: string[];
     noShow: string[];
+    ocorridas: string[];
+    ocorridasRealizada: string[];
   };
+
 }
 
 /**
