@@ -535,65 +535,37 @@ export function CalendarContent() {
   const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
 
-  // Status válidos para o "Total" da barra superior
-  const TOTAL_STATUSES = ["agendada", "confirmada", "realizada", "cancelada", "no_show", "reagendada"];
+  // ─── Métricas canônicas (compartilhadas com o Dashboard Comercial) ───
+  // Regras em src/lib/agendaMetrics.ts: sem `pendente`, total = SDR + 2ª reunião,
+  // inativos contam sempre.
+  const TOTAL_STATUSES = AGENDA_TOTAL_STATUSES as readonly string[];
 
-  // Helpers de classificação:
-  // - SDR: agenda criada por usuário SDR OU agenda em que gestor/moderador apontou um SDR responsável.
-  // - 2ª reunião: agenda criada por closer OU agenda marcada como 'segunda_reuniao' por gestor/moderador.
-  const isSdrAgenda = (a: Agendamento) => {
-    if (a.created_by && userRolesMap.get(a.created_by) === "sdr") return true;
-    if (a.sdr_responsavel_id) return true;
-    return false;
-  };
-  const isSecondMeetingAgenda = (a: Agendamento) => {
-    if (a.created_by && userRolesMap.get(a.created_by) === "closer") return true;
-    if (a.meeting_reason === "segunda_reuniao") return true;
-    return false;
-  };
+  const isSdrAgenda = (a: Agendamento) => isSdrAgendaShared(a, userRolesMap);
+  const isSecondMeetingAgenda = (a: Agendamento) => isSecondMeetingAgendaShared(a, userRolesMap);
 
-  // Total SDRs (Admin/Mod/SDR view)
-  const totalSdrCount = useMemo(
-    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSdrAgenda(a)).length,
+  // Pool das métricas: aplica os filtros explícitos de SDR da tela, mas NÃO exige
+  // que o closer esteja selecionado/ativo — assim a faixa superior bate com o
+  // painel Comercial (agendas de closer inativo continuam contando).
+  const metricsPool = useMemo(() => {
+    return agendamentos.filter((a) => {
+      const ownerSdr =
+        a.sdr_responsavel_id ||
+        (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
+      if (isSdrRole && onlyMySdr && user && ownerSdr !== user.id) return false;
+      if (selectedSdrId !== "all" && ownerSdr !== selectedSdrId) return false;
+      return true;
+    });
+  }, [agendamentos, userRolesMap, isSdrRole, onlyMySdr, user, selectedSdrId]);
 
-    [filtered, userRolesMap]
+  const dayMetrics = useMemo(
+    () => computeAgendaMetrics(metricsPool as any, userRolesMap),
+    [metricsPool, userRolesMap],
   );
 
-  // Status counts SDR usando status efetivo
-  const statusCounts = useMemo(
-    () =>
-      filtered.reduce<Record<string, number>>((acc, agendamento) => {
-        if (!isSdrAgenda(agendamento)) return acc;
-        const status = getEffectiveStatus(agendamento);
-        acc[status] = (acc[status] ?? 0) + 1;
-        return acc;
-      }, {}),
-    [filtered, userRolesMap]
-  );
+  const totalSdrCount = dayMetrics.totalSdr;
+  const closerCreatedCount = dayMetrics.totalCloser;
+  const closerRealizadaCount = dayMetrics.closerRealizada;
 
-  // Status counts de TODAS as agendas do dia (SDR + 2ª reunião)
-  const allStatusCounts = useMemo(
-    () =>
-      filtered.reduce<Record<string, number>>((acc, agendamento) => {
-        const status = getEffectiveStatus(agendamento);
-        acc[status] = (acc[status] ?? 0) + 1;
-        return acc;
-      }, {}),
-    [filtered]
-  );
-
-  // Total Closers (= 2ª reunião) — inclui canceladas (alinhado a "Total agend. dia")
-  const closerCreatedCount = useMemo(
-    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSecondMeetingAgenda(a)).length,
-
-    [filtered, userRolesMap]
-  );
-
-  // Closer Realizada (2ª reunião realizada)
-  const closerRealizadaCount = useMemo(
-    () => filtered.filter((a) => a.status === "realizada" && isSecondMeetingAgenda(a)).length,
-    [filtered, userRolesMap]
-  );
 
 
   const closerMap = useMemo(() => {
