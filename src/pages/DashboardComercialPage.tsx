@@ -333,15 +333,36 @@ export default function DashboardComercialPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Mapa canônico user_id -> função, SEM filtro de ativo (usuário inativado não
+  // muda o histórico das métricas). Mesmo mapa usado pelo Calendário.
+  const { data: roleMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["agenda-metrics-role-map"],
+    queryFn: async () => {
+      const [{ data: roles }, { data: profiles }] = await Promise.all([
+        supabase.from("user_roles").select("user_id, role"),
+        supabase.from("profiles").select("user_id, full_name, is_sdr_override"),
+      ]);
+      const raw = new Map<string, string>((roles ?? []).map((r: any) => [r.user_id, r.role]));
+      const m = new Map<string, string>(raw);
+      ((profiles ?? []) as any[]).forEach((p) => {
+        if (countsAsSdr({ role: raw.get(p.user_id), isOverride: p.is_sdr_override, fullName: p.full_name })) {
+          m.set(p.user_id, "sdr");
+        }
+      });
+      return m;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // ─── Computed metrics ──────────────────────────────────────────
-  // Regra de negócio: TODAS as métricas deste painel consideram apenas
-  // agendamentos criados por usuários com função SDR (mesma regra do
-  // painel "Produtividade SDR"). Agendamentos criados por closers/
-  // gestores/moderadores via Calendário não entram na contagem.
+  // Regra de negócio: as contagens usam as métricas canônicas de
+  // src/lib/agendaMetrics.ts — as MESMAS do Calendário (faixa superior),
+  // para que os dois painéis nunca divirjam.
   const sdrUserIds = useMemo(
     () => new Set(sdrProfiles.map(p => p.user_id)),
     [sdrProfiles],
   );
+
 
   const metrics = useMemo(() => {
     // Helper: converte timestamp ISO para YYYY-MM-DD no fuso de operação
