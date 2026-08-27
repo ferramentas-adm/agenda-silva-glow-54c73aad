@@ -1198,14 +1198,16 @@ function MetricasSDRsTab({
         <MetricCard title={`Cancelado — ${selectedLabel}`} value={metrics.cancelado} subtitle={subtitleSelected} onClick={() => openDrill(`Cancelado — ${selectedLabel}`, metrics.canceladoIds)} />
         <MetricCard
           title={`Taxa de Comparecimento — ${selectedLabel}`}
-          value={`${metrics.taxaComp.toFixed(1)}%`}
+          value={metrics.taxaComp === null ? "—" : `${metrics.taxaComp.toFixed(1)}%`}
           subtitle={
             <span>
-              {metrics.compareceu} de {metrics.totalDia} agendamento{metrics.totalDia !== 1 ? "s" : ""}
+              {metrics.ocorridasRealizada} de {metrics.ocorridas} reuni{metrics.ocorridas !== 1 ? "ões" : "ão"} já ocorrida{metrics.ocorridas !== 1 ? "s" : ""}
             </span>
           }
-          onClick={() => openDrill(`Compareceu — ${selectedLabel}`, metrics.compareceuIds)}
+          tooltip="Considera apenas reuniões cujo horário já passou — as que ainda vão acontecer no dia não entram na conta."
+          onClick={() => openDrill(`Compareceu — ${selectedLabel}`, metrics.ocorridasRealizadaIds)}
         />
+
       </div>
 
       {/* Horários lotados hoje */}
