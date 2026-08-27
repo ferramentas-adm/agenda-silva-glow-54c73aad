@@ -33,6 +33,7 @@ export interface AgendaMetricInput {
   meeting_reason?: string | null;
   lead_phone?: string | null;
   scheduled_date?: string | null;
+  scheduled_time?: string | null;
   cancellation_reason?: string | null;
   created_at?: string | null;
 }
