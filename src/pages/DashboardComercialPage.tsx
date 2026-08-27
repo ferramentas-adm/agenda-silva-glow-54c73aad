@@ -483,7 +483,11 @@ export default function DashboardComercialPage() {
     // Contagens canônicas do dia/período (mesma função do Calendário).
     const dayM = computeAgendaMetrics(todayAgs as any, roleMap);
     const totalDia = dayM.totalAgend;
-    const taxaComp = totalDia > 0 ? (dayM.realizada / totalDia) * 100 : 0;
+    // Taxa de Comparecimento = realizadas / reuniões cujo horário JÁ passou.
+    // Assim a métrica pode ser acompanhada ao vivo, sem ser diluída pelo que
+    // ainda vai acontecer no restante do dia.
+    const ocorridas = dayM.ocorridas;
+    const taxaComp = ocorridas > 0 ? (dayM.ocorridasRealizada / ocorridas) * 100 : null;
 
     const prevMonthSdr = prevMonthAgs.filter(inScope);
 
@@ -500,7 +504,11 @@ export default function DashboardComercialPage() {
       noShow: dayM.noShow,
       cancelado: dayM.cancelada,
       taxaComp,
+      ocorridas,
+      ocorridasRealizada: dayM.ocorridasRealizada,
+      ocorridasRealizadaIds: dayM.ids.ocorridasRealizada,
       totalDia,
+
       channelsToday: byChannel(todayAgs),
       channelsCreatedToday: byChannel(todayCreated),
       // IDs para drill-down
