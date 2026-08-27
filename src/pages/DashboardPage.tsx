@@ -34,7 +34,12 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { countsAsSdr } from "@/lib/sdrOverrides";
-import { splitNaoCompareceu } from "@/lib/noShowReasons";
+import {
+  AGENDA_TOTAL_STATUSES,
+  computeAgendaMetrics,
+  isSdrAgenda as isSdrAgendaShared,
+  isSecondMeetingAgenda as isSecondMeetingAgendaShared,
+} from "@/lib/agendaMetrics";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logAudit } from "@/services/auditLog";
@@ -535,65 +540,37 @@ export function CalendarContent() {
   const goNext = () => setCurrentDate((d) => addDays(d, 1));
   const goToday = () => setCurrentDate(new Date());
 
-  // Status válidos para o "Total" da barra superior
-  const TOTAL_STATUSES = ["agendada", "confirmada", "realizada", "cancelada", "no_show", "reagendada"];
+  // ─── Métricas canônicas (compartilhadas com o Dashboard Comercial) ───
+  // Regras em src/lib/agendaMetrics.ts: sem `pendente`, total = SDR + 2ª reunião,
+  // inativos contam sempre.
+  const TOTAL_STATUSES = AGENDA_TOTAL_STATUSES as readonly string[];
 
-  // Helpers de classificação:
-  // - SDR: agenda criada por usuário SDR OU agenda em que gestor/moderador apontou um SDR responsável.
-  // - 2ª reunião: agenda criada por closer OU agenda marcada como 'segunda_reuniao' por gestor/moderador.
-  const isSdrAgenda = (a: Agendamento) => {
-    if (a.created_by && userRolesMap.get(a.created_by) === "sdr") return true;
-    if (a.sdr_responsavel_id) return true;
-    return false;
-  };
-  const isSecondMeetingAgenda = (a: Agendamento) => {
-    if (a.created_by && userRolesMap.get(a.created_by) === "closer") return true;
-    if (a.meeting_reason === "segunda_reuniao") return true;
-    return false;
-  };
+  const isSdrAgenda = (a: Agendamento) => isSdrAgendaShared(a, userRolesMap);
+  const isSecondMeetingAgenda = (a: Agendamento) => isSecondMeetingAgendaShared(a, userRolesMap);
 
-  // Total SDRs (Admin/Mod/SDR view)
-  const totalSdrCount = useMemo(
-    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSdrAgenda(a)).length,
+  // Pool das métricas: aplica os filtros explícitos de SDR da tela, mas NÃO exige
+  // que o closer esteja selecionado/ativo — assim a faixa superior bate com o
+  // painel Comercial (agendas de closer inativo continuam contando).
+  const metricsPool = useMemo(() => {
+    return agendamentos.filter((a) => {
+      const ownerSdr =
+        a.sdr_responsavel_id ||
+        (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
+      if (isSdrRole && onlyMySdr && user && ownerSdr !== user.id) return false;
+      if (selectedSdrId !== "all" && ownerSdr !== selectedSdrId) return false;
+      return true;
+    });
+  }, [agendamentos, userRolesMap, isSdrRole, onlyMySdr, user, selectedSdrId]);
 
-    [filtered, userRolesMap]
+  const dayMetrics = useMemo(
+    () => computeAgendaMetrics(metricsPool as any, userRolesMap),
+    [metricsPool, userRolesMap],
   );
 
-  // Status counts SDR usando status efetivo
-  const statusCounts = useMemo(
-    () =>
-      filtered.reduce<Record<string, number>>((acc, agendamento) => {
-        if (!isSdrAgenda(agendamento)) return acc;
-        const status = getEffectiveStatus(agendamento);
-        acc[status] = (acc[status] ?? 0) + 1;
-        return acc;
-      }, {}),
-    [filtered, userRolesMap]
-  );
+  const totalSdrCount = dayMetrics.totalSdr;
+  const closerCreatedCount = dayMetrics.totalCloser;
+  const closerRealizadaCount = dayMetrics.closerRealizada;
 
-  // Status counts de TODAS as agendas do dia (SDR + 2ª reunião)
-  const allStatusCounts = useMemo(
-    () =>
-      filtered.reduce<Record<string, number>>((acc, agendamento) => {
-        const status = getEffectiveStatus(agendamento);
-        acc[status] = (acc[status] ?? 0) + 1;
-        return acc;
-      }, {}),
-    [filtered]
-  );
-
-  // Total Closers (= 2ª reunião) — inclui canceladas (alinhado a "Total agend. dia")
-  const closerCreatedCount = useMemo(
-    () => filtered.filter((a) => TOTAL_STATUSES.includes(a.status) && isSecondMeetingAgenda(a)).length,
-
-    [filtered, userRolesMap]
-  );
-
-  // Closer Realizada (2ª reunião realizada)
-  const closerRealizadaCount = useMemo(
-    () => filtered.filter((a) => a.status === "realizada" && isSecondMeetingAgenda(a)).length,
-    [filtered, userRolesMap]
-  );
 
 
   const closerMap = useMemo(() => {
@@ -614,19 +591,11 @@ export function CalendarContent() {
     () => filtered.filter((a) => a.closer_id === myCloserId),
     [filtered, myCloserId]
   );
-  const closerOwnTotal = useMemo(
-    () => closerOwnAgendamentos.filter((a) => TOTAL_STATUSES.includes(a.status)).length,
-    [closerOwnAgendamentos]
+  const closerOwnMetrics = useMemo(
+    () => computeAgendaMetrics(closerOwnAgendamentos as any, userRolesMap),
+    [closerOwnAgendamentos, userRolesMap],
   );
-  const closerOwnStatusCounts = useMemo(
-    () =>
-      closerOwnAgendamentos.reduce<Record<string, number>>((acc, a) => {
-        const eff = getEffectiveStatus(a);
-        acc[eff] = (acc[eff] ?? 0) + 1;
-        return acc;
-      }, {}),
-    [closerOwnAgendamentos]
-  );
+
 
   const canChangeStatus = useMemo(() => {
     if (!detailAg) return false;
@@ -1079,22 +1048,17 @@ export function CalendarContent() {
           // Visão de Closer (individual): mostra apenas seus próprios números, sem "Total Closers"
           const isCloserView = role === "closer";
 
-          const sourceCounts = isCloserView ? closerOwnStatusCounts : allStatusCounts;
-          const sourceAgendamentos = isCloserView ? closerOwnAgendamentos : filtered;
-          // Cancelado/No-show são classificados pelo motivo escolhido em "Não compareceu".
-          const naoComparecimentoSplit = splitNaoCompareceu(sourceAgendamentos as any);
-          const sourceTotalReal = sourceCounts["realizada"] ?? 0;
+          const m = isCloserView ? closerOwnMetrics : dayMetrics;
+          const sourceAgendamentos = isCloserView ? closerOwnAgendamentos : metricsPool;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
-          // Total agend. dia: SDR + 2ª reunião (todos os status válidos)
-          const totalAgend = isCloserView
-            ? sourceAgendamentos.filter(a => TOTAL_STATUSES.includes(a.status)).length
-            : totalSdrCount + closerCreatedCount;
-
-          const totalAgendLabel = isCloserView ? "Total agend. dia" : "Total agend. dia";
+          // Total agend. dia: SDR + 2ª reunião (status válidos, sem pendente)
+          const totalAgend = m.totalAgend;
+          const totalAgendLabel = "Total agend. dia";
 
           // Ainda a real. dia: agendada + confirmada (sem filtro de horário)
-          const aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
+          const aindaReal = m.aindaReal;
+
 
           const cards = [
             { key: "total_agend", label: totalAgendLabel, icon: CalendarDays, color: "text-sky-300", bg: "bg-sky-500/10" },
@@ -1123,18 +1087,17 @@ export function CalendarContent() {
 
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
-                if (key === "total") count = sourceTotalReal;
+                if (key === "total") count = m.realizada;
                 else if (key === "total_agend") count = totalAgend;
                 else if (key === "ainda_real") count = aindaReal;
-                else if (key === "nao_comparecimento") {
-                  count = naoComparecimentoSplit.cancelada.length + naoComparecimentoSplit.noShow.length;
-                } else if (key === "cancelada") {
-                  count = naoComparecimentoSplit.cancelada.length;
-                } else if (key === "no_show") {
-                  count = naoComparecimentoSplit.noShow.length;
-                } else {
-                  count = sourceCounts[key] ?? 0;
-                }
+                else if (key === "nao_comparecimento") count = m.naoComparecimento;
+                else if (key === "cancelada") count = m.cancelada;
+                else if (key === "no_show") count = m.noShow;
+                else if (key === "agendada") count = m.agendada;
+                else if (key === "confirmada") count = m.confirmada;
+                else if (key === "realizada") count = m.realizada;
+                else count = 0;
+
                 const isTotalAgend = key === "total_agend";
                 const handleClick = isTotalAgend
                   ? () => {

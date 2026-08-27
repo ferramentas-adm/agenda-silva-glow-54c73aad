@@ -23,7 +23,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { splitNaoCompareceu } from "@/lib/noShowReasons";
+import {
+  computeAgendaMetrics,
+  isCountableStatus,
+  isSdrAgenda as isSdrAgendaShared,
+  isSecondMeetingAgenda as isSecondMeetingAgendaShared,
+} from "@/lib/agendaMetrics";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSlotCounts } from "@/hooks/useSlotCounts";
@@ -61,6 +66,7 @@ interface AgendamentoMetric {
   original_agendamento_id: string | null;
   cancellation_reason: string | null;
   lead_phone: string | null;
+  meeting_reason: string | null;
 }
 
 interface SDRProfile {
@@ -205,7 +211,7 @@ export default function DashboardComercialPage() {
       const { data, error } = await build(
         supabase
           .from("agendamentos")
-          .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id, cancellation_reason, lead_phone")
+          .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id, cancellation_reason, lead_phone, meeting_reason")
           .is("deleted_at", null)
       ).range(from, from + pageSize - 1);
       if (error || !data || data.length === 0) break;
@@ -332,15 +338,32 @@ export default function DashboardComercialPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Mapa canônico user_id -> função, SEM filtro de ativo (usuário inativado não
+  // muda o histórico das métricas). Mesmo mapa usado pelo Calendário.
+  const { data: roleMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["agenda-metrics-role-map"],
+    queryFn: async () => {
+      const [{ data: roles }, { data: profiles }] = await Promise.all([
+        supabase.from("user_roles").select("user_id, role"),
+        supabase.from("profiles").select("user_id, full_name, is_sdr_override"),
+      ]);
+      const raw = new Map<string, string>((roles ?? []).map((r: any) => [r.user_id, r.role]));
+      const m = new Map<string, string>(raw);
+      ((profiles ?? []) as any[]).forEach((p) => {
+        if (countsAsSdr({ role: raw.get(p.user_id), isOverride: p.is_sdr_override, fullName: p.full_name })) {
+          m.set(p.user_id, "sdr");
+        }
+      });
+      return m;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // ─── Computed metrics ──────────────────────────────────────────
-  // Regra de negócio: TODAS as métricas deste painel consideram apenas
-  // agendamentos criados por usuários com função SDR (mesma regra do
-  // painel "Produtividade SDR"). Agendamentos criados por closers/
-  // gestores/moderadores via Calendário não entram na contagem.
-  const sdrUserIds = useMemo(
-    () => new Set(sdrProfiles.map(p => p.user_id)),
-    [sdrProfiles],
-  );
+  // Regra de negócio: as contagens usam as métricas canônicas de
+  // src/lib/agendaMetrics.ts — as MESMAS do Calendário (faixa superior),
+  // para que os dois painéis nunca divirjam.
+
 
   const metrics = useMemo(() => {
     // Helper: converte timestamp ISO para YYYY-MM-DD no fuso de operação
@@ -357,19 +380,20 @@ export default function DashboardComercialPage() {
     });
     const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
 
-    // Pool base: agendamentos de SDR — usa MESMA regra do Dashboard (calendário):
-    // created_by é SDR OU sdr_responsavel_id está preenchido (atribuído por gestor/mod).
-    const isSdrAg = (a: AgendamentoMetric) =>
-      (!!a.created_by && sdrUserIds.has(a.created_by)) || !!a.sdr_responsavel_id;
+    // Pool base canônico: status válidos (sem `pendente`) e agenda de SDR ou 2ª
+    // reunião de closer — recorte idêntico ao do Calendário.
+    const isSdrAg = (a: AgendamentoMetric) => isSdrAgendaShared(a, roleMap);
+    const inScope = (a: AgendamentoMetric) =>
+      isCountableStatus(a.status) && (isSdrAg(a) || isSecondMeetingAgendaShared(a, roleMap));
 
-    const sdrAgs = agendamentos.filter(isSdrAg);
+    const sdrAgs = agendamentos.filter(inScope);
     // Para "Geradas/Criadas" usamos o pool fetched por created_at (createdAgs)
     // — assim incluímos reuniões criadas hoje mesmo que agendadas para fora
     // do range mensal (o pool `agendamentos` é filtrado por scheduled_date).
-    // Exclui reagendamentos (que têm original_agendamento_id) — só conta agendas novas.
     const sdrCreatedAgs = createdAgs.filter(
       a => isSdrAg(a) && !a.original_agendamento_id,
     );
+
 
     // Quando há intervalo ativo, "todayAgs"/"todayCreated" passam a ser
     // a soma agregada de todo o período selecionado. Caso contrário, mantém
@@ -456,48 +480,43 @@ export default function DashboardComercialPage() {
         }));
     };
 
-    const { cancelada: canceladaAgs, noShow: noShowAgs } = splitNaoCompareceu(todayAgs as any);
-    const noShowCount = noShowAgs.length;
-    const canceladoCount = canceladaAgs.length;
-    const compareceuCount = sc(todayAgs, "realizada");
-    // totalDia inclui canceladas — alinhado ao Dashboard.
-    const totalDia = todayAgs.length;
-    // Taxa de Comparecimento = realizadas / total de agendamentos do período (inclui canceladas)
-    const taxaComp = totalDia > 0
-      ? (compareceuCount / totalDia) * 100
-      : 0;
+    // Contagens canônicas do dia/período (mesma função do Calendário).
+    const dayM = computeAgendaMetrics(todayAgs as any, roleMap);
+    const totalDia = dayM.totalAgend;
+    const taxaComp = totalDia > 0 ? (dayM.realizada / totalDia) * 100 : 0;
 
-    const prevMonthSdr = prevMonthAgs.filter(isSdrAg);
+    const prevMonthSdr = prevMonthAgs.filter(inScope);
 
     return {
-      todayScheduled: todayAgs.length,
+      todayScheduled: totalDia,
       todayCreated: todayCreated.length,
       yesterdayScheduled: yesterdayAgs.length,
       tomorrowScheduled: tomorrowAgs.length,
       monthTotal: monthAgs.length,
       monthDiff: monthAgs.length - prevMonthSdr.length,
-      confirmado: sc(todayAgs, "confirmada"),
-      agendado: sc(todayAgs, "agendada"),
-      compareceu: sc(todayAgs, "realizada"),
-      noShow: noShowCount,
-      cancelado: canceladoCount,
+      confirmado: dayM.confirmada,
+      agendado: dayM.agendada,
+      compareceu: dayM.realizada,
+      noShow: dayM.noShow,
+      cancelado: dayM.cancelada,
       taxaComp,
       totalDia,
       channelsToday: byChannel(todayAgs),
       channelsCreatedToday: byChannel(todayCreated),
       // IDs para drill-down
-      todayScheduledIds: todayAgs.map(a => a.id),
+      todayScheduledIds: dayM.ids.total,
       todayCreatedIds: todayCreated.map(a => a.id),
       yesterdayScheduledIds: yesterdayAgs.map(a => a.id),
       tomorrowScheduledIds: tomorrowAgs.map(a => a.id),
       monthTotalIds: monthAgs.map(a => a.id),
-      confirmadoIds: todayAgs.filter(a => a.status === "confirmada").map(a => a.id),
-      agendadoIds: todayAgs.filter(a => a.status === "agendada").map(a => a.id),
-      compareceuIds: todayAgs.filter(a => a.status === "realizada").map(a => a.id),
-      noShowIds: noShowAgs.map((a: any) => a.id),
-      canceladoIds: canceladaAgs.map((a: any) => a.id),
+      confirmadoIds: dayM.ids.confirmada,
+      agendadoIds: dayM.ids.agendada,
+      compareceuIds: dayM.ids.realizada,
+      noShowIds: dayM.ids.noShow,
+      canceladoIds: dayM.ids.cancelada,
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, sdrUserIds, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, roleMap, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
+
 
 
   // ─── Ranking is now computed inside RankingSDRsTab from raw data ──
