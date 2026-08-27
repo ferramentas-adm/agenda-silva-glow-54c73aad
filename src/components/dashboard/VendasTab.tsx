@@ -606,39 +606,62 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Filtro de canal aplicado à Performance por Closer
   const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
 
+  // Reuniões REALIZADAS do período (direto de `agendamentos`), base do
+  // denominador da conversão por closer — independe de existir linha em `vendas`.
+  const { data: realizadasPeriodo = [] } = useQuery<
+    { id: string; closer_id: string | null; channel_type: string | null }[]
+  >({
+    queryKey: ["vendas-tab-realizadas-closer", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
+    queryFn: async () => {
+      let q = supabase
+        .from("agendamentos")
+        .select("id, closer_id, channel_type")
+        .eq("status", "realizada")
+        .is("deleted_at", null)
+        .gte("scheduled_date", convPeriodFrom)
+        .lte("scheduled_date", convPeriodTo);
+      if (isCloserView && myCloserId) q = q.eq("closer_id", myCloserId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as { id: string; closer_id: string | null; channel_type: string | null }[];
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+  });
+
   // Performance por Closer (com filtro opcional de canal)
-  // Vendas de 2ª reunião CONTAM no numerador/receita; apenas o denominador (reuniões)
-  // exclui segundas reuniões e Call Interrompida.
+  // Numerador: vendas do closer no período (inclui follow-up e 2ª reunião).
+  // Denominador: TODAS as reuniões realizadas do closer no período.
   const closerPerf = useMemo(() => {
-    const map = new Map<string, { vendas: number; naoFechou: number; receita: number }>();
+    const realizadasPorCloser = new Map<string, number>();
+    realizadasPeriodo.forEach((a) => {
+      if (!a.closer_id) return;
+      if (closerChannelFilter !== "all" && a.channel_type !== closerChannelFilter) return;
+      realizadasPorCloser.set(a.closer_id, (realizadasPorCloser.get(a.closer_id) || 0) + 1);
+    });
+
+    const map = new Map<string, { vendas: number; receita: number }>();
     vendasDia.forEach((v) => {
       const ag = agMap.get(v.agendamento_id);
-      if (!ag?.closer_id) return;
+      if (!ag?.closer_id || !v.vendeu) return;
       if (closerChannelFilter !== "all" && ag.channel_type !== closerChannelFilter) return;
-
-      const isSegunda = v.segunda_reuniao || ag.meeting_reason === "segunda_reuniao";
-      const motivo = (v.motivo_nao_fechamento || "").trim().toLowerCase();
-      const isInterrompida = !v.vendeu && (motivo === "call interompida" || motivo === "call interrompida");
-
-      const cur = map.get(ag.closer_id) || { vendas: 0, naoFechou: 0, receita: 0 };
-      if (v.vendeu) {
-        // Vendas sempre contam (inclusive segunda reunião)
-        cur.vendas += 1;
-        cur.receita += v.valor || 0;
-      } else if (!isSegunda && !isInterrompida) {
-        // Não-fechamentos só contam quando NÃO é segunda reunião nem call interrompida
-        cur.naoFechou += 1;
-      }
+      const cur = map.get(ag.closer_id) || { vendas: 0, receita: 0 };
+      cur.vendas += 1;
+      cur.receita += v.valor || 0;
       map.set(ag.closer_id, cur);
     });
+
     return Array.from(map.entries())
-      .map(([closerId, stats]) => ({
-        closerId,
-        name: closerMap.get(closerId) || "—",
-        ...stats,
-        total: stats.vendas + stats.naoFechou,
-        conversao: stats.vendas + stats.naoFechou > 0 ? (stats.vendas / (stats.vendas + stats.naoFechou)) * 100 : 0,
-      }))
+      .map(([closerId, stats]) => {
+        const total = realizadasPorCloser.get(closerId) || 0;
+        return {
+          closerId,
+          name: closerMap.get(closerId) || "—",
+          ...stats,
+          total,
+          conversao: total > 0 ? (stats.vendas / total) * 100 : 0,
+        };
+      })
       .sort(
         (a, b) =>
           b.conversao - a.conversao ||
@@ -646,7 +669,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           b.receita - a.receita ||
           b.total - a.total,
       );
-  }, [vendasDia, agMap, closerMap, closerChannelFilter]);
+  }, [vendasDia, agMap, closerMap, closerChannelFilter, realizadasPeriodo]);
+
 
 
   // Performance por Produto oferecido
