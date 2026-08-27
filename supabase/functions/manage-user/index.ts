@@ -63,17 +63,33 @@ Deno.serve(async (req) => {
 
     // Moderador não pode mexer em Gestores
     if (callerIsModeradorOnly) {
-      const { data: targetRoleRow } = await supabaseAdmin
+      const { data: targetRoleRows } = await supabaseAdmin
         .from("user_roles")
         .select("role")
-        .eq("user_id", user_id)
-        .maybeSingle();
-      if (targetRoleRow?.role === "gestor") {
+        .eq("user_id", user_id);
+      const targetRoles = (targetRoleRows ?? []).map((r: { role: string }) => r.role);
+      if (targetRoles.includes("gestor")) {
         return new Response(JSON.stringify({ error: "Moderadores não podem alterar usuários Administradores." }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // Ativar/inativar: proibido em contas de Moderador e na própria conta
+      if (action === "toggle_active") {
+        if (user_id === callerId) {
+          return new Response(JSON.stringify({ error: "Você não pode alterar o status da sua própria conta." }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (targetRoles.includes("moderador")) {
+          return new Response(JSON.stringify({ error: "Moderadores não podem ativar/inativar outros Moderadores." }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // Tampouco promover alguém a Gestor
       if (action === "change_role" && body.new_role === "gestor") {
         return new Response(JSON.stringify({ error: "Moderadores não podem promover a Administrador." }), {

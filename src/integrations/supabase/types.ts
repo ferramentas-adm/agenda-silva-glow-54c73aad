@@ -1044,6 +1044,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_toggle_user_active: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
       current_closer_id: { Args: never; Returns: string }
       dashboard_agendas_por_canal: {
         Args: { _from: string; _to: string }

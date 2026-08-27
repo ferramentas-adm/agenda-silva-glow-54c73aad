@@ -164,10 +164,20 @@ function CloserSlotLimitSetting() {
 /* ─── Users Section (unified SDR + Closer management) ─────────── */
 
 function UsersSection() {
-  const { isGestor, isModerador } = useAuth();
+  const { isGestor, isModerador, user, role: myRole } = useAuth();
   const canManageUsers = isGestor || isModerador;
   // Moderador não pode mexer em Gestores nem promover/criar Gestores
   const canActOn = (targetRole: string) => isGestor || (isModerador && targetRole !== "gestor");
+  // Ativar/inativar: Gestor em qualquer conta; Moderador exceto Gestores, Moderadores e a própria conta
+  const canToggleActive = (u: any) => {
+    if (isGestor) return true;
+    if (myRole !== "moderador") return false;
+    if (u.role === "gestor" || u.role === "moderador") return false;
+    if (u.userId && user?.id && u.userId === user.id) return false;
+    return true;
+  };
+
+
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
@@ -482,6 +492,10 @@ function UsersSection() {
 
   const handleToggleActive = async (user: any, desiredActive: boolean) => {
     if (togglingId) return; // impede cliques duplicados (evitava flip de status)
+    if (!canToggleActive(user)) {
+      toast.error("Apenas Administradores podem ativar/inativar contas de Moderador ou Administrador.");
+      return;
+    }
     setTogglingId(user.userId);
     try {
       if (user.type === "closer") {
@@ -903,15 +917,24 @@ function UsersSection() {
                           </Button>
                         )}
                         {canActOn(u.role) && (
-                          <Switch
-                            checked={u.active}
-                            onCheckedChange={(v) => {
-                              if (v) handleToggleActive(u, true);
-                              else setDeactivateTarget(u);
-                            }}
-                            disabled={togglingId === u.userId}
-                          />
+                          <span
+                            title={
+                              canToggleActive(u)
+                                ? (u.active ? "Inativar usuário" : "Ativar usuário")
+                                : "Apenas Administradores podem ativar/inativar contas de Moderador ou Administrador"
+                            }
+                          >
+                            <Switch
+                              checked={u.active}
+                              onCheckedChange={(v) => {
+                                if (v) handleToggleActive(u, true);
+                                else setDeactivateTarget(u);
+                              }}
+                              disabled={togglingId === u.userId || !canToggleActive(u)}
+                            />
+                          </span>
                         )}
+
                         {canActOn(u.role) && u.type === "profile" && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar função"
                             onClick={() => { setRoleChangeTarget({ userId: u.userId, name: u.name, currentRole: u.role }); setNewRole(u.role === "sdr" ? "gestor" : "sdr"); }}>
