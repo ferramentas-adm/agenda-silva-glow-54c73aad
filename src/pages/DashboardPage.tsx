@@ -1082,18 +1082,17 @@ export function CalendarContent() {
 
               {cards.map(({ key, label, icon: Icon, color, bg }) => {
                 let count: number;
-                if (key === "total") count = sourceTotalReal;
+                if (key === "total") count = m.realizada;
                 else if (key === "total_agend") count = totalAgend;
                 else if (key === "ainda_real") count = aindaReal;
-                else if (key === "nao_comparecimento") {
-                  count = naoComparecimentoSplit.cancelada.length + naoComparecimentoSplit.noShow.length;
-                } else if (key === "cancelada") {
-                  count = naoComparecimentoSplit.cancelada.length;
-                } else if (key === "no_show") {
-                  count = naoComparecimentoSplit.noShow.length;
-                } else {
-                  count = sourceCounts[key] ?? 0;
-                }
+                else if (key === "nao_comparecimento") count = m.naoComparecimento;
+                else if (key === "cancelada") count = m.cancelada;
+                else if (key === "no_show") count = m.noShow;
+                else if (key === "agendada") count = m.agendada;
+                else if (key === "confirmada") count = m.confirmada;
+                else if (key === "realizada") count = m.realizada;
+                else count = 0;
+
                 const isTotalAgend = key === "total_agend";
                 const handleClick = isTotalAgend
                   ? () => {
