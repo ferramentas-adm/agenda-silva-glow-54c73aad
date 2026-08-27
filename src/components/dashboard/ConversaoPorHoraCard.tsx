@@ -192,6 +192,61 @@ export default function ConversaoPorHoraCard({ range, closerId }: Props) {
     staleTime: 60_000,
   });
 
+  /**
+   * Diagnóstico (não entra no cálculo): vendas do período cujas reuniões ainda
+   * não estão marcadas como "realizada", vendas de follow-up e vendas fechadas
+   * no período mas de reuniões de outros dias — para conciliar com o card
+   * "Vendas registradas".
+   */
+  const { data: diag } = useQuery({
+    queryKey: ["conv-hora-diag", fetchWindow.start, fetchWindow.end, closerId ?? null],
+    queryFn: async () => {
+      const PAGE = 1000;
+      const rows: any[] = [];
+      let offset = 0;
+      while (true) {
+        let q = supabase
+          .from("vendas")
+          .select(
+            "venda_origem, segunda_reuniao, agendamentos!inner(scheduled_date, status, deleted_at, closer_id)",
+          )
+          .eq("vendeu", true)
+          .is("agendamentos.deleted_at", null)
+          .gte("agendamentos.scheduled_date", fetchWindow.start)
+          .lte("agendamentos.scheduled_date", fetchWindow.end)
+          .range(offset, offset + PAGE - 1);
+        if (closerId) q = q.eq("agendamentos.closer_id", closerId);
+        const { data, error } = await q;
+        if (error) throw error;
+        const batch = (data ?? []) as any[];
+        rows.push(...batch);
+        if (batch.length < PAGE) break;
+        offset += PAGE;
+      }
+      return rows;
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+  });
+
+  const diagCounts = useMemo(() => {
+    let pendentes = 0;
+    let followUps = 0;
+    (diag ?? []).forEach((v) => {
+      const date = v.agendamentos?.scheduled_date;
+      if (!date || !baseDays.has(date)) return;
+      const isFollow = (v.venda_origem ?? "primeira_call") === "follow_up" || v.segunda_reuniao;
+      if (isFollow) {
+        followUps += 1;
+        return;
+      }
+      if (v.agendamentos?.status !== "realizada") pendentes += 1;
+    });
+    return { pendentes, followUps };
+  }, [diag, baseDays]);
+
+
+
   const { data, totals } = useMemo(() => {
     const mk = () => new Map<number, number>();
     const baseReu = mk();
