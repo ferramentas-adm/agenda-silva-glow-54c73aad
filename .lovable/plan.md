@@ -10,13 +10,13 @@ Passa a ser:
 - **Numerador** = vendas do closer no período (como hoje, incluindo vendas de follow-up e 2ª reunião).
 - O rótulo do card continua "X vendas · Y reuniões · Z% conv.", agora com Y = reuniões realizadas.
 - O filtro Geral / Social Selling / Tráfego continua valendo para os dois lados da conta.
-- Closers com reuniões realizadas e nenhuma venda passam a aparecer na lista (hoje só aparece quem tem linha em `vendas`), com 0% de conversão e ordenados ao final.
+- A lista continua mostrando **apenas closers com venda no período** — quem não vendeu não aparece.
 - Receita e tíquete médio não mudam.
 
 ## Detalhes técnicos
 
 - `src/components/dashboard/VendasTab.tsx`: nova query (`react-query`) em `agendamentos` para o período do card — `select id, closer_id, channel_type, status`, filtros `status = 'realizada'`, `deleted_at is null`, `scheduled_date` entre `convPeriodFrom`/`convPeriodTo`, e `closer_id = myCloserId` quando `isCloserView`. Mesmas opções de cache dos outros queries (`refetchInterval` 5 min, `staleTime` 60s).
-- `closerPerf` passa a montar o denominador a partir dessa lista (contagem por `closer_id`, respeitando `closerChannelFilter` via `channel_type`) em vez de `vendas + naoFechou`. Vendas/receita continuam vindas de `vendasDia` (`v.vendeu`).
+- `closerPerf` continua sendo construído a partir dos closers com venda em `vendasDia` (`v.vendeu`); apenas o denominador passa a vir da nova lista de realizadas (contagem por `closer_id`, respeitando `closerChannelFilter` via `channel_type`) em vez de `vendas + naoFechou`.
 - `total` = reuniões realizadas do closer; `conversao` = `vendas / total` (0 quando `total = 0`); ordenação mantida (conversão, vendas, receita, total).
 - O drilldown de cada closer continua abrindo as vendas fechadas (`closerIds` atual), sem alteração.
 - Sem mudanças de banco e sem impacto nos demais cards (Taxa de Conversão geral, Performance por Produto, Motivos de Não Fechamento seguem iguais).
