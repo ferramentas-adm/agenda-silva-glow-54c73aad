@@ -308,14 +308,25 @@ export default function ConversaoPorHoraCard({ range, closerId }: Props) {
               {m.label}
             </Button>
           ))}
-          <Button
-            variant={cumulative ? "default" : "outline"}
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setCumulative((v) => !v)}
-          >
-            {cumulative ? "Acumulado" : "Hora a hora"}
-          </Button>
+          <div className="inline-flex rounded-md border border-border overflow-hidden">
+            <Button
+              variant={cumulative ? "ghost" : "default"}
+              size="sm"
+              className="h-7 text-xs px-2 rounded-none"
+              onClick={() => setCumulative(false)}
+            >
+              Hora a hora
+            </Button>
+            <Button
+              variant={cumulative ? "default" : "ghost"}
+              size="sm"
+              className="h-7 text-xs px-2 rounded-none"
+              onClick={() => setCumulative(true)}
+            >
+              Acumulado
+            </Button>
+          </div>
+
         </div>
       </div>
 
@@ -406,8 +417,9 @@ export default function ConversaoPorHoraCard({ range, closerId }: Props) {
           <thead>
             <tr className="text-muted-foreground">
               <th className="text-left font-medium py-1">Hora</th>
-              <th className="text-right font-medium py-1">Realizadas</th>
-              <th className="text-right font-medium py-1">Vendas</th>
+              <th className="text-right font-medium py-1">{cumulative ? "Realizadas (acum.)" : "Realizadas"}</th>
+              <th className="text-right font-medium py-1">{cumulative ? "Vendas (acum.)" : "Vendas"}</th>
+
               <th className="text-right font-medium py-1">Conversão</th>
               <th className="text-right font-medium py-1" title={cmpLabel}>{cmpColumnLabel}</th>
               <th className="text-right font-medium py-1">Δ</th>
