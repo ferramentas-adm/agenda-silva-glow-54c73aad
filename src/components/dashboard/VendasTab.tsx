@@ -938,6 +938,15 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         <TrendCardVendas closerId={isCloserView ? myCloserId : null} />
       )}
 
+      {/* Conversão por hora — restrito à gestão */}
+      {(role === "gestor" || role === "moderador" || role === "supervisor") && (
+        <ConversaoPorHoraCard
+          range={{ from: convPeriodFrom, to: convPeriodTo }}
+          closerId={isCloserView ? myCloserId : null}
+        />
+      )}
+
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Motivos de não fechamento */}
