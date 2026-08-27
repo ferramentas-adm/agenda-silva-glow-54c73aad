@@ -134,6 +134,13 @@ export function computeAgendaMetrics<T extends AgendaMetricInput>(
     (a) => a.status === "realizada" && isSecondMeetingAgenda(a, roleMap),
   );
 
+  // Reuniões cujo horário já passou — base da Taxa de Comparecimento, para que
+  // a métrica possa ser acompanhada ao vivo sem ser diluída pelo que ainda vai
+  // acontecer no dia.
+  const now = brPartsOf();
+  const ocorridasList = scoped.filter((a) => hasElapsed(a, now));
+  const ocorridasRealizadaList = ocorridasList.filter((a) => a.status === "realizada");
+
   return {
     totalAgend: scoped.length,
     totalSdr: sdr.length,
@@ -146,6 +153,8 @@ export function computeAgendaMetrics<T extends AgendaMetricInput>(
     cancelada: cancelada.length,
     noShow: noShow.length,
     naoComparecimento: cancelada.length + noShow.length,
+    ocorridas: ocorridasList.length,
+    ocorridasRealizada: ocorridasRealizadaList.length,
     ids: {
       total: scoped.map((a) => a.id),
       sdr: sdr.map((a) => a.id),
@@ -155,6 +164,9 @@ export function computeAgendaMetrics<T extends AgendaMetricInput>(
       realizada: realizadaList.map((a) => a.id),
       cancelada: (cancelada as any[]).map((a) => a.id),
       noShow: (noShow as any[]).map((a) => a.id),
+      ocorridas: ocorridasList.map((a) => a.id),
+      ocorridasRealizada: ocorridasRealizadaList.map((a) => a.id),
     },
   };
+
 }
