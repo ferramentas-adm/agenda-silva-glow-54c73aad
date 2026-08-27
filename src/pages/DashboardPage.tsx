@@ -34,7 +34,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { countsAsSdr } from "@/lib/sdrOverrides";
-import { splitNaoCompareceu } from "@/lib/noShowReasons";
 import {
   AGENDA_TOTAL_STATUSES,
   computeAgendaMetrics,

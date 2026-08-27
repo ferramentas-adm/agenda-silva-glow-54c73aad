@@ -23,7 +23,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { splitNaoCompareceu } from "@/lib/noShowReasons";
 import {
   computeAgendaMetrics,
   isCountableStatus,
