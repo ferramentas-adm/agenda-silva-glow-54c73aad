@@ -1043,22 +1043,17 @@ export function CalendarContent() {
           // Visão de Closer (individual): mostra apenas seus próprios números, sem "Total Closers"
           const isCloserView = role === "closer";
 
-          const sourceCounts = isCloserView ? closerOwnStatusCounts : allStatusCounts;
-          const sourceAgendamentos = isCloserView ? closerOwnAgendamentos : filtered;
-          // Cancelado/No-show são classificados pelo motivo escolhido em "Não compareceu".
-          const naoComparecimentoSplit = splitNaoCompareceu(sourceAgendamentos as any);
-          const sourceTotalReal = sourceCounts["realizada"] ?? 0;
+          const m = isCloserView ? closerOwnMetrics : dayMetrics;
+          const sourceAgendamentos = isCloserView ? closerOwnAgendamentos : metricsPool;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
-          // Total agend. dia: SDR + 2ª reunião (todos os status válidos)
-          const totalAgend = isCloserView
-            ? sourceAgendamentos.filter(a => TOTAL_STATUSES.includes(a.status)).length
-            : totalSdrCount + closerCreatedCount;
-
-          const totalAgendLabel = isCloserView ? "Total agend. dia" : "Total agend. dia";
+          // Total agend. dia: SDR + 2ª reunião (status válidos, sem pendente)
+          const totalAgend = m.totalAgend;
+          const totalAgendLabel = "Total agend. dia";
 
           // Ainda a real. dia: agendada + confirmada (sem filtro de horário)
-          const aindaReal = (sourceCounts["agendada"] ?? 0) + (sourceCounts["confirmada"] ?? 0);
+          const aindaReal = m.aindaReal;
+
 
           const cards = [
             { key: "total_agend", label: totalAgendLabel, icon: CalendarDays, color: "text-sky-300", bg: "bg-sky-500/10" },
