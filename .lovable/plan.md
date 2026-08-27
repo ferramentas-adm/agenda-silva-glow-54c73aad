@@ -7,7 +7,7 @@ Ambos veem e operam tudo do dia a dia (calendário, reuniões, follow-ups, pagam
 | Recurso | Gestor (Admin) | Moderador |
 | --- | --- | --- |
 | Criar/editar usuários e trocar funções | Sim (inclusive criar outro Gestor) | Sim, exceto mexer em Gestores |
-| Ativar/inativar usuário | Sim | Não (bloqueado no banco) |
+| Ativar/inativar usuário | Sim (qualquer conta) | Sim, exceto contas de Moderador e Administrador |
 | Matriz de permissões por função | Sim | Não |
 | Listas e configurações gerais (motivos, horários, webhooks) | Sim | Sim |
 | Gerenciar closers (cadastro, horários, gravação) | Sim | Parcial (horários sim; cadastro/exclusão só Gestor) |
