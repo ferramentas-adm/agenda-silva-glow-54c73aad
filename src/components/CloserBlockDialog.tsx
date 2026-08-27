@@ -17,6 +17,8 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { brTodayYMD } from "@/lib/timezone";
+
 
 // Defaults usados se a lista dinâmica ainda não foi populada
 const DEFAULT_BLOCK_REASONS = ["Almoço", "Compromisso pessoal", "Folga", "Reunião interna", "Treinamento"];
