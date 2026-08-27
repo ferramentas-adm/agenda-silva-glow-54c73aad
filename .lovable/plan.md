@@ -1,24 +1,26 @@
-# Conversão por hora: contar vendas mesmo sem status "realizada"
+# Conversão por hora: manter numerador e denominador na mesma base
 
 ## Por que hoje mostra 9 e não 15
 
 Das 15 vendas fechadas hoje (27/08):
 
-- 3 são de **follow-up** (reuniões de 21, 24 e 25/08) — seguem fora, por definição do card.
+- 3 são de **follow-up** (reuniões de 21, 24 e 25/08) — ficam fora, por definição do card.
 - 2 são de 1ª call de reuniões de **26/08** (fechadas hoje) — entram no dia da reunião, 26/08.
-- 1 é de uma reunião de hoje às 17h que ficou com status **confirmada**, não "realizada" — hoje é descartada.
+- 1 é de uma reunião de hoje às 17h que ainda está com status **confirmada**, não "realizada" — fica fora.
 
 ## O que muda
 
-- A coluna **Vendas** do card passa a contar toda venda de 1ª call cuja reunião cai no período, **independente do status da reunião** (realizada, confirmada, etc.). Com os dados de hoje, 17h ganha +1 e o total do dia vai de 9 para 10.
-- O **denominador da conversão continua sendo apenas reuniões com status `realizada`**, como hoje. Isso preserva o critério "conversão sobre calls realizadas" já usado em Performance por Closer.
-- Consequência aceita: em horas com venda registrada mas reunião ainda não marcada como realizada, a conversão pode passar de 100%; nesse caso a célula da tabela mostra o valor com um aviso discreto (ícone/tooltip "reunião com venda ainda não marcada como realizada").
-- Vendas de follow-up seguem fora do card (sem mudança).
-- Texto explicativo do card ajustado para deixar o critério claro: vendas de 1ª call pela hora da reunião; conversão sobre reuniões realizadas.
+- **Regra do cálculo permanece:** venda só entra no numerador quando a reunião está com status `realizada`, exatamente a mesma base do denominador. Nada de conversão acima de 100% nem venda contada sobre reunião que o denominador ignora.
+- O card ganha **transparência** para não parecer erro:
+  - Legenda explícita: "vendas de 1ª call em reuniões marcadas como realizadas, pela hora da reunião".
+  - Um selo/aviso discreto no topo quando existirem, no período, vendas de 1ª call em reuniões **ainda não marcadas como realizada** — mostrando quantas são (hoje: 1) e explicando que entrarão no cálculo assim que o closer atualizar o status.
+  - Tooltip do selo indicando também quantas vendas do período são de follow-up ou de reuniões de outros dias, para conciliar com o card "Vendas registradas".
+- Vendas de follow-up seguem fora do card.
 
 ## Detalhes técnicos
 
-- `src/components/dashboard/ConversaoPorHoraCard.tsx`, query `conv-hora-vendas`: remover os filtros `.eq("agendamentos.status", "realizada")` (mantendo `deleted_at is null`, `vendeu = true`, janela de `scheduled_date` e filtro opcional de closer). O filtro de 1ª call (`venda_origem <> 'follow_up'`, `segunda_reuniao = false`) permanece.
-- Query `conv-hora-realizadas` fica inalterada (segue `status = 'realizada'`), então o denominador não muda.
-- Na tabela/tooltip, sinalizar linhas em que `vendas > realizadas` para explicar conversões acima de 100%.
-- Sem migração e sem alteração em outros cards (Vendas registradas, Performance por Closer, Taxa de Conversão).
+- `src/components/dashboard/ConversaoPorHoraCard.tsx`:
+  - Query `conv-hora-vendas` mantém `.eq("agendamentos.status", "realizada")` (sem mudança de filtro no cálculo).
+  - Nova query leve (mesma janela de `scheduled_date`, `vendeu = true`, `deleted_at is null`, 1ª call) **sem** o filtro de status, usada apenas para contar as vendas pendentes de atualização de status: `pendentes = total - realizadas`.
+  - Renderizar o selo/aviso só quando `pendentes > 0`, com tooltip explicando o critério.
+- Sem migração, sem mudança nas RPCs e sem alteração em outros cards (Vendas registradas, Performance por Closer, Taxa de Conversão).
