@@ -1107,7 +1107,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                   size="icon"
                   className="h-8 w-8"
                   onClick={handleDownloadMotivosCsv}
-                  disabled={totalNaoFechouMotivos === 0}
+                  disabled={totalNaoFechouMotivos === 0 || downloadingCsv}
                   aria-label="Baixar CSV"
                   title="Baixar CSV dos leads não fechados"
                 >
