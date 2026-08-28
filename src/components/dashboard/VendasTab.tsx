@@ -1100,9 +1100,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                     <button
                       key={c.closerId}
                       type="button"
+                      disabled={closerIds.length === 0}
                       onClick={() => openDrill(`${c.name} — ${dayLabel}`, closerIds, fmtBRL(c.receita))}
-                      className="w-full flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+                      className="w-full flex items-center justify-between p-2 rounded-md bg-muted/30 enabled:hover:bg-muted/60 transition-colors text-left disabled:cursor-default"
                     >
+
                       <div className="flex-1">
                         <p className="font-medium text-sm">{c.name}</p>
                         <p className="text-xs text-muted-foreground">
