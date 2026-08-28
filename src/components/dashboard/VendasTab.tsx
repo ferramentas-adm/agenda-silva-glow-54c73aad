@@ -1081,9 +1081,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           <CardContent>
             {closerPerf.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
-                Nenhuma venda registrada neste dia
+                Nenhuma reunião realizada ou venda registrada neste período
                 {closerChannelFilter !== "all" ? ` em ${closerChannelFilter}` : ""}.
               </p>
+
             ) : (
               <div className="space-y-2">
                 {closerPerf.map((c) => {
