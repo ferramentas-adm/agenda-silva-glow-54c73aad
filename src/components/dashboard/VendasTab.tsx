@@ -1181,13 +1181,26 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
             </div>
           </CardHeader>
           <CardContent>
-            {closerPerf.length === 0 ? (
+            {realizadasSemCloser > 0 && !isCloserView && (
+              <p className="mb-2 text-xs text-muted-foreground">
+                {realizadasSemCloser} reunião{realizadasSemCloser !== 1 ? "ões" : ""} realizada
+                {realizadasSemCloser !== 1 ? "s" : ""} no período sem closer atribuído — fora deste quadro.
+              </p>
+            )}
+            {loadingCloserPerf ? (
+              <div className="space-y-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 rounded bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : closerPerf.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
                 Nenhuma reunião realizada ou venda registrada neste período
                 {closerChannelFilter !== "all" ? ` em ${closerChannelFilter}` : ""}.
               </p>
 
             ) : (
+
               <div className="space-y-2">
                 {closerPerf.map((c) => {
                   const closerIds = vendasDia
