@@ -934,10 +934,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         <KpiCard
           icon={Target}
           label="Taxa de Conversão"
-          value={`${taxaConversao.toFixed(1)}%`}
-          sub={`${totalVendasConv} de ${totalReunioesConv} calls (exclui 2ªs reuniões e calls interrompidas · vendas atribuídas à data da 1ª call)`}
+          value={erroConversao ? "—" : `${taxaConversao.toFixed(1)}%`}
+          sub={
+            erroConversao
+              ? "Não foi possível calcular agora. Tente atualizar a página."
+              : `${totalVendasConv} de ${totalReunioesConv} calls (exclui 2ªs reuniões e calls interrompidas · vendas atribuídas à data da 1ª call)`
+          }
           color="primary"
-          loading={!conversaoData}
+          loading={loadingConversao}
           onClick={() =>
             openDrill(
               `Reuniões com resultado — ${dayLabel}`,
