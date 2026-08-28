@@ -1088,6 +1088,54 @@ export type Database = {
           vendas: number
         }[]
       }
+      dashboard_vendas_closer_perf: {
+        Args: {
+          p_channel?: string
+          p_closer_id?: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          closer_id: string
+          realizadas: number
+          receita: number
+          vendas: number
+        }[]
+      }
+      dashboard_vendas_kpis: {
+        Args: { p_closer_id?: string; p_from: string; p_to: string }
+        Returns: {
+          coletado_avulsa: number
+          coletado_calls: number
+          faturado_avulsa: number
+          faturado_calls: number
+          nao_fechou: number
+          ofertas_preco: number
+          vendas_avulsas: number
+          vendas_calls: number
+          vendas_follow: number
+          vendas_primeira_call: number
+          vendas_sem_status_realizada: number
+        }[]
+      }
+      dashboard_vendas_motivos: {
+        Args: {
+          p_channel?: string
+          p_closer_id?: string
+          p_from: string
+          p_preco?: string
+          p_to: string
+        }
+        Returns: {
+          motivo: string
+          qtd: number
+          total_nao_fechou: number
+        }[]
+      }
+      dashboard_vendas_realizadas_sem_closer: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
       get_public_profiles: {
         Args: never
         Returns: {
@@ -1135,6 +1183,10 @@ export type Database = {
       unassign_agendamentos_from_closer: {
         Args: { _closer_id: string; _reason: string }
         Returns: number
+      }
+      venda_closing_date: {
+        Args: { _closed_at: string; _updated_at: string }
+        Returns: string
       }
     }
     Enums: {

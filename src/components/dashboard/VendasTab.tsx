@@ -47,9 +47,10 @@ interface VendaRow {
   follow_up_time: string | null;
   segunda_reuniao: boolean;
   motivo_nao_fechamento: string | null;
-  explicacao_nao_fechamento: string | null;
-  resumo_venda: string | null;
+  explicacao_nao_fechamento?: string | null;
+  resumo_venda?: string | null;
   observacoes: string | null;
+
   closed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -65,7 +66,7 @@ interface AgendamentoRow {
   lead_name: string;
   lead_phone: string | null;
   channel_type: string | null;
-  briefing: string | null;
+  briefing?: string | null;
   created_at: string;
   created_by: string | null;
   sdr_responsavel_id: string | null;
@@ -143,31 +144,56 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Evita que o parser de tipos do supabase-js processe strings de select
   // gigantes (custo alto de typecheck).
   const sel = (s: string): string => s;
+  // Select enxuto: só os campos usados pelos quadros/drilldowns. Textos longos
+  // (briefing, resumo, observações) são buscados apenas no download do CSV.
   const VENDA_SELECT = `
     id, agendamento_id, vendeu, valor, valor_total_projeto, produto, order_bumps, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
-    motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
-    agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
+    motivo_nao_fechamento, closed_at, created_at, updated_at,
+    agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
   `;
+
+  // O backend devolve no máximo 1.000 linhas por requisição. Sem paginação os
+  // quadros ficavam truncados (e com números aleatórios) em períodos longos.
+  const PAGE_SIZE = 1000;
+  async function fetchAllPages<T>(
+    build: (
+      from: number,
+      to: number,
+    ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  ): Promise<T[]> {
+    const out: T[] = [];
+    for (let page = 0; page < 60; page++) {
+      const from = page * PAGE_SIZE;
+      const { data, error } = await build(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const rows = data ?? [];
+      out.push(...rows);
+      if (rows.length < PAGE_SIZE) break;
+    }
+    return out;
+  }
+
+  const closedAtOrFilter =
+    `and(closed_at.gte.${periodFrom},closed_at.lte.${periodTo}),` +
+    `and(closed_at.is.null,updated_at.gte.${periodUtc.startUtc},updated_at.lt.${periodUtc.endUtc})`;
 
   // 1) VENDAS FECHADAS do período — atribuídas pela data de fechamento
   //    (closed_at quando existir; senão a data em que foram registradas).
   //    Não depende da data da reunião: follow-ups antigos entram igual.
-  const { data: vendasFechadas = [], isLoading: loadingFechadas } = useQuery<VendaRow[]>({
+  const { data: vendasFechadas = [] } = useQuery<VendaRow[]>({
     queryKey: ["vendas-tab-fechadas", periodFrom, periodTo],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendas")
-        .select(sel(VENDA_SELECT))
-        .eq("vendeu", true)
-        .is("agendamentos.deleted_at", null)
-        .or(
-          `and(closed_at.gte.${periodFrom},closed_at.lte.${periodTo}),` +
-          `and(closed_at.is.null,updated_at.gte.${periodUtc.startUtc},updated_at.lt.${periodUtc.endUtc})`,
-        )
-        .returns<VendaRow[]>();
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchAllPages<VendaRow>((from, to) =>
+        supabase
+          .from("vendas")
+          .select(sel(VENDA_SELECT))
+          .eq("vendeu", true)
+          .is("agendamentos.deleted_at", null)
+          .or(closedAtOrFilter)
+          .order("id", { ascending: true })
+          .range(from, to)
+          .returns<VendaRow[]>(),
+      ),
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -175,20 +201,21 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // 2) NÃO FECHOU no período — atribuídas pela data da reunião (visão
   //    operacional da call, base dos Motivos de Não Fechamento).
-  const { data: vendasNaoFechou = [], isLoading: loadingNaoFechou } = useQuery<VendaRow[]>({
+  const { data: vendasNaoFechou = [] } = useQuery<VendaRow[]>({
     queryKey: ["vendas-tab-nao-fechou", periodFrom, periodTo],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendas")
-        .select(sel(VENDA_SELECT))
-        .eq("vendeu", false)
-        .is("agendamentos.deleted_at", null)
-        .gte("agendamentos.scheduled_date", periodFrom)
-        .lte("agendamentos.scheduled_date", periodTo)
-        .returns<VendaRow[]>();
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchAllPages<VendaRow>((from, to) =>
+        supabase
+          .from("vendas")
+          .select(sel(VENDA_SELECT))
+          .eq("vendeu", false)
+          .is("agendamentos.deleted_at", null)
+          .gte("agendamentos.scheduled_date", periodFrom)
+          .lte("agendamentos.scheduled_date", periodTo)
+          .order("id", { ascending: true })
+          .range(from, to)
+          .returns<VendaRow[]>(),
+      ),
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -197,18 +224,18 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // 3) FOLLOW-UPS ATIVOS — métrica global, independe do período selecionado.
   const { data: followUpsAtivosRows = [], isLoading: loadingFollowUps } = useQuery<VendaRow[]>({
     queryKey: ["vendas-tab-follow-ups"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendas")
-        .select(sel(VENDA_SELECT))
-        .eq("follow_up", true)
-        .not("follow_up_date", "is", null)
-        .is("agendamentos.deleted_at", null)
-        .order("follow_up_date", { ascending: true })
-        .returns<VendaRow[]>();
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchAllPages<VendaRow>((from, to) =>
+        supabase
+          .from("vendas")
+          .select(sel(VENDA_SELECT))
+          .eq("follow_up", true)
+          .not("follow_up_date", "is", null)
+          .is("agendamentos.deleted_at", null)
+          .order("id", { ascending: true })
+          .range(from, to)
+          .returns<VendaRow[]>(),
+      ),
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -221,15 +248,18 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return Array.from(m.values());
   }, [vendasFechadas, vendasNaoFechou, followUpsAtivosRows]);
 
-  const loadingVendas = loadingFechadas || loadingNaoFechou;
-
-  const { data: closers = [] } = useQuery<(CloserRow & { email: string | null })[]>({
-    queryKey: ["vendas-tab-closers"],
+  // Todos os closers (inclusive inativos) para resolver nomes no histórico.
+  const { data: closers = [] } = useQuery<(CloserRow & { email: string | null; active: boolean })[]>({
+    queryKey: ["vendas-tab-closers-all"],
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id, name, email").eq("active", true).order("name");
-      return (data ?? []) as (CloserRow & { email: string | null })[];
+      const { data } = await supabase.from("closers").select("id, name, email, active").order("name");
+      return (data ?? []) as (CloserRow & { email: string | null; active: boolean })[];
     },
   });
+
+  // Apenas ativos nos seletores de filtro.
+  const activeClosers = useMemo(() => closers.filter((c) => c.active), [closers]);
+
 
   // Vendas SUBIDAS no período selecionado (independente da data da reunião) —
   // reflete o momento em que o closer registrou a venda no sistema.
@@ -342,12 +372,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     });
   }, [vendas, agMap, periodFrom, periodTo, isCloserView, myCloserId]);
 
-  // Vendas do período cuja reunião ainda não está marcada como "realizada" —
-  // sinalizamos na tela para o gestor cobrar a atualização do status.
-  const vendasSemStatusRealizada = useMemo(
-    () => vendasDia.filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.status !== "realizada").length,
-    [vendasDia, agMap],
-  );
 
   // Base do card "Taxa de Conversão": busca AGENDAMENTOS realizados no período
   // direto da tabela `agendamentos` (independente da existência de linha em `vendas`).
@@ -379,60 +403,95 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     staleTime: 60_000,
   });
 
-  // KPIs (memoizados para não recalcular em cada render)
-  const kpis = useMemo(() => {
-    const isAvulsa = (v: VendaRow) => !!agMap.get(v.agendamento_id)?.is_venda_avulsa;
-    const vendasCalls = vendasDia.filter((v) => !isAvulsa(v));
-    const vendasAvulsas = vendasDia.filter((v) => isAvulsa(v));
+  // KPIs agregados NO BANCO — não dependem de baixar linhas, então nunca ficam
+  // truncados no limite de 1.000 registros nem demoram em períodos longos.
+  const { data: kpiRow, isLoading: loadingKpis } = useQuery({
+    queryKey: ["vendas-tab-kpis", periodFrom, periodTo, isCloserView, myCloserId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("dashboard_vendas_kpis", {
+        p_from: periodFrom,
+        p_to: periodTo,
+        p_closer_id: isCloserView && myCloserId ? myCloserId : null,
+      });
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as Record<string, number> | null;
+      return row;
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+  });
 
-    const totalReunioesComResultado = vendasCalls.length;
-    const totalVendas = vendasDia.filter((v) => v.vendeu).length;
-    const totalVendasCalls = vendasCalls.filter((v) => v.vendeu).length;
-    const totalVendasAvulsas = vendasAvulsas.filter((v) => v.vendeu).length;
-    const totalNaoFechou = vendasCalls.filter((v) => !v.vendeu).length;
-    // Taxa de conversão: numerador e denominador atribuídos pela DATA DA REUNIÃO
-    // (scheduled_date). Uma venda fechada hoje via follow-up de uma reunião de
-    // outro dia conta para o dia da reunião, não para hoje. Vendas avulsas
-    // (registradas retroativamente) NÃO entram nesse cálculo.
+  // Reuniões realizadas sem closer atribuído no período (ficam fora da
+  // Performance por Closer — sinalizamos para o gestor cobrar a atribuição).
+  const { data: realizadasSemCloser = 0 } = useQuery<number>({
+    queryKey: ["vendas-tab-sem-closer", periodFrom, periodTo],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("dashboard_vendas_realizadas_sem_closer", {
+        p_from: periodFrom,
+        p_to: periodTo,
+      });
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+  });
+
+  const loadingVendas = loadingKpis;
+  const vendasSemStatusRealizada = Number(kpiRow?.vendas_sem_status_realizada ?? 0);
+
+  const kpis = useMemo(() => {
+    const totalVendasCalls = Number(kpiRow?.vendas_calls ?? 0);
+    const totalVendasAvulsas = Number(kpiRow?.vendas_avulsas ?? 0);
+    const totalVendas = totalVendasCalls + totalVendasAvulsas;
+    const totalNaoFechou = Number(kpiRow?.nao_fechou ?? 0);
+    const totalReunioesComResultado = totalVendasCalls + totalNaoFechou;
+
     const totalReunioesConv = conversaoData?.totalReunioes ?? 0;
     const totalVendasConv = conversaoData?.totalVendas ?? 0;
     const taxaConversao = totalReunioesConv > 0 ? (totalVendasConv / totalReunioesConv) * 100 : 0;
 
-    const coletadoCalls = vendasCalls
-      .filter((v) => v.vendeu && v.valor)
-      .reduce((acc, v) => acc + (v.valor || 0), 0);
-    const coletadoAvulsa = vendasAvulsas
-      .filter((v) => v.vendeu && v.valor)
-      .reduce((acc, v) => acc + (v.valor || 0), 0);
+    const coletadoCalls = Number(kpiRow?.coletado_calls ?? 0);
+    const coletadoAvulsa = Number(kpiRow?.coletado_avulsa ?? 0);
     const coletadoTotal = coletadoCalls + coletadoAvulsa;
     const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
 
-    // Faturado = soma do valor total do projeto (valor cheio, não só o coletado)
-    const faturadoCalls = vendasCalls
-      .filter((v) => v.vendeu)
-      .reduce((acc, v) => acc + (v.valor_total_projeto || v.valor || 0), 0);
-    const faturadoAvulsa = vendasAvulsas
-      .filter((v) => v.vendeu)
-      .reduce((acc, v) => acc + (v.valor_total_projeto || v.valor || 0), 0);
+    const faturadoCalls = Number(kpiRow?.faturado_calls ?? 0);
+    const faturadoAvulsa = Number(kpiRow?.faturado_avulsa ?? 0);
     const faturadoTotal = faturadoCalls + faturadoAvulsa;
 
-    // % de vendas em 1a call vs follow-up/2a reuniao (apenas calls reais)
-    const isSegunda = (v: VendaRow) => v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao";
-    const vendasPrimeiraCall = vendasCalls.filter((v) => v.vendeu && !v.follow_up && !isSegunda(v)).length;
-    const vendasFollowOuSegunda = vendasCalls.filter((v) => v.vendeu && (v.follow_up || isSegunda(v))).length;
+    const vendasPrimeiraCall = Number(kpiRow?.vendas_primeira_call ?? 0);
+    const vendasFollowOuSegunda = Number(kpiRow?.vendas_follow ?? 0);
     const pctPrimeiraCall = totalVendasCalls > 0 ? (vendasPrimeiraCall / totalVendasCalls) * 100 : 0;
     const pctFollow = totalVendasCalls > 0 ? (vendasFollowOuSegunda / totalVendasCalls) * 100 : 0;
 
-    // % de calls com oferta de preço (apenas calls reais)
-    const ofertasPreco = vendasCalls.filter((v) => v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
-    const ofertasPrecoCount = ofertasPreco.length;
-    const ofertasPrecoIds = ofertasPreco.map((v) => v.agendamento_id);
-    const pctOfertaPreco = totalReunioesComResultado > 0 ? (ofertasPrecoCount / totalReunioesComResultado) * 100 : 0;
+    const ofertasPrecoCount = Number(kpiRow?.ofertas_preco ?? 0);
+    const pctOfertaPreco =
+      totalReunioesComResultado > 0 ? (ofertasPrecoCount / totalReunioesComResultado) * 100 : 0;
 
-    return { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
-  }, [vendasDia, conversaoData, agMap]);
+    return {
+      totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou,
+      taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa,
+      coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow,
+      vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco,
+    };
+  }, [kpiRow, conversaoData]);
 
-  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco } = kpis;
+  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco } = kpis;
+
+  // IDs para drilldown da métrica de oferta de preço (baseado nas linhas do período).
+  const ofertasPrecoIds = useMemo(
+    () =>
+      vendasDia
+        .filter(
+          (v) =>
+            !agMap.get(v.agendamento_id)?.is_venda_avulsa &&
+            (v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0)),
+        )
+        .map((v) => v.agendamento_id),
+    [vendasDia, agMap],
+  );
+
 
 
   // Follow-ups (escopo geral — não dependem do dia selecionado).
@@ -516,12 +575,36 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [vendas, agMap, periodFrom, periodTo, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter, motivosPrecoFilter]);
 
 
-  const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
-
-  // Download CSV dos leads que estão na seção "Motivos de Não Fechamento"
-  const handleDownloadMotivosCsv = () => {
+  // Download CSV dos leads que estão na seção "Motivos de Não Fechamento".
+  // Os textos longos (briefing/resumo/observações) não vêm nas consultas dos
+  // quadros — são buscados aqui, só para as linhas exportadas.
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
+  const handleDownloadMotivosCsv = async () => {
     const rows = vendasDiaParaMotivos.filter((v) => !v.vendeu);
-    if (rows.length === 0) return;
+    if (rows.length === 0 || downloadingCsv) return;
+    setDownloadingCsv(true);
+    const extras = new Map<string, { explicacao_nao_fechamento: string | null; resumo_venda: string | null; observacoes: string | null; briefing: string | null }>();
+    try {
+      const ids = rows.map((v) => v.id);
+      for (let i = 0; i < ids.length; i += 300) {
+        const chunk = ids.slice(i, i + 300);
+        const { data } = await supabase
+          .from("vendas")
+          .select(sel("id, explicacao_nao_fechamento, resumo_venda, observacoes, agendamentos(briefing)"))
+          .in("id", chunk);
+        ((data ?? []) as any[]).forEach((r) => {
+          extras.set(r.id, {
+            explicacao_nao_fechamento: r.explicacao_nao_fechamento ?? null,
+            resumo_venda: r.resumo_venda ?? null,
+            observacoes: r.observacoes ?? null,
+            briefing: r.agendamentos?.briefing ?? null,
+          });
+        });
+      }
+    } finally {
+      setDownloadingCsv(false);
+    }
+
 
     const headers = [
       "Lead", "Telefone", "Data agendamento", "Hora", "Closer", "SDR", "Canal",
@@ -541,6 +624,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
     const lines = rows.map((v) => {
       const ag = v.agendamentos;
+      const extra = extras.get(v.id);
       const closerName = ag?.closer_id ? closerMap.get(ag.closer_id) || "" : "";
       const sdrId = ag?.sdr_responsavel_id ?? ag?.created_by ?? null;
       const sdrName = sdrId ? profilesMap.get(sdrId) || "" : "";
@@ -555,12 +639,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         ag?.created_at ? formatBRDateTime(ag.created_at) : "",
         ag?.status ?? "",
         v.motivo_nao_fechamento ?? "",
-        v.explicacao_nao_fechamento ?? "",
-        v.resumo_venda ?? "",
-        ag?.briefing ?? "",
-        v.observacoes ?? "",
+        extra?.explicacao_nao_fechamento ?? "",
+        extra?.resumo_venda ?? "",
+        extra?.briefing ?? "",
+        extra?.observacoes ?? "",
       ].map(escape).join(";");
     });
+
 
     const csv = "\uFEFF" + [headers.map(escape).join(";"), ...lines].join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -580,82 +665,92 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     URL.revokeObjectURL(url);
   };
 
-  // Motivos de não fechamento
-  const motivosCount = useMemo(() => {
-    const map = new Map<string, number>();
-    vendasDiaParaMotivos.forEach((v) => {
-      if (!v.vendeu && v.motivo_nao_fechamento) {
-        map.set(v.motivo_nao_fechamento, (map.get(v.motivo_nao_fechamento) || 0) + 1);
-      }
-    });
-    return Array.from(map.entries())
-      .map(([motivo, count]) => ({ motivo, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [vendasDiaParaMotivos]);
-
-  // Filtro de canal aplicado à Performance por Closer
-  const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
-
-  // Reuniões REALIZADAS do período (direto de `agendamentos`), base do
-  // denominador da conversão por closer — independe de existir linha em `vendas`.
-  const { data: realizadasPeriodo = [] } = useQuery<
-    { id: string; closer_id: string | null; channel_type: string | null }[]
-  >({
-    queryKey: ["vendas-tab-realizadas-closer", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
+  // Motivos de não fechamento — agregados no banco (não trunca em 1.000 linhas).
+  const { data: motivosData } = useQuery<{ motivos: { motivo: string; count: number }[]; total: number }>({
+    queryKey: [
+      "vendas-tab-motivos",
+      periodFrom,
+      periodTo,
+      motivosCloserFilter,
+      motivosChannelFilter,
+      motivosPrecoFilter,
+      isCloserView,
+      myCloserId,
+    ],
     queryFn: async () => {
-      let q = supabase
-        .from("agendamentos")
-        .select("id, closer_id, channel_type")
-        .eq("status", "realizada")
-        .is("deleted_at", null)
-        .gte("scheduled_date", convPeriodFrom)
-        .lte("scheduled_date", convPeriodTo);
-      if (isCloserView && myCloserId) q = q.eq("closer_id", myCloserId);
-      const { data, error } = await q;
+      const closerParam = isCloserView
+        ? myCloserId
+        : motivosCloserFilter === "all"
+          ? null
+          : motivosCloserFilter;
+      const { data, error } = await supabase.rpc("dashboard_vendas_motivos", {
+        p_from: periodFrom,
+        p_to: periodTo,
+        p_closer_id: closerParam,
+        p_channel: motivosChannelFilter === "all" ? null : motivosChannelFilter,
+        p_preco: motivosPrecoFilter === "all" ? null : motivosPrecoFilter,
+      });
       if (error) throw error;
-      return (data ?? []) as { id: string; closer_id: string | null; channel_type: string | null }[];
+      const rows = (data ?? []) as any[];
+      return {
+        motivos: rows.map((r) => ({ motivo: r.motivo as string, count: Number(r.qtd ?? 0) })),
+        total: rows.length > 0 ? Number(rows[0].total_nao_fechou ?? 0) : 0,
+      };
     },
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
   });
 
-  // Performance por Closer (com filtro opcional de canal)
-  // Numerador: vendas do closer no período (inclui follow-up e 2ª reunião).
+  const motivosCount = motivosData?.motivos ?? [];
+  const totalNaoFechouMotivos = motivosData?.total ?? 0;
+
+
+  // Filtro de canal aplicado à Performance por Closer
+  const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
+
+  // Performance por Closer agregada NO BANCO:
+  // Numerador: vendas do closer no período (data de fechamento, inclui follow-up).
   // Denominador: TODAS as reuniões realizadas do closer no período.
+  const { data: closerPerfRows = [], isLoading: loadingCloserPerf } = useQuery<
+    { closer_id: string; realizadas: number; vendas: number; receita: number }[]
+  >({
+    queryKey: [
+      "vendas-tab-closer-perf",
+      periodFrom,
+      periodTo,
+      closerChannelFilter,
+      isCloserView,
+      myCloserId,
+    ],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("dashboard_vendas_closer_perf", {
+        p_from: periodFrom,
+        p_to: periodTo,
+        p_channel: closerChannelFilter === "all" ? null : closerChannelFilter,
+        p_closer_id: isCloserView && myCloserId ? myCloserId : null,
+      });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r) => ({
+        closer_id: r.closer_id as string,
+        realizadas: Number(r.realizadas ?? 0),
+        vendas: Number(r.vendas ?? 0),
+        receita: Number(r.receita ?? 0),
+      }));
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+  });
+
   const closerPerf = useMemo(() => {
-    const realizadasPorCloser = new Map<string, number>();
-    realizadasPeriodo.forEach((a) => {
-      if (!a.closer_id) return;
-      if (closerChannelFilter !== "all" && a.channel_type !== closerChannelFilter) return;
-      realizadasPorCloser.set(a.closer_id, (realizadasPorCloser.get(a.closer_id) || 0) + 1);
-    });
-
-    const map = new Map<string, { vendas: number; receita: number }>();
-    vendasDia.forEach((v) => {
-      const ag = agMap.get(v.agendamento_id);
-      if (!ag?.closer_id || !v.vendeu) return;
-      if (closerChannelFilter !== "all" && ag.channel_type !== closerChannelFilter) return;
-      const cur = map.get(ag.closer_id) || { vendas: 0, receita: 0 };
-      cur.vendas += 1;
-      cur.receita += v.valor || 0;
-      map.set(ag.closer_id, cur);
-    });
-
-    // União: closers com reunião realizada no período + closers com venda.
-    const closerIds = new Set<string>([...realizadasPorCloser.keys(), ...map.keys()]);
-
-    return Array.from(closerIds)
-      .map((closerId) => {
-        const stats = map.get(closerId) || { vendas: 0, receita: 0 };
-        const total = realizadasPorCloser.get(closerId) || 0;
-        return {
-          closerId,
-          name: closerMap.get(closerId) || "—",
-          ...stats,
-          total,
-          conversao: total > 0 ? (stats.vendas / total) * 100 : 0,
-        };
-      })
+    return closerPerfRows
+      .map((r) => ({
+        closerId: r.closer_id,
+        name: closerMap.get(r.closer_id) || "Closer removido",
+        vendas: r.vendas,
+        receita: r.receita,
+        total: r.realizadas,
+        conversao: r.realizadas > 0 ? (r.vendas / r.realizadas) * 100 : 0,
+      }))
       .sort(
         (a, b) =>
           Number(b.vendas > 0) - Number(a.vendas > 0) ||
@@ -664,8 +759,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           b.receita - a.receita ||
           b.total - a.total,
       );
+  }, [closerPerfRows, closerMap]);
 
-  }, [vendasDia, agMap, closerMap, closerChannelFilter, realizadasPeriodo]);
 
 
 
