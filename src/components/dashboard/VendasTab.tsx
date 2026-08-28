@@ -1239,6 +1239,7 @@ function KpiCard({
   sub,
   color,
   onClick,
+  loading,
 }: {
   icon: typeof TrendingUp;
   label: string;
@@ -1246,6 +1247,7 @@ function KpiCard({
   sub: string;
   color: "primary" | "emerald" | "destructive";
   onClick?: () => void;
+  loading?: boolean;
 }) {
   const colorClasses = {
     primary: "text-primary border-primary/30 bg-primary/5",
@@ -1255,10 +1257,10 @@ function KpiCard({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={loading ? undefined : onClick}
       className={cn(
         "rounded-lg border p-3 flex flex-col gap-1 text-left transition-all",
-        "hover:scale-[1.02] hover:shadow-md cursor-pointer",
+        loading ? "cursor-default" : "hover:scale-[1.02] hover:shadow-md cursor-pointer",
         colorClasses[color],
       )}
     >
@@ -1266,11 +1268,21 @@ function KpiCard({
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs text-muted-foreground">{sub}</div>
+      {loading ? (
+        <>
+          <div className="h-8 w-20 rounded bg-muted animate-pulse" />
+          <div className="h-3 w-full rounded bg-muted/70 animate-pulse" />
+        </>
+      ) : (
+        <>
+          <div className="text-2xl font-bold">{value}</div>
+          <div className="text-xs text-muted-foreground">{sub}</div>
+        </>
+      )}
     </button>
   );
 }
+
 
 type VendaHojeItem = {
   agendamento_id: string;
