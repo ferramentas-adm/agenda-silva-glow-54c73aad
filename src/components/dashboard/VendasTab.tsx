@@ -148,9 +148,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // (briefing, resumo, observações) são buscados apenas no download do CSV.
   const VENDA_SELECT = `
     id, agendamento_id, vendeu, valor, valor_total_projeto, produto, order_bumps, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
-    motivo_nao_fechamento, closed_at, created_at, updated_at,
+    motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
     agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
   `;
+
 
   // O backend devolve no máximo 1.000 linhas por requisição. Sem paginação os
   // quadros ficavam truncados (e com números aleatórios) em períodos longos.
