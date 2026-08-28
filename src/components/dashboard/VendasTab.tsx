@@ -493,16 +493,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const vendasDiaParaMotivos = useMemo(() => {
     const base = vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
-      if (ag?.status !== "realizada") return false;
+      if (!ag) return false;
       if (isCloserView) {
-        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+        if (!myCloserId || ag.closer_id !== myCloserId) return false;
       }
+      if (!v.vendeu && ag.status !== "realizada") return false;
       const cd = closingDateOf(v);
       if (!cd) return false;
-      if (isRange && rangeFromStr && rangeToStr) {
-        return cd >= rangeFromStr && cd <= rangeToStr;
-      }
-      return cd === dateStr;
+      return cd >= periodFrom && cd <= periodTo;
     });
     return base.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
@@ -515,7 +513,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }
       return true;
     });
-  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter, motivosPrecoFilter]);
+  }, [vendas, agMap, periodFrom, periodTo, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter, motivosPrecoFilter]);
+
 
   const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
 
