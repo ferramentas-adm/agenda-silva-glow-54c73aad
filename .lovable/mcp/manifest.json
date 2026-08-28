@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "grupo-silva-agenda-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Painel de Agendamentos — Grupo Silva"
     },
     "tools": [
@@ -69,6 +69,302 @@
         "outputSchema": null
       },
       {
+        "name": "get_appointment",
+        "title": "Detalhes da reunião",
+        "description": "Retorna os detalhes completos de uma reunião pelo id, incluindo closer, SDR e resultado da venda.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ID (uuid) da reunião."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "agenda_availability",
+        "title": "Ocupação e horários livres da agenda",
+        "description": "Mostra a ocupação da agenda por dia e horário no período: quantas reuniões por horário, quantos closers ativos, horários lotados (não oferecer ao lead) e os horários mais vazios. Respeita os horários comerciais configurados no painel.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from_date": {
+              "description": "Data inicial (YYYY-MM-DD). Padrão: hoje.",
+              "type": "string"
+            },
+            "to_date": {
+              "description": "Data final (YYYY-MM-DD, inclusiva). Padrão: from_date + 6 dias.",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_sales",
+        "title": "Listar vendas",
+        "description": "Lista as vendas (e opcionalmente as não fechadas) do período, com closer, lead, valor, order bumps e origem (1ª call ou follow-up). A venda é atribuída à data de fechamento quando informada, senão à data de registro.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "Data inicial (YYYY-MM-DD). Padrão: início do mês corrente.",
+              "type": "string"
+            },
+            "to": {
+              "description": "Data final (YYYY-MM-DD, inclusiva). Padrão: hoje.",
+              "type": "string"
+            },
+            "closer_name": {
+              "description": "Filtrar por nome do closer (match parcial).",
+              "type": "string"
+            },
+            "incluir_nao_fechadas": {
+              "description": "Se true, inclui também as reuniões que não fecharam venda. Padrão: só vendas fechadas.",
+              "type": "boolean"
+            },
+            "limit": {
+              "description": "Máximo de itens (padrão 200, teto 500).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "sales_kpis",
+        "title": "KPIs de vendas do período",
+        "description": "Números consolidados do período (mesma fonte da página Vendas): vendas de 1ª call e de follow-up, vendas avulsas, valor coletado e faturado, não fechou, reuniões realizadas e taxa de conversão.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "Data inicial (YYYY-MM-DD). Padrão: início do mês corrente.",
+              "type": "string"
+            },
+            "to": {
+              "description": "Data final (YYYY-MM-DD, inclusiva). Padrão: hoje.",
+              "type": "string"
+            },
+            "closer_id": {
+              "description": "Restringir a um closer (uuid).",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "closer_performance",
+        "title": "Performance por closer",
+        "description": "Ranking por closer no período: reuniões realizadas, vendas, receita e taxa de conversão (inclui closers com zero venda). Mesma fonte da página Vendas.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "Data inicial (YYYY-MM-DD). Padrão: início do mês corrente.",
+              "type": "string"
+            },
+            "to": {
+              "description": "Data final (YYYY-MM-DD, inclusiva). Padrão: hoje.",
+              "type": "string"
+            },
+            "canal": {
+              "description": "Filtrar por canal (channel_type), ex.: inbound.",
+              "type": "string"
+            },
+            "ordenar_por": {
+              "description": "Padrão: conversao.",
+              "type": "string",
+              "enum": [
+                "conversao",
+                "vendas",
+                "receita",
+                "realizadas"
+              ]
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_followups",
+        "title": "Listar follow-ups",
+        "description": "Follow-ups em acompanhamento (venda não fechada com data de follow-up marcada) e reuniões não fechadas sem follow-up marcado, com motivo, valor previsto e sinalização de atraso.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "bloco": {
+              "description": "Qual bloco retornar. Padrão: todos.",
+              "type": "string",
+              "enum": [
+                "em_acompanhamento",
+                "nao_acompanhados",
+                "todos"
+              ]
+            },
+            "from": {
+              "description": "Data inicial do follow-up (YYYY-MM-DD).",
+              "type": "string"
+            },
+            "to": {
+              "description": "Data final do follow-up (YYYY-MM-DD, inclusiva).",
+              "type": "string"
+            },
+            "closer_name": {
+              "description": "Filtrar por nome do closer (match parcial).",
+              "type": "string"
+            },
+            "apenas_atrasados": {
+              "description": "Se true, só follow-ups vencidos.",
+              "type": "boolean"
+            },
+            "limit": {
+              "description": "Máximo de itens por bloco (padrão 200, teto 500).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "no_show_reasons",
+        "title": "Motivos de não comparecimento",
+        "description": "Agrupa os motivos de não comparecimento (reuniões marcadas como não compareceu) no período, com contagem e percentual, opcionalmente filtrando por SDR.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "Data inicial (YYYY-MM-DD). Padrão: início do mês corrente.",
+              "type": "string"
+            },
+            "to": {
+              "description": "Data final (YYYY-MM-DD, inclusiva). Padrão: hoje.",
+              "type": "string"
+            },
+            "sdr_name": {
+              "description": "Filtrar por nome do SDR responsável (match parcial).",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "sdr_productivity",
+        "title": "Produtividade dos SDRs",
+        "description": "Agendamentos criados por SDR no período (pela data de criação), com quantas foram realizadas, quantas não compareceram, taxa de comparecimento e vendas geradas.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "Data inicial (YYYY-MM-DD). Padrão: início do mês corrente.",
+              "type": "string"
+            },
+            "to": {
+              "description": "Data final (YYYY-MM-DD, inclusiva). Padrão: hoje.",
+              "type": "string"
+            },
+            "base": {
+              "description": "Contar pela data de criação do agendamento (padrão) ou pela data da reunião.",
+              "type": "string",
+              "enum": [
+                "criacao",
+                "reuniao"
+              ]
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_lead",
+        "title": "Buscar lead",
+        "description": "Busca um lead por nome ou telefone e devolve o histórico dele no painel: todas as reuniões (com closer, status e motivo) e o resultado de venda de cada uma.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Nome ou telefone (parcial) do lead."
+            },
+            "limit": {
+              "description": "Máximo de reuniões retornadas (padrão 50, teto 200).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_closers",
         "title": "Listar closers",
         "description": "Lista os closers cadastrados no painel, com status ativo/inativo e horário comercial.",
@@ -90,9 +386,9 @@
         "outputSchema": null
       },
       {
-        "name": "get_appointment",
-        "title": "Detalhes da reunião",
-        "description": "Retorna os detalhes completos de uma reunião pelo id, incluindo closer, SDR e resultado da venda.",
+        "name": "list_users",
+        "title": "Listar usuários do painel",
+        "description": "Lista os usuários do painel com função (gestor, moderador, supervisor, SDR, closer, apresentador), e-mail e status ativo/inativo. Disponível apenas para gestor e moderador.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -102,14 +398,23 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
-            "id": {
+            "role": {
+              "description": "Filtrar por função.",
               "type": "string",
-              "description": "ID (uuid) da reunião."
+              "enum": [
+                "gestor",
+                "moderador",
+                "supervisor",
+                "apresentador",
+                "sdr",
+                "closer"
+              ]
+            },
+            "only_active": {
+              "description": "Se true, retorna somente usuários ativos.",
+              "type": "boolean"
             }
-          },
-          "required": [
-            "id"
-          ]
+          }
         },
         "outputSchema": null
       }
