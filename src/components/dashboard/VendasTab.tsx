@@ -653,8 +653,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       map.set(ag.closer_id, cur);
     });
 
-    return Array.from(map.entries())
-      .map(([closerId, stats]) => {
+    // União: closers com reunião realizada no período + closers com venda.
+    const closerIds = new Set<string>([...realizadasPorCloser.keys(), ...map.keys()]);
+
+    return Array.from(closerIds)
+      .map((closerId) => {
+        const stats = map.get(closerId) || { vendas: 0, receita: 0 };
         const total = realizadasPorCloser.get(closerId) || 0;
         return {
           closerId,
@@ -666,11 +670,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       })
       .sort(
         (a, b) =>
+          Number(b.vendas > 0) - Number(a.vendas > 0) ||
           b.conversao - a.conversao ||
           b.vendas - a.vendas ||
           b.receita - a.receita ||
           b.total - a.total,
       );
+
   }, [vendasDia, agMap, closerMap, closerChannelFilter, realizadasPeriodo]);
 
 
