@@ -427,7 +427,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const ofertasPreco = vendasCalls.filter((v) => v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
     const ofertasPrecoCount = ofertasPreco.length;
     const ofertasPrecoIds = ofertasPreco.map((v) => v.agendamento_id);
-    const pctOfertaPreco = totalReunioesConv > 0 ? (ofertasPrecoCount / totalReunioesConv) * 100 : 0;
+    const pctOfertaPreco = totalReunioesComResultado > 0 ? (ofertasPrecoCount / totalReunioesComResultado) * 100 : 0;
 
     return { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
   }, [vendasDia, conversaoData, agMap]);
