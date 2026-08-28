@@ -101,121 +101,127 @@ type DrilldownState = {
 };
 
 export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
-  // Quando há intervalo válido com from!=to, usamos modo intervalo;
-  // caso contrário, mantemos o comportamento por dia único (currentDate).
-  const isRange = !!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to));
-  const rangeFromStr = isRange ? format(dateRange!.from!, "yyyy-MM-dd") : null;
-  const rangeToStr = isRange ? format(dateRange!.to!, "yyyy-MM-dd") : null;
+  // Período selecionado. Aceita intervalo completo OU apenas a data inicial
+  // (nesse caso from = to, igual ao comportamento das outras abas do dashboard).
+  const pickedFrom = dateRange?.from ?? null;
+  const pickedTo = dateRange?.to ?? dateRange?.from ?? null;
+  const hasPicked = !!(pickedFrom && pickedTo);
   const dateStr = format(currentDate, "yyyy-MM-dd");
-  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const periodFrom = hasPicked ? format(pickedFrom!, "yyyy-MM-dd") : dateStr;
+  const periodTo = hasPicked ? format(pickedTo!, "yyyy-MM-dd") : dateStr;
+  const isRange = periodFrom !== periodTo;
+  const rangeFromStr = isRange ? periodFrom : null;
+  const rangeToStr = isRange ? periodTo : null;
+  const todayStr = brTodayYMD();
 
   // Rótulo amigável (Hoje / Ontem / Amanhã / data / intervalo)
   const dayLabel = useMemo(() => {
     if (isRange) {
-      return `${format(dateRange!.from!, "dd/MM")} – ${format(dateRange!.to!, "dd/MM")}`;
+      return `${format(parseISO(periodFrom), "dd/MM")} – ${format(parseISO(periodTo), "dd/MM")}`;
     }
+    const single = parseISO(periodFrom);
     const today = new Date();
     const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
     const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
-    if (isSameDay(currentDate, today)) return "Hoje";
-    if (isSameDay(currentDate, yesterday)) return "Ontem";
-    if (isSameDay(currentDate, tomorrow)) return "Amanhã";
-    return format(currentDate, "dd 'de' MMMM", { locale: ptBR });
-  }, [currentDate, isRange, dateRange]);
+    if (isSameDay(single, today)) return "Hoje";
+    if (isSameDay(single, yesterday)) return "Ontem";
+    if (isSameDay(single, tomorrow)) return "Amanhã";
+    return format(single, "dd 'de' MMMM", { locale: ptBR });
+  }, [isRange, periodFrom, periodTo]);
 
-  // Janela server-side: cobre vendas e audit_logs com folga em torno do
-  // período selecionado. Evita baixar a tabela inteira a cada refetch.
-  // - Modo intervalo: usa o range escolhido com 60 dias de folga p/ trás (para
-  //   capturar reuniões antigas cujo follow-up fechou dentro do range).
-  // - Modo dia único: janela ampla padrão (180 dias atrás → 60 dias à frente).
-  const windowRange = useMemo(() => {
-    const pad = (d: Date) => format(d, "yyyy-MM-dd");
-    if (isRange && dateRange?.from && dateRange?.to) {
-      const start = new Date(dateRange.from); start.setDate(start.getDate() - 60);
-      const end = new Date(dateRange.to); end.setDate(end.getDate() + 7);
-      return { start: pad(start), end: pad(end) };
-    }
-    const base = new Date(currentDate);
-    const start = new Date(base); start.setDate(start.getDate() - 180);
-    const end = new Date(base); end.setDate(end.getDate() + 60);
-    return { start: pad(start), end: pad(end) };
-  }, [currentDate, isRange, dateRange?.from, dateRange?.to]);
+  // Janela em UTC correspondente ao período em BRT (UTC-3), usada para
+  // filtrar `updated_at` (momento em que a venda foi registrada).
+  const periodUtc = useMemo(() => {
+    const nextYmd = (ymd: string) =>
+      format(new Date(new Date(ymd + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
+    return {
+      startUtc: `${periodFrom}T03:00:00.000Z`,
+      endUtc: `${nextYmd(periodTo)}T03:00:00.000Z`,
+    };
+  }, [periodFrom, periodTo]);
 
-  // Vendas: limitadas a uma janela de datas server-side; ainda paginamos
-  // para acomodar volumes maiores que 1.000 linhas dentro da janela.
-  const { data: vendas = [] } = useQuery<VendaRow[]>({
-    queryKey: ["vendas-tab", windowRange.start, windowRange.end],
+  // Evita que o parser de tipos do supabase-js processe strings de select
+  // gigantes (custo alto de typecheck).
+  const sel = (s: string): string => s;
+  const VENDA_SELECT = `
+    id, agendamento_id, vendeu, valor, valor_total_projeto, produto, order_bumps, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
+    motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
+    agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
+  `;
+
+  // 1) VENDAS FECHADAS do período — atribuídas pela data de fechamento
+  //    (closed_at quando existir; senão a data em que foram registradas).
+  //    Não depende da data da reunião: follow-ups antigos entram igual.
+  const { data: vendasFechadas = [], isLoading: loadingFechadas } = useQuery<VendaRow[]>({
+    queryKey: ["vendas-tab-fechadas", periodFrom, periodTo],
     queryFn: async () => {
-      const PAGE = 1000;
-      const all: VendaRow[] = [];
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("vendas")
-          .select(`
-            id, agendamento_id, vendeu, valor, valor_total_projeto, produto, order_bumps, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
-            motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
-            agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
-          `)
-
-          .is("agendamentos.deleted_at", null)
-          .gte("agendamentos.scheduled_date", windowRange.start)
-          .lte("agendamentos.scheduled_date", windowRange.end)
-          .order("created_at", { ascending: false })
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as unknown as VendaRow[];
-        all.push(...batch);
-        if (batch.length < PAGE) break;
-        from += PAGE;
-      }
-      return all;
+      const { data, error } = await supabase
+        .from("vendas")
+        .select(sel(VENDA_SELECT))
+        .eq("vendeu", true)
+        .is("agendamentos.deleted_at", null)
+        .or(
+          `and(closed_at.gte.${periodFrom},closed_at.lte.${periodTo}),` +
+          `and(closed_at.is.null,updated_at.gte.${periodUtc.startUtc},updated_at.lt.${periodUtc.endUtc})`,
+        )
+        .returns<VendaRow[]>();
+      if (error) throw error;
+      return data ?? [];
     },
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
 
-  // Mapa agendamento_id -> data (BRT yyyy-MM-dd) em que a venda foi marcada
-  // como fechada via follow-up. Usa o audit log com outcome='fechou'.
-  const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
-    queryKey: ["vendas-tab-followup-closes", windowRange.start, windowRange.end],
+  // 2) NÃO FECHOU no período — atribuídas pela data da reunião (visão
+  //    operacional da call, base dos Motivos de Não Fechamento).
+  const { data: vendasNaoFechou = [], isLoading: loadingNaoFechou } = useQuery<VendaRow[]>({
+    queryKey: ["vendas-tab-nao-fechou", periodFrom, periodTo],
     queryFn: async () => {
-      const PAGE = 1000;
-      const rows: { entity_id: string | null; details: any; created_at: string }[] = [];
-      let from = 0;
-      // Filtra audit_logs por created_at dentro da janela para evitar full scan.
-      const startIso = `${windowRange.start}T00:00:00Z`;
-      const endIso = `${windowRange.end}T23:59:59Z`;
-      while (true) {
-        const { data, error } = await supabase
-          .from("audit_logs")
-          .select("entity_id, details, created_at")
-          .eq("entity_type", "venda")
-          .eq("action", "follow_up_atualizado")
-          .gte("created_at", startIso)
-          .lte("created_at", endIso)
-          .order("created_at", { ascending: false })
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as typeof rows;
-        rows.push(...batch);
-        if (batch.length < PAGE) break;
-        from += PAGE;
-      }
-      const m = new Map<string, string>();
-      rows.forEach((r) => {
-        if (!r.entity_id) return;
-        if ((r.details?.outcome ?? "") !== "fechou") return;
-        const cur = m.get(r.entity_id);
-        if (!cur || cur < r.created_at) m.set(r.entity_id, brDateOf(r.created_at));
-      });
-      return m;
+      const { data, error } = await supabase
+        .from("vendas")
+        .select(sel(VENDA_SELECT))
+        .eq("vendeu", false)
+        .is("agendamentos.deleted_at", null)
+        .gte("agendamentos.scheduled_date", periodFrom)
+        .lte("agendamentos.scheduled_date", periodTo)
+        .returns<VendaRow[]>();
+      if (error) throw error;
+      return data ?? [];
     },
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
+
+  // 3) FOLLOW-UPS ATIVOS — métrica global, independe do período selecionado.
+  const { data: followUpsAtivosRows = [], isLoading: loadingFollowUps } = useQuery<VendaRow[]>({
+    queryKey: ["vendas-tab-follow-ups"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendas")
+        .select(sel(VENDA_SELECT))
+        .eq("follow_up", true)
+        .not("follow_up_date", "is", null)
+        .is("agendamentos.deleted_at", null)
+        .order("follow_up_date", { ascending: true })
+        .returns<VendaRow[]>();
+      if (error) throw error;
+      return data ?? [];
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+
+  // Base combinada (deduplicada) usada pelos quadros que precisam das três listas.
+  const vendas = useMemo<VendaRow[]>(() => {
+    const m = new Map<string, VendaRow>();
+    [...vendasFechadas, ...vendasNaoFechou, ...followUpsAtivosRows].forEach((v) => m.set(v.id, v));
+    return Array.from(m.values());
+  }, [vendasFechadas, vendasNaoFechou, followUpsAtivosRows]);
+
+  const loadingVendas = loadingFechadas || loadingNaoFechou;
 
   const { data: closers = [] } = useQuery<(CloserRow & { email: string | null })[]>({
     queryKey: ["vendas-tab-closers"],
@@ -227,19 +233,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // Vendas SUBIDAS no período selecionado (independente da data da reunião) —
   // reflete o momento em que o closer registrou a venda no sistema.
-  const uploadPeriod = useMemo(() => {
-    const from = isRange && rangeFromStr ? rangeFromStr : dateStr;
-    const to = isRange && rangeToStr ? rangeToStr : dateStr;
-    // BRT = UTC-3. Janela do período em UTC.
-    const nextYmd = (ymd: string) =>
-      format(new Date(new Date(ymd + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
-    return {
-      from,
-      to,
-      startUtc: `${from}T03:00:00.000Z`,
-      endUtc: `${nextYmd(to)}T03:00:00.000Z`,
-    };
-  }, [isRange, rangeFromStr, rangeToStr, dateStr]);
+  const uploadPeriod = useMemo(
+    () => ({ from: periodFrom, to: periodTo, startUtc: periodUtc.startUtc, endUtc: periodUtc.endUtc }),
+    [periodFrom, periodTo, periodUtc],
+  );
 
   const { data: vendasHoje = [] } = useQuery<
     { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; venda_origem: string | null; scheduled_date: string; meeting_reason: string | null; closer_id: string | null; closed_at: string | null; updated_at: string }[]
@@ -251,7 +248,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       // O filtro final por "data efetiva de subida" acontece client-side em BRT.
       const { data, error } = await supabase
         .from("vendas")
-        .select("agendamento_id, valor, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
+        .select(sel("agendamento_id, valor, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)"))
         .eq("vendeu", true)
         .is("agendamentos.deleted_at", null)
         .or(
@@ -275,6 +272,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
   });
+
 
 
   // Mapa user_id -> full_name (para resolver nome do SDR no CSV)
