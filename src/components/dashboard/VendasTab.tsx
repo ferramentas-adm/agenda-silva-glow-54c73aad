@@ -406,6 +406,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     },
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
+    retry: 1,
   });
 
   // KPIs agregados NO BANCO — não dependem de baixar linhas, então nunca ficam
