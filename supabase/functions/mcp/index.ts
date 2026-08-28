@@ -100,18 +100,18 @@ var list_appointments_default = defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ from_date, to_date, status, closer_name, sdr_name, limit }, ctx) => {
     if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
-    const sb2 = supabaseForUser(ctx);
+    const sb = supabaseForUser(ctx);
     const from = from_date ?? todayBRT();
     const to = to_date ?? addDays(from, 30);
     const max = cap(limit);
-    let q = sb2.from("agendamentos").select(
+    let q = sb.from("agendamentos").select(
       "id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, status, closer_id, sdr_responsavel_id, created_by, meet_link, observation, channel_type, meeting_reason, cancellation_reason, created_at, closers(name, email)"
     ).is("deleted_at", null).gte("scheduled_date", from).lte("scheduled_date", to).order("scheduled_date", { ascending: true }).order("scheduled_time", { ascending: true }).limit(max);
     if (status) q = q.eq("status", status);
     const { data, error } = await q;
     if (error) return fail(error.message);
     const rows = data ?? [];
-    const { data: profiles } = await sb2.from("profiles").select("user_id, full_name");
+    const { data: profiles } = await sb.from("profiles").select("user_id, full_name");
     const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
     let items = rows.map((r) => {
       const { closers, ...rest } = r;
@@ -156,38 +156,38 @@ var list_closers_default = defineTool2({
 });
 
 // src/lib/mcp/tools/get-appointment.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z as z3 } from "npm:zod@^4.4.3";
-function sb(ctx) {
-  return createClient2(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
-}
 var get_appointment_default = defineTool3({
   name: "get_appointment",
   title: "Detalhes da reuni\xE3o",
-  description: "Retorna os detalhes completos de uma reuni\xE3o pelo id.",
+  description: "Retorna os detalhes completos de uma reuni\xE3o pelo id, incluindo closer, SDR e resultado da venda.",
   inputSchema: {
     id: z3.string().describe("ID (uuid) da reuni\xE3o.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ id }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
-    }
-    const { data, error } = await sb(ctx).from("agendamentos").select("*").eq("id", id).maybeSingle();
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    if (!data) return { content: [{ type: "text", text: "Reuni\xE3o n\xE3o encontrada." }], isError: true };
-    return {
-      content: [{ type: "text", text: JSON.stringify(data) }],
-      structuredContent: { appointment: data }
-    };
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.from("agendamentos").select("*, closers(name, email)").eq("id", id).maybeSingle();
+    if (error) return fail(error.message);
+    if (!data) return fail("Reuni\xE3o n\xE3o encontrada.");
+    const [{ data: venda }, { data: profiles }] = await Promise.all([
+      sb.from("vendas").select(
+        "id, vendeu, valor, valor_total_projeto, order_bumps, venda_origem, produto, closed_at, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, explicacao_nao_fechamento, observacoes, lead_revenue, created_at"
+      ).eq("agendamento_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      sb.from("profiles").select("user_id, full_name")
+    ]);
+    const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
+    const row = data;
+    return ok({
+      appointment: {
+        ...row,
+        closer_name: row.closers?.name ?? null,
+        sdr_name: nameById.get(String(row.sdr_responsavel_id ?? "")) ?? nameById.get(String(row.created_by ?? "")) ?? null
+      },
+      venda: venda ?? null
+    });
   }
 });
 

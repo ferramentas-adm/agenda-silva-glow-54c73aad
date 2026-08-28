@@ -92,7 +92,7 @@
       {
         "name": "get_appointment",
         "title": "Detalhes da reunião",
-        "description": "Retorna os detalhes completos de uma reunião pelo id.",
+        "description": "Retorna os detalhes completos de uma reunião pelo id, incluindo closer, SDR e resultado da venda.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
