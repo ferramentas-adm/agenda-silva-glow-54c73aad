@@ -836,6 +836,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           value={`${taxaConversao.toFixed(1)}%`}
           sub={`${totalVendasConv} de ${totalReunioesConv} calls (exclui 2ªs reuniões e calls interrompidas · vendas atribuídas à data da 1ª call)`}
           color="primary"
+          loading={!conversaoData}
           onClick={() =>
             openDrill(
               `Reuniões com resultado — ${dayLabel}`,
@@ -854,10 +855,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           value={fmtBRL(coletadoTotal)}
           sub={
             totalVendasAvulsas > 0
-              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas}) — subido no período`
-              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} subida${totalVendas !== 1 ? "s" : ""} no período`
+              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas}) — fechado no período`
+              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""} no período`
           }
           color="emerald"
+          loading={loadingVendas}
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(coletadoTotal))
           }
@@ -872,6 +874,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
               : "Sem vendas no período"
           }
           color="emerald"
+          loading={loadingVendas}
           onClick={() =>
             openDrill(`Coletado médio — ${dayLabel}`, fechadasIds, fmtBRL(coletadoMedio))
           }
@@ -880,8 +883,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={CheckCircle2}
           label="Vendas Fechadas"
           value={String(totalVendas)}
-          sub={`${totalNaoFechou} não fechou`}
+          sub={`${totalNaoFechou} não fechou em reuniões do período`}
           color="emerald"
+          loading={loadingVendas}
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds)
           }
@@ -890,8 +894,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={CalendarClock}
           label="Follow-ups Ativos"
           value={String(followUpsAgendados)}
-          sub={`${followUpsHoje} hoje · ${followUpsAtrasados} atrasados`}
+          sub={`${followUpsHoje} hoje · ${followUpsAtrasados} atrasados (total geral)`}
           color={followUpsAtrasados > 0 ? "destructive" : "primary"}
+          loading={loadingFollowUps}
           onClick={() =>
             openDrill(
               "Follow-ups ativos",
@@ -910,6 +915,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
               : "Sem vendas no período"
           }
           color="primary"
+          loading={loadingVendas}
           onClick={() =>
             openDrill(
               `Vendas em 1ª Call — ${dayLabel}`,
@@ -919,6 +925,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           }
         />
       </div>
+
+      {vendasSemStatusRealizada > 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-600 dark:text-orange-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          {vendasSemStatusRealizada} venda{vendasSemStatusRealizada !== 1 ? "s" : ""} do período está{vendasSemStatusRealizada !== 1 ? "ão" : ""} em reuniõe{vendasSemStatusRealizada !== 1 ? "s" : ""} que ainda não foram marcadas como "Realizada" — os valores acima já contabilizam, mas o status precisa ser atualizado.
+        </div>
+      )}
+
 
       {/* Vendas subidas no período selecionado — independente do dia da reunião */}
       <VendasHojeCard
