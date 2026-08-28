@@ -101,121 +101,127 @@ type DrilldownState = {
 };
 
 export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
-  // Quando há intervalo válido com from!=to, usamos modo intervalo;
-  // caso contrário, mantemos o comportamento por dia único (currentDate).
-  const isRange = !!(dateRange?.from && dateRange?.to && !isSameDay(dateRange.from, dateRange.to));
-  const rangeFromStr = isRange ? format(dateRange!.from!, "yyyy-MM-dd") : null;
-  const rangeToStr = isRange ? format(dateRange!.to!, "yyyy-MM-dd") : null;
+  // Período selecionado. Aceita intervalo completo OU apenas a data inicial
+  // (nesse caso from = to, igual ao comportamento das outras abas do dashboard).
+  const pickedFrom = dateRange?.from ?? null;
+  const pickedTo = dateRange?.to ?? dateRange?.from ?? null;
+  const hasPicked = !!(pickedFrom && pickedTo);
   const dateStr = format(currentDate, "yyyy-MM-dd");
-  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const periodFrom = hasPicked ? format(pickedFrom!, "yyyy-MM-dd") : dateStr;
+  const periodTo = hasPicked ? format(pickedTo!, "yyyy-MM-dd") : dateStr;
+  const isRange = periodFrom !== periodTo;
+  const rangeFromStr = isRange ? periodFrom : null;
+  const rangeToStr = isRange ? periodTo : null;
+  const todayStr = brTodayYMD();
 
   // Rótulo amigável (Hoje / Ontem / Amanhã / data / intervalo)
   const dayLabel = useMemo(() => {
     if (isRange) {
-      return `${format(dateRange!.from!, "dd/MM")} – ${format(dateRange!.to!, "dd/MM")}`;
+      return `${format(parseISO(periodFrom), "dd/MM")} – ${format(parseISO(periodTo), "dd/MM")}`;
     }
+    const single = parseISO(periodFrom);
     const today = new Date();
     const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
     const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
-    if (isSameDay(currentDate, today)) return "Hoje";
-    if (isSameDay(currentDate, yesterday)) return "Ontem";
-    if (isSameDay(currentDate, tomorrow)) return "Amanhã";
-    return format(currentDate, "dd 'de' MMMM", { locale: ptBR });
-  }, [currentDate, isRange, dateRange]);
+    if (isSameDay(single, today)) return "Hoje";
+    if (isSameDay(single, yesterday)) return "Ontem";
+    if (isSameDay(single, tomorrow)) return "Amanhã";
+    return format(single, "dd 'de' MMMM", { locale: ptBR });
+  }, [isRange, periodFrom, periodTo]);
 
-  // Janela server-side: cobre vendas e audit_logs com folga em torno do
-  // período selecionado. Evita baixar a tabela inteira a cada refetch.
-  // - Modo intervalo: usa o range escolhido com 60 dias de folga p/ trás (para
-  //   capturar reuniões antigas cujo follow-up fechou dentro do range).
-  // - Modo dia único: janela ampla padrão (180 dias atrás → 60 dias à frente).
-  const windowRange = useMemo(() => {
-    const pad = (d: Date) => format(d, "yyyy-MM-dd");
-    if (isRange && dateRange?.from && dateRange?.to) {
-      const start = new Date(dateRange.from); start.setDate(start.getDate() - 60);
-      const end = new Date(dateRange.to); end.setDate(end.getDate() + 7);
-      return { start: pad(start), end: pad(end) };
-    }
-    const base = new Date(currentDate);
-    const start = new Date(base); start.setDate(start.getDate() - 180);
-    const end = new Date(base); end.setDate(end.getDate() + 60);
-    return { start: pad(start), end: pad(end) };
-  }, [currentDate, isRange, dateRange?.from, dateRange?.to]);
+  // Janela em UTC correspondente ao período em BRT (UTC-3), usada para
+  // filtrar `updated_at` (momento em que a venda foi registrada).
+  const periodUtc = useMemo(() => {
+    const nextYmd = (ymd: string) =>
+      format(new Date(new Date(ymd + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
+    return {
+      startUtc: `${periodFrom}T03:00:00.000Z`,
+      endUtc: `${nextYmd(periodTo)}T03:00:00.000Z`,
+    };
+  }, [periodFrom, periodTo]);
 
-  // Vendas: limitadas a uma janela de datas server-side; ainda paginamos
-  // para acomodar volumes maiores que 1.000 linhas dentro da janela.
-  const { data: vendas = [] } = useQuery<VendaRow[]>({
-    queryKey: ["vendas-tab", windowRange.start, windowRange.end],
+  // Evita que o parser de tipos do supabase-js processe strings de select
+  // gigantes (custo alto de typecheck).
+  const sel = (s: string): string => s;
+  const VENDA_SELECT = `
+    id, agendamento_id, vendeu, valor, valor_total_projeto, produto, order_bumps, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
+    motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
+    agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
+  `;
+
+  // 1) VENDAS FECHADAS do período — atribuídas pela data de fechamento
+  //    (closed_at quando existir; senão a data em que foram registradas).
+  //    Não depende da data da reunião: follow-ups antigos entram igual.
+  const { data: vendasFechadas = [], isLoading: loadingFechadas } = useQuery<VendaRow[]>({
+    queryKey: ["vendas-tab-fechadas", periodFrom, periodTo],
     queryFn: async () => {
-      const PAGE = 1000;
-      const all: VendaRow[] = [];
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("vendas")
-          .select(`
-            id, agendamento_id, vendeu, valor, valor_total_projeto, produto, order_bumps, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
-            motivo_nao_fechamento, explicacao_nao_fechamento, resumo_venda, observacoes, closed_at, created_at, updated_at,
-            agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, briefing, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
-          `)
-
-          .is("agendamentos.deleted_at", null)
-          .gte("agendamentos.scheduled_date", windowRange.start)
-          .lte("agendamentos.scheduled_date", windowRange.end)
-          .order("created_at", { ascending: false })
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as unknown as VendaRow[];
-        all.push(...batch);
-        if (batch.length < PAGE) break;
-        from += PAGE;
-      }
-      return all;
+      const { data, error } = await supabase
+        .from("vendas")
+        .select(sel(VENDA_SELECT))
+        .eq("vendeu", true)
+        .is("agendamentos.deleted_at", null)
+        .or(
+          `and(closed_at.gte.${periodFrom},closed_at.lte.${periodTo}),` +
+          `and(closed_at.is.null,updated_at.gte.${periodUtc.startUtc},updated_at.lt.${periodUtc.endUtc})`,
+        )
+        .returns<VendaRow[]>();
+      if (error) throw error;
+      return data ?? [];
     },
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
 
-  // Mapa agendamento_id -> data (BRT yyyy-MM-dd) em que a venda foi marcada
-  // como fechada via follow-up. Usa o audit log com outcome='fechou'.
-  const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
-    queryKey: ["vendas-tab-followup-closes", windowRange.start, windowRange.end],
+  // 2) NÃO FECHOU no período — atribuídas pela data da reunião (visão
+  //    operacional da call, base dos Motivos de Não Fechamento).
+  const { data: vendasNaoFechou = [], isLoading: loadingNaoFechou } = useQuery<VendaRow[]>({
+    queryKey: ["vendas-tab-nao-fechou", periodFrom, periodTo],
     queryFn: async () => {
-      const PAGE = 1000;
-      const rows: { entity_id: string | null; details: any; created_at: string }[] = [];
-      let from = 0;
-      // Filtra audit_logs por created_at dentro da janela para evitar full scan.
-      const startIso = `${windowRange.start}T00:00:00Z`;
-      const endIso = `${windowRange.end}T23:59:59Z`;
-      while (true) {
-        const { data, error } = await supabase
-          .from("audit_logs")
-          .select("entity_id, details, created_at")
-          .eq("entity_type", "venda")
-          .eq("action", "follow_up_atualizado")
-          .gte("created_at", startIso)
-          .lte("created_at", endIso)
-          .order("created_at", { ascending: false })
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as typeof rows;
-        rows.push(...batch);
-        if (batch.length < PAGE) break;
-        from += PAGE;
-      }
-      const m = new Map<string, string>();
-      rows.forEach((r) => {
-        if (!r.entity_id) return;
-        if ((r.details?.outcome ?? "") !== "fechou") return;
-        const cur = m.get(r.entity_id);
-        if (!cur || cur < r.created_at) m.set(r.entity_id, brDateOf(r.created_at));
-      });
-      return m;
+      const { data, error } = await supabase
+        .from("vendas")
+        .select(sel(VENDA_SELECT))
+        .eq("vendeu", false)
+        .is("agendamentos.deleted_at", null)
+        .gte("agendamentos.scheduled_date", periodFrom)
+        .lte("agendamentos.scheduled_date", periodTo)
+        .returns<VendaRow[]>();
+      if (error) throw error;
+      return data ?? [];
     },
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
+
+  // 3) FOLLOW-UPS ATIVOS — métrica global, independe do período selecionado.
+  const { data: followUpsAtivosRows = [], isLoading: loadingFollowUps } = useQuery<VendaRow[]>({
+    queryKey: ["vendas-tab-follow-ups"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendas")
+        .select(sel(VENDA_SELECT))
+        .eq("follow_up", true)
+        .not("follow_up_date", "is", null)
+        .is("agendamentos.deleted_at", null)
+        .order("follow_up_date", { ascending: true })
+        .returns<VendaRow[]>();
+      if (error) throw error;
+      return data ?? [];
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+
+  // Base combinada (deduplicada) usada pelos quadros que precisam das três listas.
+  const vendas = useMemo<VendaRow[]>(() => {
+    const m = new Map<string, VendaRow>();
+    [...vendasFechadas, ...vendasNaoFechou, ...followUpsAtivosRows].forEach((v) => m.set(v.id, v));
+    return Array.from(m.values());
+  }, [vendasFechadas, vendasNaoFechou, followUpsAtivosRows]);
+
+  const loadingVendas = loadingFechadas || loadingNaoFechou;
 
   const { data: closers = [] } = useQuery<(CloserRow & { email: string | null })[]>({
     queryKey: ["vendas-tab-closers"],
@@ -227,19 +233,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // Vendas SUBIDAS no período selecionado (independente da data da reunião) —
   // reflete o momento em que o closer registrou a venda no sistema.
-  const uploadPeriod = useMemo(() => {
-    const from = isRange && rangeFromStr ? rangeFromStr : dateStr;
-    const to = isRange && rangeToStr ? rangeToStr : dateStr;
-    // BRT = UTC-3. Janela do período em UTC.
-    const nextYmd = (ymd: string) =>
-      format(new Date(new Date(ymd + "T12:00:00Z").getTime() + 24 * 3600_000), "yyyy-MM-dd");
-    return {
-      from,
-      to,
-      startUtc: `${from}T03:00:00.000Z`,
-      endUtc: `${nextYmd(to)}T03:00:00.000Z`,
-    };
-  }, [isRange, rangeFromStr, rangeToStr, dateStr]);
+  const uploadPeriod = useMemo(
+    () => ({ from: periodFrom, to: periodTo, startUtc: periodUtc.startUtc, endUtc: periodUtc.endUtc }),
+    [periodFrom, periodTo, periodUtc],
+  );
 
   const { data: vendasHoje = [] } = useQuery<
     { agendamento_id: string; valor: number | null; follow_up: boolean; segunda_reuniao: boolean; venda_origem: string | null; scheduled_date: string; meeting_reason: string | null; closer_id: string | null; closed_at: string | null; updated_at: string }[]
@@ -251,7 +248,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       // O filtro final por "data efetiva de subida" acontece client-side em BRT.
       const { data, error } = await supabase
         .from("vendas")
-        .select("agendamento_id, valor, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)")
+        .select(sel("agendamento_id, valor, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)"))
         .eq("vendeu", true)
         .is("agendamentos.deleted_at", null)
         .or(
@@ -275,6 +272,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
   });
+
 
 
   // Mapa user_id -> full_name (para resolver nome do SDR no CSV)
@@ -314,60 +312,50 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return me?.id ?? null;
   }, [isCloserView, user?.email, closers]);
 
-  // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd):
-  // - Se houver override manual (vendas.closed_at), usa esse.
-  // - Se houver audit log de follow-up com outcome='fechou' para esse
-  //   agendamento, usa essa data (data real do fechamento via follow-up).
-  // - Caso contrário, usa scheduled_date da reunião.
+  // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd) — regra única:
+  // - Override manual (vendas.closed_at) tem prioridade.
+  // - Venda: data em que foi registrada no sistema (updated_at em BRT).
+  // - Não fechou: data da reunião (scheduled_date).
   const closingDateOf = (v: VendaRow): string | null => {
     if (v.closed_at) return v.closed_at;
+    if (v.vendeu) return brDateOf(v.updated_at);
     const ag = agMap.get(v.agendamento_id);
-    if (!ag) return null;
-    if (v.vendeu) {
-      const fuClose = followUpCloseDateMap.get(v.agendamento_id);
-      if (fuClose) return fuClose;
-    }
-    return ag.scheduled_date;
+    return ag?.scheduled_date ?? null;
   };
 
   // Vendas do período selecionado (dia único OU intervalo). Para closer logado,
   // aplica filtro adicional para mostrar apenas seus próprios números.
-  //
-  // ATRIBUIÇÃO POR DATA:
-  //  - VENDIDAS: usam a data em que o closer SUBIU a venda no sistema
-  //    (updated_at em BRT). Ou seja, uma venda registrada hoje aparece hoje
-  //    mesmo que a reunião tenha sido outro dia.
-  //  - NÃO FECHOU: continuam atribuídas à data da reunião (scheduled_date),
-  //    pois alimentam Motivos de Não Fechamento (visão operacional da call).
-  const inRangeYmd = (ymd: string) => {
-    if (isRange && rangeFromStr && rangeToStr) return ymd >= rangeFromStr && ymd <= rangeToStr;
-    return ymd === dateStr;
-  };
+  const inRangeYmd = (ymd: string) => ymd >= periodFrom && ymd <= periodTo;
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
-      if (ag?.status !== "realizada") return false;
+      if (!ag) return false;
       if (isCloserView) {
-        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+        if (!myCloserId || ag.closer_id !== myCloserId) return false;
       }
-      if (v.vendeu) {
-        // Se o usuário editou "Data da venda" (closed_at), respeita esse override.
-        // Caso contrário, usa a data em que o closer subiu a venda (BRT).
-        const effective = v.closed_at ?? brDateOf(v.updated_at);
-        return inRangeYmd(effective);
-      }
+      // Venda registrada conta sempre (o status da reunião pode estar atrasado);
+      // "não fechou" só entra quando a reunião está marcada como realizada.
+      if (!v.vendeu && ag.status !== "realizada") return false;
       const cd = closingDateOf(v);
       if (!cd) return false;
       return inRangeYmd(cd);
     });
-  }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId]);
+  }, [vendas, agMap, periodFrom, periodTo, isCloserView, myCloserId]);
+
+  // Vendas do período cuja reunião ainda não está marcada como "realizada" —
+  // sinalizamos na tela para o gestor cobrar a atualização do status.
+  const vendasSemStatusRealizada = useMemo(
+    () => vendasDia.filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.status !== "realizada").length,
+    [vendasDia, agMap],
+  );
 
   // Base do card "Taxa de Conversão": busca AGENDAMENTOS realizados no período
   // direto da tabela `agendamentos` (independente da existência de linha em `vendas`).
   // Isso garante que o denominador case com o total operacional do calendário,
   // incluindo reuniões criadas por closer. Exclui apenas Call Interompida/Interrompida.
-  const convPeriodFrom = isRange && rangeFromStr ? rangeFromStr : dateStr;
-  const convPeriodTo = isRange && rangeToStr ? rangeToStr : dateStr;
+  const convPeriodFrom = periodFrom;
+  const convPeriodTo = periodTo;
+
   const { data: conversaoData } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
     queryKey: ["vendas-tab-conversao", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
     queryFn: async () => {
@@ -439,7 +427,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const ofertasPreco = vendasCalls.filter((v) => v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0));
     const ofertasPrecoCount = ofertasPreco.length;
     const ofertasPrecoIds = ofertasPreco.map((v) => v.agendamento_id);
-    const pctOfertaPreco = totalReunioesConv > 0 ? (ofertasPrecoCount / totalReunioesConv) * 100 : 0;
+    const pctOfertaPreco = totalReunioesComResultado > 0 ? (ofertasPrecoCount / totalReunioesComResultado) * 100 : 0;
 
     return { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, ofertasPrecoCount, ofertasPrecoIds, pctOfertaPreco };
   }, [vendasDia, conversaoData, agMap]);
@@ -450,7 +438,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Follow-ups (escopo geral — não dependem do dia selecionado).
   // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
   const followUpStats = useMemo(() => {
-    const ativos = vendas.filter((v) => {
+    const ativos = followUpsAtivosRows.filter((v) => {
       if (!v.follow_up || !v.follow_up_date) return false;
       if (isCloserView) {
         const ag = agMap.get(v.agendamento_id);
@@ -464,7 +452,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       followUpsAtrasados: ativos.filter((v) => v.follow_up_date! < todayStr).length,
       followUpsAtivosIds: ativos.map((v) => v.agendamento_id),
     };
-  }, [vendas, todayStr, isCloserView, myCloserId, agMap]);
+  }, [followUpsAtivosRows, todayStr, isCloserView, myCloserId, agMap]);
+
   const { followUpsAgendados, followUpsHoje, followUpsAtrasados, followUpsAtivosIds } = followUpStats;
 
   // IDs para drill-down
@@ -504,16 +493,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const vendasDiaParaMotivos = useMemo(() => {
     const base = vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
-      if (ag?.status !== "realizada") return false;
+      if (!ag) return false;
       if (isCloserView) {
-        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+        if (!myCloserId || ag.closer_id !== myCloserId) return false;
       }
+      if (!v.vendeu && ag.status !== "realizada") return false;
       const cd = closingDateOf(v);
       if (!cd) return false;
-      if (isRange && rangeFromStr && rangeToStr) {
-        return cd >= rangeFromStr && cd <= rangeToStr;
-      }
-      return cd === dateStr;
+      return cd >= periodFrom && cd <= periodTo;
     });
     return base.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
@@ -526,7 +513,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }
       return true;
     });
-  }, [vendas, agMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter, motivosPrecoFilter]);
+  }, [vendas, agMap, periodFrom, periodTo, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter, motivosPrecoFilter]);
+
 
   const totalNaoFechouMotivos = vendasDiaParaMotivos.filter((v) => !v.vendeu).length;
 
@@ -737,7 +725,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const todayDate = new Date();
     const todayDateStr = format(todayDate, "yyyy-MM-dd");
 
-    return vendas
+    return followUpsAtivosRows
+
       .filter((v) => v.follow_up && v.follow_up_date)
       .map((v) => {
         const ag = agMap.get(v.agendamento_id);
@@ -781,7 +770,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           : (a.time || "").localeCompare(b.time || "");
       })
       .slice(0, 20);
-  }, [vendas, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate, fuFilterStatus, fuSort, isCloserView, myCloserId]);
+  }, [followUpsAtivosRows, agMap, closerMap, fuFilterCloser, fuFilterMotivo, fuFilterDate, fuFilterStatus, fuSort, isCloserView, myCloserId]);
 
   // Estado para edição/remoção (apenas managers)
   const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
@@ -795,7 +784,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     setRemoving(false);
     if (ok) {
       setRemoveTarget(null);
-      queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab-fechadas"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab-nao-fechou"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab-follow-ups"] });
+
       queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
     }
   };
@@ -815,7 +807,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         <h2 className="text-xl font-bold">
           Vendas — {dayLabel}
           <span className="ml-2 text-sm font-normal text-muted-foreground">
-            ({isRange ? `${format(dateRange!.from!, "dd/MM/yyyy")} a ${format(dateRange!.to!, "dd/MM/yyyy")}` : format(currentDate, "dd/MM/yyyy")})
+            ({isRange ? `${format(parseISO(periodFrom), "dd/MM/yyyy")} a ${format(parseISO(periodTo), "dd/MM/yyyy")}` : format(parseISO(periodFrom), "dd/MM/yyyy")})
           </span>
         </h2>
         <div className="flex items-center gap-3">
@@ -844,6 +836,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           value={`${taxaConversao.toFixed(1)}%`}
           sub={`${totalVendasConv} de ${totalReunioesConv} calls (exclui 2ªs reuniões e calls interrompidas · vendas atribuídas à data da 1ª call)`}
           color="primary"
+          loading={!conversaoData}
           onClick={() =>
             openDrill(
               `Reuniões com resultado — ${dayLabel}`,
@@ -862,10 +855,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           value={fmtBRL(coletadoTotal)}
           sub={
             totalVendasAvulsas > 0
-              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas}) — subido no período`
-              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} subida${totalVendas !== 1 ? "s" : ""} no período`
+              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas}) — fechado no período`
+              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""} no período`
           }
           color="emerald"
+          loading={loadingVendas}
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(coletadoTotal))
           }
@@ -880,6 +874,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
               : "Sem vendas no período"
           }
           color="emerald"
+          loading={loadingVendas}
           onClick={() =>
             openDrill(`Coletado médio — ${dayLabel}`, fechadasIds, fmtBRL(coletadoMedio))
           }
@@ -888,8 +883,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={CheckCircle2}
           label="Vendas Fechadas"
           value={String(totalVendas)}
-          sub={`${totalNaoFechou} não fechou`}
+          sub={`${totalNaoFechou} não fechou em reuniões do período`}
           color="emerald"
+          loading={loadingVendas}
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds)
           }
@@ -898,8 +894,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={CalendarClock}
           label="Follow-ups Ativos"
           value={String(followUpsAgendados)}
-          sub={`${followUpsHoje} hoje · ${followUpsAtrasados} atrasados`}
+          sub={`${followUpsHoje} hoje · ${followUpsAtrasados} atrasados (total geral)`}
           color={followUpsAtrasados > 0 ? "destructive" : "primary"}
+          loading={loadingFollowUps}
           onClick={() =>
             openDrill(
               "Follow-ups ativos",
@@ -918,6 +915,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
               : "Sem vendas no período"
           }
           color="primary"
+          loading={loadingVendas}
           onClick={() =>
             openDrill(
               `Vendas em 1ª Call — ${dayLabel}`,
@@ -927,6 +925,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           }
         />
       </div>
+
+      {vendasSemStatusRealizada > 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-600 dark:text-orange-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          {vendasSemStatusRealizada} venda{vendasSemStatusRealizada !== 1 ? "s" : ""} do período está{vendasSemStatusRealizada !== 1 ? "ão" : ""} em reuniõe{vendasSemStatusRealizada !== 1 ? "s" : ""} que ainda não foram marcadas como "Realizada" — os valores acima já contabilizam, mas o status precisa ser atualizado.
+        </div>
+      )}
+
 
       {/* Vendas subidas no período selecionado — independente do dia da reunião */}
       <VendasHojeCard
@@ -1239,6 +1245,7 @@ function KpiCard({
   sub,
   color,
   onClick,
+  loading,
 }: {
   icon: typeof TrendingUp;
   label: string;
@@ -1246,6 +1253,7 @@ function KpiCard({
   sub: string;
   color: "primary" | "emerald" | "destructive";
   onClick?: () => void;
+  loading?: boolean;
 }) {
   const colorClasses = {
     primary: "text-primary border-primary/30 bg-primary/5",
@@ -1255,10 +1263,10 @@ function KpiCard({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={loading ? undefined : onClick}
       className={cn(
         "rounded-lg border p-3 flex flex-col gap-1 text-left transition-all",
-        "hover:scale-[1.02] hover:shadow-md cursor-pointer",
+        loading ? "cursor-default" : "hover:scale-[1.02] hover:shadow-md cursor-pointer",
         colorClasses[color],
       )}
     >
@@ -1266,11 +1274,21 @@ function KpiCard({
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs text-muted-foreground">{sub}</div>
+      {loading ? (
+        <>
+          <div className="h-8 w-20 rounded bg-muted animate-pulse" />
+          <div className="h-3 w-full rounded bg-muted/70 animate-pulse" />
+        </>
+      ) : (
+        <>
+          <div className="text-2xl font-bold">{value}</div>
+          <div className="text-xs text-muted-foreground">{sub}</div>
+        </>
+      )}
     </button>
   );
 }
+
 
 type VendaHojeItem = {
   agendamento_id: string;
