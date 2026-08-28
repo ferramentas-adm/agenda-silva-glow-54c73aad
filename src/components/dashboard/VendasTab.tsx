@@ -653,8 +653,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       map.set(ag.closer_id, cur);
     });
 
-    return Array.from(map.entries())
-      .map(([closerId, stats]) => {
+    // União: closers com reunião realizada no período + closers com venda.
+    const closerIds = new Set<string>([...realizadasPorCloser.keys(), ...map.keys()]);
+
+    return Array.from(closerIds)
+      .map((closerId) => {
+        const stats = map.get(closerId) || { vendas: 0, receita: 0 };
         const total = realizadasPorCloser.get(closerId) || 0;
         return {
           closerId,
@@ -666,11 +670,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       })
       .sort(
         (a, b) =>
+          Number(b.vendas > 0) - Number(a.vendas > 0) ||
           b.conversao - a.conversao ||
           b.vendas - a.vendas ||
           b.receita - a.receita ||
           b.total - a.total,
       );
+
   }, [vendasDia, agMap, closerMap, closerChannelFilter, realizadasPeriodo]);
 
 
@@ -1075,9 +1081,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           <CardContent>
             {closerPerf.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-4 text-center">
-                Nenhuma venda registrada neste dia
+                Nenhuma reunião realizada ou venda registrada neste período
                 {closerChannelFilter !== "all" ? ` em ${closerChannelFilter}` : ""}.
               </p>
+
             ) : (
               <div className="space-y-2">
                 {closerPerf.map((c) => {
@@ -1093,9 +1100,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                     <button
                       key={c.closerId}
                       type="button"
+                      disabled={closerIds.length === 0}
                       onClick={() => openDrill(`${c.name} — ${dayLabel}`, closerIds, fmtBRL(c.receita))}
-                      className="w-full flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+                      className="w-full flex items-center justify-between p-2 rounded-md bg-muted/30 enabled:hover:bg-muted/60 transition-colors text-left disabled:cursor-default"
                     >
+
                       <div className="flex-1">
                         <p className="font-medium text-sm">{c.name}</p>
                         <p className="text-xs text-muted-foreground">
