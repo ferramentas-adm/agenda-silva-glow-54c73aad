@@ -6,127 +6,767 @@
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.22.2";
 
 // src/lib/mcp/tools/list-appointments.ts
-import { createClient } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z } from "npm:zod@^4.4.3";
-function sb(ctx) {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
+
+// src/lib/mcp/supabase.ts
+import { createClient } from "npm:@supabase/supabase-js@^2.99.3";
+function runtimeEnv(name) {
+  const runtime = globalThis;
+  return runtime.Deno?.env?.get?.(name) ?? runtime.process?.env?.[name];
 }
+function configuredEnv(names) {
+  for (const name of names) {
+    const value = runtimeEnv(name)?.trim();
+    if (value) return value;
+  }
+  return void 0;
+}
+function supabaseProjectUrl() {
+  const url = configuredEnv(["SUPABASE_URL", "VITE_SUPABASE_URL"]);
+  if (!url) throw new Error("SUPABASE_URL (ou VITE_SUPABASE_URL) \xE9 obrigat\xF3rio");
+  return url;
+}
+function supabasePublishableKey() {
+  const direct = configuredEnv(["SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY"]);
+  if (direct) return direct;
+  const keyset = runtimeEnv("SUPABASE_PUBLISHABLE_KEYS");
+  if (keyset) {
+    try {
+      const parsed = JSON.parse(keyset);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const keys = parsed;
+        const key = [keys.default, ...Object.values(keys)].find((v) => typeof v === "string" && v.trim().startsWith("sb_publishable_"))?.trim();
+        if (key) return key;
+      }
+    } catch {
+    }
+  }
+  const legacy = configuredEnv(["SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY"]);
+  if (legacy) return legacy;
+  throw new Error("Chave public\xE1vel do Supabase n\xE3o encontrada no ambiente");
+}
+function supabaseForUser(ctx) {
+  const token = ctx.getToken();
+  if (!token) throw new Error("supabaseForUser requer um token OAuth verificado");
+  return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+
+// src/lib/mcp/util.ts
+function todayBRT() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(/* @__PURE__ */ new Date());
+}
+function addDays(isoDate, days) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+function resolvePeriod(from, to) {
+  const today = todayBRT();
+  const start = from ?? `${today.slice(0, 7)}-01`;
+  const end = to ?? today;
+  return { from: start, to: end };
+}
+function cap(limit, def = 100, max = 500) {
+  return Math.min(Math.max(limit ?? def, 1), max);
+}
+function ok(payload) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload) }],
+    structuredContent: payload
+  };
+}
+function fail(message) {
+  return { content: [{ type: "text", text: message }], isError: true };
+}
+var NOT_AUTHENTICATED = "N\xE3o autenticado. Reconecte o conector para autorizar.";
+
+// src/lib/mcp/tools/list-appointments.ts
 var list_appointments_default = defineTool({
   name: "list_appointments",
   title: "Listar reuni\xF5es agendadas",
-  description: "Lista reuni\xF5es agendadas do painel (agendamentos) filtradas por data e/ou status. Respeita a permiss\xE3o do usu\xE1rio autenticado (RLS).",
+  description: "Lista reuni\xF5es do painel (agendamentos) por per\xEDodo e/ou status, j\xE1 com nome do closer e do SDR respons\xE1vel. Respeita a permiss\xE3o do usu\xE1rio autenticado (RLS).",
   inputSchema: {
     from_date: z.string().optional().describe("Data inicial (YYYY-MM-DD). Padr\xE3o: hoje."),
     to_date: z.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padr\xE3o: 30 dias ap\xF3s from_date."),
-    status: z.enum(["agendada", "realizada", "cancelada", "no_show"]).optional().describe("Filtrar por status."),
+    status: z.enum(["pendente", "confirmada", "agendada", "nao_confirmada", "realizada", "cancelada", "no_show"]).optional().describe("Filtrar por status."),
+    closer_name: z.string().optional().describe("Filtrar por nome do closer (match parcial)."),
+    sdr_name: z.string().optional().describe("Filtrar por nome do SDR respons\xE1vel (match parcial)."),
     limit: z.number().int().optional().describe("M\xE1ximo de resultados (padr\xE3o 100, teto 500).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ from_date, to_date, status, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
-    }
-    const today = /* @__PURE__ */ new Date();
-    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const from = from_date ?? iso(today);
-    const to = to_date ?? (() => {
-      const d = new Date(from);
-      d.setDate(d.getDate() + 30);
-      return iso(d);
-    })();
-    const cap = Math.min(Math.max(limit ?? 100, 1), 500);
-    let q = sb(ctx).from("agendamentos").select(
-      "id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, status, closer_id, sdr_responsavel_id, meet_link, briefing, observation, channel_type, meeting_reason, created_at"
-    ).is("deleted_at", null).gte("scheduled_date", from).lte("scheduled_date", to).order("scheduled_date", { ascending: true }).order("scheduled_time", { ascending: true }).limit(cap);
+  handler: async ({ from_date, to_date, status, closer_name, sdr_name, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const from = from_date ?? todayBRT();
+    const to = to_date ?? addDays(from, 30);
+    const max = cap(limit);
+    let q = sb.from("agendamentos").select(
+      "id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, status, closer_id, sdr_responsavel_id, created_by, meet_link, observation, channel_type, meeting_reason, cancellation_reason, created_at, closers(name, email)"
+    ).is("deleted_at", null).gte("scheduled_date", from).lte("scheduled_date", to).order("scheduled_date", { ascending: true }).order("scheduled_time", { ascending: true }).limit(max);
     if (status) q = q.eq("status", status);
     const { data, error } = await q;
-    if (error)
-      return { content: [{ type: "text", text: error.message }], isError: true };
-    return {
-      content: [{ type: "text", text: JSON.stringify({ count: data?.length ?? 0, items: data ?? [] }) }],
-      structuredContent: { items: data ?? [] }
-    };
+    if (error) return fail(error.message);
+    const rows = data ?? [];
+    const { data: profiles } = await sb.from("profiles").select("user_id, full_name");
+    const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
+    let items = rows.map((r) => {
+      const { closers, ...rest } = r;
+      return {
+        ...rest,
+        closer_name: closers?.name ?? null,
+        closer_email: closers?.email ?? null,
+        sdr_name: nameById.get(r.sdr_responsavel_id ?? "") ?? nameById.get(r.created_by ?? "") ?? null
+      };
+    });
+    if (closer_name) {
+      const needle = closer_name.toLowerCase();
+      items = items.filter((i) => (i.closer_name ?? "").toLowerCase().includes(needle));
+    }
+    if (sdr_name) {
+      const needle = sdr_name.toLowerCase();
+      items = items.filter((i) => (i.sdr_name ?? "").toLowerCase().includes(needle));
+    }
+    return ok({ periodo: { from, to }, count: items.length, items });
   }
 });
 
 // src/lib/mcp/tools/list-closers.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z as z2 } from "npm:zod@^4.4.3";
-function sb2(ctx) {
-  return createClient2(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
-}
 var list_closers_default = defineTool2({
   name: "list_closers",
   title: "Listar closers",
-  description: "Lista os closers cadastrados no painel, com status ativo/inativo.",
+  description: "Lista os closers cadastrados no painel, com status ativo/inativo e hor\xE1rio comercial.",
   inputSchema: {
     only_active: z2.boolean().optional().describe("Se true, retorna somente closers ativos.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ only_active }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
-    }
-    let q = sb2(ctx).from("closers").select("id, name, email, active").order("name");
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    let q = supabaseForUser(ctx).from("closers").select("id, name, email, active, business_hours_start, business_hours_end").order("name");
     if (only_active) q = q.eq("active", true);
     const { data, error } = await q;
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    return {
-      content: [{ type: "text", text: JSON.stringify({ count: data?.length ?? 0, items: data ?? [] }) }],
-      structuredContent: { items: data ?? [] }
-    };
+    if (error) return fail(error.message);
+    return ok({ count: data?.length ?? 0, items: data ?? [] });
   }
 });
 
 // src/lib/mcp/tools/get-appointment.ts
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z as z3 } from "npm:zod@^4.4.3";
-function sb3(ctx) {
-  return createClient3(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
-}
 var get_appointment_default = defineTool3({
   name: "get_appointment",
   title: "Detalhes da reuni\xE3o",
-  description: "Retorna os detalhes completos de uma reuni\xE3o pelo id.",
+  description: "Retorna os detalhes completos de uma reuni\xE3o pelo id, incluindo closer, SDR e resultado da venda.",
   inputSchema: {
     id: z3.string().describe("ID (uuid) da reuni\xE3o.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ id }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
-    }
-    const { data, error } = await sb3(ctx).from("agendamentos").select("*").eq("id", id).maybeSingle();
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    if (!data) return { content: [{ type: "text", text: "Reuni\xE3o n\xE3o encontrada." }], isError: true };
-    return {
-      content: [{ type: "text", text: JSON.stringify(data) }],
-      structuredContent: { appointment: data }
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.from("agendamentos").select("*, closers(name, email)").eq("id", id).maybeSingle();
+    if (error) return fail(error.message);
+    if (!data) return fail("Reuni\xE3o n\xE3o encontrada.");
+    const [{ data: venda }, { data: profiles }] = await Promise.all([
+      sb.from("vendas").select(
+        "id, vendeu, valor, valor_total_projeto, order_bumps, venda_origem, produto, closed_at, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, explicacao_nao_fechamento, observacoes, lead_revenue, created_at"
+      ).eq("agendamento_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      sb.from("profiles").select("user_id, full_name")
+    ]);
+    const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
+    const row = data;
+    return ok({
+      appointment: {
+        ...row,
+        closer_name: row.closers?.name ?? null,
+        sdr_name: nameById.get(String(row.sdr_responsavel_id ?? "")) ?? nameById.get(String(row.created_by ?? "")) ?? null
+      },
+      venda: venda ?? null
+    });
+  }
+});
+
+// src/lib/mcp/tools/list-sales.ts
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z4 } from "npm:zod@^4.4.3";
+var SELECT = "id, agendamento_id, vendeu, valor, valor_total_projeto, order_bumps, venda_origem, produto, closed_at, motivo_nao_fechamento, explicacao_nao_fechamento, observacoes, lead_revenue, created_at, agendamentos!inner(id, lead_name, lead_phone, scheduled_date, scheduled_time, status, channel_type, deleted_at, closers(name, email))";
+var list_sales_default = defineTool4({
+  name: "list_sales",
+  title: "Listar vendas",
+  description: "Lista as vendas (e opcionalmente as n\xE3o fechadas) do per\xEDodo, com closer, lead, valor, order bumps e origem (1\xAA call ou follow-up). A venda \xE9 atribu\xEDda \xE0 data de fechamento quando informada, sen\xE3o \xE0 data de registro.",
+  inputSchema: {
+    from: z4.string().optional().describe("Data inicial (YYYY-MM-DD). Padr\xE3o: in\xEDcio do m\xEAs corrente."),
+    to: z4.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padr\xE3o: hoje."),
+    closer_name: z4.string().optional().describe("Filtrar por nome do closer (match parcial)."),
+    incluir_nao_fechadas: z4.boolean().optional().describe("Se true, inclui tamb\xE9m as reuni\xF5es que n\xE3o fecharam venda. Padr\xE3o: s\xF3 vendas fechadas."),
+    limit: z4.number().int().optional().describe("M\xE1ximo de itens (padr\xE3o 200, teto 500).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from, to, closer_name, incluir_nao_fechadas, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const periodo = resolvePeriod(from, to);
+    const max = cap(limit, 200);
+    const startTs = `${periodo.from}T03:00:00Z`;
+    const endTs = `${addDays(periodo.to, 1)}T03:00:00Z`;
+    const base = () => {
+      let q = sb.from("vendas").select(SELECT).limit(max);
+      if (!incluir_nao_fechadas) q = q.eq("vendeu", true);
+      return q;
     };
+    const [porFechamento, porRegistro] = await Promise.all([
+      base().gte("closed_at", periodo.from).lte("closed_at", periodo.to),
+      base().is("closed_at", null).gte("created_at", startTs).lt("created_at", endTs)
+    ]);
+    if (porFechamento.error) return fail(porFechamento.error.message);
+    if (porRegistro.error) return fail(porRegistro.error.message);
+    const byId = /* @__PURE__ */ new Map();
+    for (const row of [...porFechamento.data ?? [], ...porRegistro.data ?? []]) {
+      byId.set(row.id, row);
+    }
+    let items = [...byId.values()].map((row) => {
+      const ag = row.agendamentos;
+      const bumps = Array.isArray(row.order_bumps) ? row.order_bumps : [];
+      return {
+        venda_id: row.id,
+        agendamento_id: row.agendamento_id,
+        vendeu: row.vendeu,
+        valor: row.valor,
+        valor_total_projeto: row.valor_total_projeto,
+        order_bumps: bumps,
+        venda_origem: row.venda_origem ?? null,
+        produto: row.produto ?? null,
+        data_atribuicao: row.closed_at ?? String(row.created_at).slice(0, 10),
+        closed_at: row.closed_at ?? null,
+        registrada_em: row.created_at,
+        motivo_nao_fechamento: row.motivo_nao_fechamento ?? null,
+        explicacao_nao_fechamento: row.explicacao_nao_fechamento ?? null,
+        observacoes: row.observacoes ?? null,
+        faturamento_lead: row.lead_revenue ?? null,
+        lead_name: ag.lead_name,
+        lead_phone: ag.lead_phone,
+        reuniao_data: ag.scheduled_date,
+        reuniao_hora: ag.scheduled_time,
+        reuniao_status: ag.status,
+        canal: ag.channel_type ?? null,
+        closer_name: ag.closers?.name ?? null,
+        _deleted: !!ag.deleted_at
+      };
+    }).filter((i) => !i._deleted).sort((a, b) => String(a.data_atribuicao).localeCompare(String(b.data_atribuicao)));
+    if (closer_name) {
+      const needle = closer_name.toLowerCase();
+      items = items.filter((i) => (i.closer_name ?? "").toLowerCase().includes(needle));
+    }
+    const fechadas = items.filter((i) => i.vendeu);
+    const total = fechadas.reduce((s, i) => s + Number(i.valor ?? 0), 0);
+    return ok({
+      periodo,
+      count: items.length,
+      resumo: {
+        vendas: fechadas.length,
+        coletado: total,
+        ticket_medio: fechadas.length ? Number((total / fechadas.length).toFixed(2)) : 0
+      },
+      items: items.map(({ _deleted, ...rest }) => rest)
+    });
+  }
+});
+
+// src/lib/mcp/tools/sales-kpis.ts
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z5 } from "npm:zod@^4.4.3";
+var sales_kpis_default = defineTool5({
+  name: "sales_kpis",
+  title: "KPIs de vendas do per\xEDodo",
+  description: "N\xFAmeros consolidados do per\xEDodo (mesma fonte da p\xE1gina Vendas): vendas de 1\xAA call e de follow-up, vendas avulsas, valor coletado e faturado, n\xE3o fechou, reuni\xF5es realizadas e taxa de convers\xE3o.",
+  inputSchema: {
+    from: z5.string().optional().describe("Data inicial (YYYY-MM-DD). Padr\xE3o: in\xEDcio do m\xEAs corrente."),
+    to: z5.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padr\xE3o: hoje."),
+    closer_id: z5.string().optional().describe("Restringir a um closer (uuid).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from, to, closer_id }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const periodo = resolvePeriod(from, to);
+    const [kpis, conv] = await Promise.all([
+      sb.rpc("dashboard_vendas_kpis", { p_from: periodo.from, p_to: periodo.to, p_closer_id: closer_id ?? null }),
+      sb.rpc("dashboard_conversao_period", { p_from: periodo.from, p_to: periodo.to, p_closer_id: closer_id ?? null })
+    ]);
+    if (kpis.error) return fail(kpis.error.message);
+    if (conv.error) return fail(conv.error.message);
+    const k = Array.isArray(kpis.data) ? kpis.data[0] : kpis.data;
+    const c = Array.isArray(conv.data) ? conv.data[0] : conv.data;
+    const vendasCalls = Number(k?.vendas_calls ?? 0);
+    const vendasAvulsas = Number(k?.vendas_avulsas ?? 0);
+    const coletado = Number(k?.coletado_calls ?? 0) + Number(k?.coletado_avulsa ?? 0);
+    const totalReunioes = Number(c?.total_reunioes ?? 0);
+    const totalVendasConv = Number(c?.total_vendas ?? 0);
+    return ok({
+      periodo,
+      vendas: {
+        total: vendasCalls + vendasAvulsas,
+        de_call: vendasCalls,
+        avulsas: vendasAvulsas,
+        primeira_call: Number(k?.vendas_primeira_call ?? 0),
+        follow_up: Number(k?.vendas_follow ?? 0),
+        nao_fechou: Number(k?.nao_fechou ?? 0),
+        sem_status_realizada: Number(k?.vendas_sem_status_realizada ?? 0)
+      },
+      financeiro: {
+        coletado,
+        coletado_calls: Number(k?.coletado_calls ?? 0),
+        coletado_avulsa: Number(k?.coletado_avulsa ?? 0),
+        faturado: Number(k?.faturado_calls ?? 0) + Number(k?.faturado_avulsa ?? 0),
+        ticket_medio: vendasCalls + vendasAvulsas > 0 ? Number((coletado / (vendasCalls + vendasAvulsas)).toFixed(2)) : 0
+      },
+      conversao: {
+        reunioes_consideradas: totalReunioes,
+        vendas_consideradas: totalVendasConv,
+        taxa_percentual: totalReunioes ? Number((totalVendasConv / totalReunioes * 100).toFixed(1)) : 0,
+        observacao: "Convers\xE3o sobre 1\xAAs calls (exclui 2\xAAs reuni\xF5es); vendas atribu\xEDdas \xE0 data da 1\xAA call."
+      }
+    });
+  }
+});
+
+// src/lib/mcp/tools/closer-performance.ts
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z6 } from "npm:zod@^4.4.3";
+var closer_performance_default = defineTool6({
+  name: "closer_performance",
+  title: "Performance por closer",
+  description: "Ranking por closer no per\xEDodo: reuni\xF5es realizadas, vendas, receita e taxa de convers\xE3o (inclui closers com zero venda). Mesma fonte da p\xE1gina Vendas.",
+  inputSchema: {
+    from: z6.string().optional().describe("Data inicial (YYYY-MM-DD). Padr\xE3o: in\xEDcio do m\xEAs corrente."),
+    to: z6.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padr\xE3o: hoje."),
+    canal: z6.string().optional().describe("Filtrar por canal (channel_type), ex.: inbound."),
+    ordenar_por: z6.enum(["conversao", "vendas", "receita", "realizadas"]).optional().describe("Padr\xE3o: conversao.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from, to, canal, ordenar_por }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const periodo = resolvePeriod(from, to);
+    const [perf, closers, semCloser] = await Promise.all([
+      sb.rpc("dashboard_vendas_closer_perf", {
+        p_from: periodo.from,
+        p_to: periodo.to,
+        p_channel: canal ?? null,
+        p_closer_id: null
+      }),
+      sb.from("closers").select("id, name, active"),
+      sb.rpc("dashboard_vendas_realizadas_sem_closer", { p_from: periodo.from, p_to: periodo.to })
+    ]);
+    if (perf.error) return fail(perf.error.message);
+    const nameById = new Map((closers.data ?? []).map((c) => [c.id, c.name]));
+    const rows = perf.data ?? [];
+    const items = rows.map((r) => ({
+      closer_id: r.closer_id,
+      closer_name: nameById.get(r.closer_id) ?? "(closer removido)",
+      realizadas: Number(r.realizadas ?? 0),
+      vendas: Number(r.vendas ?? 0),
+      receita: Number(r.receita ?? 0),
+      conversao_percentual: Number(r.realizadas) ? Number((Number(r.vendas) / Number(r.realizadas) * 100).toFixed(1)) : 0
+    }));
+    const key = ordenar_por ?? "conversao";
+    items.sort(
+      (a, b) => key === "vendas" ? b.vendas - a.vendas : key === "receita" ? b.receita - a.receita : key === "realizadas" ? b.realizadas - a.realizadas : b.conversao_percentual - a.conversao_percentual
+    );
+    return ok({
+      periodo,
+      canal: canal ?? "todos",
+      count: items.length,
+      realizadas_sem_closer_atribuido: Number(semCloser.data ?? 0),
+      items
+    });
+  }
+});
+
+// src/lib/mcp/tools/list-followups.ts
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z7 } from "npm:zod@^4.4.3";
+var SELECT2 = "id, agendamento_id, follow_up, follow_up_date, follow_up_time, motivo_nao_fechamento, explicacao_nao_fechamento, observacoes, valor, valor_total_projeto, lead_revenue, created_at, agendamentos!inner(lead_name, lead_phone, scheduled_date, scheduled_time, status, deleted_at, closers(name, email))";
+function map(row, hoje) {
+  const ag = row.agendamentos;
+  const followDate = row.follow_up_date ?? null;
+  return {
+    venda_id: row.id,
+    agendamento_id: row.agendamento_id,
+    lead_name: ag.lead_name,
+    lead_phone: ag.lead_phone,
+    closer_name: ag.closers?.name ?? null,
+    reuniao_data: ag.scheduled_date,
+    reuniao_hora: ag.scheduled_time,
+    reuniao_status: ag.status,
+    follow_up_date: followDate,
+    follow_up_time: row.follow_up_time ?? null,
+    atrasado: !!followDate && followDate < hoje,
+    motivo_nao_fechamento: row.motivo_nao_fechamento ?? null,
+    explicacao_nao_fechamento: row.explicacao_nao_fechamento ?? null,
+    observacoes: row.observacoes ?? null,
+    valor_previsto: row.valor_total_projeto ?? row.valor ?? null,
+    faturamento_lead: row.lead_revenue ?? null
+  };
+}
+var list_followups_default = defineTool7({
+  name: "list_followups",
+  title: "Listar follow-ups",
+  description: "Follow-ups em acompanhamento (venda n\xE3o fechada com data de follow-up marcada) e reuni\xF5es n\xE3o fechadas sem follow-up marcado, com motivo, valor previsto e sinaliza\xE7\xE3o de atraso.",
+  inputSchema: {
+    bloco: z7.enum(["em_acompanhamento", "nao_acompanhados", "todos"]).optional().describe("Qual bloco retornar. Padr\xE3o: todos."),
+    from: z7.string().optional().describe("Data inicial do follow-up (YYYY-MM-DD)."),
+    to: z7.string().optional().describe("Data final do follow-up (YYYY-MM-DD, inclusiva)."),
+    closer_name: z7.string().optional().describe("Filtrar por nome do closer (match parcial)."),
+    apenas_atrasados: z7.boolean().optional().describe("Se true, s\xF3 follow-ups vencidos."),
+    limit: z7.number().int().optional().describe("M\xE1ximo de itens por bloco (padr\xE3o 200, teto 500).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ bloco, from, to, closer_name, apenas_atrasados, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const hoje = todayBRT();
+    const max = cap(limit, 200);
+    const which = bloco ?? "todos";
+    const filtrar = (items) => {
+      let out = [...items];
+      if (closer_name) {
+        const needle = closer_name.toLowerCase();
+        out = out.filter((i) => (i.closer_name ?? "").toLowerCase().includes(needle));
+      }
+      if (apenas_atrasados) out = out.filter((i) => i.atrasado);
+      return out;
+    };
+    let emAcompanhamento = [];
+    let naoAcompanhados = [];
+    if (which !== "nao_acompanhados") {
+      let q = sb.from("vendas").select(SELECT2).eq("vendeu", false).eq("follow_up", true).not("follow_up_date", "is", null).order("follow_up_date", { ascending: true }).limit(max);
+      if (from) q = q.gte("follow_up_date", from);
+      if (to) q = q.lte("follow_up_date", to);
+      const { data, error } = await q;
+      if (error) return fail(error.message);
+      emAcompanhamento = filtrar(
+        (data ?? []).filter((r) => !r.agendamentos.deleted_at).map((r) => map(r, hoje))
+      );
+    }
+    if (which !== "em_acompanhamento") {
+      let q = sb.from("vendas").select(SELECT2).eq("vendeu", false).eq("follow_up", false).order("created_at", { ascending: false }).limit(max);
+      if (from) q = q.gte("agendamentos.scheduled_date", from);
+      if (to) q = q.lte("agendamentos.scheduled_date", to);
+      const { data, error } = await q;
+      if (error) return fail(error.message);
+      naoAcompanhados = filtrar(
+        (data ?? []).filter((r) => !r.agendamentos.deleted_at).map((r) => map(r, hoje))
+      );
+    }
+    const pipeline = emAcompanhamento.reduce((s, i) => s + Number(i.valor_previsto ?? 0), 0);
+    return ok({
+      hoje,
+      resumo: {
+        em_acompanhamento: emAcompanhamento.length,
+        atrasados: emAcompanhamento.filter((i) => i.atrasado).length,
+        de_hoje: emAcompanhamento.filter((i) => i.follow_up_date === hoje).length,
+        nao_acompanhados: naoAcompanhados.length,
+        valor_em_pipeline: pipeline
+      },
+      em_acompanhamento: which === "nao_acompanhados" ? void 0 : emAcompanhamento,
+      nao_acompanhados: which === "em_acompanhamento" ? void 0 : naoAcompanhados
+    });
+  }
+});
+
+// src/lib/mcp/tools/no-show-reasons.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z8 } from "npm:zod@^4.4.3";
+var no_show_reasons_default = defineTool8({
+  name: "no_show_reasons",
+  title: "Motivos de n\xE3o comparecimento",
+  description: "Agrupa os motivos de n\xE3o comparecimento (reuni\xF5es marcadas como n\xE3o compareceu) no per\xEDodo, com contagem e percentual, opcionalmente filtrando por SDR.",
+  inputSchema: {
+    from: z8.string().optional().describe("Data inicial (YYYY-MM-DD). Padr\xE3o: in\xEDcio do m\xEAs corrente."),
+    to: z8.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padr\xE3o: hoje."),
+    sdr_name: z8.string().optional().describe("Filtrar por nome do SDR respons\xE1vel (match parcial).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from, to, sdr_name }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const periodo = resolvePeriod(from, to);
+    const [{ data, error }, { data: profiles }] = await Promise.all([
+      sb.from("agendamentos").select("id, scheduled_date, cancellation_reason, status, sdr_responsavel_id, created_by, closers(name)").is("deleted_at", null).in("status", ["no_show", "cancelada"]).gte("scheduled_date", periodo.from).lte("scheduled_date", periodo.to).limit(5e3),
+      sb.from("profiles").select("user_id, full_name")
+    ]);
+    if (error) return fail(error.message);
+    const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
+    let rows = (data ?? []).map((r) => ({
+      motivo: r.cancellation_reason?.trim() || "(sem motivo informado)",
+      sdr_name: nameById.get(r.sdr_responsavel_id ?? "") ?? nameById.get(r.created_by ?? "") ?? null,
+      data: r.scheduled_date,
+      status: r.status
+    }));
+    if (sdr_name) {
+      const needle = sdr_name.toLowerCase();
+      rows = rows.filter((r) => (r.sdr_name ?? "").toLowerCase().includes(needle));
+    }
+    const total = rows.length;
+    const grouped = /* @__PURE__ */ new Map();
+    for (const r of rows) grouped.set(r.motivo, (grouped.get(r.motivo) ?? 0) + 1);
+    const items = [...grouped.entries()].map(([motivo, qtd]) => ({
+      motivo,
+      qtd,
+      percentual: total ? Number((qtd / total * 100).toFixed(1)) : 0
+    })).sort((a, b) => b.qtd - a.qtd);
+    return ok({ periodo, total_nao_compareceu: total, sdr: sdr_name ?? "todos", items });
+  }
+});
+
+// src/lib/mcp/tools/sdr-productivity.ts
+import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z9 } from "npm:zod@^4.4.3";
+var sdr_productivity_default = defineTool9({
+  name: "sdr_productivity",
+  title: "Produtividade dos SDRs",
+  description: "Agendamentos criados por SDR no per\xEDodo (pela data de cria\xE7\xE3o), com quantas foram realizadas, quantas n\xE3o compareceram, taxa de comparecimento e vendas geradas.",
+  inputSchema: {
+    from: z9.string().optional().describe("Data inicial (YYYY-MM-DD). Padr\xE3o: in\xEDcio do m\xEAs corrente."),
+    to: z9.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padr\xE3o: hoje."),
+    base: z9.enum(["criacao", "reuniao"]).optional().describe("Contar pela data de cria\xE7\xE3o do agendamento (padr\xE3o) ou pela data da reuni\xE3o.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from, to, base }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const periodo = resolvePeriod(from, to);
+    const porCriacao = (base ?? "criacao") === "criacao";
+    let q = sb.from("agendamentos").select("id, status, sdr_responsavel_id, created_by, scheduled_date, created_at").is("deleted_at", null).limit(5e3);
+    if (porCriacao) {
+      q = q.gte("created_at", `${periodo.from}T03:00:00Z`).lt("created_at", `${addDays(periodo.to, 1)}T03:00:00Z`);
+    } else {
+      q = q.gte("scheduled_date", periodo.from).lte("scheduled_date", periodo.to);
+    }
+    const [{ data, error }, { data: profiles }] = await Promise.all([
+      q,
+      sb.from("profiles").select("user_id, full_name")
+    ]);
+    if (error) return fail(error.message);
+    const rows = data ?? [];
+    const ids = rows.map((r) => r.id);
+    const vendasPorAgendamento = /* @__PURE__ */ new Map();
+    for (let i = 0; i < ids.length; i += 500) {
+      const slice = ids.slice(i, i + 500);
+      if (!slice.length) break;
+      const { data: vendas } = await sb.from("vendas").select("agendamento_id, vendeu").in("agendamento_id", slice).eq("vendeu", true);
+      for (const v of vendas ?? []) vendasPorAgendamento.set(v.agendamento_id, true);
+    }
+    const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
+    const agg = /* @__PURE__ */ new Map();
+    for (const r of rows) {
+      const key = r.sdr_responsavel_id ?? r.created_by ?? "sem_sdr";
+      const entry = agg.get(key) ?? {
+        sdr_name: nameById.get(key) ?? "(sem SDR atribu\xEDdo)",
+        criadas: 0,
+        realizadas: 0,
+        nao_compareceu: 0,
+        vendas: 0
+      };
+      entry.criadas += 1;
+      if (r.status === "realizada") entry.realizadas += 1;
+      if (r.status === "no_show" || r.status === "cancelada") entry.nao_compareceu += 1;
+      if (vendasPorAgendamento.has(r.id)) entry.vendas += 1;
+      agg.set(key, entry);
+    }
+    const items = [...agg.entries()].map(([sdr_id, v]) => ({
+      sdr_id,
+      ...v,
+      taxa_comparecimento_percentual: v.realizadas + v.nao_compareceu > 0 ? Number((v.realizadas / (v.realizadas + v.nao_compareceu) * 100).toFixed(1)) : 0,
+      conversao_percentual: v.realizadas ? Number((v.vendas / v.realizadas * 100).toFixed(1)) : 0
+    })).sort((a, b) => b.criadas - a.criadas);
+    return ok({
+      periodo,
+      base: porCriacao ? "data de cria\xE7\xE3o do agendamento" : "data da reuni\xE3o",
+      total_agendamentos: rows.length,
+      items
+    });
+  }
+});
+
+// src/lib/mcp/tools/agenda-availability.ts
+import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z10 } from "npm:zod@^4.4.3";
+var DEFAULT_START = "09:00";
+var DEFAULT_END = "21:00";
+function hourSlots(start, end) {
+  const s = Number(start.slice(0, 2));
+  const e = Number(end.slice(0, 2));
+  const out = [];
+  for (let h = s; h < e; h++) out.push(`${String(h).padStart(2, "0")}:00`);
+  return out;
+}
+var agenda_availability_default = defineTool10({
+  name: "agenda_availability",
+  title: "Ocupa\xE7\xE3o e hor\xE1rios livres da agenda",
+  description: "Mostra a ocupa\xE7\xE3o da agenda por dia e hor\xE1rio no per\xEDodo: quantas reuni\xF5es por hor\xE1rio, quantos closers ativos, hor\xE1rios lotados (n\xE3o oferecer ao lead) e os hor\xE1rios mais vazios. Respeita os hor\xE1rios comerciais configurados no painel.",
+  inputSchema: {
+    from_date: z10.string().optional().describe("Data inicial (YYYY-MM-DD). Padr\xE3o: hoje."),
+    to_date: z10.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padr\xE3o: from_date + 6 dias.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from_date, to_date }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const from = from_date ?? todayBRT();
+    const to = to_date ?? addDays(from, 6);
+    const [{ data: settings }, closersRes, agRes, blocksRes] = await Promise.all([
+      sb.from("app_settings").select("key, value").in("key", ["business_hours_start", "business_hours_end"]),
+      sb.from("closers").select("id, name, active").eq("active", true),
+      sb.from("agendamentos").select("id, scheduled_date, scheduled_time, closer_id, status").is("deleted_at", null).gte("scheduled_date", from).lte("scheduled_date", to).not("status", "in", "(cancelada,no_show)").limit(5e3),
+      sb.from("closer_blocks").select("closer_id, block_date, start_time").gte("block_date", from).lte("block_date", to)
+    ]);
+    if (agRes.error) return fail(agRes.error.message);
+    const map2 = new Map((settings ?? []).map((s) => [s.key, s.value]));
+    const start = map2.get("business_hours_start") || DEFAULT_START;
+    const end = map2.get("business_hours_end") || DEFAULT_END;
+    const slots = hourSlots(start, end);
+    const closersAtivos = (closersRes.data ?? []).length;
+    const busy = /* @__PURE__ */ new Map();
+    for (const a of agRes.data ?? []) {
+      const key = `${a.scheduled_date}|${a.scheduled_time.slice(0, 2)}:00`;
+      busy.set(key, (busy.get(key) ?? 0) + 1);
+    }
+    for (const b of blocksRes.data ?? []) {
+      const key = `${b.block_date}|${b.start_time.slice(0, 2)}:00`;
+      busy.set(key, (busy.get(key) ?? 0) + 1);
+    }
+    const dias = [];
+    for (let d = from; d <= to; d = addDays(d, 1)) {
+      dias.push({
+        data: d,
+        horarios: slots.map((hora) => {
+          const ocupados = busy.get(`${d}|${hora}`) ?? 0;
+          const livres = Math.max(closersAtivos - ocupados, 0);
+          return { hora, ocupados, livres, lotado: livres === 0 && closersAtivos > 0 };
+        })
+      });
+    }
+    const todos = dias.flatMap((d) => d.horarios.map((h) => ({ data: d.data, ...h })));
+    const lotados = todos.filter((h) => h.lotado);
+    const maisVazios = [...todos].sort((a, b) => b.livres - a.livres).slice(0, 6);
+    return ok({
+      periodo: { from, to },
+      horario_comercial: { inicio: start, fim: end },
+      closers_ativos: closersAtivos,
+      nao_oferecer_ao_lead_lotado: lotados,
+      horarios_mais_vazios: maisVazios,
+      dias
+    });
+  }
+});
+
+// src/lib/mcp/tools/search-lead.ts
+import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z11 } from "npm:zod@^4.4.3";
+var search_lead_default = defineTool11({
+  name: "search_lead",
+  title: "Buscar lead",
+  description: "Busca um lead por nome ou telefone e devolve o hist\xF3rico dele no painel: todas as reuni\xF5es (com closer, status e motivo) e o resultado de venda de cada uma.",
+  inputSchema: {
+    query: z11.string().describe("Nome ou telefone (parcial) do lead."),
+    limit: z11.number().int().optional().describe("M\xE1ximo de reuni\xF5es retornadas (padr\xE3o 50, teto 200).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ query, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const max = cap(limit, 50, 200);
+    const needle = query.trim();
+    if (!needle) return fail("Informe um nome ou telefone para buscar.");
+    const digits = needle.replace(/\D/g, "");
+    const filters = [`lead_name.ilike.%${needle}%`];
+    if (digits.length >= 4) filters.push(`lead_phone.ilike.%${digits}%`);
+    const { data, error } = await sb.from("agendamentos").select(
+      "id, lead_name, lead_phone, lead_email, meta_lead_id, scheduled_date, scheduled_time, status, cancellation_reason, meeting_reason, channel_type, observation, sdr_responsavel_id, created_by, created_at, closers(name, email)"
+    ).is("deleted_at", null).or(filters.join(",")).order("scheduled_date", { ascending: false }).limit(max);
+    if (error) return fail(error.message);
+    const rows = data ?? [];
+    if (!rows.length) return ok({ query: needle, count: 0, reunioes: [] });
+    const [{ data: vendas }, { data: profiles }] = await Promise.all([
+      sb.from("vendas").select(
+        "agendamento_id, vendeu, valor, valor_total_projeto, venda_origem, produto, closed_at, motivo_nao_fechamento, follow_up, follow_up_date, observacoes"
+      ).in(
+        "agendamento_id",
+        rows.map((r) => r.id)
+      ),
+      sb.from("profiles").select("user_id, full_name")
+    ]);
+    const vendaPorAgendamento = new Map((vendas ?? []).map((v) => [v.agendamento_id, v]));
+    const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
+    const reunioes = rows.map((r) => {
+      const { closers, ...rest } = r;
+      return {
+        ...rest,
+        closer_name: closers?.name ?? null,
+        sdr_name: nameById.get(r.sdr_responsavel_id ?? "") ?? nameById.get(r.created_by ?? "") ?? null,
+        venda: vendaPorAgendamento.get(r.id) ?? null
+      };
+    });
+    return ok({
+      query: needle,
+      count: reunioes.length,
+      total_vendas: reunioes.filter((r) => r.venda?.vendeu).length,
+      reunioes
+    });
+  }
+});
+
+// src/lib/mcp/tools/list-users.ts
+import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z12 } from "npm:zod@^4.4.3";
+var list_users_default = defineTool12({
+  name: "list_users",
+  title: "Listar usu\xE1rios do painel",
+  description: "Lista os usu\xE1rios do painel com fun\xE7\xE3o (gestor, moderador, supervisor, SDR, closer, apresentador), e-mail e status ativo/inativo. Dispon\xEDvel apenas para gestor e moderador.",
+  inputSchema: {
+    role: z12.enum(["gestor", "moderador", "supervisor", "apresentador", "sdr", "closer"]).optional().describe("Filtrar por fun\xE7\xE3o."),
+    only_active: z12.boolean().optional().describe("Se true, retorna somente usu\xE1rios ativos.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ role, only_active }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    const { data: myRole } = await sb.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
+    if (!myRole || !["gestor", "moderador"].includes(myRole.role)) {
+      return fail("Acesso negado: somente gestor ou moderador pode listar usu\xE1rios do painel.");
+    }
+    const [{ data: profiles, error }, { data: roles }] = await Promise.all([
+      sb.from("profiles").select("user_id, full_name, email, active, sdr_team, is_sdr_override").order("full_name"),
+      sb.from("user_roles").select("user_id, role")
+    ]);
+    if (error) return fail(error.message);
+    const roleById = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
+    let items = (profiles ?? []).map((p) => ({
+      user_id: p.user_id,
+      nome: p.full_name,
+      email: p.email,
+      funcao: roleById.get(p.user_id) ?? null,
+      ativo: p.active,
+      time_sdr: p.sdr_team ?? null,
+      atua_como_sdr: p.is_sdr_override
+    }));
+    if (role) items = items.filter((i) => i.funcao === role);
+    if (only_active) items = items.filter((i) => i.ativo);
+    return ok({ count: items.length, items });
   }
 });
 
@@ -135,13 +775,26 @@ var projectRef = "jrnyccjhsxcggmgupvzp";
 var mcp_default = defineMcp({
   name: "grupo-silva-agenda-mcp",
   title: "Painel de Agendamentos \u2014 Grupo Silva",
-  version: "0.1.0",
-  instructions: "Ferramentas de leitura do painel de agendamentos (reuni\xF5es, closers). Use list_appointments para listar reuni\xF5es por per\xEDodo/status, list_closers para o time de closers e get_appointment para detalhes de uma reuni\xE3o espec\xEDfica. Todas as chamadas respeitam a permiss\xE3o do usu\xE1rio conectado.",
+  version: "0.2.0",
+  instructions: "Ferramentas de leitura do painel de agendamentos do Grupo Silva. Reuni\xF5es: list_appointments, get_appointment, agenda_availability. Vendas: list_sales, sales_kpis, closer_performance. Follow-ups: list_followups. Qualidade da opera\xE7\xE3o: no_show_reasons, sdr_productivity. Leads: search_lead. Time: list_closers, list_users. Datas sempre em America/Sao_Paulo (YYYY-MM-DD); quando o per\xEDodo \xE9 omitido, o padr\xE3o \xE9 o m\xEAs corrente (ou hoje, nas ferramentas de agenda). Todas as chamadas respeitam a permiss\xE3o do usu\xE1rio conectado.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [list_appointments_default, list_closers_default, get_appointment_default]
+  tools: [
+    list_appointments_default,
+    get_appointment_default,
+    agenda_availability_default,
+    list_sales_default,
+    sales_kpis_default,
+    closer_performance_default,
+    list_followups_default,
+    no_show_reasons_default,
+    sdr_productivity_default,
+    search_lead_default,
+    list_closers_default,
+    list_users_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts
