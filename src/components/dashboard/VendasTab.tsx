@@ -1075,7 +1075,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os closers</SelectItem>
-                      {closers.map((c) => (
+                      {activeClosers.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
