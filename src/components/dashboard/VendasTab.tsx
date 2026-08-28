@@ -725,7 +725,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const todayDate = new Date();
     const todayDateStr = format(todayDate, "yyyy-MM-dd");
 
-    return vendas
+    return followUpsAtivosRows
+
       .filter((v) => v.follow_up && v.follow_up_date)
       .map((v) => {
         const ag = agMap.get(v.agendamento_id);
