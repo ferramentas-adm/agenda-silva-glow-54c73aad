@@ -312,60 +312,50 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return me?.id ?? null;
   }, [isCloserView, user?.email, closers]);
 
-  // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd):
-  // - Se houver override manual (vendas.closed_at), usa esse.
-  // - Se houver audit log de follow-up com outcome='fechou' para esse
-  //   agendamento, usa essa data (data real do fechamento via follow-up).
-  // - Caso contrário, usa scheduled_date da reunião.
+  // Data efetiva de "fechamento" da venda (BRT, yyyy-MM-dd) — regra única:
+  // - Override manual (vendas.closed_at) tem prioridade.
+  // - Venda: data em que foi registrada no sistema (updated_at em BRT).
+  // - Não fechou: data da reunião (scheduled_date).
   const closingDateOf = (v: VendaRow): string | null => {
     if (v.closed_at) return v.closed_at;
+    if (v.vendeu) return brDateOf(v.updated_at);
     const ag = agMap.get(v.agendamento_id);
-    if (!ag) return null;
-    if (v.vendeu) {
-      const fuClose = followUpCloseDateMap.get(v.agendamento_id);
-      if (fuClose) return fuClose;
-    }
-    return ag.scheduled_date;
+    return ag?.scheduled_date ?? null;
   };
 
   // Vendas do período selecionado (dia único OU intervalo). Para closer logado,
   // aplica filtro adicional para mostrar apenas seus próprios números.
-  //
-  // ATRIBUIÇÃO POR DATA:
-  //  - VENDIDAS: usam a data em que o closer SUBIU a venda no sistema
-  //    (updated_at em BRT). Ou seja, uma venda registrada hoje aparece hoje
-  //    mesmo que a reunião tenha sido outro dia.
-  //  - NÃO FECHOU: continuam atribuídas à data da reunião (scheduled_date),
-  //    pois alimentam Motivos de Não Fechamento (visão operacional da call).
-  const inRangeYmd = (ymd: string) => {
-    if (isRange && rangeFromStr && rangeToStr) return ymd >= rangeFromStr && ymd <= rangeToStr;
-    return ymd === dateStr;
-  };
+  const inRangeYmd = (ymd: string) => ymd >= periodFrom && ymd <= periodTo;
   const vendasDia = useMemo(() => {
     return vendas.filter((v) => {
       const ag = agMap.get(v.agendamento_id);
-      if (ag?.status !== "realizada") return false;
+      if (!ag) return false;
       if (isCloserView) {
-        if (!myCloserId || ag?.closer_id !== myCloserId) return false;
+        if (!myCloserId || ag.closer_id !== myCloserId) return false;
       }
-      if (v.vendeu) {
-        // Se o usuário editou "Data da venda" (closed_at), respeita esse override.
-        // Caso contrário, usa a data em que o closer subiu a venda (BRT).
-        const effective = v.closed_at ?? brDateOf(v.updated_at);
-        return inRangeYmd(effective);
-      }
+      // Venda registrada conta sempre (o status da reunião pode estar atrasado);
+      // "não fechou" só entra quando a reunião está marcada como realizada.
+      if (!v.vendeu && ag.status !== "realizada") return false;
       const cd = closingDateOf(v);
       if (!cd) return false;
       return inRangeYmd(cd);
     });
-  }, [vendas, agMap, followUpCloseDateMap, dateStr, isRange, rangeFromStr, rangeToStr, isCloserView, myCloserId]);
+  }, [vendas, agMap, periodFrom, periodTo, isCloserView, myCloserId]);
+
+  // Vendas do período cuja reunião ainda não está marcada como "realizada" —
+  // sinalizamos na tela para o gestor cobrar a atualização do status.
+  const vendasSemStatusRealizada = useMemo(
+    () => vendasDia.filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.status !== "realizada").length,
+    [vendasDia, agMap],
+  );
 
   // Base do card "Taxa de Conversão": busca AGENDAMENTOS realizados no período
   // direto da tabela `agendamentos` (independente da existência de linha em `vendas`).
   // Isso garante que o denominador case com o total operacional do calendário,
   // incluindo reuniões criadas por closer. Exclui apenas Call Interompida/Interrompida.
-  const convPeriodFrom = isRange && rangeFromStr ? rangeFromStr : dateStr;
-  const convPeriodTo = isRange && rangeToStr ? rangeToStr : dateStr;
+  const convPeriodFrom = periodFrom;
+  const convPeriodTo = periodTo;
+
   const { data: conversaoData } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
     queryKey: ["vendas-tab-conversao", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
     queryFn: async () => {
