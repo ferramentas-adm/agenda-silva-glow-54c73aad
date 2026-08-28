@@ -19,7 +19,7 @@
       {
         "name": "list_appointments",
         "title": "Listar reuniões agendadas",
-        "description": "Lista reuniões agendadas do painel (agendamentos) filtradas por data e/ou status. Respeita a permissão do usuário autenticado (RLS).",
+        "description": "Lista reuniões do painel (agendamentos) por período e/ou status, já com nome do closer e do SDR responsável. Respeita a permissão do usuário autenticado (RLS).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -41,11 +41,22 @@
               "description": "Filtrar por status.",
               "type": "string",
               "enum": [
+                "pendente",
+                "confirmada",
                 "agendada",
+                "nao_confirmada",
                 "realizada",
                 "cancelada",
                 "no_show"
               ]
+            },
+            "closer_name": {
+              "description": "Filtrar por nome do closer (match parcial).",
+              "type": "string"
+            },
+            "sdr_name": {
+              "description": "Filtrar por nome do SDR responsável (match parcial).",
+              "type": "string"
             },
             "limit": {
               "description": "Máximo de resultados (padrão 100, teto 500).",

@@ -6,54 +6,131 @@
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.22.2";
 
 // src/lib/mcp/tools/list-appointments.ts
-import { createClient } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z } from "npm:zod@^4.4.3";
-function sb(ctx) {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
+
+// src/lib/mcp/supabase.ts
+import { createClient } from "npm:@supabase/supabase-js@^2.99.3";
+function runtimeEnv(name) {
+  const runtime = globalThis;
+  return runtime.Deno?.env?.get?.(name) ?? runtime.process?.env?.[name];
 }
+function configuredEnv(names) {
+  for (const name of names) {
+    const value = runtimeEnv(name)?.trim();
+    if (value) return value;
+  }
+  return void 0;
+}
+function supabaseProjectUrl() {
+  const url = configuredEnv(["SUPABASE_URL", "VITE_SUPABASE_URL"]);
+  if (!url) throw new Error("SUPABASE_URL (ou VITE_SUPABASE_URL) \xE9 obrigat\xF3rio");
+  return url;
+}
+function supabasePublishableKey() {
+  const direct = configuredEnv(["SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY"]);
+  if (direct) return direct;
+  const keyset = runtimeEnv("SUPABASE_PUBLISHABLE_KEYS");
+  if (keyset) {
+    try {
+      const parsed = JSON.parse(keyset);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const keys = parsed;
+        const key = [keys.default, ...Object.values(keys)].find((v) => typeof v === "string" && v.trim().startsWith("sb_publishable_"))?.trim();
+        if (key) return key;
+      }
+    } catch {
+    }
+  }
+  const legacy = configuredEnv(["SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY"]);
+  if (legacy) return legacy;
+  throw new Error("Chave public\xE1vel do Supabase n\xE3o encontrada no ambiente");
+}
+function supabaseForUser(ctx) {
+  const token = ctx.getToken();
+  if (!token) throw new Error("supabaseForUser requer um token OAuth verificado");
+  return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+
+// src/lib/mcp/util.ts
+function todayBRT() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(/* @__PURE__ */ new Date());
+}
+function addDays(isoDate, days) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+function cap(limit, def = 100, max = 500) {
+  return Math.min(Math.max(limit ?? def, 1), max);
+}
+function ok(payload) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload) }],
+    structuredContent: payload
+  };
+}
+function fail(message) {
+  return { content: [{ type: "text", text: message }], isError: true };
+}
+var NOT_AUTHENTICATED = "N\xE3o autenticado. Reconecte o conector para autorizar.";
+
+// src/lib/mcp/tools/list-appointments.ts
 var list_appointments_default = defineTool({
   name: "list_appointments",
   title: "Listar reuni\xF5es agendadas",
-  description: "Lista reuni\xF5es agendadas do painel (agendamentos) filtradas por data e/ou status. Respeita a permiss\xE3o do usu\xE1rio autenticado (RLS).",
+  description: "Lista reuni\xF5es do painel (agendamentos) por per\xEDodo e/ou status, j\xE1 com nome do closer e do SDR respons\xE1vel. Respeita a permiss\xE3o do usu\xE1rio autenticado (RLS).",
   inputSchema: {
     from_date: z.string().optional().describe("Data inicial (YYYY-MM-DD). Padr\xE3o: hoje."),
     to_date: z.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padr\xE3o: 30 dias ap\xF3s from_date."),
-    status: z.enum(["agendada", "realizada", "cancelada", "no_show"]).optional().describe("Filtrar por status."),
+    status: z.enum(["pendente", "confirmada", "agendada", "nao_confirmada", "realizada", "cancelada", "no_show"]).optional().describe("Filtrar por status."),
+    closer_name: z.string().optional().describe("Filtrar por nome do closer (match parcial)."),
+    sdr_name: z.string().optional().describe("Filtrar por nome do SDR respons\xE1vel (match parcial)."),
     limit: z.number().int().optional().describe("M\xE1ximo de resultados (padr\xE3o 100, teto 500).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ from_date, to_date, status, limit }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
-    }
-    const today = /* @__PURE__ */ new Date();
-    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const from = from_date ?? iso(today);
-    const to = to_date ?? (() => {
-      const d = new Date(from);
-      d.setDate(d.getDate() + 30);
-      return iso(d);
-    })();
-    const cap = Math.min(Math.max(limit ?? 100, 1), 500);
-    let q = sb(ctx).from("agendamentos").select(
-      "id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, status, closer_id, sdr_responsavel_id, meet_link, briefing, observation, channel_type, meeting_reason, created_at"
-    ).is("deleted_at", null).gte("scheduled_date", from).lte("scheduled_date", to).order("scheduled_date", { ascending: true }).order("scheduled_time", { ascending: true }).limit(cap);
+  handler: async ({ from_date, to_date, status, closer_name, sdr_name, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    const sb3 = supabaseForUser(ctx);
+    const from = from_date ?? todayBRT();
+    const to = to_date ?? addDays(from, 30);
+    const max = cap(limit);
+    let q = sb3.from("agendamentos").select(
+      "id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, status, closer_id, sdr_responsavel_id, created_by, meet_link, observation, channel_type, meeting_reason, cancellation_reason, created_at, closers(name, email)"
+    ).is("deleted_at", null).gte("scheduled_date", from).lte("scheduled_date", to).order("scheduled_date", { ascending: true }).order("scheduled_time", { ascending: true }).limit(max);
     if (status) q = q.eq("status", status);
     const { data, error } = await q;
-    if (error)
-      return { content: [{ type: "text", text: error.message }], isError: true };
-    return {
-      content: [{ type: "text", text: JSON.stringify({ count: data?.length ?? 0, items: data ?? [] }) }],
-      structuredContent: { items: data ?? [] }
-    };
+    if (error) return fail(error.message);
+    const rows = data ?? [];
+    const { data: profiles } = await sb3.from("profiles").select("user_id, full_name");
+    const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
+    let items = rows.map((r) => {
+      const { closers, ...rest } = r;
+      return {
+        ...rest,
+        closer_name: closers?.name ?? null,
+        closer_email: closers?.email ?? null,
+        sdr_name: nameById.get(r.sdr_responsavel_id ?? "") ?? nameById.get(r.created_by ?? "") ?? null
+      };
+    });
+    if (closer_name) {
+      const needle = closer_name.toLowerCase();
+      items = items.filter((i) => (i.closer_name ?? "").toLowerCase().includes(needle));
+    }
+    if (sdr_name) {
+      const needle = sdr_name.toLowerCase();
+      items = items.filter((i) => (i.sdr_name ?? "").toLowerCase().includes(needle));
+    }
+    return ok({ periodo: { from, to }, count: items.length, items });
   }
 });
 
@@ -61,7 +138,7 @@ var list_appointments_default = defineTool({
 import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z as z2 } from "npm:zod@^4.4.3";
-function sb2(ctx) {
+function sb(ctx) {
   return createClient2(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_PUBLISHABLE_KEY,
@@ -83,7 +160,7 @@ var list_closers_default = defineTool2({
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
     }
-    let q = sb2(ctx).from("closers").select("id, name, email, active").order("name");
+    let q = sb(ctx).from("closers").select("id, name, email, active").order("name");
     if (only_active) q = q.eq("active", true);
     const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
@@ -98,7 +175,7 @@ var list_closers_default = defineTool2({
 import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z as z3 } from "npm:zod@^4.4.3";
-function sb3(ctx) {
+function sb2(ctx) {
   return createClient3(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_PUBLISHABLE_KEY,
@@ -120,7 +197,7 @@ var get_appointment_default = defineTool3({
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
     }
-    const { data, error } = await sb3(ctx).from("agendamentos").select("*").eq("id", id).maybeSingle();
+    const { data, error } = await sb2(ctx).from("agendamentos").select("*").eq("id", id).maybeSingle();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!data) return { content: [{ type: "text", text: "Reuni\xE3o n\xE3o encontrada." }], isError: true };
     return {
