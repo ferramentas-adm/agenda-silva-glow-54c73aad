@@ -784,7 +784,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     setRemoving(false);
     if (ok) {
       setRemoveTarget(null);
-      queryClient.invalidateQueries({ queryKey: ["vendas-tab"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab-fechadas"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab-nao-fechou"] });
+      queryClient.invalidateQueries({ queryKey: ["vendas-tab-follow-ups"] });
+
       queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
     }
   };
