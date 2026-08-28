@@ -58,7 +58,12 @@ export default function ForceChangePasswordPage() {
       // Force reload to clear the flag in context
       window.location.href = "/";
     } catch (err: any) {
-      setError(err.message || "Erro ao atualizar senha");
+      const raw = err?.message ?? "";
+      if (/different from the old password/i.test(raw) || err?.code === "same_password") {
+        setError("A nova senha precisa ser diferente da senha atual.");
+      } else {
+        setError(raw || "Erro ao atualizar senha");
+      }
     }
     setLoading(false);
   };
