@@ -440,7 +440,7 @@ var list_followups_default = defineTool7({
     const max = cap(limit, 200);
     const which = bloco ?? "todos";
     const filtrar = (items) => {
-      let out = items.filter((i) => true);
+      let out = [...items];
       if (closer_name) {
         const needle = closer_name.toLowerCase();
         out = out.filter((i) => (i.closer_name ?? "").toLowerCase().includes(needle));

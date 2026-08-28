@@ -66,7 +66,7 @@ export default defineTool({
     const which = bloco ?? "todos";
 
     const filtrar = (items: ReturnType<typeof map>[]) => {
-      let out = items.filter((i) => true);
+      let out = [...items];
       if (closer_name) {
         const needle = closer_name.toLowerCase();
         out = out.filter((i) => (i.closer_name ?? "").toLowerCase().includes(needle));
@@ -92,7 +92,7 @@ export default defineTool({
       const { data, error } = await q;
       if (error) return fail(error.message);
       emAcompanhamento = filtrar(
-        (data ?? []).filter((r) => !(r as Row).agendamentos.deleted_at).map((r) => map(r as Row, hoje)),
+        (data ?? []).filter((r) => !(r as unknown as Row).agendamentos.deleted_at).map((r) => map(r as unknown as Row, hoje)),
       );
     }
 
@@ -109,7 +109,7 @@ export default defineTool({
       const { data, error } = await q;
       if (error) return fail(error.message);
       naoAcompanhados = filtrar(
-        (data ?? []).filter((r) => !(r as Row).agendamentos.deleted_at).map((r) => map(r as Row, hoje)),
+        (data ?? []).filter((r) => !(r as unknown as Row).agendamentos.deleted_at).map((r) => map(r as unknown as Row, hoje)),
       );
     }
 
