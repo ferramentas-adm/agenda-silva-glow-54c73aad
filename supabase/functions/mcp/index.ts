@@ -100,18 +100,18 @@ var list_appointments_default = defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ from_date, to_date, status, closer_name, sdr_name, limit }, ctx) => {
     if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
-    const sb3 = supabaseForUser(ctx);
+    const sb2 = supabaseForUser(ctx);
     const from = from_date ?? todayBRT();
     const to = to_date ?? addDays(from, 30);
     const max = cap(limit);
-    let q = sb3.from("agendamentos").select(
+    let q = sb2.from("agendamentos").select(
       "id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, status, closer_id, sdr_responsavel_id, created_by, meet_link, observation, channel_type, meeting_reason, cancellation_reason, created_at, closers(name, email)"
     ).is("deleted_at", null).gte("scheduled_date", from).lte("scheduled_date", to).order("scheduled_date", { ascending: true }).order("scheduled_time", { ascending: true }).limit(max);
     if (status) q = q.eq("status", status);
     const { data, error } = await q;
     if (error) return fail(error.message);
     const rows = data ?? [];
-    const { data: profiles } = await sb3.from("profiles").select("user_id, full_name");
+    const { data: profiles } = await sb2.from("profiles").select("user_id, full_name");
     const nameById = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
     let items = rows.map((r) => {
       const { closers, ...rest } = r;
@@ -135,48 +135,32 @@ var list_appointments_default = defineTool({
 });
 
 // src/lib/mcp/tools/list-closers.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z as z2 } from "npm:zod@^4.4.3";
-function sb(ctx) {
-  return createClient2(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
-}
 var list_closers_default = defineTool2({
   name: "list_closers",
   title: "Listar closers",
-  description: "Lista os closers cadastrados no painel, com status ativo/inativo.",
+  description: "Lista os closers cadastrados no painel, com status ativo/inativo e hor\xE1rio comercial.",
   inputSchema: {
     only_active: z2.boolean().optional().describe("Se true, retorna somente closers ativos.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ only_active }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
-    }
-    let q = sb(ctx).from("closers").select("id, name, email, active").order("name");
+    if (!ctx.isAuthenticated()) return fail(NOT_AUTHENTICATED);
+    let q = supabaseForUser(ctx).from("closers").select("id, name, email, active, business_hours_start, business_hours_end").order("name");
     if (only_active) q = q.eq("active", true);
     const { data, error } = await q;
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    return {
-      content: [{ type: "text", text: JSON.stringify({ count: data?.length ?? 0, items: data ?? [] }) }],
-      structuredContent: { items: data ?? [] }
-    };
+    if (error) return fail(error.message);
+    return ok({ count: data?.length ?? 0, items: data ?? [] });
   }
 });
 
 // src/lib/mcp/tools/get-appointment.ts
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.99.3";
+import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.99.3";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z as z3 } from "npm:zod@^4.4.3";
-function sb2(ctx) {
-  return createClient3(
+function sb(ctx) {
+  return createClient2(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_PUBLISHABLE_KEY,
     {
@@ -197,7 +181,7 @@ var get_appointment_default = defineTool3({
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "N\xE3o autenticado." }], isError: true };
     }
-    const { data, error } = await sb2(ctx).from("agendamentos").select("*").eq("id", id).maybeSingle();
+    const { data, error } = await sb(ctx).from("agendamentos").select("*").eq("id", id).maybeSingle();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!data) return { content: [{ type: "text", text: "Reuni\xE3o n\xE3o encontrada." }], isError: true };
     return {

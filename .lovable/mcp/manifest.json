@@ -71,7 +71,7 @@
       {
         "name": "list_closers",
         "title": "Listar closers",
-        "description": "Lista os closers cadastrados no painel, com status ativo/inativo.",
+        "description": "Lista os closers cadastrados no painel, com status ativo/inativo e horário comercial.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
