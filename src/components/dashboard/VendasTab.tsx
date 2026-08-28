@@ -381,7 +381,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const convPeriodFrom = periodFrom;
   const convPeriodTo = periodTo;
 
-  const { data: conversaoData } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
+  const {
+    data: conversaoData,
+    isLoading: loadingConversao,
+    isError: erroConversao,
+  } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
     queryKey: ["vendas-tab-conversao", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
     queryFn: async () => {
       // Agrega direto no banco via RPC: elimina paginação de milhares de linhas
@@ -402,6 +406,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     },
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
+    retry: 1,
   });
 
   // KPIs agregados NO BANCO — não dependem de baixar linhas, então nunca ficam
@@ -929,10 +934,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         <KpiCard
           icon={Target}
           label="Taxa de Conversão"
-          value={`${taxaConversao.toFixed(1)}%`}
-          sub={`${totalVendasConv} de ${totalReunioesConv} calls (exclui 2ªs reuniões e calls interrompidas · vendas atribuídas à data da 1ª call)`}
+          value={erroConversao ? "—" : `${taxaConversao.toFixed(1)}%`}
+          sub={
+            erroConversao
+              ? "Não foi possível calcular agora. Tente atualizar a página."
+              : `${totalVendasConv} de ${totalReunioesConv} calls (exclui 2ªs reuniões e calls interrompidas · vendas atribuídas à data da 1ª call)`
+          }
           color="primary"
-          loading={!conversaoData}
+          loading={loadingConversao}
           onClick={() =>
             openDrill(
               `Reuniões com resultado — ${dayLabel}`,
