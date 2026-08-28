@@ -381,7 +381,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const convPeriodFrom = periodFrom;
   const convPeriodTo = periodTo;
 
-  const { data: conversaoData } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
+  const {
+    data: conversaoData,
+    isLoading: loadingConversao,
+    isError: erroConversao,
+  } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
     queryKey: ["vendas-tab-conversao", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
     queryFn: async () => {
       // Agrega direto no banco via RPC: elimina paginação de milhares de linhas
