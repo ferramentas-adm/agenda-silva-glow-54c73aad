@@ -230,8 +230,48 @@ export default function CrmBulkVendasPanel() {
             {loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             Pré-visualizar
           </Button>
+          <Button variant="secondary" onClick={() => loadSample()} disabled={loadingSample || sending} className="gap-1.5">
+            {loadingSample ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileJson className="h-4 w-4" />}
+            Payload de teste
+          </Button>
         </CardContent>
       </Card>
+
+      {sample && (
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Payload de teste (não enviado)</CardTitle>
+              <CardDescription>
+                Estrutura exata de cada requisição POST do lote. Use para mapear os campos no CRM.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  navigator.clipboard.writeText(sample);
+                  toast.success("Payload copiado");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+                Copiar
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSample(null)}>
+                Fechar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <pre className="max-h-96 overflow-auto rounded-md border bg-muted/40 p-3 text-xs">
+              {sample}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
+
 
       {items && (
         <Card>
