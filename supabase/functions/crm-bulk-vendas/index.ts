@@ -213,7 +213,37 @@ Deno.serve(async (req) => {
     };
   }
 
+  // ── SAMPLE (payload de teste, sem enviar) ──────────────────────
+  if (body.action === "sample") {
+    try {
+      let vendas: VendaRow[] = [];
+      if (body.ids?.length) {
+        const { data, error } = await admin.from("vendas").select(sel).in("id", body.ids.slice(0, 1));
+        if (error) throw new Error(error.message);
+        vendas = (data ?? []) as VendaRow[];
+      } else {
+        if (!body.from || !body.to) return json({ error: "Informe o período" }, 400);
+        vendas = (await fetchPeriod(body.from, body.to)).slice(0, 1);
+      }
+      if (!vendas.length) return json({ error: "Nenhuma venda encontrada no período" }, 404);
+      const { agMap, closerMap, profileMap } = await hydrate(vendas);
+      const v = vendas[0];
+      const ag = agMap.get(v.agendamento_id);
+      if (!ag) return json({ error: "Agendamento não encontrado" }, 404);
+      const payload = buildPayload(
+        v,
+        ag,
+        ag.closer_id ? closerMap.get(ag.closer_id) ?? null : null,
+        profileMap.get(ag.sdr_responsavel_id ?? "") ?? profileMap.get(ag.created_by ?? "") ?? null,
+      );
+      return json({ payload });
+    } catch (e) {
+      return json({ error: e instanceof Error ? e.message : "Erro ao montar payload" }, 500);
+    }
+  }
+
   // ── PREVIEW ────────────────────────────────────────────────────
+
   if (body.action === "preview") {
     const from = body.from;
     const to = body.to;

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Send, Search, RefreshCw, Save } from "lucide-react";
+import { Loader2, Send, Search, RefreshCw, Save, FileJson, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/services/auditLog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -56,6 +56,9 @@ export default function CrmBulkVendasPanel() {
   const [progress, setProgress] = useState(0);
   const [sentCount, setSentCount] = useState(0);
   const [failures, setFailures] = useState<SendResult[]>([]);
+  const [sample, setSample] = useState<string | null>(null);
+  const [loadingSample, setLoadingSample] = useState(false);
+
 
   useQuery({
     queryKey: ["app-setting", BULK_URL_KEY],
@@ -158,8 +161,27 @@ export default function CrmBulkVendasPanel() {
     }
   }
 
+  async function loadSample(ids?: string[]) {
+    setLoadingSample(true);
+    setSample(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-bulk-vendas", {
+        body: ids?.length ? { action: "sample", ids } : { action: "sample", from, to },
+      });
+      if (error) throw error;
+      const res = data as { payload?: unknown; error?: string };
+      if (res?.error) throw new Error(res.error);
+      setSample(JSON.stringify(res.payload, null, 2));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao gerar payload de teste");
+    } finally {
+      setLoadingSample(false);
+    }
+  }
+
   const total = items?.length ?? 0;
   const totalValor = (items ?? []).reduce((acc, i) => acc + (i.valor ?? 0), 0);
+
 
   return (
     <div className="space-y-4">
@@ -208,8 +230,48 @@ export default function CrmBulkVendasPanel() {
             {loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             Pré-visualizar
           </Button>
+          <Button variant="secondary" onClick={() => loadSample()} disabled={loadingSample || sending} className="gap-1.5">
+            {loadingSample ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileJson className="h-4 w-4" />}
+            Payload de teste
+          </Button>
         </CardContent>
       </Card>
+
+      {sample && (
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Payload de teste (não enviado)</CardTitle>
+              <CardDescription>
+                Estrutura exata de cada requisição POST do lote. Use para mapear os campos no CRM.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  navigator.clipboard.writeText(sample);
+                  toast.success("Payload copiado");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+                Copiar
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSample(null)}>
+                Fechar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <pre className="max-h-96 overflow-auto rounded-md border bg-muted/40 p-3 text-xs">
+              {sample}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
+
 
       {items && (
         <Card>
@@ -222,6 +284,18 @@ export default function CrmBulkVendasPanel() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button
+                variant="secondary"
+                onClick={() => {
+                  const firstId = items?.[0]?.venda_id;
+                  if (firstId) send([firstId]);
+                }}
+                disabled={sending || total === 0}
+                className="gap-1.5"
+              >
+                <Send className="h-4 w-4" />
+                Enviar 1 teste
+              </Button>
+              <Button
                 onClick={() => send((items ?? []).map((i) => i.venda_id))}
                 disabled={sending || total === 0}
                 className="gap-1.5"
@@ -229,6 +303,7 @@ export default function CrmBulkVendasPanel() {
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Enviar lote
               </Button>
+
               {failures.length > 0 && !sending && (
                 <Button
                   variant="outline"
