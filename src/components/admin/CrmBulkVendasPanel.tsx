@@ -284,6 +284,18 @@ export default function CrmBulkVendasPanel() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button
+                variant="secondary"
+                onClick={() => {
+                  const firstId = items?.[0]?.venda_id;
+                  if (firstId) send([firstId]);
+                }}
+                disabled={sending || total === 0}
+                className="gap-1.5"
+              >
+                <Send className="h-4 w-4" />
+                Enviar 1 teste
+              </Button>
+              <Button
                 onClick={() => send((items ?? []).map((i) => i.venda_id))}
                 disabled={sending || total === 0}
                 className="gap-1.5"
@@ -291,6 +303,7 @@ export default function CrmBulkVendasPanel() {
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Enviar lote
               </Button>
+
               {failures.length > 0 && !sending && (
                 <Button
                   variant="outline"
