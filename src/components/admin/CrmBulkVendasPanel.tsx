@@ -1,18 +1,23 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Send, Search, RefreshCw, Save, FileJson, Copy } from "lucide-react";
+import { Loader2, Send, Search, RefreshCw, Save, FileJson, Copy, X } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/services/auditLog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const BULK_URL_KEY = "datacrazy_bulk_import_url";
 const CHUNK = 25;
+
+const norm = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 
 type PreviewItem = {
   venda_id: string;
