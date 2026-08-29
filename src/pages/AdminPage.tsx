@@ -1946,7 +1946,7 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5 bg-secondary">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
@@ -1967,6 +1967,10 @@ export default function AdminPage() {
                 <Video className="h-3.5 w-3.5" />
                 Gravação
               </TabsTrigger>
+              <TabsTrigger value="crm-lote" className="gap-1.5 text-xs sm:text-sm">
+                <Send className="h-3.5 w-3.5" />
+                Envio em lote
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -1983,6 +1987,9 @@ export default function AdminPage() {
             </TabsContent>
             <TabsContent value="gravacao">
               <MeetRolloutPanel />
+            </TabsContent>
+            <TabsContent value="crm-lote">
+              <CrmBulkVendasPanel />
             </TabsContent>
           </Tabs>
         ) : isModerador ? (
