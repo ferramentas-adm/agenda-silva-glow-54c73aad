@@ -158,8 +158,27 @@ export default function CrmBulkVendasPanel() {
     }
   }
 
+  async function loadSample(ids?: string[]) {
+    setLoadingSample(true);
+    setSample(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-bulk-vendas", {
+        body: ids?.length ? { action: "sample", ids } : { action: "sample", from, to },
+      });
+      if (error) throw error;
+      const res = data as { payload?: unknown; error?: string };
+      if (res?.error) throw new Error(res.error);
+      setSample(JSON.stringify(res.payload, null, 2));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao gerar payload de teste");
+    } finally {
+      setLoadingSample(false);
+    }
+  }
+
   const total = items?.length ?? 0;
   const totalValor = (items ?? []).reduce((acc, i) => acc + (i.valor ?? 0), 0);
+
 
   return (
     <div className="space-y-4">
