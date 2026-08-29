@@ -56,6 +56,9 @@ export default function CrmBulkVendasPanel() {
   const [progress, setProgress] = useState(0);
   const [sentCount, setSentCount] = useState(0);
   const [failures, setFailures] = useState<SendResult[]>([]);
+  const [sample, setSample] = useState<string | null>(null);
+  const [loadingSample, setLoadingSample] = useState(false);
+
 
   useQuery({
     queryKey: ["app-setting", BULK_URL_KEY],
