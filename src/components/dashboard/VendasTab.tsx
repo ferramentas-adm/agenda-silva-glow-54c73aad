@@ -713,6 +713,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // Filtro de canal aplicado à Performance por Closer
   const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
+  // Ordenação do ranking de closers
+  const [closerSortKey, setCloserSortKey] = useState<
+    "receita" | "conversao" | "ticket" | "vendas" | "realizadas"
+  >("receita");
 
   // Performance por Closer agregada NO BANCO:
   // Numerador: vendas do closer no período (data de fechamento, inclui follow-up).
