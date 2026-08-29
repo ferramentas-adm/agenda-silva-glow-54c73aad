@@ -79,6 +79,8 @@ const DEFAULT_PAGE_SIZE = 20;
 
 export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [userFilter, setUserFilter] = useState("all");
   const [entityFilter, setEntityFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
   const [entityIdFilter, setEntityIdFilter] = useState("");
@@ -86,6 +88,27 @@ export default function AuditLogsPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+
+  // debounce da busca -> aplicada no banco, não só na página carregada
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: users } = useQuery({
+    queryKey: ["audit-logs-users"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .order("full_name");
+      return (data ?? []) as { user_id: string; full_name: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -97,6 +120,8 @@ export default function AuditLogsPage() {
       entityIdFilter,
       actionFilter,
       entityFilter,
+      userFilter,
+      debouncedSearch,
     ],
     queryFn: async () => {
       let query = supabase
@@ -123,6 +148,17 @@ export default function AuditLogsPage() {
       if (entityFilter !== "all") {
         query = query.eq("entity_type", entityFilter);
       }
+      if (userFilter !== "all") {
+        query = query.eq("user_id", userFilter);
+      }
+      if (debouncedSearch) {
+        const term = debouncedSearch.replace(/[%,()]/g, " ").trim();
+        if (term) {
+          query = query.or(
+            `user_name.ilike.%${term}%,user_email.ilike.%${term}%`
+          );
+        }
+      }
 
       const from = page * pageSize;
       const to = from + pageSize - 1;
@@ -136,17 +172,29 @@ export default function AuditLogsPage() {
   const logs = data?.logs ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
+  const filtered = logs;
 
-  const filtered = useMemo(() => {
-    if (!search) return logs;
-    const s = search.toLowerCase();
-    return logs.filter(
-      (l) =>
-        l.user_name.toLowerCase().includes(s) ||
-        (ACTION_LABELS[l.action] || l.action).toLowerCase().includes(s) ||
-        JSON.stringify(l.details).toLowerCase().includes(s)
-    );
-  }, [logs, search]);
+  const hasFilters =
+    !!debouncedSearch ||
+    userFilter !== "all" ||
+    entityFilter !== "all" ||
+    actionFilter !== "all" ||
+    !!entityIdFilter ||
+    !!dateFrom ||
+    !!dateTo;
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setDebouncedSearch("");
+    setUserFilter("all");
+    setEntityFilter("all");
+    setActionFilter("all");
+    setEntityIdFilter("");
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setPage(0);
+  };
+
 
 
   // CSV export for agendamentos report
