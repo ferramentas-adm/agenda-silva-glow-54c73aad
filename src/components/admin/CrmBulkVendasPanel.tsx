@@ -112,6 +112,9 @@ export default function CrmBulkVendasPanel() {
     setFailures([]);
     setSentCount(0);
     setProgress(0);
+    setSelected(new Set());
+    setSearch("");
+
     try {
       const { data, error } = await supabase.functions.invoke("crm-bulk-vendas", {
         body: { action: "preview", from, to },
