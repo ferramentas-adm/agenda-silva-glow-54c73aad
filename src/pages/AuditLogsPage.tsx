@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -79,6 +79,8 @@ const DEFAULT_PAGE_SIZE = 20;
 
 export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [userFilter, setUserFilter] = useState("all");
   const [entityFilter, setEntityFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
   const [entityIdFilter, setEntityIdFilter] = useState("");
@@ -86,6 +88,27 @@ export default function AuditLogsPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+
+  // debounce da busca -> aplicada no banco, não só na página carregada
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: users } = useQuery({
+    queryKey: ["audit-logs-users"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .order("full_name");
+      return (data ?? []) as { user_id: string; full_name: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -97,6 +120,8 @@ export default function AuditLogsPage() {
       entityIdFilter,
       actionFilter,
       entityFilter,
+      userFilter,
+      debouncedSearch,
     ],
     queryFn: async () => {
       let query = supabase
@@ -123,6 +148,17 @@ export default function AuditLogsPage() {
       if (entityFilter !== "all") {
         query = query.eq("entity_type", entityFilter);
       }
+      if (userFilter !== "all") {
+        query = query.eq("user_id", userFilter);
+      }
+      if (debouncedSearch) {
+        const term = debouncedSearch.replace(/[%,()]/g, " ").trim();
+        if (term) {
+          query = query.or(
+            `user_name.ilike.%${term}%,user_email.ilike.%${term}%`
+          );
+        }
+      }
 
       const from = page * pageSize;
       const to = from + pageSize - 1;
@@ -136,17 +172,29 @@ export default function AuditLogsPage() {
   const logs = data?.logs ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
+  const filtered = logs;
 
-  const filtered = useMemo(() => {
-    if (!search) return logs;
-    const s = search.toLowerCase();
-    return logs.filter(
-      (l) =>
-        l.user_name.toLowerCase().includes(s) ||
-        (ACTION_LABELS[l.action] || l.action).toLowerCase().includes(s) ||
-        JSON.stringify(l.details).toLowerCase().includes(s)
-    );
-  }, [logs, search]);
+  const hasFilters =
+    !!debouncedSearch ||
+    userFilter !== "all" ||
+    entityFilter !== "all" ||
+    actionFilter !== "all" ||
+    !!entityIdFilter ||
+    !!dateFrom ||
+    !!dateTo;
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setDebouncedSearch("");
+    setUserFilter("all");
+    setEntityFilter("all");
+    setActionFilter("all");
+    setEntityIdFilter("");
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setPage(0);
+  };
+
 
 
   // CSV export for agendamentos report
@@ -240,12 +288,24 @@ export default function AuditLogsPage() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por usuário ou ação..."
+              placeholder="Buscar por nome ou e-mail do usuário..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
             />
           </div>
+          <Select value={userFilter} onValueChange={(v) => { setUserFilter(v); setPage(0); }}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Filtrar por usuário" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              <SelectItem value="all">Todos os usuários</SelectItem>
+              {(users ?? []).map((u) => (
+                <SelectItem key={u.user_id} value={u.user_id}>{u.full_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="relative min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -344,8 +404,18 @@ export default function AuditLogsPage() {
         ) : filtered.length === 0 ? (
           <div className="rounded-xl border border-dashed border-primary/20 bg-card py-12 text-center">
             <ScrollText className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Nenhum log encontrado.</p>
+            <p className="text-sm text-muted-foreground">
+              {hasFilters
+                ? "Nenhum log encontrado com os filtros atuais."
+                : "Nenhum log encontrado."}
+            </p>
+            {hasFilters && (
+              <Button variant="outline" size="sm" className="mt-3 text-xs" onClick={clearAllFilters}>
+                Limpar filtros
+              </Button>
+            )}
           </div>
+
         ) : (
           <div className="rounded-xl border border-primary/10 bg-card overflow-hidden">
             <div className="overflow-x-auto">
