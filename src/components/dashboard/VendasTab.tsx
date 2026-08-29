@@ -713,6 +713,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
   // Filtro de canal aplicado à Performance por Closer
   const [closerChannelFilter, setCloserChannelFilter] = useState<"all" | "Social Selling" | "Tráfego Pago">("all");
+  // Ordenação do ranking de closers
+  const [closerSortKey, setCloserSortKey] = useState<
+    "receita" | "conversao" | "ticket" | "vendas" | "realizadas"
+  >("receita");
 
   // Performance por Closer agregada NO BANCO:
   // Numerador: vendas do closer no período (data de fechamento, inclui follow-up).
@@ -748,6 +752,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   });
 
   const closerPerf = useMemo(() => {
+    const primary = (r: { vendas: number; receita: number; total: number; conversao: number }) => {
+      switch (closerSortKey) {
+        case "conversao":
+          return r.conversao;
+        case "ticket":
+          return r.vendas > 0 ? r.receita / r.vendas : 0;
+        case "vendas":
+          return r.vendas;
+        case "realizadas":
+          return r.total;
+        default:
+          return r.receita;
+      }
+    };
     return closerPerfRows
       .map((r) => ({
         closerId: r.closer_id,
@@ -759,13 +777,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }))
       .sort(
         (a, b) =>
-          Number(b.vendas > 0) - Number(a.vendas > 0) ||
+          primary(b) - primary(a) ||
           b.conversao - a.conversao ||
           b.vendas - a.vendas ||
           b.receita - a.receita ||
           b.total - a.total,
       );
-  }, [closerPerfRows, closerMap]);
+  }, [closerPerfRows, closerMap, closerSortKey]);
 
 
 
@@ -1186,6 +1204,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                     {opt === "all" ? "Geral" : opt === "Tráfego Pago" ? "Tráfego" : "Social Selling"}
                   </Button>
                 ))}
+              </div>
+              <div className="w-full sm:w-auto">
+                <Select value={closerSortKey} onValueChange={(v) => setCloserSortKey(v as typeof closerSortKey)}>
+                  <SelectTrigger className="h-7 w-full sm:w-[200px] text-xs">
+                    <SelectValue placeholder="Ordenar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="receita">Ordenar por: Coletado (R$)</SelectItem>
+                    <SelectItem value="conversao">Ordenar por: Taxa de conversão</SelectItem>
+                    <SelectItem value="ticket">Ordenar por: Tíquete médio</SelectItem>
+                    <SelectItem value="vendas">Ordenar por: Volume de vendas</SelectItem>
+                    <SelectItem value="realizadas">Ordenar por: Reuniões realizadas</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardHeader>
