@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Send, Search, RefreshCw, Save } from "lucide-react";
+import { Loader2, Send, Search, RefreshCw, Save, FileJson, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/services/auditLog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
