@@ -752,6 +752,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   });
 
   const closerPerf = useMemo(() => {
+    const primary = (r: { vendas: number; receita: number; total: number; conversao: number }) => {
+      switch (closerSortKey) {
+        case "conversao":
+          return r.conversao;
+        case "ticket":
+          return r.vendas > 0 ? r.receita / r.vendas : 0;
+        case "vendas":
+          return r.vendas;
+        case "realizadas":
+          return r.total;
+        default:
+          return r.receita;
+      }
+    };
     return closerPerfRows
       .map((r) => ({
         closerId: r.closer_id,
@@ -763,13 +777,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       }))
       .sort(
         (a, b) =>
-          Number(b.vendas > 0) - Number(a.vendas > 0) ||
+          primary(b) - primary(a) ||
           b.conversao - a.conversao ||
           b.vendas - a.vendas ||
           b.receita - a.receita ||
           b.total - a.total,
       );
-  }, [closerPerfRows, closerMap]);
+  }, [closerPerfRows, closerMap, closerSortKey]);
 
 
 
