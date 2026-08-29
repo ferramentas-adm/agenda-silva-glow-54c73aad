@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video, Send,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -28,6 +28,7 @@ import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import MeetRolloutPanel from "@/components/admin/MeetRolloutPanel";
+import CrmBulkVendasPanel from "@/components/admin/CrmBulkVendasPanel";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
@@ -1946,7 +1947,7 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5 bg-secondary">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
@@ -1967,6 +1968,10 @@ export default function AdminPage() {
                 <Video className="h-3.5 w-3.5" />
                 Gravação
               </TabsTrigger>
+              <TabsTrigger value="crm-lote" className="gap-1.5 text-xs sm:text-sm">
+                <Send className="h-3.5 w-3.5" />
+                Envio em lote
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -1983,6 +1988,9 @@ export default function AdminPage() {
             </TabsContent>
             <TabsContent value="gravacao">
               <MeetRolloutPanel />
+            </TabsContent>
+            <TabsContent value="crm-lote">
+              <CrmBulkVendasPanel />
             </TabsContent>
           </Tabs>
         ) : isModerador ? (
