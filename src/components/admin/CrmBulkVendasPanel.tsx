@@ -63,6 +63,9 @@ export default function CrmBulkVendasPanel() {
   const [failures, setFailures] = useState<SendResult[]>([]);
   const [sample, setSample] = useState<string | null>(null);
   const [loadingSample, setLoadingSample] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
 
 
   useQuery({
