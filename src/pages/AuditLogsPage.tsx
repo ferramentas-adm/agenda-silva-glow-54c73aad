@@ -404,8 +404,18 @@ export default function AuditLogsPage() {
         ) : filtered.length === 0 ? (
           <div className="rounded-xl border border-dashed border-primary/20 bg-card py-12 text-center">
             <ScrollText className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Nenhum log encontrado.</p>
+            <p className="text-sm text-muted-foreground">
+              {hasFilters
+                ? "Nenhum log encontrado com os filtros atuais."
+                : "Nenhum log encontrado."}
+            </p>
+            {hasFilters && (
+              <Button variant="outline" size="sm" className="mt-3 text-xs" onClick={clearAllFilters}>
+                Limpar filtros
+              </Button>
+            )}
           </div>
+
         ) : (
           <div className="rounded-xl border border-primary/10 bg-card overflow-hidden">
             <div className="overflow-x-auto">
