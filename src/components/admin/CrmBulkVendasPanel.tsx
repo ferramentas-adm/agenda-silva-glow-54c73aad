@@ -165,6 +165,16 @@ export default function CrmBulkVendasPanel() {
       });
       if (fails.length === 0) toast.success(`${sent} vendas enviadas ao CRM`);
       else toast.warning(`${sent} enviadas, ${fails.length} com falha`);
+      // mantém selecionadas apenas as que falharam, para facilitar o reenvio
+      const failedIds = new Set(fails.map((f) => f.venda_id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => {
+          if (failedIds.has(id)) next.add(id);
+          else next.delete(id);
+        });
+        return next;
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha no envio em lote");
     } finally {
@@ -192,6 +202,50 @@ export default function CrmBulkVendasPanel() {
 
   const total = items?.length ?? 0;
   const totalValor = (items ?? []).reduce((acc, i) => acc + (i.valor ?? 0), 0);
+
+  const filtered = useMemo(() => {
+    const list = items ?? [];
+    const q = search.trim();
+    if (!q) return list;
+    const nq = norm(q);
+    const digits = q.replace(/\D/g, "");
+    return list.filter((i) => {
+      const haystack = norm(
+        [i.lead_name, i.closer_name ?? "", i.sdr_name ?? ""].join(" "),
+      );
+      if (haystack.includes(nq)) return true;
+      if (digits.length >= 3) {
+        const phone = (i.lead_phone ?? "").replace(/\D/g, "");
+        if (phone.includes(digits)) return true;
+      }
+      return false;
+    });
+  }, [items, search]);
+
+  const selectedItems = (items ?? []).filter((i) => selected.has(i.venda_id));
+  const selectedValor = selectedItems.reduce((acc, i) => acc + (i.valor ?? 0), 0);
+  const filteredSelectedCount = filtered.filter((i) => selected.has(i.venda_id)).length;
+  const allFilteredSelected = filtered.length > 0 && filteredSelectedCount === filtered.length;
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllFiltered() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filtered.forEach((i) => next.delete(i.venda_id));
+      else filtered.forEach((i) => next.add(i.venda_id));
+      return next;
+    });
+  }
+
+
 
 
   return (
