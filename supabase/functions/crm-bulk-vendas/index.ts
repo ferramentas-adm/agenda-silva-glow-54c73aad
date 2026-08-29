@@ -100,9 +100,7 @@ Deno.serve(async (req) => {
   }
 
   // ── Carrega vendas + agendamentos ──────────────────────────────
-  async function loadVendas(filter: (q: ReturnType<typeof admin.from>) => unknown) {
-    return filter(admin.from("vendas"));
-  }
+
 
   const sel =
     "id, agendamento_id, vendeu, valor, valor_total_projeto, resumo_venda, observacoes, lead_revenue, venda_origem, follow_up, follow_up_date, follow_up_time, segunda_reuniao, order_bumps, closed_at, created_at";
