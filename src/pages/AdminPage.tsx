@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video, Send,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -28,6 +28,7 @@ import { APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import MeetRolloutPanel from "@/components/admin/MeetRolloutPanel";
+import CrmBulkVendasPanel from "@/components/admin/CrmBulkVendasPanel";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
