@@ -1205,6 +1205,20 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                   </Button>
                 ))}
               </div>
+              <div className="w-full sm:w-auto">
+                <Select value={closerSortKey} onValueChange={(v) => setCloserSortKey(v as typeof closerSortKey)}>
+                  <SelectTrigger className="h-7 w-full sm:w-[200px] text-xs">
+                    <SelectValue placeholder="Ordenar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="receita">Ordenar por: Coletado (R$)</SelectItem>
+                    <SelectItem value="conversao">Ordenar por: Taxa de conversão</SelectItem>
+                    <SelectItem value="ticket">Ordenar por: Tíquete médio</SelectItem>
+                    <SelectItem value="vendas">Ordenar por: Volume de vendas</SelectItem>
+                    <SelectItem value="realizadas">Ordenar por: Reuniões realizadas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
