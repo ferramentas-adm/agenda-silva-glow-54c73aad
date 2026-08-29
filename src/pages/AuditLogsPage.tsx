@@ -288,12 +288,24 @@ export default function AuditLogsPage() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por usuário ou ação..."
+              placeholder="Buscar por nome ou e-mail do usuário..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
             />
           </div>
+          <Select value={userFilter} onValueChange={(v) => { setUserFilter(v); setPage(0); }}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Filtrar por usuário" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              <SelectItem value="all">Todos os usuários</SelectItem>
+              {(users ?? []).map((u) => (
+                <SelectItem key={u.user_id} value={u.user_id}>{u.full_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="relative min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
