@@ -1,18 +1,23 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Send, Search, RefreshCw, Save, FileJson, Copy } from "lucide-react";
+import { Loader2, Send, Search, RefreshCw, Save, FileJson, Copy, X } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/services/auditLog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const BULK_URL_KEY = "datacrazy_bulk_import_url";
 const CHUNK = 25;
+
+const norm = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 
 type PreviewItem = {
   venda_id: string;
@@ -58,6 +63,9 @@ export default function CrmBulkVendasPanel() {
   const [failures, setFailures] = useState<SendResult[]>([]);
   const [sample, setSample] = useState<string | null>(null);
   const [loadingSample, setLoadingSample] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
 
 
   useQuery({
@@ -104,6 +112,9 @@ export default function CrmBulkVendasPanel() {
     setFailures([]);
     setSentCount(0);
     setProgress(0);
+    setSelected(new Set());
+    setSearch("");
+
     try {
       const { data, error } = await supabase.functions.invoke("crm-bulk-vendas", {
         body: { action: "preview", from, to },
@@ -154,6 +165,16 @@ export default function CrmBulkVendasPanel() {
       });
       if (fails.length === 0) toast.success(`${sent} vendas enviadas ao CRM`);
       else toast.warning(`${sent} enviadas, ${fails.length} com falha`);
+      // mantém selecionadas apenas as que falharam, para facilitar o reenvio
+      const failedIds = new Set(fails.map((f) => f.venda_id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => {
+          if (failedIds.has(id)) next.add(id);
+          else next.delete(id);
+        });
+        return next;
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha no envio em lote");
     } finally {
@@ -181,6 +202,50 @@ export default function CrmBulkVendasPanel() {
 
   const total = items?.length ?? 0;
   const totalValor = (items ?? []).reduce((acc, i) => acc + (i.valor ?? 0), 0);
+
+  const filtered = useMemo(() => {
+    const list = items ?? [];
+    const q = search.trim();
+    if (!q) return list;
+    const nq = norm(q);
+    const digits = q.replace(/\D/g, "");
+    return list.filter((i) => {
+      const haystack = norm(
+        [i.lead_name, i.closer_name ?? "", i.sdr_name ?? ""].join(" "),
+      );
+      if (haystack.includes(nq)) return true;
+      if (digits.length >= 3) {
+        const phone = (i.lead_phone ?? "").replace(/\D/g, "");
+        if (phone.includes(digits)) return true;
+      }
+      return false;
+    });
+  }, [items, search]);
+
+  const selectedItems = (items ?? []).filter((i) => selected.has(i.venda_id));
+  const selectedValor = selectedItems.reduce((acc, i) => acc + (i.valor ?? 0), 0);
+  const filteredSelectedCount = filtered.filter((i) => selected.has(i.venda_id)).length;
+  const allFilteredSelected = filtered.length > 0 && filteredSelectedCount === filtered.length;
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllFiltered() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filtered.forEach((i) => next.delete(i.venda_id));
+      else filtered.forEach((i) => next.add(i.venda_id));
+      return next;
+    });
+  }
+
+
 
 
   return (
@@ -275,18 +340,45 @@ export default function CrmBulkVendasPanel() {
 
       {items && (
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <CardHeader className="flex flex-col items-start justify-between gap-3 lg:flex-row">
             <div>
               <CardTitle className="text-base">
                 {total} venda{total === 1 ? "" : "s"} no lote
               </CardTitle>
-              <CardDescription>Total coletado: {brl(totalValor)}</CardDescription>
+              <CardDescription>
+                Total coletado: {brl(totalValor)}
+                {selected.size > 0 && (
+                  <>
+                    {" · "}
+                    <span className="font-medium text-foreground">
+                      {selected.size} selecionada{selected.size === 1 ? "" : "s"} ·{" "}
+                      {brl(selectedValor)}
+                    </span>
+                  </>
+                )}
+              </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="secondary"
                 onClick={() => {
-                  const firstId = items?.[0]?.venda_id;
+                  const firstId = selectedItems[0]?.venda_id ?? filtered[0]?.venda_id;
+                  if (firstId) loadSample([firstId]);
+                }}
+                disabled={loadingSample || sending || total === 0}
+                className="gap-1.5"
+              >
+                {loadingSample ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileJson className="h-4 w-4" />
+                )}
+                Payload de teste
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const firstId = selectedItems[0]?.venda_id ?? items?.[0]?.venda_id;
                   if (firstId) send([firstId]);
                 }}
                 disabled={sending || total === 0}
@@ -296,13 +388,29 @@ export default function CrmBulkVendasPanel() {
                 Enviar 1 teste
               </Button>
               <Button
+                onClick={() => send(selectedItems.map((i) => i.venda_id))}
+                disabled={sending || selected.size === 0}
+                className="gap-1.5"
+              >
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Enviar selecionadas ({selected.size})
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => send((items ?? []).map((i) => i.venda_id))}
                 disabled={sending || total === 0}
                 className="gap-1.5"
               >
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                <Send className="h-4 w-4" />
                 Enviar lote
               </Button>
+
+              {selected.size > 0 && !sending && (
+                <Button variant="ghost" className="gap-1.5" onClick={() => setSelected(new Set())}>
+                  <X className="h-4 w-4" />
+                  Limpar seleção
+                </Button>
+              )}
 
               {failures.length > 0 && !sending && (
                 <Button
@@ -317,6 +425,16 @@ export default function CrmBulkVendasPanel() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por lead, telefone, closer ou SDR..."
+                className="pl-8"
+              />
+            </div>
+
             {(sending || sentCount > 0) && (
               <div className="space-y-1.5">
                 <Progress value={progress} />
@@ -346,6 +464,20 @@ export default function CrmBulkVendasPanel() {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-secondary">
                   <tr>
+                    <th className="w-9 p-2 text-left">
+                      <Checkbox
+                        checked={
+                          allFilteredSelected
+                            ? true
+                            : filteredSelectedCount > 0
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={toggleAllFiltered}
+                        disabled={sending || filtered.length === 0}
+                        aria-label="Selecionar todos"
+                      />
+                    </th>
                     <th className="p-2 text-left">Lead</th>
                     <th className="p-2 text-left">Telefone</th>
                     <th className="p-2 text-left">Closer</th>
@@ -355,10 +487,30 @@ export default function CrmBulkVendasPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((i) => {
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-4 text-center text-muted-foreground">
+                        Nenhuma venda encontrada.
+                      </td>
+                    </tr>
+                  )}
+                  {filtered.map((i) => {
                     const fail = failures.find((f) => f.venda_id === i.venda_id);
+                    const isSelected = selected.has(i.venda_id);
                     return (
-                      <tr key={i.venda_id} className="border-t">
+                      <tr
+                        key={i.venda_id}
+                        className={`cursor-pointer border-t ${isSelected ? "bg-primary/5" : ""}`}
+                        onClick={() => !sending && toggleOne(i.venda_id)}
+                      >
+                        <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleOne(i.venda_id)}
+                            disabled={sending}
+                            aria-label={`Selecionar ${i.lead_name}`}
+                          />
+                        </td>
                         <td className="p-2">
                           {i.lead_name}
                           {fail && (
@@ -379,6 +531,7 @@ export default function CrmBulkVendasPanel() {
               </table>
             </div>
           </CardContent>
+
         </Card>
       )}
     </div>
