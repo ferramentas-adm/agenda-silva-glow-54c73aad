@@ -21,3 +21,7 @@ verify_jwt = false
 
 [functions.meta-capi-forward]
 verify_jwt = false
+
+[functions.crm-daily-vendas]
+verify_jwt = false
+
