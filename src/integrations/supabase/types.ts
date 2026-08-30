@@ -524,6 +524,122 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_daily_run_items: {
+        Row: {
+          agendamento_id: string | null
+          attempts: number
+          closer_name: string | null
+          error: string | null
+          id: string
+          lead_name: string | null
+          lead_phone: string | null
+          ok: boolean
+          run_date: string
+          run_id: string
+          sent_at: string
+          status_code: number | null
+          valor: number | null
+          venda_id: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          attempts?: number
+          closer_name?: string | null
+          error?: string | null
+          id?: string
+          lead_name?: string | null
+          lead_phone?: string | null
+          ok?: boolean
+          run_date: string
+          run_id: string
+          sent_at?: string
+          status_code?: number | null
+          valor?: number | null
+          venda_id: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          attempts?: number
+          closer_name?: string | null
+          error?: string | null
+          id?: string
+          lead_name?: string | null
+          lead_phone?: string | null
+          ok?: boolean
+          run_date?: string
+          run_id?: string
+          sent_at?: string
+          status_code?: number | null
+          valor?: number | null
+          venda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_daily_run_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "crm_daily_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_daily_runs: {
+        Row: {
+          created_at: string
+          error: string | null
+          failed: number
+          finished_at: string | null
+          forced: boolean
+          id: string
+          kind: string
+          lease_until: string | null
+          run_date: string
+          sent: number
+          skipped: number
+          started_at: string
+          status: string
+          total: number
+          triggered_by: string | null
+          triggered_by_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          failed?: number
+          finished_at?: string | null
+          forced?: boolean
+          id?: string
+          kind?: string
+          lease_until?: string | null
+          run_date: string
+          sent?: number
+          skipped?: number
+          started_at?: string
+          status?: string
+          total?: number
+          triggered_by?: string | null
+          triggered_by_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          failed?: number
+          finished_at?: string | null
+          forced?: boolean
+          id?: string
+          kind?: string
+          lease_until?: string | null
+          run_date?: string
+          sent?: number
+          skipped?: number
+          started_at?: string
+          status?: string
+          total?: number
+          triggered_by?: string | null
+          triggered_by_name?: string | null
+        }
+        Relationships: []
+      }
       lead_ai_analysis: {
         Row: {
           agendamento_id: string
