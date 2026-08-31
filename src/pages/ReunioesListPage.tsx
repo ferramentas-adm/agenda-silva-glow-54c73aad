@@ -337,6 +337,15 @@ export default function ReunioesListPage() {
       if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
       if (filterChannelType !== "all" && (ag as any).channel_type !== filterChannelType) return false;
+      if (filterNoShowReason !== "all") {
+        const reason = ((ag as any).cancellation_reason || "").trim();
+        const isNoShowStatus = ag.status === "no_show" || ag.status === "cancelada";
+        if (filterNoShowReason === "__none") {
+          if (!isNoShowStatus || reason) return false;
+        } else if (reason !== filterNoShowReason) {
+          return false;
+        }
+      }
       if (filterMeetingDateFrom && ag.scheduled_date < format(filterMeetingDateFrom, "yyyy-MM-dd")) return false;
       if (filterMeetingDateTo && ag.scheduled_date > format(filterMeetingDateTo, "yyyy-MM-dd")) return false;
       if (filterCreatedDateFrom) {
