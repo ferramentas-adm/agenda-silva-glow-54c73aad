@@ -1,55 +1,41 @@
 # Liberar slots de horário (Bloqueio em massa — gestor)
 
-Hoje a tela "Bloqueio em massa" só permite criar bloqueios e apagar um bloqueio inteiro (ícone de lixeira em "Bloqueios recentes"). Falta o caso do dia a dia: um horário está bloqueado (pelo closer ou por um bloqueio em massa) e o gestor precisa liberar só aquela janela para caber uma reunião.
+Replicar na tela "Bloqueio em massa" o recurso já validado na outra operação (prints anexos): o gestor consegue liberar um horário bloqueado — pelo closer ou por um bloqueio em massa — para caber uma reunião, com histórico e desfazer.
 
 ## Como funcionaria
 
-Nova aba no topo da tela, ao lado do formulário atual:
+Nova aba no topo, ao lado do formulário atual:
 
 ```text
 [ Bloquear agenda ]   [ Liberar horário ]
 ```
 
-### Fluxo "Liberar horário"
+### Painel "Liberar horário"
 
-1. Gestor escolhe a **data** (padrão: hoje).
-2. Escolhe os **closers** na mesma lista da esquerda (com busca, "selecionar todos").
-3. O painel mostra a **grade de bloqueios daquela data** para os closers escolhidos, um cartão por bloqueio:
-   nome do closer, motivo, faixa de horário, selo "Toda Terça" quando recorrente.
-4. Em cada bloqueio, o gestor pode:
-   - **Liberar tudo** — remove o bloqueio inteiro (comportamento atual da lixeira).
-   - **Liberar uma faixa** — informa início/fim (ex.: liberar 14:00–15:00 dentro de um bloqueio 09:00–23:59).
-5. Também há uma ação em lote no rodapé: **"Liberar 14:00–15:00 para os closers selecionados"**, que aplica a mesma liberação em todos os bloqueios que cruzam aquela faixa, nos closers marcados.
-6. Confirmação com resumo ("3 bloqueios ajustados, 1 removido") e a agenda/seletor de horários já refletem a liberação na hora.
+1. Gestor escolhe a **data** (padrão: hoje) e, opcionalmente, filtra por closers na lista da esquerda.
+2. Lista todos os bloqueios daquela data, ordenados por horário, no mesmo formato dos prints:
+   nome do closer · motivo · selo "Pontual" ou "Recorrente · toda Segunda", e abaixo a faixa `13:00–14:00`.
+3. Ações por linha:
+   - **Bloqueio pontual** → botão **Liberar** (remove o bloqueio daquele dia).
+   - **Bloqueio recorrente** → **Liberar só neste dia** (abre exceção, mantendo a recorrência nas outras semanas) e **Remover recorrência** (apaga a regra inteira).
+4. Ação em lote no rodapé: liberar uma faixa de horário (ex.: 13:00–14:00) para todos os closers selecionados de uma vez.
+5. Quando a faixa liberada é menor que o bloqueio, o bloqueio é encurtado ou dividido em dois (antes e depois) — o resto do bloqueio continua valendo.
 
-### O que acontece por trás em cada caso
+### Liberações recentes
 
-| Situação | Resultado |
-|---|---|
-| Faixa liberada cobre todo o bloqueio | bloqueio é removido |
-| Faixa no início ou no fim do bloqueio | horário do bloqueio é encurtado |
-| Faixa no meio do bloqueio | bloqueio é dividido em dois (antes e depois da faixa) |
-| Bloqueio recorrente | ver abaixo |
+Cartão abaixo, como no print: closer · data, faixa liberada e motivo original ("13:00–14:00 · Comunicado — fechamento de mês"), com botão **Desfazer** por linha, que restaura o bloqueio original.
 
-### Bloqueio recorrente
+### Efeito imediato
 
-Para recorrentes (ex.: "toda terça 12:00–13:00") o gestor escolhe o alcance:
-
-- **Em todas as terças** — encurta/divide/remove a regra recorrente (implementação direta, igual ao pontual).
-- **Somente nesta data** — abre uma exceção pontual, mantendo a recorrência nas outras semanas. Isso exige um pequeno recurso novo no banco (tabela de exceções) e ajuste em todos os pontos que leem bloqueios; proponho fazer em uma segunda etapa, para a primeira já entrar rápido.
-
-Sugestão: começar com "em todas as ocorrências" + liberação de bloqueios pontuais (cobre a maioria dos casos, inclusive bloqueios em massa), e depois liberar a exceção por data.
-
-### Registro
-
-Toda liberação gera log de auditoria (quem liberou, closer, data, faixa, motivo original), para o gestor conseguir rastrear depois.
+Depois de liberar, o horário aparece disponível na tela "Agendar", no seletor de horários e no "Calendário" sem precisar recarregar. Toda liberação e todo desfazer geram log de auditoria (quem fez, closer, data, faixa, motivo).
 
 ## Detalhes técnicos
 
-- Tudo dentro de `src/pages/BloqueioMassaPage.tsx`: novo estado `tab` ("bloquear" | "liberar"), consulta de bloqueios por data + closers selecionados, e um helper puro `subtractRange(block, from, to)` que devolve `delete | update | split`.
-- A liberação é feita reescrevendo registros de `closer_blocks` (delete / update `start_time`,`end_time` / delete + 2 inserts). Nenhum consumidor precisa mudar — `useSlotCounts`, `TimeSlotPicker`, `CloserSelector`, `AgendarPage` e `DashboardPage` continuam lendo a tabela do mesmo jeito.
-- Invalidação de `closer-blocks`, `closer-blocks-day`, `closer-blocks-slots` e `closers-availability` após cada operação.
-- Guardas: faixa válida (fim > início), faixa precisa cruzar ao menos um bloqueio, data não retroativa, acesso restrito a gestor (a página já é gestor-only).
-- Log via `src/services/auditLog.ts`.
-- Etapa 2 (exceção por data em recorrentes): tabela `closer_block_exceptions` (block_id, exception_date, start_time, end_time) com RLS + GRANTs, e um helper compartilhado de "bloqueio efetivo" aplicado nos 5 pontos de leitura.
+- `src/pages/BloqueioMassaPage.tsx`: novo estado de aba, consulta de bloqueios efetivos por data (pontuais + recorrentes do dia da semana), helper puro `subtractRange(block, from, to)` retornando `delete | update | split`, cartão de liberações recentes.
+- Banco (uma migração):
+  - `closer_block_releases` — histórico das liberações com `closer_id`, `block_date`, `start_time`, `end_time`, motivo original, snapshot do bloqueio removido (para o Desfazer), `released_by`, `undone_at`. RLS: gestor/moderador gerencia; leitura para autenticados; GRANTs para `authenticated` e `service_role`.
+  - `closer_block_exceptions` — exceções pontuais de bloqueios recorrentes (`block_id`, `exception_date`, `start_time`, `end_time`), com RLS e GRANTs equivalentes, viabilizando o "Liberar só neste dia".
+- Leitura de disponibilidade: helper compartilhado que subtrai as exceções dos bloqueios recorrentes, aplicado nos 5 pontos que hoje leem `closer_blocks` — `src/hooks/useSlotCounts.ts`, `src/components/agendar/TimeSlotPicker.tsx`, `src/components/agendar/CloserSelector.tsx`, `src/pages/AgendarPage.tsx` e `src/pages/DashboardPage.tsx`. Bloqueios pontuais liberados são resolvidos direto em `closer_blocks` (delete/update/split), sem exceção.
+- Invalidação de `closer-blocks`, `closer-blocks-day`, `closer-blocks-slots`, `closers-availability` e das novas queries após cada ação.
+- Guardas: faixa válida (fim > início), data não retroativa, ação restrita a gestor (a página já é gestor-only), log via `src/services/auditLog.ts`.
 - Somente tokens do design system, mantendo o visual escuro atual.
