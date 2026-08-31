@@ -408,8 +408,11 @@ function AgendarPageInner() {
         if (blocksRes.error) throw blocksRes.error;
 
         const activeCloserIds = new Set<string>((closersRes.data ?? []).map((c: any) => c.id));
+        const slotExceptions = await fetchBlockExceptions(dateStr);
+        const effectiveBlocks = applyBlockExceptions((blocksRes.data ?? []) as any[], slotExceptions);
         const blockedAtSlot = new Set<string>();
-        for (const b of (blocksRes.data ?? []) as any[]) {
+        for (const b of effectiveBlocks) {
+
           if (!b.closer_id || !activeCloserIds.has(b.closer_id)) continue;
           const sH = parseInt(String(b.start_time ?? "00").slice(0, 2), 10);
           const eH = parseInt(String(b.end_time ?? "00").slice(0, 2), 10);
