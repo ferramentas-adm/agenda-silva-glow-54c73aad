@@ -972,6 +972,7 @@ export default function ReunioesListPage() {
                     { key: "created_at", label: "Criado em" },
                     { key: "status", label: "Status" },
                     { key: "meeting_reason", label: "Motivo" },
+                    { key: "cancellation_reason", label: "Não compareceu — motivo" },
                     { key: "channel_type", label: "Canal" },
                   ] as { key: SortKey; label: string }[]).map((col) => (
                     <th
