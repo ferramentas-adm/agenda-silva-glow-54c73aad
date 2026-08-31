@@ -1003,7 +1003,7 @@ export default function ReunioesListPage() {
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
                       Nenhuma reunião encontrada
                     </td>
                   </tr>
