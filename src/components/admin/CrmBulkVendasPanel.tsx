@@ -534,6 +534,9 @@ export default function CrmBulkVendasPanel() {
 
         </Card>
       )}
+
+      <CrmDailySyncCard />
     </div>
   );
 }
+
