@@ -120,13 +120,15 @@ export default function LiberarHorarioPanel({ closers }: { closers: CloserRow[] 
       start_time: block.start_time,
       end_time: block.end_time,
       original_block_type: block.block_type,
-      original_description: block.description,
-      original_block: block as unknown as Record<string, unknown>,
-      exception_id: exceptionId,
-      released_by: user?.id ?? null,
-      released_by_name: (user?.user_metadata?.full_name as string) || user?.email || null,
+      original_description: block.description ?? undefined,
+      original_block: block as unknown as never,
+      exception_id: exceptionId ?? undefined,
+      released_by: user?.id ?? undefined,
+      released_by_name:
+        (user?.user_metadata?.full_name as string) || user?.email || undefined,
     });
   };
+
 
   /** Libera só nesta data: cria exceção (recorrente) ou remove o bloqueio (pontual). */
   const handleRelease = async (block: BlockRow) => {
