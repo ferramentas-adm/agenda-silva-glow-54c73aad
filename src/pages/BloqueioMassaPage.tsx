@@ -315,12 +315,38 @@ export default function BloqueioMassaPage() {
           <div>
             <h1 className="font-display text-2xl font-bold tracking-tight">Bloqueio em massa</h1>
             <p className="text-sm text-muted-foreground">
-              Reserve a agenda de vários closers ao mesmo tempo para treinamentos, comunicados ou feedbacks.
+              Reserve a agenda de vários closers ao mesmo tempo — ou libere horários já bloqueados.
             </p>
           </div>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={tab === "bloquear" ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setTab("bloquear")}
+          >
+            <CalendarOff className="h-3.5 w-3.5" />
+            Bloquear agenda
+          </Button>
+          <Button
+            variant={tab === "liberar" ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setTab("liberar")}
+          >
+            <LockOpen className="h-3.5 w-3.5" />
+            Liberar horário
+          </Button>
+        </div>
+
+        {tab === "liberar" ? (
+          <LiberarHorarioPanel closers={closers} />
+        ) : (
+        <>
         <div className="grid gap-4 lg:grid-cols-2">
+
           {/* Closers */}
           <div className="glass-card rounded-xl border border-primary/10 p-4">
             <div className="flex items-center justify-between gap-2">
