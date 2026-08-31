@@ -34,6 +34,7 @@ import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamen
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import { useSdrGlobalVisibility } from "@/hooks/useSdrGlobalVisibility";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { DEFAULT_NO_SHOW_REASONS } from "@/components/NaoCompareceuDialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -101,6 +102,7 @@ export default function ReunioesListPage() {
   const [filterCreatedDateTo, setFilterCreatedDateTo] = useState<Date | undefined>();
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
+  const [filterNoShowReason, setFilterNoShowReason] = useState<string>("all");
   const [excludeWithSale, setExcludeWithSale] = useState(false);
   const [onlyWithSale, setOnlyWithSale] = useState(false);
   const [onlyWithOffer, setOnlyWithOffer] = useState(false);
@@ -109,7 +111,7 @@ export default function ReunioesListPage() {
   const [onlyCreatedBySdr, setOnlyCreatedBySdr] = useState(false);
   const [onlyCreatedByCloser, setOnlyCreatedByCloser] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
+  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "cancellation_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const toggleSort = (key: SortKey) => {
@@ -195,7 +197,7 @@ export default function ReunioesListPage() {
       while (true) {
         const { data, error } = await supabase
           .from("agendamentos")
-          .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, original_agendamento_id, duration_minutes, is_5k, is_venda_avulsa")
+          .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, cancellation_reason, channel_type, original_agendamento_id, duration_minutes, is_5k, is_venda_avulsa")
           .is("deleted_at", null)
           .gte("scheduled_date", meetingWindowStart)
           .order("scheduled_date", { ascending: false })
@@ -261,6 +263,10 @@ export default function ReunioesListPage() {
 
   // Lista canônica de produtos (app_settings) + fallback dos produtos já ofertados
   const { items: produtosCadastrados } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+  const { items: noShowReasonsCadastrados } = useAppSettingList(
+    APP_SETTING_KEYS.no_show_reasons,
+    DEFAULT_NO_SHOW_REASONS,
+  );
   const offeredProducts = useMemo(() => {
     const s = new Set<string>(produtosCadastrados.map((p) => p.trim()).filter(Boolean));
     vendaOfertaMap.forEach((v) => {
@@ -335,6 +341,15 @@ export default function ReunioesListPage() {
       if (filterSDR !== "all" && sdrIdOf(ag) !== filterSDR) return false;
       if (filterStatus !== "all" && ag.status !== filterStatus) return false;
       if (filterChannelType !== "all" && (ag as any).channel_type !== filterChannelType) return false;
+      if (filterNoShowReason !== "all") {
+        const reason = ((ag as any).cancellation_reason || "").trim();
+        const isNoShowStatus = ag.status === "no_show" || ag.status === "cancelada";
+        if (filterNoShowReason === "__none") {
+          if (!isNoShowStatus || reason) return false;
+        } else if (reason !== filterNoShowReason) {
+          return false;
+        }
+      }
       if (filterMeetingDateFrom && ag.scheduled_date < format(filterMeetingDateFrom, "yyyy-MM-dd")) return false;
       if (filterMeetingDateTo && ag.scheduled_date > format(filterMeetingDateTo, "yyyy-MM-dd")) return false;
       if (filterCreatedDateFrom) {
@@ -373,7 +388,7 @@ export default function ReunioesListPage() {
       }
       return true;
     });
-  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, excludeReagendamentos, onlyCreatedBySdr, onlyCreatedByCloser, sdrUserIdSet, closerUserIdSet, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility, sdrGlobalVisibilityUserIds]);
+  }, [agendamentos, filterCloser, filterSDR, filterStatus, filterChannelType, filterNoShowReason, filterMeetingDateFrom, filterMeetingDateTo, filterCreatedDateFrom, filterCreatedDateTo, searchText, isCloser, myCloserId, isSDR, user, excludeWithSale, onlyWithSale, onlyWithOffer, filterOfferProduct, excludeReagendamentos, onlyCreatedBySdr, onlyCreatedByCloser, sdrUserIdSet, closerUserIdSet, vendaAgendamentoIds, vendaOfertaMap, sdrGlobalVisibility, sdrGlobalVisibilityUserIds]);
 
   // Apply sorting
   const sorted = useMemo(() => {
@@ -390,6 +405,7 @@ export default function ReunioesListPage() {
         case "created_at": av = a.created_at; bv = b.created_at; break;
         case "status": av = a.status; bv = b.status; break;
         case "meeting_reason": av = (a.meeting_reason || "").toLowerCase(); bv = (b.meeting_reason || "").toLowerCase(); break;
+        case "cancellation_reason": av = ((a as any).cancellation_reason || "").toLowerCase(); bv = ((b as any).cancellation_reason || "").toLowerCase(); break;
         case "channel_type": av = ((a as any).channel_type || "").toLowerCase(); bv = ((b as any).channel_type || "").toLowerCase(); break;
       }
       if (av < bv) return -1 * dir;
@@ -409,13 +425,14 @@ export default function ReunioesListPage() {
     return sorted.slice(start, start + PAGE_SIZE);
   }, [sorted, safePage]);
 
-  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all" || excludeReagendamentos || onlyCreatedBySdr || onlyCreatedByCloser;
+  const hasFilters = filterCloser !== "all" || filterSDR !== "all" || filterStatus !== "all" || filterChannelType !== "all" || filterNoShowReason !== "all" || !!filterMeetingDateFrom || !!filterMeetingDateTo || !!filterCreatedDateFrom || !!filterCreatedDateTo || !!searchText || excludeWithSale || onlyWithSale || onlyWithOffer || filterOfferProduct !== "all" || excludeReagendamentos || onlyCreatedBySdr || onlyCreatedByCloser;
 
   const clearFilters = () => {
     setFilterCloser("all");
     setFilterSDR("all");
     setFilterStatus("all");
     setFilterChannelType("all");
+    setFilterNoShowReason("all");
     setFilterMeetingDateFrom(undefined);
     setFilterMeetingDateTo(undefined);
     setFilterCreatedDateFrom(undefined);
@@ -439,8 +456,20 @@ export default function ReunioesListPage() {
     [filtered],
   );
 
+  // Opções do filtro de motivo de não comparecimento: lista cadastrada em
+  // Administração > + Listas somada aos motivos legados já presentes nos dados.
+  const noShowReasonOptions = useMemo(() => {
+    const set = new Set<string>(noShowReasonsCadastrados.map((r) => r.trim()).filter(Boolean));
+    agendamentos.forEach((ag: any) => {
+      const r = (ag.cancellation_reason || "").trim();
+      if (r) set.add(r);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [noShowReasonsCadastrados, agendamentos]);
+
+
   const exportCSV = () => {
-    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Canal", "Observação"];
+    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Não compareceu — motivo", "Canal", "Observação"];
     const rows = filtered.map((ag) => [
       ag.lead_name,
       ag.lead_phone,
@@ -451,6 +480,7 @@ export default function ReunioesListPage() {
       formatBR(ag.created_at),
       STATUS_MAP[ag.status]?.label || ag.status,
       ag.meeting_reason || "—",
+      ((ag as any).cancellation_reason || "").trim() || "—",
       (ag as any).channel_type || "—",
       (ag.observation || "").replace(/\n/g, " "),
     ]);
@@ -759,6 +789,16 @@ export default function ReunioesListPage() {
               </SelectContent>
             </Select>
 
+            <Select value={filterNoShowReason} onValueChange={(v) => { setFilterNoShowReason(v); setCurrentPage(1); }}>
+              <SelectTrigger className="glass-input"><SelectValue placeholder="Motivo de não comparecimento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os motivos</SelectItem>
+                {noShowReasonOptions.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                <SelectItem value="__none">Sem motivo informado</SelectItem>
+              </SelectContent>
+            </Select>
+
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className={cn("glass-input justify-start text-left font-normal", !filterMeetingDateFrom && "text-muted-foreground")}>
@@ -932,6 +972,7 @@ export default function ReunioesListPage() {
                     { key: "created_at", label: "Criado em" },
                     { key: "status", label: "Status" },
                     { key: "meeting_reason", label: "Motivo" },
+                    { key: "cancellation_reason", label: "Não compareceu — motivo" },
                     { key: "channel_type", label: "Canal" },
                   ] as { key: SortKey; label: string }[]).map((col) => (
                     <th
@@ -955,14 +996,14 @@ export default function ReunioesListPage() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 10 }).map((_, j) => (
+                      {Array.from({ length: 11 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 w-20 bg-muted/30 rounded animate-pulse" /></td>
                       ))}
                     </tr>
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
                       Nenhuma reunião encontrada
                     </td>
                   </tr>
@@ -1026,6 +1067,15 @@ export default function ReunioesListPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {((ag as any).cancellation_reason || "").trim() ? (
+                            <Badge variant="outline" className="text-[10px] whitespace-normal text-orange-600 dark:text-orange-400 border-orange-500/30">
+                              {(ag as any).cancellation_reason}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
                           {canEditChannel ? (
                             <Select
