@@ -14,10 +14,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, CalendarDays, CalendarOff, Clock, Plus, Repeat, Search, Trash2, Users } from "lucide-react";
+import { CalendarIcon, CalendarDays, CalendarOff, Clock, LockOpen, Plus, Repeat, Search, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { pickedDateToYMD } from "@/lib/timezone";
+import LiberarHorarioPanel from "@/components/bloqueio/LiberarHorarioPanel";
+
 
 const MASS_BLOCK_REASONS = [
   "Comunicado",
