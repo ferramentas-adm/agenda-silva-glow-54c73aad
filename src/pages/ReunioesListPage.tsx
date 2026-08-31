@@ -453,7 +453,7 @@ export default function ReunioesListPage() {
   );
 
   const exportCSV = () => {
-    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Canal", "Observação"];
+    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Não compareceu — motivo", "Canal", "Observação"];
     const rows = filtered.map((ag) => [
       ag.lead_name,
       ag.lead_phone,
@@ -464,6 +464,7 @@ export default function ReunioesListPage() {
       formatBR(ag.created_at),
       STATUS_MAP[ag.status]?.label || ag.status,
       ag.meeting_reason || "—",
+      ((ag as any).cancellation_reason || "").trim() || "—",
       (ag as any).channel_type || "—",
       (ag.observation || "").replace(/\n/g, " "),
     ]);
