@@ -428,6 +428,7 @@ export default function ReunioesListPage() {
     setFilterSDR("all");
     setFilterStatus("all");
     setFilterChannelType("all");
+    setFilterNoShowReason("all");
     setFilterMeetingDateFrom(undefined);
     setFilterMeetingDateTo(undefined);
     setFilterCreatedDateFrom(undefined);
