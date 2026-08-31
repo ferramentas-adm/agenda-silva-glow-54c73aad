@@ -1,27 +1,25 @@
-# Login da Beatriz Santos: e-mail de acesso diferente do e-mail exibido no painel
+# Edição de usuário com propagação global (nome e e-mail)
 
 ## Causa (confirmada)
 
-A senha temporária foi aplicada com sucesso (a conta de autenticação foi atualizada hoje às 13:41 BRT). O problema não é a senha, é o **e-mail**:
+O cadastro foi criado com `beatriz.santos@ogruposilva.com.br` e depois editado no painel para `beatrizsantos@ogruposilva.com.br`. A edição alterou apenas o perfil exibido no painel; a conta de autenticação continuou com o e-mail antigo (com ponto). Por isso o login com o e-mail sem ponto retorna "Invalid login credentials" — não importa quantas senhas temporárias sejam geradas.
 
-- E-mail de login real (conta de autenticação): `beatriz.santos@ogruposilva.com.br` (com ponto)
-- E-mail cadastrado no perfil, que aparece no painel Administração: `beatrizsantos@ogruposilva.com.br` (sem ponto)
-
-Ela está digitando o endereço sem ponto (como no print), e o serviço de autenticação responde "Invalid login credentials" porque esse endereço não existe como conta. Qualquer nova senha temporária continuará falhando enquanto os dois e-mails estiverem diferentes.
-
-Efeito colateral: o login com Google também falharia, porque a validação de acesso via Google procura o perfil pelo e-mail da conta Google.
+Hoje a edição de usuário não propaga para a conta de autenticação nem para o cadastro de closers, então nome/e-mail podem ficar divergentes em três lugares.
 
 ## Correção
 
-1. Padronizar os dois registros no mesmo endereço. Recomendação: usar `beatrizsantos@ogruposilva.com.br` (sem ponto, o que ela usa e o que o painel mostra) e atualizar o e-mail da conta de autenticação para esse valor, mantendo a conta confirmada.
-   - Alternativa, se o endereço com ponto for o oficial da empresa: atualizar o perfil para `beatriz.santos@...` e avisá-la para entrar com o ponto.
-2. Gerar uma nova senha temporária depois do ajuste e validar o login de ponta a ponta (entrar → tela "Altere sua senha" → concluir).
-3. Prevenção: no painel Administração, exibir o e-mail real de login ao lado do e-mail do perfil quando os dois forem diferentes, com um aviso claro, para o gestor não redefinir senha achando que o endereço mostrado é o de acesso.
-4. Verificação geral: listar todos os usuários cujo e-mail de perfil difere do e-mail da conta de autenticação e corrigir os casos encontrados (mesmo tratamento acima).
+1. **Destravar a Beatriz agora**: alinhar a conta de autenticação ao e-mail atual do perfil (`beatrizsantos@...`), mantendo a conta confirmada, gerar nova senha temporária e validar o login de ponta a ponta (entrar → tela "Altere sua senha" → concluir).
+2. **Edição global de usuário**: ao salvar nome e/ou e-mail no painel Administração, a alteração passa a ser aplicada em uma única operação para:
+   - conta de autenticação (e-mail de login e nome nos metadados, já confirmado, sem exigir reconfirmação por e-mail);
+   - perfil do usuário (nome e e-mail);
+   - cadastro de closer vinculado, quando existir (nome e e-mail).
+   Se qualquer etapa falhar, nada é aplicado pela metade: a operação retorna erro claro e o painel mostra a mensagem, sem deixar dados divergentes.
+3. **Validações**: bloquear e-mail já usado por outro usuário, normalizar para minúsculas e sem espaços, e registrar a alteração nos logs de auditoria (valor antigo → novo).
+4. **Varredura de divergências**: identificar todos os usuários cujo e-mail/nome de perfil difere da conta de autenticação e corrigir os casos encontrados com o mesmo tratamento; exibir aviso no painel quando houver divergência remanescente.
 
 ## Detalhes técnicos
 
-- Atualização do e-mail de autenticação via função administrativa (`auth.admin.updateUserById` com `email` + `email_confirm: true`) — feita por uma ação nova no `supabase/functions/manage-user/index.ts` (ex.: `action: "sync_email"`), restrita a Gestor, com registro em `audit_logs`.
-- Sincronizar `profiles.email` na mesma operação, garantindo que perfil e conta de autenticação nunca fiquem divergentes.
-- Consulta de auditoria: `select p.email, u.email from profiles p join auth.users u on u.id = p.user_id where lower(p.email) <> lower(u.email)`.
-- UI: em `src/pages/AdminPage.tsx`, badge/aviso "e-mail de login diferente" na linha do usuário e no diálogo de redefinição de senha.
+- `supabase/functions/manage-user/index.ts`: nova ação `update_user` (restrita a Gestor; Moderador conforme as regras atuais) que chama `auth.admin.updateUserById` com `email`, `email_confirm: true` e `user_metadata.full_name`, e em seguida atualiza `profiles` e `closers` (match pelo e-mail antigo/`user_id`). Ordem: verificar duplicidade → atualizar auth → atualizar profiles → atualizar closers → auditar; em falha após o auth, reverter o e-mail no auth.
+- `src/pages/AdminPage.tsx`: o diálogo de edição passa a invocar `update_user` em vez de gravar direto em `profiles`; invalidar as queries de usuários e closers após sucesso.
+- Trigger/guard opcional: impedir `UPDATE` direto de `profiles.email` por clientes autenticados, forçando o caminho da função (evita reintrodução da divergência).
+- Consulta de auditoria: `select p.user_id, p.email, u.email from profiles p join auth.users u on u.id = p.user_id where lower(p.email) <> lower(u.email)`.
