@@ -328,6 +328,117 @@ export type Database = {
           },
         ]
       }
+      closer_block_exceptions: {
+        Row: {
+          block_id: string
+          closer_id: string
+          created_at: string
+          created_by: string | null
+          end_time: string
+          exception_date: string
+          id: string
+          start_time: string
+        }
+        Insert: {
+          block_id: string
+          closer_id: string
+          created_at?: string
+          created_by?: string | null
+          end_time: string
+          exception_date: string
+          id?: string
+          start_time: string
+        }
+        Update: {
+          block_id?: string
+          closer_id?: string
+          created_at?: string
+          created_by?: string | null
+          end_time?: string
+          exception_date?: string
+          id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closer_block_exceptions_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "closer_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closer_block_exceptions_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      closer_block_releases: {
+        Row: {
+          closer_id: string
+          created_at: string
+          end_time: string
+          exception_id: string | null
+          id: string
+          original_block: Json
+          original_block_type: string | null
+          original_description: string | null
+          release_date: string
+          released_by: string | null
+          released_by_name: string | null
+          start_time: string
+          undone_at: string | null
+        }
+        Insert: {
+          closer_id: string
+          created_at?: string
+          end_time: string
+          exception_id?: string | null
+          id?: string
+          original_block?: Json
+          original_block_type?: string | null
+          original_description?: string | null
+          release_date: string
+          released_by?: string | null
+          released_by_name?: string | null
+          start_time: string
+          undone_at?: string | null
+        }
+        Update: {
+          closer_id?: string
+          created_at?: string
+          end_time?: string
+          exception_id?: string | null
+          id?: string
+          original_block?: Json
+          original_block_type?: string | null
+          original_description?: string | null
+          release_date?: string
+          released_by?: string | null
+          released_by_name?: string | null
+          start_time?: string
+          undone_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closer_block_releases_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closer_block_releases_exception_id_fkey"
+            columns: ["exception_id"]
+            isOneToOne: false
+            referencedRelation: "closer_block_exceptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closer_blocks: {
         Row: {
           block_date: string
