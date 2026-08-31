@@ -67,10 +67,12 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
       // Fetch closer blocks for the date (incluindo recorrentes do mesmo dia da semana)
       const dateObj = new Date(dateStr + "T12:00:00");
       const weekday = dateObj.getDay();
-      const { data: blocks } = await supabase
+      const { data: rawBlocks } = await supabase
         .from("closer_blocks")
         .select("closer_id, start_time, end_time, is_recurring, recurrence_weekday, block_date")
         .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`);
+      const blockExceptions = await fetchBlockExceptions(dateStr);
+      const blocks = applyBlockExceptions((rawBlocks ?? []) as any[], blockExceptions);
 
       // Count booked times per closer (unique hours)
       const bookedMap = new Map<string, Set<string>>();
@@ -82,7 +84,8 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
 
       // Count blocked hours per closer
       const blockedMap = new Map<string, Set<string>>();
-      (blocks ?? []).forEach((b: any) => {
+      blocks.forEach((b: any) => {
+
         const startH = parseInt(b.start_time.slice(0, 2), 10);
         const endH = parseInt(b.end_time.slice(0, 2), 10);
         const endM = parseInt(b.end_time.slice(3, 5), 10) || 0;
