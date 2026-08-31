@@ -456,16 +456,12 @@ export default function ReunioesListPage() {
     [filtered],
   );
 
-  // Opções do filtro de motivo de não comparecimento: lista cadastrada em
-  // Administração > + Listas somada aos motivos legados já presentes nos dados.
+  // Opções do filtro: apenas os motivos cadastrados em Administração > + Listas.
   const noShowReasonOptions = useMemo(() => {
-    const set = new Set<string>(noShowReasonsCadastrados.map((r) => r.trim()).filter(Boolean));
-    agendamentos.forEach((ag: any) => {
-      const r = (ag.cancellation_reason || "").trim();
-      if (r) set.add(r);
-    });
+    const base = noShowReasonsCadastrados.length ? noShowReasonsCadastrados : DEFAULT_NO_SHOW_REASONS;
+    const set = new Set<string>(base.map((r) => r.trim()).filter(Boolean));
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [noShowReasonsCadastrados, agendamentos]);
+  }, [noShowReasonsCadastrados]);
 
 
   const exportCSV = () => {
