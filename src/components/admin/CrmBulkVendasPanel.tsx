@@ -11,6 +11,8 @@ import { Loader2, Send, Search, RefreshCw, Save, FileJson, Copy, X } from "lucid
 import { toast } from "sonner";
 import { logAudit } from "@/services/auditLog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import CrmDailySyncCard from "./CrmDailySyncCard";
+
 
 const BULK_URL_KEY = "datacrazy_bulk_import_url";
 const CHUNK = 25;
