@@ -94,7 +94,18 @@ Deno.serve(async (req) => {
 
   // ── Autorização ────────────────────────────────────────────────
   const cronHeader = req.headers.get("x-cron-secret") ?? "";
-  const isCron = !!CRON_SECRET && cronHeader === CRON_SECRET;
+  let isCron = !!CRON_SECRET && cronHeader === CRON_SECRET;
+  if (!isCron && cronHeader) {
+    // Token interno guardado em app_settings (usado pelo agendador pg_cron)
+    const { data: tokenRow } = await admin
+      .from("app_settings")
+      .select("value")
+      .eq("key", "crm_daily_cron_token")
+      .maybeSingle();
+    const token = (tokenRow?.value ?? "").trim();
+    isCron = !!token && cronHeader === token;
+  }
+
 
   let triggeredBy: string | null = null;
   let triggeredByName: string | null = null;
