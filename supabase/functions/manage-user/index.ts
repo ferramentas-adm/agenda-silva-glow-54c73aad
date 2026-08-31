@@ -218,6 +218,155 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Edição global de usuário: propaga nome/e-mail para auth, profiles e closers
+    if (action === "update_user") {
+      const rawName = typeof body.full_name === "string" ? body.full_name.trim() : "";
+      const rawEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+
+      if (!rawName) {
+        return new Response(JSON.stringify({ error: "Nome é obrigatório" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!rawEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+        return new Response(JSON.stringify({ error: "E-mail inválido" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: authTarget, error: authTargetError } = await supabaseAdmin.auth.admin.getUserById(user_id);
+      if (authTargetError || !authTarget?.user) {
+        return new Response(JSON.stringify({ error: "Usuário não encontrado na autenticação" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: profileBefore } = await supabaseAdmin
+        .from("profiles")
+        .select("email, full_name")
+        .eq("user_id", user_id)
+        .maybeSingle();
+
+      const oldAuthEmail = (authTarget.user.email ?? "").toLowerCase();
+      const oldProfileEmail = (profileBefore?.email ?? "").toLowerCase();
+
+      // E-mail já usado por outro usuário?
+      const { data: emailOwner } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id")
+        .ilike("email", rawEmail)
+        .neq("user_id", user_id)
+        .maybeSingle();
+      if (emailOwner) {
+        return new Response(JSON.stringify({ error: "Este e-mail já está em uso por outro usuário." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 1) Conta de autenticação (e-mail de login + metadados)
+      if (oldAuthEmail !== rawEmail || authTarget.user.user_metadata?.full_name !== rawName) {
+        const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
+          email: rawEmail,
+          email_confirm: true,
+          user_metadata: { ...(authTarget.user.user_metadata ?? {}), full_name: rawName },
+        });
+        if (authUpdateError) {
+          const msg = /already been registered|already exists/i.test(authUpdateError.message ?? "")
+            ? "Este e-mail já está cadastrado em outra conta de acesso."
+            : authUpdateError.message;
+          return new Response(JSON.stringify({ error: msg }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      const revertAuth = async () => {
+        if (oldAuthEmail && oldAuthEmail !== rawEmail) {
+          await supabaseAdmin.auth.admin.updateUserById(user_id, {
+            email: oldAuthEmail,
+            email_confirm: true,
+          });
+        }
+      };
+
+      // 2) Perfil
+      const { error: profileUpdateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ full_name: rawName, email: rawEmail })
+        .eq("user_id", user_id);
+      if (profileUpdateError) {
+        await revertAuth();
+        return new Response(JSON.stringify({ error: `Falha ao atualizar perfil: ${profileUpdateError.message}` }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 3) Cadastro de closer vinculado (por e-mail antigo, do auth ou do perfil)
+      const candidateEmails = [oldProfileEmail, oldAuthEmail, rawEmail].filter(Boolean);
+      let closerUpdated = false;
+      for (const candidate of candidateEmails) {
+        const { data: closer } = await supabaseAdmin
+          .from("closers")
+          .select("id")
+          .ilike("email", candidate)
+          .maybeSingle();
+        if (closer) {
+          const { error: closerError } = await supabaseAdmin
+            .from("closers")
+            .update({ name: rawName, email: rawEmail })
+            .eq("id", closer.id);
+          if (closerError) {
+            await revertAuth();
+            await supabaseAdmin
+              .from("profiles")
+              .update({ full_name: profileBefore?.full_name ?? rawName, email: oldProfileEmail || rawEmail })
+              .eq("user_id", user_id);
+            return new Response(JSON.stringify({ error: `Falha ao atualizar cadastro de closer: ${closerError.message}` }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          closerUpdated = true;
+          break;
+        }
+      }
+
+      // Auditoria
+      const { data: callerProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, email")
+        .eq("user_id", callerId)
+        .maybeSingle();
+
+      await supabaseAdmin.from("audit_logs").insert({
+        user_id: callerId,
+        user_name: callerProfile?.full_name ?? "Sistema",
+        user_email: callerProfile?.email ?? null,
+        action: "update_user",
+        entity_type: "user",
+        entity_id: user_id,
+        details: {
+          old_name: profileBefore?.full_name ?? null,
+          new_name: rawName,
+          old_profile_email: oldProfileEmail || null,
+          old_auth_email: oldAuthEmail || null,
+          new_email: rawEmail,
+          closer_updated: closerUpdated,
+        },
+      });
+
+      return new Response(
+        JSON.stringify({ message: "Usuário atualizado em todo o sistema", email: rawEmail, closer_updated: closerUpdated }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
 
     // Change password
     if (action === "change_password") {
