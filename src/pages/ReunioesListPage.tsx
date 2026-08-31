@@ -1067,6 +1067,15 @@ export default function ReunioesListPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{ag.meeting_reason || "—"}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {((ag as any).cancellation_reason || "").trim() ? (
+                            <Badge variant="outline" className="text-[10px] whitespace-normal text-orange-600 dark:text-orange-400 border-orange-500/30">
+                              {(ag as any).cancellation_reason}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
                           {canEditChannel ? (
                             <Select
