@@ -57,7 +57,9 @@ export default function BloqueioMassaPage() {
   const { role, loading } = useAuth();
   const queryClient = useQueryClient();
 
+  const [tab, setTab] = useState<"bloquear" | "liberar">("bloquear");
   const [mode, setMode] = useState<Mode>("pontual");
+
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [ranges, setRanges] = useState<{ start: string; end: string }[]>([
