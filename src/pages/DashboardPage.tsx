@@ -57,6 +57,8 @@ import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamen
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useBusinessHours } from "@/hooks/useBusinessHours";
+import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExceptions";
+
 import { AlertTriangle, Sparkles } from "lucide-react";
 
 
