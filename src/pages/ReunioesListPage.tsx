@@ -789,6 +789,16 @@ export default function ReunioesListPage() {
               </SelectContent>
             </Select>
 
+            <Select value={filterNoShowReason} onValueChange={(v) => { setFilterNoShowReason(v); setCurrentPage(1); }}>
+              <SelectTrigger className="glass-input"><SelectValue placeholder="Motivo de não comparecimento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os motivos</SelectItem>
+                {noShowReasonOptions.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                <SelectItem value="__none">Sem motivo informado</SelectItem>
+              </SelectContent>
+            </Select>
+
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className={cn("glass-input justify-start text-left font-normal", !filterMeetingDateFrom && "text-muted-foreground")}>
