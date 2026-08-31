@@ -14,6 +14,8 @@ import {
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useBusinessHours } from "@/hooks/useBusinessHours";
+import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExceptions";
+
 import { Users } from "lucide-react";
 
 interface TimeSlotPickerProps {
