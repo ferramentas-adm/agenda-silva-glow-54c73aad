@@ -111,7 +111,7 @@ export default function ReunioesListPage() {
   const [onlyCreatedBySdr, setOnlyCreatedBySdr] = useState(false);
   const [onlyCreatedByCloser, setOnlyCreatedByCloser] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "channel_type";
+  type SortKey = "lead_name" | "closer" | "sdr" | "datetime" | "created_at" | "status" | "meeting_reason" | "cancellation_reason" | "channel_type";
   const [sortKey, setSortKey] = useState<SortKey>("datetime");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const toggleSort = (key: SortKey) => {
