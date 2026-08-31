@@ -34,6 +34,7 @@ import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamen
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import { useSdrGlobalVisibility } from "@/hooks/useSdrGlobalVisibility";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { DEFAULT_NO_SHOW_REASONS } from "@/components/NaoCompareceuDialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
