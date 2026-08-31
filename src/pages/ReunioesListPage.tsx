@@ -102,6 +102,7 @@ export default function ReunioesListPage() {
   const [filterCreatedDateTo, setFilterCreatedDateTo] = useState<Date | undefined>();
   const [searchText, setSearchText] = useState("");
   const [filterChannelType, setFilterChannelType] = useState<string>("all");
+  const [filterNoShowReason, setFilterNoShowReason] = useState<string>("all");
   const [excludeWithSale, setExcludeWithSale] = useState(false);
   const [onlyWithSale, setOnlyWithSale] = useState(false);
   const [onlyWithOffer, setOnlyWithOffer] = useState(false);
