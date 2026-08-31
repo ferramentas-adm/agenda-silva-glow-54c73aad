@@ -640,7 +640,10 @@ export default function BloqueioMassaPage() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </AppLayout>
   );
+
 }
