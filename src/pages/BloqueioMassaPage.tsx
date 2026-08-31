@@ -14,10 +14,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, CalendarDays, CalendarOff, Clock, Plus, Repeat, Search, Trash2, Users } from "lucide-react";
+import { CalendarIcon, CalendarDays, CalendarOff, Clock, LockOpen, Plus, Repeat, Search, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { pickedDateToYMD } from "@/lib/timezone";
+import LiberarHorarioPanel from "@/components/bloqueio/LiberarHorarioPanel";
+
 
 const MASS_BLOCK_REASONS = [
   "Comunicado",
@@ -55,7 +57,9 @@ export default function BloqueioMassaPage() {
   const { role, loading } = useAuth();
   const queryClient = useQueryClient();
 
+  const [tab, setTab] = useState<"bloquear" | "liberar">("bloquear");
   const [mode, setMode] = useState<Mode>("pontual");
+
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [ranges, setRanges] = useState<{ start: string; end: string }[]>([
@@ -315,12 +319,38 @@ export default function BloqueioMassaPage() {
           <div>
             <h1 className="font-display text-2xl font-bold tracking-tight">Bloqueio em massa</h1>
             <p className="text-sm text-muted-foreground">
-              Reserve a agenda de vários closers ao mesmo tempo para treinamentos, comunicados ou feedbacks.
+              Reserve a agenda de vários closers ao mesmo tempo — ou libere horários já bloqueados.
             </p>
           </div>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={tab === "bloquear" ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setTab("bloquear")}
+          >
+            <CalendarOff className="h-3.5 w-3.5" />
+            Bloquear agenda
+          </Button>
+          <Button
+            variant={tab === "liberar" ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setTab("liberar")}
+          >
+            <LockOpen className="h-3.5 w-3.5" />
+            Liberar horário
+          </Button>
+        </div>
+
+        {tab === "liberar" ? (
+          <LiberarHorarioPanel closers={closers} />
+        ) : (
+        <>
         <div className="grid gap-4 lg:grid-cols-2">
+
           {/* Closers */}
           <div className="glass-card rounded-xl border border-primary/10 p-4">
             <div className="flex items-center justify-between gap-2">
@@ -614,7 +644,10 @@ export default function BloqueioMassaPage() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </AppLayout>
   );
+
 }

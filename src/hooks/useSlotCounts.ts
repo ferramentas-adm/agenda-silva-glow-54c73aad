@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusinessHours } from "@/hooks/useBusinessHours";
+import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExceptions";
+
 
 /**
  * Informação de lotação por horário (HH:MM) em um dia específico.
@@ -31,7 +33,7 @@ export function useSlotCounts(dateStr: string | null | undefined) {
       // Weekday em horário local de SP para casar com closer_blocks recorrentes.
       const weekday = new Date(`${dateStr}T12:00:00-03:00`).getDay();
 
-      const [agRes, closersRes, blocksRes] = await Promise.all([
+      const [agRes, closersRes, blocksRes, exceptions] = await Promise.all([
         supabase
           .from("agendamentos")
           .select("scheduled_time, closer_id")
@@ -45,6 +47,7 @@ export function useSlotCounts(dateStr: string | null | undefined) {
           .or(
             `and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`,
           ),
+        fetchBlockExceptions(dateStr!),
       ]);
       if (agRes.error) throw agRes.error;
       if (closersRes.error) throw closersRes.error;
@@ -52,7 +55,8 @@ export function useSlotCounts(dateStr: string | null | undefined) {
 
       const activeCloserIds = new Set<string>((closersRes.data ?? []).map((c: any) => c.id));
       const activeCount = activeCloserIds.size;
-      const blocks = (blocksRes.data ?? []) as any[];
+      const blocks = applyBlockExceptions((blocksRes.data ?? []) as any[], exceptions);
+
 
       type Acc = { closerIds: Set<string>; unassigned: number };
       const byTime = new Map<string, Acc>();

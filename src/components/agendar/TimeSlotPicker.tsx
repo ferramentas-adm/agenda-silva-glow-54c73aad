@@ -14,6 +14,8 @@ import {
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useBusinessHours } from "@/hooks/useBusinessHours";
+import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExceptions";
+
 import { Users } from "lucide-react";
 
 interface TimeSlotPickerProps {
@@ -176,12 +178,14 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
     queryFn: async () => {
       const { data } = await supabase
         .from("closer_blocks")
-        .select("start_time, end_time, block_type, is_recurring, recurrence_weekday, block_date")
+        .select("start_time, end_time, block_type, is_recurring, recurrence_weekday, block_date, closer_id")
         .eq("closer_id", closerId!)
         .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`);
-      return data ?? [];
+      const exceptions = await fetchBlockExceptions(dateStr, [closerId!]);
+      return applyBlockExceptions((data ?? []) as any[], exceptions);
     },
   });
+
 
   function isSlotBlockedByPersonal(slot: string): boolean {
     if (globalMode) return false;

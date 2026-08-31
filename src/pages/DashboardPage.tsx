@@ -57,6 +57,8 @@ import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamen
 import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { useBusinessHours } from "@/hooks/useBusinessHours";
+import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExceptions";
+
 import { AlertTriangle, Sparkles } from "lucide-react";
 
 
@@ -436,8 +438,10 @@ export function CalendarContent() {
         .select("closer_id, block_date, start_time, end_time, block_type, description, is_recurring, recurrence_weekday")
         .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${dayWeekday})`)
         .in("closer_id", closerIds);
-      return (data ?? []) as CloserBlock[];
+      const exceptions = await fetchBlockExceptions(dateStr, closerIds);
+      return applyBlockExceptions((data ?? []) as any[], exceptions) as CloserBlock[];
     },
+
   });
 
   const filtered = useMemo(() => {
