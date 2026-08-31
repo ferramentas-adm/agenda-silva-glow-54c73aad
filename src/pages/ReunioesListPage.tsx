@@ -401,6 +401,7 @@ export default function ReunioesListPage() {
         case "created_at": av = a.created_at; bv = b.created_at; break;
         case "status": av = a.status; bv = b.status; break;
         case "meeting_reason": av = (a.meeting_reason || "").toLowerCase(); bv = (b.meeting_reason || "").toLowerCase(); break;
+        case "cancellation_reason": av = ((a as any).cancellation_reason || "").toLowerCase(); bv = ((b as any).cancellation_reason || "").toLowerCase(); break;
         case "channel_type": av = ((a as any).channel_type || "").toLowerCase(); bv = ((b as any).channel_type || "").toLowerCase(); break;
       }
       if (av < bv) return -1 * dir;
