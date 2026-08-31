@@ -454,10 +454,15 @@ function UsersSection() {
         queryClient.invalidateQueries({ queryKey: ["closers"] });
         queryClient.invalidateQueries({ queryKey: ["closers-active"] });
       } else {
-        const { error } = await supabase.from("profiles")
-          .update({ full_name: editName, email: editEmail })
-          .eq("user_id", user.userId);
-        if (error) throw error;
+        // Edição global: propaga nome/e-mail para a conta de acesso, o perfil e o cadastro de closer.
+        await invokeEdgeFunction("manage-user", {
+          user_id: user.userId,
+          action: "update_user",
+          full_name: editName,
+          email: editEmail,
+        });
+        queryClient.invalidateQueries({ queryKey: ["closers"] });
+        queryClient.invalidateQueries({ queryKey: ["closers-active"] });
       }
       toast.success("Usuário atualizado!");
       setEditingId(null);
@@ -467,6 +472,7 @@ function UsersSection() {
     }
     setSavingEdit(false);
   };
+
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
