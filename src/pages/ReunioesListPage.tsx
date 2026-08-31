@@ -263,6 +263,10 @@ export default function ReunioesListPage() {
 
   // Lista canônica de produtos (app_settings) + fallback dos produtos já ofertados
   const { items: produtosCadastrados } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+  const { items: noShowReasonsCadastrados } = useAppSettingList(
+    APP_SETTING_KEYS.no_show_reasons,
+    DEFAULT_NO_SHOW_REASONS,
+  );
   const offeredProducts = useMemo(() => {
     const s = new Set<string>(produtosCadastrados.map((p) => p.trim()).filter(Boolean));
     vendaOfertaMap.forEach((v) => {
