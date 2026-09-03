@@ -721,7 +721,9 @@ export default function DashboardComercialPage() {
           />
         )}
         {activeTabKey === "vendas" && <VendasTab currentDate={currentDate} dateRange={dateRange} />}
+        {activeTabKey === "saldo_residual" && isAdmin && <SaldoResidualTab />}
         {activeTabKey === "produtividade" && (
+
           <ProdutividadeSDRTab
             agendamentos={agendamentos}
             createdAgs={createdAgs}
