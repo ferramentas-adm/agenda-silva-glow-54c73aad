@@ -443,8 +443,41 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     staleTime: 60_000,
   });
 
+  // Complementos recebidos no período (parcelas pagas após o fechamento).
+  const { data: complementosPeriodo, isLoading: loadingComplementos } = useQuery<{ total: number; qtd: number }>({
+    queryKey: ["vendas-tab-complementos", periodFrom, periodTo, isCloserView, myCloserId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("dashboard_complementos_periodo", {
+        p_from: periodFrom,
+        p_to: periodTo,
+        p_closer_id: isCloserView && myCloserId ? myCloserId : null,
+      });
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+      return { total: Number(row?.total ?? 0), qtd: Number(row?.qtd ?? 0) };
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+  });
+
+  // Saldo a receber — total geral (todas as vendas, independente do período).
+  const { data: saldoTotais, isLoading: loadingSaldo } = useQuery<{ total_saldo: number; qtd_vendas: number }>({
+    queryKey: ["vendas-tab-saldo", isCloserView, myCloserId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("dashboard_saldo_residual_totais", {
+        p_closer_id: isCloserView && myCloserId ? myCloserId : null,
+      });
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+      return { total_saldo: Number(row?.total_saldo ?? 0), qtd_vendas: Number(row?.qtd_vendas ?? 0) };
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+  });
+
   const loadingVendas = loadingKpis;
   const vendasSemStatusRealizada = Number(kpiRow?.vendas_sem_status_realizada ?? 0);
+
 
   const kpis = useMemo(() => {
     const totalVendasCalls = Number(kpiRow?.vendas_calls ?? 0);
