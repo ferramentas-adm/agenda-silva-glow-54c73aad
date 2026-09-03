@@ -208,6 +208,8 @@ export default function MetricDrilldownDialog({
   const canDeleteVenda = role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor";
   const canEditDate = role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor";
   const queryClient = useQueryClient();
+  const [complementoTarget, setComplementoTarget] = useState<ComplementoTarget | null>(null);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [saving, setSaving] = useState(false);
