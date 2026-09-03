@@ -19,7 +19,9 @@ import { formatOrderBumpLabel, parseOrderBumpsColumn } from "@/lib/orderBumps";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2, ShieldCheck, AlertOctagon } from "lucide-react";
+import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2, ShieldCheck, AlertOctagon, PlusCircle } from "lucide-react";
+import ComplementoDialog, { type ComplementoTarget } from "@/components/dashboard/ComplementoDialog";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
