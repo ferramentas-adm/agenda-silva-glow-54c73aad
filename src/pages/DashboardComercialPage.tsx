@@ -13,6 +13,8 @@ import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
 
 import VendasTab from "@/components/dashboard/VendasTab";
+import SaldoResidualTab from "@/components/dashboard/SaldoResidualTab";
+
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import CargaClosersTab from "@/components/dashboard/CargaClosersTab";
@@ -40,18 +42,20 @@ import NaoComparecimentoTab from "@/components/dashboard/NaoComparecimentoTab";
 import { SdrTeamBadge } from "@/components/sdr/SdrTeamBadge";
 import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr" | "nao_comparecimento";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "saldo_residual" | "produtividade" | "carga" | "erros_sdr" | "nao_comparecimento";
 
 const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
   { key: "agenda", label: "Agenda Closers" },
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
+  { key: "saldo_residual", label: "Saldo Residual", gestorOnly: true },
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "carga", label: "Follows Closer", gestorOnly: true },
   { key: "erros_sdr", label: "Erros", gestorOnly: true },
   { key: "nao_comparecimento", label: "Não comparecimento", gestorOnly: true },
 ];
+
 const ROTATION_INTERVAL = 30000;
 
 interface AgendamentoMetric {
@@ -719,7 +723,9 @@ export default function DashboardComercialPage() {
           />
         )}
         {activeTabKey === "vendas" && <VendasTab currentDate={currentDate} dateRange={dateRange} />}
+        {activeTabKey === "saldo_residual" && isAdmin && <SaldoResidualTab />}
         {activeTabKey === "produtividade" && (
+
           <ProdutividadeSDRTab
             agendamentos={agendamentos}
             createdAgs={createdAgs}

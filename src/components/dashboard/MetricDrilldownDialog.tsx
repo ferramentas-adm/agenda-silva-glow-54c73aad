@@ -19,7 +19,9 @@ import { formatOrderBumpLabel, parseOrderBumpsColumn } from "@/lib/orderBumps";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2, ShieldCheck, AlertOctagon } from "lucide-react";
+import { CalendarDays, Phone, User, Clock, Pencil, Check, X as XIcon, Loader2, Trash2, ShieldCheck, AlertOctagon, PlusCircle } from "lucide-react";
+import ComplementoDialog, { type ComplementoTarget } from "@/components/dashboard/ComplementoDialog";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
@@ -124,7 +126,7 @@ export default function MetricDrilldownDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, vendeu, follow_up, closed_at, created_at, produto, order_bumps")
+        .select("id, agendamento_id, observacoes, resumo_venda, motivo_nao_fechamento, explicacao_nao_fechamento, valor, valor_total_projeto, vendeu, follow_up, closed_at, created_at, produto, order_bumps")
         .in("agendamento_id", agendamentoIds);
       return data ?? [];
     },
@@ -206,6 +208,8 @@ export default function MetricDrilldownDialog({
   const canDeleteVenda = role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor";
   const canEditDate = role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor";
   const queryClient = useQueryClient();
+  const [complementoTarget, setComplementoTarget] = useState<ComplementoTarget | null>(null);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -666,6 +670,25 @@ export default function MetricDrilldownDialog({
                                       <Pencil className="h-3 w-3" />
                                     </Button>
                                   )}
+                                  {canEditValor && v?.id && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 px-2 text-[11px]"
+                                      onClick={() =>
+                                        setComplementoTarget({
+                                          vendaId: v.id as string,
+                                          leadName: d.lead_name,
+                                          faturado: Number(v.valor_total_projeto ?? 0),
+                                          coletadoAcumulado: valorNum,
+                                        })
+                                      }
+                                      title="Lançar pagamento complementar"
+                                    >
+                                      <PlusCircle className="mr-1 h-3 w-3" />
+                                      Complemento
+                                    </Button>
+                                  )}
                                   {canDeleteVenda && (
                                     <Button
                                       size="icon"
@@ -677,6 +700,7 @@ export default function MetricDrilldownDialog({
                                       <Trash2 className="h-3 w-3" />
                                     </Button>
                                   )}
+
                                 </div>
                               )}
                             </div>
@@ -746,6 +770,14 @@ export default function MetricDrilldownDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <ComplementoDialog
+      open={!!complementoTarget}
+      onOpenChange={(o) => !o && setComplementoTarget(null)}
+      target={complementoTarget}
+    />
+
+
 
     </>
   );

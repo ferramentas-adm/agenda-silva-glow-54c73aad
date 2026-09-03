@@ -1162,6 +1162,47 @@ export type Database = {
         }
         Relationships: []
       }
+      venda_complementos: {
+        Row: {
+          created_at: string
+          criado_por: string
+          data_pagamento: string
+          id: string
+          observacoes: string | null
+          updated_at: string
+          valor: number
+          venda_id: string
+        }
+        Insert: {
+          created_at?: string
+          criado_por?: string
+          data_pagamento: string
+          id?: string
+          observacoes?: string | null
+          updated_at?: string
+          valor: number
+          venda_id: string
+        }
+        Update: {
+          created_at?: string
+          criado_por?: string
+          data_pagamento?: string
+          id?: string
+          observacoes?: string | null
+          updated_at?: string
+          valor?: number
+          venda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venda_complementos_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendas: {
         Row: {
           agendamento_id: string
@@ -1290,12 +1331,52 @@ export type Database = {
           qtd_scheduled_realizada: number
         }[]
       }
+      dashboard_complementos_periodo: {
+        Args: { p_closer_id?: string; p_from: string; p_to: string }
+        Returns: {
+          qtd: number
+          total: number
+        }[]
+      }
       dashboard_conversao_period: {
         Args: { p_closer_id?: string; p_from: string; p_to: string }
         Returns: {
           ids: string[]
           total_reunioes: number
           total_vendas: number
+        }[]
+      }
+      dashboard_saldo_residual: {
+        Args: {
+          p_closer_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_order?: string
+        }
+        Returns: {
+          agendamento_id: string
+          closed_at: string
+          closer_id: string
+          closer_name: string
+          coletado_acumulado: number
+          coletado_base: number
+          complementos_total: number
+          faturado: number
+          is_venda_avulsa: boolean
+          lead_name: string
+          produto: string
+          qtd_complementos: number
+          saldo: number
+          venda_id: string
+        }[]
+      }
+      dashboard_saldo_residual_totais: {
+        Args: { p_closer_id?: string }
+        Returns: {
+          qtd_vendas: number
+          total_coletado_acumulado: number
+          total_faturado: number
+          total_saldo: number
         }[]
       }
       dashboard_trend_sdr: {
