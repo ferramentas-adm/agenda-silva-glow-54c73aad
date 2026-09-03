@@ -668,6 +668,25 @@ export default function MetricDrilldownDialog({
                                       <Pencil className="h-3 w-3" />
                                     </Button>
                                   )}
+                                  {canEditValor && v?.id && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 px-2 text-[11px]"
+                                      onClick={() =>
+                                        setComplementoTarget({
+                                          vendaId: v.id as string,
+                                          leadName: d.lead_name,
+                                          faturado: Number(v.valor_total_projeto ?? 0),
+                                          coletadoAcumulado: valorNum,
+                                        })
+                                      }
+                                      title="Lançar pagamento complementar"
+                                    >
+                                      <PlusCircle className="mr-1 h-3 w-3" />
+                                      Complemento
+                                    </Button>
+                                  )}
                                   {canDeleteVenda && (
                                     <Button
                                       size="icon"
@@ -679,6 +698,7 @@ export default function MetricDrilldownDialog({
                                       <Trash2 className="h-3 w-3" />
                                     </Button>
                                   )}
+
                                 </div>
                               )}
                             </div>
