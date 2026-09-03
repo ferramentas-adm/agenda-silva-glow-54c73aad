@@ -771,6 +771,14 @@ export default function MetricDrilldownDialog({
       </AlertDialogContent>
     </AlertDialog>
 
+    <ComplementoDialog
+      open={!!complementoTarget}
+      onOpenChange={(o) => !o && setComplementoTarget(null)}
+      target={complementoTarget}
+    />
+
+
+
     </>
   );
 }
