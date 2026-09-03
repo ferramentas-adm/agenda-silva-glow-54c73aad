@@ -40,18 +40,20 @@ import NaoComparecimentoTab from "@/components/dashboard/NaoComparecimentoTab";
 import { SdrTeamBadge } from "@/components/sdr/SdrTeamBadge";
 import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
 
-type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "produtividade" | "carga" | "erros_sdr" | "nao_comparecimento";
+type TabKey = "metricas" | "agenda" | "ranking" | "vendas" | "saldo_residual" | "produtividade" | "carga" | "erros_sdr" | "nao_comparecimento";
 
 const TABS: { key: TabKey; label: string; gestorOnly?: boolean }[] = [
   { key: "metricas", label: "Métricas SDRs" },
   { key: "agenda", label: "Agenda Closers" },
   { key: "ranking", label: "Ranking SDRs" },
   { key: "vendas", label: "Vendas" },
+  { key: "saldo_residual", label: "Saldo Residual", gestorOnly: true },
   { key: "produtividade", label: "Produtividade SDR" },
   { key: "carga", label: "Follows Closer", gestorOnly: true },
   { key: "erros_sdr", label: "Erros", gestorOnly: true },
   { key: "nao_comparecimento", label: "Não comparecimento", gestorOnly: true },
 ];
+
 const ROTATION_INTERVAL = 30000;
 
 interface AgendamentoMetric {
