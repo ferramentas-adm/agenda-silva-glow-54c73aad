@@ -13,6 +13,8 @@ import AppLayout from "@/components/AppLayout";
 import { CalendarContent } from "@/pages/DashboardPage";
 
 import VendasTab from "@/components/dashboard/VendasTab";
+import SaldoResidualTab from "@/components/dashboard/SaldoResidualTab";
+
 import ProdutividadeSDRTab from "@/components/dashboard/ProdutividadeSDRTab";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import CargaClosersTab from "@/components/dashboard/CargaClosersTab";
