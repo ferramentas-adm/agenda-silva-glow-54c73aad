@@ -1062,6 +1062,27 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           }
         />
         <KpiCard
+          icon={Coins}
+          label="Complementos Recebidos"
+          value={fmtBRL(complementosPeriodo?.total ?? 0)}
+          sub={
+            (complementosPeriodo?.qtd ?? 0) > 0
+              ? `${complementosPeriodo?.qtd} lançamento${complementosPeriodo?.qtd !== 1 ? "s" : ""} pagos no período`
+              : "Nenhum complemento pago no período"
+          }
+          color="emerald"
+          loading={loadingComplementos}
+        />
+        <KpiCard
+          icon={Wallet}
+          label="Saldo a Receber"
+          value={fmtBRL(saldoTotais?.total_saldo ?? 0)}
+          sub={`${saldoTotais?.qtd_vendas ?? 0} venda${(saldoTotais?.qtd_vendas ?? 0) !== 1 ? "s" : ""} em aberto (total geral)`}
+          color="destructive"
+          loading={loadingSaldo}
+        />
+        <KpiCard
+
           icon={Phone}
           label="Vendas em 1ª Call"
           value={totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}%` : "—"}
