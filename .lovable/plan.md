@@ -10,6 +10,26 @@ Quero replicar, dentro do meu Dashboard Comercial, duas abas que já existem em 
 
 **Importante:** a aba "Vendas" já existe aqui, mas numa versão mais antiga. Não recrie do zero: leia o `VendasTab.tsx` atual, compare com a especificação abaixo e aplique só as diferenças (KPIs, RPCs, atribuição de vendas por data de fechamento, ranking de closers, card de conversão por hora, venda avulsa com busca de lead). O que já estiver igual, deixe como está. A aba "Saldo Residual" é nova e deve ser criada inteira. Antes de mexer, me liste o que está diferente e o que você vai alterar.
 
+**Pré-requisito:** este painel ainda usa os botões antigos "No-show" e "Cancelar". Substitua-os pelo fluxo único "Não compareceu" (Parte 0 abaixo) antes de mexer nas abas, porque os KPIs e os quadros de não comparecimento dependem do motivo gravado.
+
+### Parte 0 — Fluxo único "Não compareceu" (substitui No-show/Cancelar)
+
+Hoje existem dois botões ("No-show" e "Cancelar"). Unifique em **um único botão "Não compareceu"** com motivo obrigatório:
+
+1. Lista de motivos editável pelos gestores em Administração > + Listas, chave `no_show_reasons` em `app_settings` (JSON array de strings), rótulo "Motivos de não comparecimento". Defaults: `No-show`, `Cancelou por imprevisto pessoal`, `Cancelou por desistência`, `Sem closer disponível`, `Alterou horário para o mesmo dia`. A chave antiga `cancellation_reasons` fica só para histórico.
+2. `NaoCompareceuDialog`: select obrigatório com esses motivos; ao confirmar grava **sempre** `status = 'no_show'` e o motivo em `cancellation_reason`, registra auditoria e invalida/refetch as queries do dia.
+3. `NovoAgendamentoPromptDialog`: depois de confirmar, oferece "agendar novamente para este lead" e navega para a tela Agendar com nome, telefone, e-mail, canal, motivo da reunião, closer e observações pré-preenchidos. Mantenha esse diálogo montado fora do overlay/trava para ele não ser desmontado ao liberar a tela.
+4. Não existe mais "Reagendar"/"Alterar horário" como botão próprio: mudança de horário passa por "Não compareceu" com o motivo "Alterou horário para o mesmo dia" + novo agendamento. Nenhuma reunião nova recebe status "reagendada" nem vínculo com a anterior; registros antigos continuam visíveis no histórico.
+5. Aplique o botão único em **todos os pontos**: detalhes do agendamento no calendário, lista de reuniões, banner de reuniões em aberto e a trava de reuniões vencidas.
+6. Exclusão de reunião: somente gestor/supervisor/moderador, com justificativa. SDR e closer não veem a opção.
+7. Classificação para os quadros (crie um helper tipo `src/lib/noShowReasons.ts`, o status no banco continua `no_show`): motivos `Cancelou por desistência`, `Cancelou por imprevisto pessoal`, `Sem closer disponível` contam como **Cancelado**; `No-show` conta como **No-show**; `Alterou horário para o mesmo dia` é **ignorado** se existir outra reunião ativa do mesmo telefone no mesmo dia, senão conta como Cancelado; motivos personalizados contam como No-show; registros antigos sem motivo seguem o status original.
+8. Se o painel envia status para CRM/webhook, inclua o motivo escolhido no payload.
+9. Z-index: garanta que o select de motivos e os pop-ups apareçam acima de overlays/travas de tela.
+
+Sem mudanças de schema: `no_show` e o campo de justificativa já existem; os motivos ficam em `app_settings`.
+
+
+
 
 ### Contexto do modelo de dados esperado
 
