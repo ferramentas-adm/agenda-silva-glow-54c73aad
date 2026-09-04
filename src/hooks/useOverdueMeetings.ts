@@ -30,6 +30,11 @@ export interface OverdueMeeting {
 
 const OVERDUE_GRACE_MINUTES = 65;
 
+/** Data de ativação da cobrança de resultado em reuniões marcadas como "realizada"
+ *  pelo gestor. Reuniões anteriores a esta data NÃO travam ninguém (evita gerar
+ *  um histórico enorme para os closers preencherem). */
+const REALIZADA_LOCK_START_DATE = "2026-09-04";
+
 /**
  * "Agora" em minutos desde 1970, considerando o instante real (independe de fuso).
  * Usamos para comparar com o instante BRT da reunião reconstruído via brPartsOf.
@@ -105,19 +110,17 @@ export function useOverdueMeetings() {
       if (error) throw error;
       let list = (data ?? []) as Omit<OverdueMeeting, "closer_name" | "creator_name" | "stage">[];
 
-      // Reuniões "realizada": só travam o Closer responsável, apenas nos últimos
-      // 30 dias e somente enquanto não houver resultado de venda lançado.
+      // Reuniões "realizada": só travam o Closer responsável, apenas a partir da
+      // data de ativação da regra (não recria histórico) e somente enquanto não
+      // houver resultado de venda lançado.
       const realizadas = list.filter((m) => m.status === "realizada");
       let semResultado = new Set<string>();
       if (realizadas.length > 0) {
-        const minDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 10);
         const candidatas = realizadas.filter(
           (m) =>
             !!myCloserId &&
             m.closer_id === myCloserId &&
-            m.scheduled_date >= minDate,
+            m.scheduled_date >= REALIZADA_LOCK_START_DATE,
         );
         if (candidatas.length > 0) {
           const { data: vendasData } = await supabase
