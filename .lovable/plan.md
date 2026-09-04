@@ -36,7 +36,7 @@ Antes de codar: leia os componentes atuais de detalhes/calendário/lista de reun
 3. Devolvida, a trava volta ao SDR — e nesse caso o botão "Enviar para o closer" fica oculto.
 4. Quando o criador é também o closer da reunião não há handoff: etapa única, todas as ações juntas.
 
-**Ação "Enviar para novo closer"** — só gestor, supervisor e moderador de SDR: lista closers ativos, troca o closer, recria o evento/link do Meet na agenda do novo closer, grava `sdr_handoff_at` e limpa `closer_returned_at`, com registro em auditoria (ação `transfer_lead`, origem "trava"). Caso de uso: o closer original ficou preso em outra call e outro atendeu.
+**Ação "Definir closer que atendeu"** — só gestor, supervisor e moderador de SDR. Como a reunião **já aconteceu**, essa ação serve apenas para transferir a responsabilidade de registro do resultado: lista os closers ativos, troca o `closer_id`, coloca a reunião na etapa do closer (`sdr_handoff_at`/`closer_handoff_at = now()`) e limpa `closer_returned_at`/`closer_return_reason`. **Nenhuma chamada ao Google Calendar e nenhum link de Meet novo** — o `meet_link` e o `google_event_id` originais são preservados como histórico. Registrar em auditoria (quem transferiu, de qual closer para qual) e notificar o novo closer. Ao CRM vai um novo payload com os mesmos dados do agendamento, mudando apenas o nome/id do closer. Caso de uso: o closer original ficou preso em outra call e outro atendeu.
 
 **Correções já aplicadas — repita todas**
 - **Tela preta:** todos os hooks (inclusive queries condicionais, como a lista de closers) precisam ficar **antes** de qualquer `return null`. Hook depois do early-return muda a ordem de hooks quando a contagem sai de 0 e derruba a árvore. Envolva a área em um ErrorBoundary.
