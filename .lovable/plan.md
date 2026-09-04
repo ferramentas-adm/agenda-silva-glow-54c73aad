@@ -79,6 +79,17 @@ UPDATE agendamentos SET cancellation_reason = 'Cancelou por imprevisto pessoal',
 - Essa tradução tem que existir nos dois caminhos de envio: no trigger/webhook do banco e no helper de reenvio do frontend. O motivo em si também vai no payload.
 - A ação "Definir closer que atendeu" dispara um novo payload com os mesmos dados, mudando apenas o closer (com um indicador de tipo de evento, ex.: `evento: "closer_atualizado"`), sem alterar as demais chaves.
 
+## Parte 3 — Aba "Não comparecimento" no Dashboard
+
+Nova aba no Dashboard Comercial, alimentada pelos motivos gravados:
+
+- Cabeçalho com o período, alternância **Data da reunião / Data de criação**, filtro **por SDR** (todos os SDRs, incluindo overrides) e indicação de "atualizado agora".
+- Quatro cartões de resumo: **Total não comparecimento**, **Contabilizado como Cancelado**, **Contabilizado como No-show** e **Não contabilizado (novo horário no mesmo dia)**.
+- Gráfico de rosca com a distribuição por motivo + legenda lateral clicável com contagem e percentual de cada motivo, ordenada da maior para a menor.
+- Clique em uma fatia ou na legenda abre o detalhamento com os leads (nome, telefone, data/hora, SDR e selo do status).
+- Regra de classificação (arquivo próprio, reaproveitado nas métricas): "No-show" conta como no-show; "Cancelou por desistência", "Cancelou por imprevisto pessoal" e "Sem closer disponível" contam como cancelamento; "Alterou horário para o mesmo dia" é **ignorado** quando existe outra reunião ativa para o mesmo lead no mesmo dia (senão conta como cancelamento); registros antigos sem motivo caem pelo status; motivos personalizados contam como no-show.
+- A consulta busca `status in ('no_show','cancelada')`, ignora excluídos e resolve nomes de SDR em lote.
+
 ## Validação
 
 - SDR com reunião de ontem: vê a trava, marca "Não compareceu" com motivo, recebe o pop-up de novo agendamento, e a trava libera.
