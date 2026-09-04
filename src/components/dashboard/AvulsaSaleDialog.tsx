@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Loader2, PlusCircle } from "lucide-react";
+import { CalendarIcon, Loader2, PlusCircle, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -63,6 +63,9 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
 
   const [leadName, setLeadName] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
+  const [leadFromDb, setLeadFromDb] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [debouncedName, setDebouncedName] = useState("");
   const [channelType, setChannelType] = useState("");
   const [sdrId, setSdrId] = useState<string>("none");
   const [closerId, setCloserId] = useState("");
@@ -74,12 +77,51 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedName(leadName.trim()), 350);
+    return () => clearTimeout(t);
+  }, [leadName]);
+
+  const { data: leadSuggestions = [], isFetching: searchingLeads } = useQuery({
+    queryKey: ["avulsa-lead-search", debouncedName.toLowerCase()],
+    enabled: open && !leadFromDb && debouncedName.length >= 2,
+    staleTime: 60_000,
+    retry: 0,
+    queryFn: async () => {
+      const term = debouncedName.replace(/[%,()]/g, " ").trim();
+      const digits = debouncedName.replace(/\D/g, "");
+      const filters = [`lead_name.ilike.%${term}%`];
+      if (digits.length >= 3) filters.push(`lead_phone.ilike.%${digits}%`);
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .select("lead_name, lead_phone, updated_at")
+        .is("deleted_at", null)
+        .or(filters.join(","))
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const seen = new Set<string>();
+      const out: { name: string; phone: string }[] = [];
+      for (const row of (data ?? []) as { lead_name: string; lead_phone: string | null }[]) {
+        const phoneDig = (row.lead_phone ?? "").replace(/\D/g, "");
+        const key = `${row.lead_name?.trim().toLowerCase()}|${phoneDig}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ name: row.lead_name, phone: row.lead_phone ?? "" });
+        if (out.length >= 10) break;
+      }
+      return out;
+    },
+  });
+
+  useEffect(() => {
     if (!open) {
       setLeadName(""); setLeadPhone(""); setChannelType(""); setSdrId("none"); setCloserId("");
       setProduto(""); setValorColetado(""); setValorTotal(""); setDescricao("");
       setSaleDate(new Date()); setSaving(false);
+      setLeadFromDb(false); setShowSuggestions(false); setDebouncedName("");
     }
   }, [open]);
+
 
   const parseMoney = (s: string) => {
     const n = Number(s.replace(/\./g, "").replace(",", "."));
@@ -182,10 +224,71 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
 
         <div className="grid gap-4 py-2">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label>Nome do cliente *</Label>
-              <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Ex.: Empresa XYZ" />
+            <div className="grid gap-2 relative">
+              <Label className="flex items-center gap-2">
+                Nome do cliente *
+                {leadFromDb && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    lead do banco
+                    <button
+                      type="button"
+                      onClick={() => setLeadFromDb(false)}
+                      className="hover:text-foreground"
+                      title="Limpar seleção"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+              </Label>
+              <div className="relative">
+                <Input
+                  value={leadName}
+                  onChange={(e) => {
+                    setLeadName(e.target.value);
+                    setLeadFromDb(false);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="Ex.: Empresa XYZ"
+                  autoComplete="off"
+                />
+                {searchingLeads && (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              {showSuggestions && !leadFromDb && debouncedName.length >= 2 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
+                  {leadSuggestions.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">
+                      {searchingLeads
+                        ? "Buscando leads…"
+                        : "Nenhum lead encontrado no banco — pode cadastrar manualmente."}
+                    </p>
+                  ) : (
+                    leadSuggestions.map((l) => (
+                      <button
+                        key={`${l.name}-${l.phone}`}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setLeadName(l.name);
+                          setLeadPhone(formatPhone(l.phone));
+                          setLeadFromDb(true);
+                          setShowSuggestions(false);
+                        }}
+                        className="block w-full border-b border-input/30 px-3 py-2 text-left last:border-b-0 hover:bg-secondary/60"
+                      >
+                        <p className="text-sm font-medium">{l.name}</p>
+                        <p className="text-xs text-muted-foreground">{l.phone || "sem telefone"}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
+
             <div className="grid gap-2">
               <Label>Telefone (WhatsApp) *</Label>
               <Input
