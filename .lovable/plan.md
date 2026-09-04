@@ -8,6 +8,9 @@ Copie o texto abaixo (do bloco inteiro) e cole como mensagem no projeto Grupo VR
 
 Quero replicar, dentro do meu Dashboard Comercial, duas abas que já existem em outro painel meu: **Vendas** e **Saldo Residual**. Antes de codar, confira o meu schema atual (`agendamentos`, `vendas`, `closers`, `user_roles`, `profiles`) e adapte nomes de colunas/papéis quando divergirem — não invente colunas.
 
+**Importante:** a aba "Vendas" já existe aqui, mas numa versão mais antiga. Não recrie do zero: leia o `VendasTab.tsx` atual, compare com a especificação abaixo e aplique só as diferenças (KPIs, RPCs, atribuição de vendas por data de fechamento, ranking de closers, card de conversão por hora, venda avulsa com busca de lead). O que já estiver igual, deixe como está. A aba "Saldo Residual" é nova e deve ser criada inteira. Antes de mexer, me liste o que está diferente e o que você vai alterar.
+
+
 ### Contexto do modelo de dados esperado
 
 - `agendamentos`: `id`, `closer_id`, `sdr_responsavel_id`, `scheduled_date` (date), `scheduled_time` (HH:mm), `lead_name`, `lead_phone`, `channel_type`, `status` (inclui `realizada`), `meeting_reason` (pode ser `segunda_reuniao`), `is_venda_avulsa` (boolean), `deleted_at`.
