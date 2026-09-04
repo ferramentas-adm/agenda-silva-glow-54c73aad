@@ -28,7 +28,35 @@ Hoje existem dois botões ("No-show" e "Cancelar"). Unifique em **um único bot�
 
 Sem mudanças de schema: `no_show` e o campo de justificativa já existem; os motivos ficam em `app_settings`.
 
+### Parte 0.1 — Trava de reuniões vencidas (últimas atualizações e correções)
 
+A trava é o overlay que obriga o SDR/Closer a atualizar o status de reuniões já vencidas. Replique o comportamento atual:
+
+**Quem é travado e quando**
+- Só reuniões ativas (`agendada`, `confirmada`, `nao_confirmada`), `deleted_at IS NULL`, com `scheduled_date <= hoje` (BRT) e já passadas do horário + **65 minutos** de tolerância.
+- `pendente` (aguardando atribuição) não trava ninguém — é responsabilidade do gestor atribuir o closer.
+- Gestor/supervisor/moderador/apresentador nunca são travados.
+- Horário da reunião é convertido de wall-time BRT para instante real antes de comparar com "agora" (não usar `new Date(date + time)` direto).
+
+**Fluxo em etapas (nunca as duas ao mesmo tempo)**
+1. **SDR** (criador ou responsável) é travado primeiro: "Não compareceu" ou "Enviar para o closer" (`sdr_handoff_at = now()`).
+2. Depois do encaminhamento a trava passa para o **Closer**: "Realizada" ou "Não fui eu que atendi" (devolve para o SDR gravando `closer_returned_at` + `closer_return_reason`).
+3. Devolvida, a trava volta para o SDR — e o botão "Enviar para o closer" fica oculto nesse caso.
+4. Quando o criador é também o closer da reunião, não há handoff: etapa única (`both`) com todas as ações juntas.
+
+**Ação "Enviar para novo closer"** (só gestor, supervisor e moderador de SDR): lista closers ativos, troca o closer, recria o evento/link do Meet na agenda do novo closer, grava `sdr_handoff_at` e limpa `closer_returned_at`, com auditoria (`transfer_lead`, origem "trava"). Uso: o closer original ficou preso em outra call e outro closer atendeu.
+
+**Correções importantes já aplicadas (repita todas)**
+- **Tela preta:** todos os hooks (inclusive queries condicionais, como a lista de closers) precisam ficar **antes** de qualquer `return null`. Hook depois do early-return muda a ordem de hooks quando a contagem sai de 0 e derruba a árvore. Envolva a área em um ErrorBoundary.
+- **Pop-up de novo agendamento sumindo:** os diálogos (`NaoCompareceuDialog` e `NovoAgendamentoPromptDialog`) ficam **sempre montados**; só o painel da trava é condicional (`count > 0`). Assim o pop-up sobrevive ao momento em que a última pendência é resolvida.
+- **Selects/pop-ups atrás do overlay:** subir o z-index de Dialog, Select e overlays.
+- **Cartão fantasma:** depois de gravar o status, além das invalidações (`overdue-meetings`, `agendamentos`, `pending-meetings`, `pending-assignments`), fazer `refetchQueries(["agendamentos", scheduled_date])`.
+- **Sem permissão silenciosa:** o update usa `.select("id")` e, se voltar vazio, mostra erro de permissão em vez de "sucesso" falso.
+- **Botão "Confirmar" do SDR:** garantir que o SDR continue conseguindo confirmar a reunião.
+- **Carga:** `refetchInterval` de 5 min + refetch em `visibilitychange` + realtime nos filtros do próprio usuário (`closer_id`, `created_by`, `sdr_responsavel_id`) com debounce de 1,5 s. Nomes de closer/SDR resolvidos em lote (2 queries), não por linha.
+- **Telas liberadas durante a trava:** apenas as necessárias para resolver (`/venda/...`, `/lead-detalhes`).
+- **Vocabulário:** o cabeçalho descreve o fluxo novo (SDR resolve com "Não compareceu" ou envia ao closer; gestores podem enviar para novo closer) — sem "Cancelar/No-show/Reagendar".
+- Remover o estado morto de reagendamento (data/hora nova, opções de horário, handler).
 
 
 ### Contexto do modelo de dados esperado
