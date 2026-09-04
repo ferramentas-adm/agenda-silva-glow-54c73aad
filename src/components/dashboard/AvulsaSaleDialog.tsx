@@ -138,6 +138,17 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
 
   });
 
+  const closerNameById = useMemo(
+    () => new Map(closers.map((c) => [c.id, c.name])),
+    [closers],
+  );
+  const sdrNameById = useMemo(
+    () => new Map(profiles.map((p) => [p.user_id, p.full_name])),
+    [profiles],
+  );
+
+
+
   useEffect(() => {
     if (!open) {
       setLeadName(""); setLeadPhone(""); setChannelType(""); setSdrId("none"); setCloserId("");
