@@ -41,6 +41,7 @@ const STATUS_LABEL: Record<string, string> = {
   agendada: "Sem confirmar",
   confirmada: "Confirmada",
   nao_confirmada: "Não confirmada",
+  realizada: "Realizada",
 };
 
 export default function OverdueMeetingsLockOverlay() {
@@ -297,15 +298,19 @@ export default function OverdueMeetingsLockOverlay() {
                         variant="outline"
                         className={cn(
                           "text-[10px]",
-                          m.status === "confirmada"
-                            ? "border-primary/40 text-primary"
-                            : "border-blue-400/40 text-blue-400",
+                          m.status === "realizada"
+                            ? "border-emerald-500/40 text-emerald-500"
+                            : m.status === "confirmada"
+                              ? "border-primary/40 text-primary"
+                              : "border-blue-400/40 text-blue-400",
                         )}
                       >
                         {STATUS_LABEL[m.status] ?? m.status}
                       </Badge>
                       <Badge variant="outline" className="text-[10px] border-muted-foreground/30">
-                        {m.stage === "sdr"
+                        {m.needs_result
+                          ? "Etapa: Closer — resultado"
+                          : m.stage === "sdr"
                           ? "Etapa: SDR"
                           : m.stage === "closer"
                             ? "Etapa: Closer"
@@ -431,6 +436,17 @@ export default function OverdueMeetingsLockOverlay() {
                 {/* ETAPA 2 — Closer (também aparece no modo combinado) */}
                 {canCloser && (
                   <>
+                    {m.needs_result && (
+                      <div className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs">
+                        <span className="font-semibold text-emerald-500">
+                          Reunião marcada como realizada pelo gestor
+                        </span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          — registre o resultado da reunião (vendeu ou não vendeu) para liberar a tela.
+                        </span>
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                       <Button
                         size="sm"
@@ -440,8 +456,9 @@ export default function OverdueMeetingsLockOverlay() {
                         className="h-8 text-xs gap-1 text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/30"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Realizada
+                        {m.needs_result ? "Registrar resultado" : "Realizada"}
                       </Button>
+                      {!m.needs_result && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -455,6 +472,7 @@ export default function OverdueMeetingsLockOverlay() {
                         <Undo2 className="h-3.5 w-3.5" />
                         Não fui eu que atendi
                       </Button>
+                      )}
                     </div>
 
                     {returnFor === m.id && (
