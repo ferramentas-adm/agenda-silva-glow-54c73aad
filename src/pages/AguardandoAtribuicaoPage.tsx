@@ -74,7 +74,9 @@ export default function AguardandoAtribuicaoPage() {
         .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id, sdr_error, sdr_error_description")
         .is("closer_id", null)
         .is("deleted_at", null)
-        .neq("status", "cancelada")
+        // Reuniões já finalizadas (realizada / não compareceu / cancelada) não voltam
+        // para atribuição — inclusive quando o closer foi inativado/removido.
+        .not("status", "in", "(cancelada,realizada,no_show)")
         .or("meeting_reason.is.null,meeting_reason.neq.segunda_reuniao")
         .gte("scheduled_date", todayStr)
         .order("scheduled_date", { ascending: true })

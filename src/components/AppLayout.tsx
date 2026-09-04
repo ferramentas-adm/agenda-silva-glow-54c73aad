@@ -83,7 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         .select("id", { count: "exact", head: true })
         .is("closer_id", null)
         .is("deleted_at", null)
-        .neq("status", "cancelada")
+        .not("status", "in", "(cancelada,realizada,no_show)")
         .gte("scheduled_date", todayStr)
         .or("meeting_reason.is.null,meeting_reason.neq.segunda_reuniao");
       return count ?? 0;
