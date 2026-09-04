@@ -182,10 +182,71 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
 
         <div className="grid gap-4 py-2">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label>Nome do cliente *</Label>
-              <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Ex.: Empresa XYZ" />
+            <div className="grid gap-2 relative">
+              <Label className="flex items-center gap-2">
+                Nome do cliente *
+                {leadFromDb && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    lead do banco
+                    <button
+                      type="button"
+                      onClick={() => setLeadFromDb(false)}
+                      className="hover:text-foreground"
+                      title="Limpar seleção"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+              </Label>
+              <div className="relative">
+                <Input
+                  value={leadName}
+                  onChange={(e) => {
+                    setLeadName(e.target.value);
+                    setLeadFromDb(false);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="Ex.: Empresa XYZ"
+                  autoComplete="off"
+                />
+                {searchingLeads && (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              {showSuggestions && !leadFromDb && debouncedName.length >= 2 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
+                  {leadSuggestions.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">
+                      {searchingLeads
+                        ? "Buscando leads…"
+                        : "Nenhum lead encontrado no banco — pode cadastrar manualmente."}
+                    </p>
+                  ) : (
+                    leadSuggestions.map((l) => (
+                      <button
+                        key={`${l.name}-${l.phone}`}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setLeadName(l.name);
+                          setLeadPhone(formatPhone(l.phone));
+                          setLeadFromDb(true);
+                          setShowSuggestions(false);
+                        }}
+                        className="block w-full border-b border-input/30 px-3 py-2 text-left last:border-b-0 hover:bg-secondary/60"
+                      >
+                        <p className="text-sm font-medium">{l.name}</p>
+                        <p className="text-xs text-muted-foreground">{l.phone || "sem telefone"}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
+
             <div className="grid gap-2">
               <Label>Telefone (WhatsApp) *</Label>
               <Input
