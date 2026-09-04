@@ -105,19 +105,17 @@ export function useOverdueMeetings() {
       if (error) throw error;
       let list = (data ?? []) as Omit<OverdueMeeting, "closer_name" | "creator_name" | "stage">[];
 
-      // Reuniões "realizada": só travam o Closer responsável, apenas nos últimos
-      // 30 dias e somente enquanto não houver resultado de venda lançado.
+      // Reuniões "realizada": só travam o Closer responsável, apenas a partir da
+      // data de ativação da regra (não recria histórico) e somente enquanto não
+      // houver resultado de venda lançado.
       const realizadas = list.filter((m) => m.status === "realizada");
       let semResultado = new Set<string>();
       if (realizadas.length > 0) {
-        const minDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 10);
         const candidatas = realizadas.filter(
           (m) =>
             !!myCloserId &&
             m.closer_id === myCloserId &&
-            m.scheduled_date >= minDate,
+            m.scheduled_date >= REALIZADA_LOCK_START_DATE,
         );
         if (candidatas.length > 0) {
           const { data: vendasData } = await supabase
