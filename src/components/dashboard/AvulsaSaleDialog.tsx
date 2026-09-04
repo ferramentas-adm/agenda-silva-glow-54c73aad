@@ -292,23 +292,42 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
                         : "Nenhum lead encontrado no banco — pode cadastrar manualmente."}
                     </p>
                   ) : (
-                    leadSuggestions.map((l) => (
-                      <button
-                        key={`${l.name}-${l.phone}`}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setLeadName(l.name);
-                          setLeadPhone(formatPhone(l.phone));
-                          setLeadFromDb(true);
-                          setShowSuggestions(false);
-                        }}
-                        className="block w-full border-b border-input/30 px-3 py-2 text-left last:border-b-0 hover:bg-secondary/60"
-                      >
-                        <p className="text-sm font-medium">{l.name}</p>
-                        <p className="text-xs text-muted-foreground">{l.phone || "sem telefone"}</p>
-                      </button>
-                    ))
+                    leadSuggestions.map((l) => {
+                      const meta = [
+                        l.closerId ? `Closer: ${closerNameById.get(l.closerId) ?? "—"}` : null,
+                        l.sdrId ? `SDR: ${sdrNameById.get(l.sdrId) ?? "—"}` : null,
+                        l.channelType ? `Canal: ${l.channelType}` : null,
+                        l.scheduledDate
+                          ? `Última reunião: ${format(new Date(`${l.scheduledDate}T12:00:00`), "dd/MM/yyyy")}`
+                          : null,
+                      ].filter(Boolean) as string[];
+                      return (
+                        <button
+                          key={`${l.name}-${l.phone}`}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setLeadName(l.name);
+                            setLeadPhone(formatPhone(l.phone));
+                            if (l.closerId) setCloserId(l.closerId);
+                            setSdrId(l.sdrId ?? "none");
+                            if (l.channelType && channelTypes.includes(l.channelType)) {
+                              setChannelType(l.channelType);
+                            }
+                            setLeadFromDb(true);
+                            setShowSuggestions(false);
+                          }}
+                          className="block w-full border-b border-input/30 px-3 py-2 text-left last:border-b-0 hover:bg-secondary/60"
+                        >
+                          <p className="text-sm font-medium">{l.name}</p>
+                          <p className="text-xs text-muted-foreground">{l.phone || "sem telefone"}</p>
+                          {meta.length > 0 && (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground/80">{meta.join(" · ")}</p>
+                          )}
+                        </button>
+                      );
+                    })
+
                   )}
                 </div>
               )}
