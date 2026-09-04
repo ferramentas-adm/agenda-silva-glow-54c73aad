@@ -70,11 +70,13 @@ UPDATE agendamentos SET cancellation_reason = 'Cancelou por imprevisto pessoal',
 - **Carga:** `refetchInterval` de 5 min + refetch em `visibilitychange` + realtime filtrado no próprio usuário (`closer_id`, `created_by`, `sdr_responsavel_id`) com debounce de 1,5 s. Nomes de closer/SDR resolvidos em lote (2 queries), nunca por linha.
 - **Telas liberadas durante a trava:** apenas as necessárias para resolver (detalhe da venda e detalhe do lead).
 
-## Payload de status para o CRM — sem mudança de formato
+## Payload de status para o CRM — mesmo formato, status derivado do motivo
 
-- O **formato do payload não muda**: mesmas chaves, mesma estrutura, mesmo webhook/trigger de mudança de status.
-- Muda apenas o conteúdo: o rótulo "Cancelar" deixa de existir; todo desfecho negativo vai como **"No-show"**, acompanhado do motivo (`cancellation_reason`) no payload.
-- Nada precisa ser alterado no lado do CRM; só deixar de esperar o rótulo "Cancelar".
+- O **formato do payload não muda**: mesmas chaves, mesma estrutura, mesmo webhook/trigger de mudança de status. O CRM continua recebendo os mesmos rótulos de status que já conhece ("No-show" e "Cancelar").
+- O status enviado passa a ser **derivado do motivo** escolhido em "Não compareceu" (o banco guarda sempre `status = 'no_show'` + `cancellation_reason`):
+  - Motivo "No-show" → envia status **"No-show"**.
+  - Qualquer outro motivo ("Cancelou por imprevisto pessoal", "Cancelou por desistência", "Sem closer disponível", "Alterou horário para o mesmo dia", e motivos personalizados de cancelamento) → envia status **"Cancelar"**.
+- Essa tradução tem que existir nos dois caminhos de envio: no trigger/webhook do banco e no helper de reenvio do frontend. O motivo em si também vai no payload.
 - A ação "Definir closer que atendeu" dispara um novo payload com os mesmos dados, mudando apenas o closer (com um indicador de tipo de evento, ex.: `evento: "closer_atualizado"`), sem alterar as demais chaves.
 
 ## Validação
