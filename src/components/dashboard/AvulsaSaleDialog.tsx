@@ -28,10 +28,20 @@ const DEFAULT_CHANNEL_TYPES = [
   "Reativação", "Lead entrou em contato", "Manual", "Renovação", "Indicação",
 ];
 
+interface LeadSuggestion {
+  name: string;
+  phone: string;
+  closerId: string | null;
+  sdrId: string | null;
+  channelType: string | null;
+  scheduledDate: string | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
 
 export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   const { user } = useAuth();
