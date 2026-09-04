@@ -30,6 +30,11 @@ export interface OverdueMeeting {
 
 const OVERDUE_GRACE_MINUTES = 65;
 
+/** Data de ativação da cobrança de resultado em reuniões marcadas como "realizada"
+ *  pelo gestor. Reuniões anteriores a esta data NÃO travam ninguém (evita gerar
+ *  um histórico enorme para os closers preencherem). */
+const REALIZADA_LOCK_START_DATE = "2026-09-04";
+
 /**
  * "Agora" em minutos desde 1970, considerando o instante real (independe de fuso).
  * Usamos para comparar com o instante BRT da reunião reconstruído via brPartsOf.
