@@ -28,10 +28,20 @@ const DEFAULT_CHANNEL_TYPES = [
   "Reativação", "Lead entrou em contato", "Manual", "Renovação", "Indicação",
 ];
 
+interface LeadSuggestion {
+  name: string;
+  phone: string;
+  closerId: string | null;
+  sdrId: string | null;
+  channelType: string | null;
+  scheduledDate: string | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
 
 export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   const { user } = useAuth();
@@ -93,25 +103,51 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
       if (digits.length >= 3) filters.push(`lead_phone.ilike.%${digits}%`);
       const { data, error } = await supabase
         .from("agendamentos")
-        .select("lead_name, lead_phone, updated_at")
+        .select("lead_name, lead_phone, closer_id, sdr_responsavel_id, channel_type, scheduled_date, updated_at")
         .is("deleted_at", null)
         .or(filters.join(","))
         .order("updated_at", { ascending: false })
         .limit(50);
       if (error) throw error;
       const seen = new Set<string>();
-      const out: { name: string; phone: string }[] = [];
-      for (const row of (data ?? []) as { lead_name: string; lead_phone: string | null }[]) {
+      const out: LeadSuggestion[] = [];
+      for (const row of (data ?? []) as {
+        lead_name: string;
+        lead_phone: string | null;
+        closer_id: string | null;
+        sdr_responsavel_id: string | null;
+        channel_type: string | null;
+        scheduled_date: string | null;
+      }[]) {
         const phoneDig = (row.lead_phone ?? "").replace(/\D/g, "");
         const key = `${row.lead_name?.trim().toLowerCase()}|${phoneDig}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push({ name: row.lead_name, phone: row.lead_phone ?? "" });
+        out.push({
+          name: row.lead_name,
+          phone: row.lead_phone ?? "",
+          closerId: row.closer_id,
+          sdrId: row.sdr_responsavel_id,
+          channelType: row.channel_type,
+          scheduledDate: row.scheduled_date,
+        });
         if (out.length >= 10) break;
       }
       return out;
     },
+
   });
+
+  const closerNameById = useMemo(
+    () => new Map(closers.map((c) => [c.id, c.name])),
+    [closers],
+  );
+  const sdrNameById = useMemo(
+    () => new Map(profiles.map((p) => [p.user_id, p.full_name])),
+    [profiles],
+  );
+
+
 
   useEffect(() => {
     if (!open) {
@@ -267,23 +303,42 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
                         : "Nenhum lead encontrado no banco — pode cadastrar manualmente."}
                     </p>
                   ) : (
-                    leadSuggestions.map((l) => (
-                      <button
-                        key={`${l.name}-${l.phone}`}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setLeadName(l.name);
-                          setLeadPhone(formatPhone(l.phone));
-                          setLeadFromDb(true);
-                          setShowSuggestions(false);
-                        }}
-                        className="block w-full border-b border-input/30 px-3 py-2 text-left last:border-b-0 hover:bg-secondary/60"
-                      >
-                        <p className="text-sm font-medium">{l.name}</p>
-                        <p className="text-xs text-muted-foreground">{l.phone || "sem telefone"}</p>
-                      </button>
-                    ))
+                    leadSuggestions.map((l) => {
+                      const meta = [
+                        l.closerId ? `Closer: ${closerNameById.get(l.closerId) ?? "—"}` : null,
+                        l.sdrId ? `SDR: ${sdrNameById.get(l.sdrId) ?? "—"}` : null,
+                        l.channelType ? `Canal: ${l.channelType}` : null,
+                        l.scheduledDate
+                          ? `Última reunião: ${format(new Date(`${l.scheduledDate}T12:00:00`), "dd/MM/yyyy")}`
+                          : null,
+                      ].filter(Boolean) as string[];
+                      return (
+                        <button
+                          key={`${l.name}-${l.phone}`}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setLeadName(l.name);
+                            setLeadPhone(formatPhone(l.phone));
+                            if (l.closerId) setCloserId(l.closerId);
+                            setSdrId(l.sdrId ?? "none");
+                            if (l.channelType && channelTypes.includes(l.channelType)) {
+                              setChannelType(l.channelType);
+                            }
+                            setLeadFromDb(true);
+                            setShowSuggestions(false);
+                          }}
+                          className="block w-full border-b border-input/30 px-3 py-2 text-left last:border-b-0 hover:bg-secondary/60"
+                        >
+                          <p className="text-sm font-medium">{l.name}</p>
+                          <p className="text-xs text-muted-foreground">{l.phone || "sem telefone"}</p>
+                          {meta.length > 0 && (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground/80">{meta.join(" · ")}</p>
+                          )}
+                        </button>
+                      );
+                    })
+
                   )}
                 </div>
               )}
