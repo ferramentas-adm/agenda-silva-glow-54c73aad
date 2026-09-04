@@ -70,6 +70,13 @@ UPDATE agendamentos SET cancellation_reason = 'Cancelou por imprevisto pessoal',
 - **Carga:** `refetchInterval` de 5 min + refetch em `visibilitychange` + realtime filtrado no próprio usuário (`closer_id`, `created_by`, `sdr_responsavel_id`) com debounce de 1,5 s. Nomes de closer/SDR resolvidos em lote (2 queries), nunca por linha.
 - **Telas liberadas durante a trava:** apenas as necessárias para resolver (detalhe da venda e detalhe do lead).
 
+## Payload de status para o CRM — sem mudança de formato
+
+- O **formato do payload não muda**: mesmas chaves, mesma estrutura, mesmo webhook/trigger de mudança de status.
+- Muda apenas o conteúdo: o rótulo "Cancelar" deixa de existir; todo desfecho negativo vai como **"No-show"**, acompanhado do motivo (`cancellation_reason`) no payload.
+- Nada precisa ser alterado no lado do CRM; só deixar de esperar o rótulo "Cancelar".
+- A ação "Definir closer que atendeu" dispara um novo payload com os mesmos dados, mudando apenas o closer (com um indicador de tipo de evento, ex.: `evento: "closer_atualizado"`), sem alterar as demais chaves.
+
 ## Validação
 
 - SDR com reunião de ontem: vê a trava, marca "Não compareceu" com motivo, recebe o pop-up de novo agendamento, e a trava libera.
