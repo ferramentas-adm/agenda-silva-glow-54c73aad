@@ -63,6 +63,9 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
 
   const [leadName, setLeadName] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
+  const [leadFromDb, setLeadFromDb] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [debouncedName, setDebouncedName] = useState("");
   const [channelType, setChannelType] = useState("");
   const [sdrId, setSdrId] = useState<string>("none");
   const [closerId, setCloserId] = useState("");
@@ -74,12 +77,51 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedName(leadName.trim()), 350);
+    return () => clearTimeout(t);
+  }, [leadName]);
+
+  const { data: leadSuggestions = [], isFetching: searchingLeads } = useQuery({
+    queryKey: ["avulsa-lead-search", debouncedName.toLowerCase()],
+    enabled: open && !leadFromDb && debouncedName.length >= 2,
+    staleTime: 60_000,
+    retry: 0,
+    queryFn: async () => {
+      const term = debouncedName.replace(/[%,()]/g, " ").trim();
+      const digits = debouncedName.replace(/\D/g, "");
+      const filters = [`lead_name.ilike.%${term}%`];
+      if (digits.length >= 3) filters.push(`lead_phone.ilike.%${digits}%`);
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .select("lead_name, lead_phone, updated_at")
+        .is("deleted_at", null)
+        .or(filters.join(","))
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const seen = new Set<string>();
+      const out: { name: string; phone: string }[] = [];
+      for (const row of (data ?? []) as { lead_name: string; lead_phone: string | null }[]) {
+        const phoneDig = (row.lead_phone ?? "").replace(/\D/g, "");
+        const key = `${row.lead_name?.trim().toLowerCase()}|${phoneDig}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ name: row.lead_name, phone: row.lead_phone ?? "" });
+        if (out.length >= 10) break;
+      }
+      return out;
+    },
+  });
+
+  useEffect(() => {
     if (!open) {
       setLeadName(""); setLeadPhone(""); setChannelType(""); setSdrId("none"); setCloserId("");
       setProduto(""); setValorColetado(""); setValorTotal(""); setDescricao("");
       setSaleDate(new Date()); setSaving(false);
+      setLeadFromDb(false); setShowSuggestions(false); setDebouncedName("");
     }
   }, [open]);
+
 
   const parseMoney = (s: string) => {
     const n = Number(s.replace(/\./g, "").replace(",", "."));
