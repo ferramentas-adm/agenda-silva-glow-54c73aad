@@ -87,6 +87,9 @@ interface VendasTabProps {
   dateRange?: DateRange;
 }
 
+// Saldo Residual: considerar apenas vendas fechadas a partir desta data.
+export const SALDO_RESIDUAL_FROM = "2026-08-01";
+
 const COLORS = [
   "hsl(var(--primary))",
   "hsl(217 91% 60%)",

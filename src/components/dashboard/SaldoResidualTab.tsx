@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ComplementoDialog, { type ComplementoTarget } from "@/components/dashboard/ComplementoDialog";
+import { SALDO_RESIDUAL_FROM } from "@/components/dashboard/VendasTab";
 
 interface SaldoRow {
   venda_id: string;
@@ -57,6 +58,7 @@ export default function SaldoResidualTab() {
       const { data, error } = await supabase.rpc("dashboard_saldo_residual", {
         p_closer_id: null,
         p_order: order,
+        p_from: SALDO_RESIDUAL_FROM,
         p_limit: PAGE_SIZE,
         p_offset: page * PAGE_SIZE,
       });
@@ -82,6 +84,7 @@ export default function SaldoResidualTab() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("dashboard_saldo_residual_totais", {
         p_closer_id: null,
+        p_from: SALDO_RESIDUAL_FROM,
       });
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
