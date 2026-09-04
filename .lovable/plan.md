@@ -22,6 +22,27 @@ Antes de codar: leia os componentes atuais de detalhes/calendário/lista de reun
 - Motivos classificados para relatório (no-show real vs. cancelamento vs. troca de horário), para alimentar o gráfico de motivos.
 - Rótulos e textos em toda a interface: "Não compareceu" — nada de "No-show"/"Cancelar"/"Reagendar".
 
+### Migração do histórico (obrigatória)
+
+Todo o histórico do painel precisa ser convertido para a nova base, sem perder nada:
+
+- Reuniões que estavam marcadas com o botão antigo **No-show** → passam a "Não compareceu" com motivo **"No-show"**.
+- Reuniões que estavam marcadas com o botão antigo **Cancelar** (`status = 'cancelada'`) → passam a "Não compareceu" com motivo **"Cancelou por imprevisto pessoal"**, e o `status` vira `no_show`.
+- Aplicar em **todo o histórico**, desde o início do painel, sem filtro de data.
+- Só preencher o motivo quando estiver vazio: registros que já têm `cancellation_reason` são preservados como estão.
+- Fazer isso como atualização de dados única (não schema), em duas instruções:
+
+```sql
+UPDATE agendamentos SET cancellation_reason = 'No-show'
+ WHERE status = 'no_show' AND (cancellation_reason IS NULL OR btrim(cancellation_reason) = '');
+
+UPDATE agendamentos SET cancellation_reason = 'Cancelou por imprevisto pessoal', status = 'no_show'
+ WHERE status = 'cancelada';
+```
+
+- Antes de rodar, contar quantos registros caem em cada caso e reportar; depois, conferir que não sobrou nenhum `status = 'cancelada'` nem `no_show` sem motivo.
+- A classificação para relatórios deve continuar tratando `cancelada` (registros antigos, caso apareçam de integrações) como cancelamento, para não quebrar gráficos históricos.
+
 ## Parte 2 — Trava de reuniões vencidas (últimas atualizações e correções)
 
 **Quem é travado e quando**
