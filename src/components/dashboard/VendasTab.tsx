@@ -87,6 +87,9 @@ interface VendasTabProps {
   dateRange?: DateRange;
 }
 
+// Saldo Residual: considerar apenas vendas fechadas a partir desta data.
+export const SALDO_RESIDUAL_FROM = "2026-08-01";
+
 const COLORS = [
   "hsl(var(--primary))",
   "hsl(217 91% 60%)",
@@ -468,6 +471,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("dashboard_saldo_residual_totais", {
         p_closer_id: isCloserView && myCloserId ? myCloserId : null,
+        p_from: SALDO_RESIDUAL_FROM,
       });
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
