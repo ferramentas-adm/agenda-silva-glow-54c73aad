@@ -21,6 +21,8 @@ export interface OverdueMeeting {
   closer_return_reason: string | null;
   closer_name: string | null;
   creator_name: string | null;
+  /** true quando o gestor já marcou "realizada" mas falta o Closer lançar o resultado. */
+  needs_result?: boolean;
   /** Quem está com a responsabilidade AGORA: primeiro o SDR, depois o Closer.
    *  "both" = a mesma pessoa é o criador (SDR) e o closer da reunião. */
   stage: "sdr" | "closer" | "both";
@@ -83,7 +85,9 @@ export function useOverdueMeetings() {
         .is("deleted_at", null)
         // "pendente" (Aguardando atribuição) NÃO trava ninguém: é responsabilidade
         // exclusiva de gestores/moderadores atribuir o closer.
-        .in("status", ["agendada", "confirmada", "nao_confirmada"])
+        // "realizada" entra apenas para o Closer, quando o resultado da venda
+        // ainda não foi lançado (ver filtro abaixo).
+        .in("status", ["agendada", "confirmada", "nao_confirmada", "realizada"])
         .lte("scheduled_date", today)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });
@@ -99,7 +103,32 @@ export function useOverdueMeetings() {
 
       const { data, error } = await q;
       if (error) throw error;
-      const list = (data ?? []) as Omit<OverdueMeeting, "closer_name" | "creator_name" | "stage">[];
+      let list = (data ?? []) as Omit<OverdueMeeting, "closer_name" | "creator_name" | "stage">[];
+
+      // Reuniões "realizada": só travam o Closer responsável, apenas nos últimos
+      // 30 dias e somente enquanto não houver resultado de venda lançado.
+      const realizadas = list.filter((m) => m.status === "realizada");
+      let semResultado = new Set<string>();
+      if (realizadas.length > 0) {
+        const minDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10);
+        const candidatas = realizadas.filter(
+          (m) =>
+            !!myCloserId &&
+            m.closer_id === myCloserId &&
+            m.scheduled_date >= minDate,
+        );
+        if (candidatas.length > 0) {
+          const { data: vendasData } = await supabase
+            .from("vendas")
+            .select("agendamento_id")
+            .in("agendamento_id", candidatas.map((m) => m.id));
+          const comVenda = new Set((vendasData ?? []).map((v) => v.agendamento_id));
+          semResultado = new Set(candidatas.filter((m) => !comVenda.has(m.id)).map((m) => m.id));
+        }
+        list = list.filter((m) => m.status !== "realizada" || semResultado.has(m.id));
+      }
 
       // Filtra só as vencidas (>= horário + 1h05)
       const nowMin = nowEpochMin();
@@ -119,6 +148,9 @@ export function useOverdueMeetings() {
           const isSdr =
             !!user?.id && (m.created_by === user.id || m.sdr_responsavel_id === user.id);
           const isCloser = !!myCloserId && m.closer_id === myCloserId;
+          if (m.status === "realizada") {
+            return { ...m, stage: "closer" as const, needs_result: true };
+          }
           const stage: "sdr" | "closer" | "both" = m.closer_returned_at
             ? "sdr"
             : !m.sdr_handoff_at && isSdr && isCloser
