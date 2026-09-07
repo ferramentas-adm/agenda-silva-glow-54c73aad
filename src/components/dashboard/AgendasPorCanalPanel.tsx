@@ -36,7 +36,7 @@ interface CanalRow {
 }
 
 /**
- * Painel "Agendas por Canal" — usado dentro da aba de Vendas.
+ * Painel "Agendas por Origem do Lead" — usado dentro da aba de Vendas.
  *
  * Agregação server-side via RPC `dashboard_agendas_por_canal`:
  * substitui duas varreduras paginadas em `agendamentos` (até milhares
@@ -133,8 +133,8 @@ export default function AgendasPorCanalPanel({ currentDate, dateRange, vendasFec
   const [drill, setDrill] = useState<{ open: boolean; title: string; ids: string[] }>({ open: false, title: "", ids: [] });
   const openDrill = (title: string, ids: string[]) => setDrill({ open: true, title, ids });
 
-  const paraTitle = `Agendas Para ${periodLabel} — por Canal`;
-  const criadasTitle = `Agendas Criadas ${periodLabel} — por Canal`;
+  const paraTitle = `Agendas Para ${periodLabel} — por Origem do Lead`;
+  const criadasTitle = `Agendas Criadas ${periodLabel} — por Origem do Lead`;
   const baseLabelPara = `Agendas Para ${periodLabel}`;
   const baseLabelCriadas = `Agendas Criadas ${periodLabel}`;
 
@@ -231,7 +231,7 @@ function ChannelTable({
       }
       const vMap = new Map<string, V>();
       vds.forEach((v) => vMap.set(v.agendamento_id, v));
-      const headers = ["Nome do lead", "Telefone", "Canal", "Status", "Data da reunião", "Vendeu", "Valor da venda", "Motivo não fechamento"];
+      const headers = ["Nome do lead", "Telefone", "Origem do lead", "Status", "Data da reunião", "Vendeu", "Valor da venda", "Motivo não fechamento"];
       const esc = (s: unknown) => {
         const str = String(s ?? "").replace(/[\r\n]+/g, " ").replace(/"/g, '""');
         return `"${str}"`;
@@ -304,7 +304,7 @@ function ChannelTable({
           <thead>
             <tr className="border-b border-primary/10 text-muted-foreground">
               <th className="text-left py-2 px-2 font-medium text-xs">#</th>
-              <th className="text-left py-2 px-2 font-medium text-xs">Canal</th>
+              <th className="text-left py-2 px-2 font-medium text-xs">Origem do lead</th>
               <th className="text-right py-2 px-2 font-medium text-xs">Agendadas</th>
               <th className="text-right py-2 px-2 font-medium text-xs">Realizadas</th>
               <th className="text-right py-2 px-2 font-medium text-xs">Vendas</th>

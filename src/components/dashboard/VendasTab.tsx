@@ -652,7 +652,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
 
     const headers = [
-      "Lead", "Telefone", "Data agendamento", "Hora", "Closer", "SDR", "Canal",
+      "Lead", "Telefone", "Data agendamento", "Hora", "Closer", "SDR", "Origem do lead",
       "Criado em", "Status reunião", "Motivo do não fechamento",
       "Explicação do porquê não fechou", "Resumo do cliente", "Briefing", "Observações",
     ];
@@ -1170,7 +1170,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
                 )}
                 <Select value={motivosChannelFilter} onValueChange={setMotivosChannelFilter}>
                   <SelectTrigger className="h-8 w-[170px] text-xs">
-                    <SelectValue placeholder="Canal" />
+                    <SelectValue placeholder="Origem do lead" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os canais</SelectItem>
@@ -1393,7 +1393,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       </Card>
 
 
-      {/* Agendas por Canal — inclui segundas reuniões */}
+      {/* Agendas por Origem do Lead — inclui segundas reuniões */}
       <AgendasPorCanalPanel
         currentDate={currentDate}
         dateRange={dateRange}

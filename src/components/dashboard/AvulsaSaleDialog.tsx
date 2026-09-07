@@ -307,7 +307,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
                       const meta = [
                         l.closerId ? `Closer: ${closerNameById.get(l.closerId) ?? "—"}` : null,
                         l.sdrId ? `SDR: ${sdrNameById.get(l.sdrId) ?? "—"}` : null,
-                        l.channelType ? `Canal: ${l.channelType}` : null,
+                        l.channelType ? `Origem do lead: ${l.channelType}` : null,
                         l.scheduledDate
                           ? `Última reunião: ${format(new Date(`${l.scheduledDate}T12:00:00`), "dd/MM/yyyy")}`
                           : null,
@@ -373,7 +373,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
             </div>
 
             <div className="grid gap-2">
-              <Label>Canal *</Label>
+              <Label>Origem do lead *</Label>
               <Select value={channelType} onValueChange={setChannelType}>
                 <SelectTrigger><SelectValue placeholder="Selecione o canal" /></SelectTrigger>
                 <SelectContent>

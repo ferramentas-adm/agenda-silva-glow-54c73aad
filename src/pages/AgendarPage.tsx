@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, ArrowRight, ArrowLeft, Link as LinkIcon, FileText } from "lucide-react";
+import { CalendarIcon, ArrowRight, ArrowLeft, Link as LinkIcon, FileText, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 import AppLayout from "@/components/AppLayout";
@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { countsAsSdr } from "@/lib/sdrOverrides";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { logAudit } from "@/services/auditLog";
 import { collectLeadMetaFields } from "@/lib/metaTracking";
@@ -173,7 +173,7 @@ function AgendarPageInner() {
 
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
-  const [is5k, setIs5k] = useState(false);
+  const [bookingChannel, setBookingChannel] = useState<string | null>(null);
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
@@ -249,8 +249,8 @@ function AgendarPageInner() {
     if (typeof editData.duration_minutes === "number" && editData.duration_minutes !== 60) {
       setDurationMinutes(editData.duration_minutes);
     }
-    if (editData.is_5k && !is5k) {
-      setIs5k(true);
+    if (editData.booking_channel && !bookingChannel) {
+      setBookingChannel(editData.booking_channel);
     }
     if (editData.sdr_responsavel_id && !selectedSdrId) {
       setSelectedSdrId(editData.sdr_responsavel_id);
@@ -273,7 +273,7 @@ function AgendarPageInner() {
       (async () => {
         const { data } = await supabase
           .from("agendamentos")
-          .select("briefing, observation, channel_type, is_5k, duration_minutes, lead_name, lead_phone")
+          .select("briefing, observation, channel_type, booking_channel, duration_minutes, lead_name, lead_phone")
           .ilike("lead_phone", `%${normalized.slice(-8)}%`)
           .is("deleted_at", null)
           .order("created_at", { ascending: false })
@@ -287,7 +287,7 @@ function AgendarPageInner() {
         if (prior.briefing) setBriefingText((cur) => cur || prior.briefing);
         if (prior.observation) setObservation((cur) => cur || prior.observation);
         if (prior.channel_type) setChannelType((cur) => cur || prior.channel_type);
-        if (prior.is_5k) setIs5k((cur) => cur || true);
+        if (prior.booking_channel) setBookingChannel((cur) => cur || prior.booking_channel);
         if (typeof prior.duration_minutes === "number" && prior.duration_minutes !== 60) {
           setDurationMinutes((cur) => (cur === 60 ? prior.duration_minutes : cur));
         }
@@ -338,7 +338,7 @@ function AgendarPageInner() {
   const isReasonRequired = false;
   const resolvedReason = isCloser ? "segunda_reuniao" : null;
 
-  // Tipo de canal é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
+  // Origem do lead é obrigatório para SDR e Moderador (gestor também segue a mesma regra do select).
   // Em 2ª reunião do closer, o canal é herdado do 1º agendamento.
   const channelTypeRequired = (isSdrRole || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor");
 
@@ -371,7 +371,11 @@ function AgendarPageInner() {
     // e não for 2ª reunião, o próprio agendador (admin) assume o papel de SDR.
 
     if (channelTypeRequired && !channelType) {
-      toast.error("Selecione o Tipo de Canal.");
+      toast.error("Selecione a Origem do lead.");
+      return;
+    }
+    if (!bookingChannel) {
+      toast.error("Selecione o Canal do agendamento.");
       return;
     }
     setSubmitting(true);
@@ -531,7 +535,8 @@ function AgendarPageInner() {
             google_event_id: googleEventId,
             meeting_reason: resolvedReason,
             channel_type: channelType || null,
-            is_5k: is5k,
+            is_5k: false,
+            booking_channel: bookingChannel,
             ...metaFields,
           } as any)
           .eq("id", sameDayTargetId!)
@@ -567,7 +572,8 @@ function AgendarPageInner() {
         original_agendamento_id: editId || linkedOriginalId || null,
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
-        is_5k: is5k,
+        is_5k: false,
+        booking_channel: bookingChannel,
         ...metaFields,
       } as any).select("id").single();
 
@@ -667,7 +673,7 @@ function AgendarPageInner() {
     setChannelType(null);
     setSelectedSdrId(null);
     setBriefingText("");
-    setIs5k(false);
+    setBookingChannel(null);
     setSuccess(null);
     setStep("lead");
   };
@@ -896,18 +902,18 @@ function AgendarPageInner() {
 
               {/* Closer: o canal é herdado do 1º agendamento (somente leitura) */}
               {isCloser && channelType ? (
-                <SummaryRow label="Tipo de canal" value={channelType} />
+                <SummaryRow label="Origem do lead" value={channelType} />
               ) : null}
 
 
               {(role === "sdr" || (role === "moderador" || role === "apresentador") || role === "gestor" || role === "supervisor") && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
-                    Tipo de Canal <span className="text-destructive">*</span>
+                    Origem do lead <span className="text-destructive">*</span>
                   </label>
                   <Select value={channelType ?? ""} onValueChange={setChannelType}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o canal" />
+                      <SelectValue placeholder="Selecione a origem" />
                     </SelectTrigger>
                     <SelectContent>
                       {channelTypes.map((ct) => (
@@ -920,14 +926,39 @@ function AgendarPageInner() {
                   )}
                 </div>
               )}
-              <div className="flex items-center justify-between rounded-md border border-border bg-secondary/30 px-4 py-3">
-                <div className="space-y-0.5">
-                  <label htmlFor="is-5k-toggle" className="text-sm font-medium cursor-pointer">
-                    Mentoria com Antônio
-                  </label>
-                  <p className="text-xs text-muted-foreground">Marque para sinalizar esta reunião como Mentoria com Antônio.</p>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  Canal do agendamento <span className="text-destructive">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: "whatsapp_crm", label: "WhatsApp (CRM)" },
+                    { value: "ligacao_api4com", label: "Ligação API4COM" },
+                  ].map((opt) => {
+                    const active = bookingChannel === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setBookingChannel(opt.value)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md border px-4 py-3 text-sm font-medium transition-colors",
+                          active
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border bg-secondary/30 text-muted-foreground hover:border-primary/40"
+                        )}
+                      >
+                        <CheckCircle2
+                          className={cn("h-4 w-4 shrink-0", active ? "text-primary fill-primary/20" : "text-muted-foreground/50")}
+                        />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
-                <Switch id="is-5k-toggle" checked={is5k} onCheckedChange={setIs5k} />
+                {!bookingChannel && (
+                  <p className="text-xs text-muted-foreground">Selecione o canal utilizado para marcar a reunião.</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium flex items-center gap-1.5">
@@ -967,7 +998,8 @@ function AgendarPageInner() {
                 submitting ||
                 !canGoNext.confirm ||
                 (isCloser && !meetingReasonCustom.trim()) ||
-                (channelTypeRequired && !channelType)
+                (channelTypeRequired && !channelType) ||
+                !bookingChannel
               }
               className="gap-2"
             >

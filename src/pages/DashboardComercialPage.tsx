@@ -950,7 +950,7 @@ function ChannelTable({
           <thead>
             <tr className="border-b border-primary/10 text-muted-foreground">
               <th className="text-left py-2 px-2 font-medium text-xs">#</th>
-              <th className="text-left py-2 px-2 font-medium text-xs">Canal</th>
+              <th className="text-left py-2 px-2 font-medium text-xs">Origem do lead</th>
               <th className="text-right py-2 px-2 font-medium text-xs">
                 {mode === "vendas" ? "Vendas" : "Qtd"}
               </th>
@@ -1100,8 +1100,8 @@ function getChannelTableLabel(selectedDate: Date, type: "para" | "criadas") {
   else if (selectedStr === yesterdayStr) period = "Ontem";
   else if (selectedStr === tomorrowStr) period = "Amanhã";
 
-  if (type === "para") return `Agendas Para ${period} — por Canal`;
-  return `Agendas Criadas ${period} — por Canal`;
+  if (type === "para") return `Agendas Para ${period} — por Origem do Lead`;
+  return `Agendas Criadas ${period} — por Origem do Lead`;
 }
 
 function getSubtitleLabel(targetDate: Date) {
@@ -1222,14 +1222,14 @@ function MetricasSDRsTab({
       {/* Channel tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ChannelTable
-          title={isRange ? `Agendas Para ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "para")}
+          title={isRange ? `Agendas Para ${rangeLabel} — por Origem do Lead` : getChannelTableLabel(currentDate, "para")}
           data={metrics.channelsToday}
-          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Para ${rangeLabel}` : getChannelTableLabel(currentDate, "para").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : mode === "vendas" ? " · Vendas" : ""}`, ids)}
+          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Para ${rangeLabel}` : getChannelTableLabel(currentDate, "para").replace(" — por Origem do Lead", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : mode === "vendas" ? " · Vendas" : ""}`, ids)}
         />
         <ChannelTable
-          title={isRange ? `Agendas Criadas ${rangeLabel} — por Canal` : getChannelTableLabel(currentDate, "criadas")}
+          title={isRange ? `Agendas Criadas ${rangeLabel} — por Origem do Lead` : getChannelTableLabel(currentDate, "criadas")}
           data={metrics.channelsCreatedToday}
-          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Criadas ${rangeLabel}` : getChannelTableLabel(currentDate, "criadas").replace(" — por Canal", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : mode === "vendas" ? " · Vendas" : ""}`, ids)}
+          onRowClick={({ canal, ids, mode }) => openDrill(`${isRange ? `Agendas Criadas ${rangeLabel}` : getChannelTableLabel(currentDate, "criadas").replace(" — por Origem do Lead", "")} — ${canal}${mode === "realizadas" ? " · Realizadas" : mode === "vendas" ? " · Vendas" : ""}`, ids)}
         />
       </div>
 

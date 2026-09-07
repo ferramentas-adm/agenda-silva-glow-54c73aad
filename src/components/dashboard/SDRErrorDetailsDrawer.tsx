@@ -167,7 +167,7 @@ export default function SDRErrorDetailsDrawer({ open, onOpenChange, agendamentoI
               <div className="rounded-lg border border-primary/10 bg-card p-4 grid gap-4 sm:grid-cols-2">
                 <Field label="SDR responsável" value={data?.sdrName} />
                 <Field label="Closer atribuído" value={data?.closerName} />
-                <Field label="Canal" value={ag.channel_type} />
+                <Field label="Origem do lead" value={ag.channel_type} />
                 <Field label="Motivo da reunião" value={ag.meeting_reason} />
                 <div className="sm:col-span-2">
                   <Field

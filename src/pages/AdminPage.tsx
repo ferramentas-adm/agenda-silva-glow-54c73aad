@@ -46,7 +46,7 @@ function DynamicListsSection() {
       <div className="grid gap-4 md:grid-cols-2">
         <DynamicListManager
           settingKey={APP_SETTING_KEYS.channel_types}
-          title="Tipos de canal"
+          title="Origens do lead"
           description="Origem do lead para classificação."
           defaults={["CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago"]}
         />

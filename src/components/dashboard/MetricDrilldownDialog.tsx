@@ -550,7 +550,7 @@ export default function MetricDrilldownDialog({
                           ))}
                           {d.channel_type && (
                             <Badge variant="secondary" className="text-[10px]">
-                              Canal: {d.channel_type}
+                              Origem do lead: {d.channel_type}
                             </Badge>
                           )}
                           {d.meeting_reason && (
