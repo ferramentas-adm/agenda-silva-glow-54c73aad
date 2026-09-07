@@ -12,7 +12,7 @@
 
    Sem escolher um dos dois não é possível confirmar o agendamento. Agendamentos antigos ficam como "Não informado".
 
-4. **Novo quadro em "Produtividade SDR"**: "Por canal do agendamento", com uma linha para cada canal (mais "Não informado") e as colunas: agendamentos criados, reuniões realizadas, vendas e conversão. Respeita o período e os filtros já existentes da aba, e cada número é clicável para abrir a lista de leads (mesmo drilldown já usado).
+4. **Novo quadro em "Produtividade SDR"**: "Por canal do agendamento", com uma linha para cada canal (apenas WhatsApp (CRM) e Ligação API4COM — sem linha "Não informado") e as colunas: agendamentos criados, reuniões realizadas, vendas e conversão. Só entram nas métricas os agendamentos com o canal preenchido (ou seja, criados a partir da ativação desta versão). Respeita o período e os filtros já existentes da aba, e cada número é clicável para abrir a lista de leads (mesmo drilldown já usado).
 
 ## Detalhes técnicos
 
