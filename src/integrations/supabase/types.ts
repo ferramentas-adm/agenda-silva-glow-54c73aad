@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       agendamentos: {
         Row: {
+          booking_channel: string | null
           briefing: string | null
           briefing_read_at: string | null
           briefing_read_by: string | null
@@ -63,6 +64,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          booking_channel?: string | null
           briefing?: string | null
           briefing_read_at?: string | null
           briefing_read_by?: string | null
@@ -110,6 +112,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          booking_channel?: string | null
           briefing?: string | null
           briefing_read_at?: string | null
           briefing_read_by?: string | null
@@ -1317,6 +1320,18 @@ export type Database = {
         Returns: boolean
       }
       current_closer_id: { Args: never; Returns: string }
+      dashboard_agendamentos_por_booking_channel: {
+        Args: { _base?: string; _from: string; _to: string }
+        Returns: {
+          channel: string
+          ids_created: string[]
+          ids_realizada: string[]
+          ids_vendas: string[]
+          qtd_created: number
+          qtd_realizada: number
+          qtd_vendas: number
+        }[]
+      }
       dashboard_agendas_por_canal: {
         Args: { _from: string; _to: string }
         Returns: {

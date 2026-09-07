@@ -41,6 +41,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import TrendCardSDR from "@/components/dashboard/TrendCardSDR";
 import ProdutividadePorHoraCard from "@/components/dashboard/ProdutividadePorHoraCard";
 import SdrPeriodComparisonCard from "@/components/dashboard/SdrPeriodComparisonCard";
+import BookingChannelPanel from "@/components/dashboard/BookingChannelPanel";
 
 import CriadasPorDiaDialog, { type CriadasDayGroup } from "@/components/dashboard/CriadasPorDiaDialog";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
@@ -559,6 +560,9 @@ export default function ProdutividadeSDRTab({
         />
 
       </div>
+
+      {/* Por canal do agendamento (WhatsApp (CRM) vs Ligação API4COM) */}
+      <BookingChannelPanel range={range} />
 
       {/* Produtividade por hora — orientada pelo filtro único da página */}
       <ProdutividadePorHoraCard

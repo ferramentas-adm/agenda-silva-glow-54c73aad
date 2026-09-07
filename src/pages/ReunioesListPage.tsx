@@ -465,7 +465,7 @@ export default function ReunioesListPage() {
 
 
   const exportCSV = () => {
-    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Não compareceu — motivo", "Canal", "Observação"];
+    const headers = ["Lead", "Telefone", "Closer", "Criado por", "Data Reunião", "Horário", "Criado em", "Status", "Motivo", "Não compareceu — motivo", "Origem do lead", "Observação"];
     const rows = filtered.map((ag) => [
       ag.lead_name,
       ag.lead_phone,
@@ -778,7 +778,7 @@ export default function ReunioesListPage() {
             </Select>
 
             <Select value={filterChannelType} onValueChange={(v) => { setFilterChannelType(v); setCurrentPage(1); }}>
-              <SelectTrigger className="glass-input"><SelectValue placeholder="Canal" /></SelectTrigger>
+              <SelectTrigger className="glass-input"><SelectValue placeholder="Origem do lead" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Canais</SelectItem>
                 {CHANNEL_TYPES.map((ct) => (<SelectItem key={ct} value={ct}>{ct}</SelectItem>))}
@@ -969,7 +969,7 @@ export default function ReunioesListPage() {
                     { key: "status", label: "Status" },
                     { key: "meeting_reason", label: "Motivo" },
                     { key: "cancellation_reason", label: "Não compareceu — motivo" },
-                    { key: "channel_type", label: "Canal" },
+                    { key: "channel_type", label: "Origem do lead" },
                   ] as { key: SortKey; label: string }[]).map((col) => (
                     <th
                       key={col.key}

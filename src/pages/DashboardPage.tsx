@@ -1940,7 +1940,7 @@ export function CalendarContent() {
       <Dialog open={totalChannelsOpen} onOpenChange={setTotalChannelsOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Total agend. dia — por Canal</DialogTitle>
+            <DialogTitle>Total agend. dia — por Origem do Lead</DialogTitle>
             <DialogDescription>
               {totalChannelsTotal} agendamento{totalChannelsTotal !== 1 ? "s" : ""} em {format(currentDate, "dd/MM/yyyy")}
             </DialogDescription>
@@ -1950,7 +1950,7 @@ export function CalendarContent() {
               <thead className="bg-muted/40 text-muted-foreground">
                 <tr>
                   <th className="text-left py-2 px-3 font-medium text-xs">#</th>
-                  <th className="text-left py-2 px-3 font-medium text-xs">Canal</th>
+                  <th className="text-left py-2 px-3 font-medium text-xs">Origem do lead</th>
                   <th className="text-right py-2 px-3 font-medium text-xs">Qtd</th>
                 </tr>
               </thead>
