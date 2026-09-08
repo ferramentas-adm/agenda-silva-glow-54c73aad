@@ -119,5 +119,6 @@ export const APP_SETTING_LABELS: Record<string, string> = {
   no_show_reasons: "Motivos de não comparecimento",
 
   order_bumps: "Order bumps",
+  booking_channels: "Canal do agendamento",
 };
 
