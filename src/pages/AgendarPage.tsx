@@ -935,10 +935,7 @@ function AgendarPageInner() {
                   Canal do agendamento <span className="text-destructive">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: "whatsapp_crm", label: "WhatsApp (CRM)" },
-                    { value: "ligacao_api4com", label: "Ligação API4COM" },
-                  ].map((opt) => {
+                  {bookingChannels.map((label) => ({ value: bookingChannelValue(label), label })).map((opt) => {
                     const active = bookingChannel === opt.value;
                     return (
                       <button
