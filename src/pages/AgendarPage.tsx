@@ -71,6 +71,17 @@ const DEFAULT_CHANNEL_TYPES = [
   "CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago",
 ];
 
+/**
+ * Valor gravado em `agendamentos.booking_channel` para um canal da lista.
+ * Os dois canais originais mantêm suas chaves antigas para preservar o histórico;
+ * canais novos cadastrados em Administração gravam o próprio nome.
+ */
+const LEGACY_BOOKING_CHANNEL_VALUES: Record<string, string> = {
+  "WhatsApp (CRM)": "whatsapp_crm",
+  "Ligação API4COM": "ligacao_api4com",
+};
+const bookingChannelValue = (label: string) => LEGACY_BOOKING_CHANNEL_VALUES[label] ?? label;
+
 import { useAppSettingList, APP_SETTING_KEYS, DEFAULT_BOOKING_CHANNELS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExceptions";
