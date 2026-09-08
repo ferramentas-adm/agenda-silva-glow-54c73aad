@@ -102,7 +102,11 @@ export const APP_SETTING_KEYS = {
   no_show_reasons: "no_show_reasons",
 
   order_bumps: "order_bumps",
+  booking_channels: "booking_channels",
 } as const;
+
+/** Canais de agendamento padrão (usados enquanto a lista não for editada). */
+export const DEFAULT_BOOKING_CHANNELS = ["WhatsApp (CRM)", "Ligação API4COM"];
 
 export const APP_SETTING_LABELS: Record<string, string> = {
   motivos_nao_fechamento: "Motivos de não fechamento",
@@ -115,5 +119,6 @@ export const APP_SETTING_LABELS: Record<string, string> = {
   no_show_reasons: "Motivos de não comparecimento",
 
   order_bumps: "Order bumps",
+  booking_channels: "Canal do agendamento",
 };
 

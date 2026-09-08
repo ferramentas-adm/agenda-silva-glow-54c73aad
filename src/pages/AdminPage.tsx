@@ -32,6 +32,7 @@ import CrmBulkVendasPanel from "@/components/admin/CrmBulkVendasPanel";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
+import { DEFAULT_BOOKING_CHANNELS } from "@/hooks/useAppSettingList";
 
 // Escopo do Google necessário para criar salas do Meet com gravação automática.
 const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
@@ -81,6 +82,12 @@ function DynamicListsSection() {
           defaults={["No-show", "Cancelou por imprevisto pessoal", "Cancelou por desistência", "Alterou horário para o mesmo dia", "Outros"]}
         />
 
+        <DynamicListManager
+          settingKey={APP_SETTING_KEYS.booking_channels}
+          title="Canal do agendamento"
+          description="Canais que o SDR pode escolher ao marcar a reunião."
+          defaults={DEFAULT_BOOKING_CHANNELS}
+        />
         <DynamicListManager
           settingKey={APP_SETTING_KEYS.order_bumps}
           title="Order bumps"
