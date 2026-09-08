@@ -71,7 +71,7 @@ const DEFAULT_CHANNEL_TYPES = [
   "CTA", "Formulário Bio", "Indicação", "Reativação", "Renovação", "Social Selling", "Tráfego Pago",
 ];
 
-import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { useAppSettingList, APP_SETTING_KEYS, DEFAULT_BOOKING_CHANNELS } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExceptions";
 
