@@ -175,6 +175,10 @@ function AgendarPageInner() {
   const [briefingText, setBriefingText] = useState("");
   const [bookingChannel, setBookingChannel] = useState<string | null>(null);
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
+  const { items: bookingChannels } = useAppSettingList(
+    APP_SETTING_KEYS.booking_channels,
+    DEFAULT_BOOKING_CHANNELS,
+  );
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
   
