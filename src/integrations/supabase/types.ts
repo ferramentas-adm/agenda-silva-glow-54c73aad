@@ -1087,6 +1087,81 @@ export type Database = {
         }
         Relationships: []
       }
+      sheets_motivos_exports: {
+        Row: {
+          created_at: string
+          id: string
+          month: string
+          spreadsheet_id: string
+          spreadsheet_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: string
+          spreadsheet_id: string
+          spreadsheet_url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: string
+          spreadsheet_id?: string
+          spreadsheet_url?: string
+        }
+        Relationships: []
+      }
+      sheets_motivos_runs: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          kind: string
+          lease_until: string | null
+          month: string | null
+          rows: number
+          run_date: string
+          sheet_title: string | null
+          spreadsheet_url: string | null
+          started_at: string
+          status: string
+          triggered_by: string | null
+          triggered_by_name: string | null
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          lease_until?: string | null
+          month?: string | null
+          rows?: number
+          run_date: string
+          sheet_title?: string | null
+          spreadsheet_url?: string | null
+          started_at?: string
+          status?: string
+          triggered_by?: string | null
+          triggered_by_name?: string | null
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          lease_until?: string | null
+          month?: string | null
+          rows?: number
+          run_date?: string
+          sheet_title?: string | null
+          spreadsheet_url?: string | null
+          started_at?: string
+          status?: string
+          triggered_by?: string | null
+          triggered_by_name?: string | null
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           agendamento_id: string | null
