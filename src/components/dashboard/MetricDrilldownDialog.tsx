@@ -728,7 +728,7 @@ export default function MetricDrilldownDialog({
                           {obsDistinct && (
                             <div className="col-span-2 mt-2 rounded-md border border-border/60 bg-muted/40 p-2">
                               <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 mb-1">
-                                Observações
+                                Justificativa
                               </p>
                               <p className="text-xs text-foreground whitespace-pre-wrap break-words">
                                 {obs}
