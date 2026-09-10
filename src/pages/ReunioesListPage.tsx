@@ -1283,7 +1283,7 @@ export default function ReunioesListPage() {
             </section>
 
             <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Observações (Closer)</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Justificativa</h4>
               <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
                 {detailVenda?.observacoes?.trim()
                   || <span className="text-muted-foreground italic">Ainda não preenchido.</span>}
