@@ -25,3 +25,7 @@ verify_jwt = false
 [functions.crm-daily-vendas]
 verify_jwt = false
 
+[functions.sheets-motivos-daily]
+verify_jwt = false
+
+

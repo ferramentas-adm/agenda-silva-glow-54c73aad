@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { logAudit } from "@/services/auditLog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import CrmDailySyncCard from "./CrmDailySyncCard";
+import SheetsMotivosCard from "./SheetsMotivosCard";
+
 
 
 const BULK_URL_KEY = "datacrazy_bulk_import_url";
@@ -538,6 +540,9 @@ export default function CrmBulkVendasPanel() {
       )}
 
       <CrmDailySyncCard />
+
+      <SheetsMotivosCard />
+
     </div>
   );
 }
