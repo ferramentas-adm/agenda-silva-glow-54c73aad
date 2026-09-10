@@ -995,7 +995,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           sub={
             erroConversao
               ? "Não foi possível calcular agora. Tente atualizar a página."
-              : `${totalVendasConv} de ${totalReunioesConv} calls (exclui 2ªs reuniões e calls interrompidas · vendas atribuídas à data da 1ª call)`
+              : `${totalVendasConv} de ${totalReunioesConv} reuniões realizadas no período (a venda conta no dia da reunião · exclui 2ªs reuniões e calls interrompidas)`
           }
           color="primary"
           loading={loadingConversao}
@@ -1555,6 +1555,7 @@ function VendasHojeCard({
     return v.follow_up || v.segunda_reuniao || v.meeting_reason === "segunda_reuniao" || !inPeriod(v.scheduled_date);
   };
   const total = filtered.length;
+  const foraDoPeriodo = filtered.filter((v) => !inPeriod(v.scheduled_date));
   const followItems = filtered.filter(isFollow);
   const callItems = filtered.filter((v) => !isFollow(v));
   const receita = filtered.reduce((acc, v) => acc + (v.valor || 0), 0);
@@ -1578,7 +1579,7 @@ function VendasHojeCard({
           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           Vendas registradas — {dayLabel}
           <span className="text-xs font-normal text-muted-foreground">
-            (independente do dia da reunião)
+            (pelo dia em que a venda foi lançada, mesmo que a reunião tenha sido antes)
           </span>
         </CardTitle>
       </CardHeader>
@@ -1588,6 +1589,7 @@ function VendasHojeCard({
             Nenhuma venda registrada no período.
           </p>
         ) : (
+          <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <button
               type="button"
@@ -1605,7 +1607,7 @@ function VendasHojeCard({
             >
               <div className="text-xs font-medium">De 1ª call</div>
               <div className="text-2xl font-bold">{callItems.length}</div>
-              <div className="text-xs text-muted-foreground">Marcado pelo closer no resultado</div>
+              <div className="text-xs text-muted-foreground">Marcado pelo closer no resultado · pelo dia do lançamento</div>
             </button>
             <button
               type="button"
@@ -1614,7 +1616,7 @@ function VendasHojeCard({
             >
               <div className="text-xs font-medium">De follow-up / 2ª reunião</div>
               <div className="text-2xl font-bold">{followItems.length}</div>
-              <div className="text-xs text-muted-foreground">Marcado pelo closer no resultado</div>
+              <div className="text-xs text-muted-foreground">Marcado pelo closer no resultado · pelo dia do lançamento</div>
             </button>
 
             <div className="rounded-lg border p-3">
@@ -1633,6 +1635,23 @@ function VendasHojeCard({
               )}
             </div>
           </div>
+          {foraDoPeriodo.length > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                onOpenDrill(
+                  `Vendas com reunião em outro dia — ${dayLabel}`,
+                  foraDoPeriodo.map((v) => v.agendamento_id),
+                )
+              }
+              className="mt-3 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground text-left"
+            >
+              {foraDoPeriodo.length === 1
+                ? "1 venda desta lista tem reunião em outro dia, por isso não entra na Taxa de Conversão do período."
+                : `${foraDoPeriodo.length} vendas desta lista têm reunião em outro dia, por isso não entram na Taxa de Conversão do período.`}
+            </button>
+          )}
+          </>
         )}
       </CardContent>
     </Card>
