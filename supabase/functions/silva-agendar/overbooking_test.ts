@@ -15,7 +15,7 @@ Deno.test("mantém três vagas extras após a lotação normal", () => {
 
 Deno.test("marca a posição correta do overbooking", () => {
   const capacity = 4;
-  const positions = [0, 0, 0, 0, 1, 2, 3].map((count) =>
+  const positions = [0, 1, 2, 3, 4, 5, 6].map((count) =>
     sdrIaOverbookingPosition(count, capacity)
   );
   const expected = [0, 0, 0, 0, 1, 2, 3];
