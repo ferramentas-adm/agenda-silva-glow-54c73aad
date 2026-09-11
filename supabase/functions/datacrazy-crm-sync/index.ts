@@ -153,7 +153,8 @@ serve(async (req) => {
     } catch (e) { console.warn("Move business failed:", e); }
 
     // Step 4-5: Create activities
-    const dateTimeISO = `${record.scheduled_date}T${record.scheduled_time}:00Z`;
+    // Os campos de agenda guardam o horário civil de São Paulo.
+    const dateTimeISO = `${record.scheduled_date}T${record.scheduled_time}:00-03:00`;
     const meetUrl = record.meet_link || "";
     const briefingText = record.briefing || "";
     const descParts = [`Closer: ${closerName}`, `SDR: ${sdrName}`, `Link Meet: ${meetUrl}`];

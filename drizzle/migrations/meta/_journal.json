@@ -8,6 +8,20 @@
       "when": 1789119800300,
       "tag": "0000_sdr_ia_agendamento",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789164573101,
+      "tag": "0001_fix_agendamento_timezone_and_late_meet_webhook",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789164668724,
+      "tag": "0002_fix_reassign_agendamento_timezone",
+      "breakpoints": true
     }
   ]
 }
