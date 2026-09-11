@@ -79,7 +79,6 @@ async function createAutoRecordingSpace(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(attempt.body),
-        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {
