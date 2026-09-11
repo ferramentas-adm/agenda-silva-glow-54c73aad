@@ -48,3 +48,9 @@ verify_jwt = false
 [functions.sdr-ia-transcrever]
 verify_jwt = false
 
+[functions.silva-cancelar]
+verify_jwt = false
+
+[functions.silva-reagendar]
+verify_jwt = false
+

@@ -16,3 +16,6 @@
 - [ ] Criar e implantar `/silva-cancelar` com idempotência, bloqueio de reuniões passadas e auditoria.
 - [ ] Criar e implantar `/silva-reagendar` reutilizando disponibilidade, overbooking, Meet e confirmações.
 - [ ] Cancelar o agendamento informado do Fábio pelo novo endpoint e validar o resultado.
+- [ ] Criar e implantar `/silva-cancelar` com idempotência, bloqueio de reuniões passadas e auditoria.
+- [ ] Criar e implantar `/silva-reagendar` reutilizando disponibilidade, overbooking, Meet e confirmações.
+- [ ] Cancelar o agendamento informado do Fábio pelo novo endpoint e validar o resultado.
