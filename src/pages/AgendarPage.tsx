@@ -79,6 +79,7 @@ const DEFAULT_CHANNEL_TYPES = [
 const LEGACY_BOOKING_CHANNEL_VALUES: Record<string, string> = {
   "WhatsApp (CRM)": "whatsapp_crm",
   "Ligação API4COM": "ligacao_api4com",
+  "SDR IA": "sdr-ia",
 };
 const bookingChannelValue = (label: string) => LEGACY_BOOKING_CHANNEL_VALUES[label] ?? label;
 
