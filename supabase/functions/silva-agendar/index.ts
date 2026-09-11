@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
     if (!avail.slots.includes(timeStr)) return json({ erro: "horario_fora_da_grade" }, 409);
     const info = avail.hours.get(timeStr);
     if (!info || info.full || info.freeClosers.length === 0) {
-      return json({ erro: "slot_indisponivel", detalhe: "horário lotado; consulte /silva-disponibilidade" }, 409);
+      return json({ erro: "slot_indisponivel" }, 409);
     }
     let assignedCloserName: string | null = null;
     let fallbackSuggestedName: string | null = null;
