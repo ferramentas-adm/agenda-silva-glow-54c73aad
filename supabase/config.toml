@@ -29,3 +29,12 @@ verify_jwt = false
 verify_jwt = false
 
 
+
+[functions.silva-disponibilidade]
+verify_jwt = false
+
+[functions.silva-agendar]
+verify_jwt = false
+
+[functions.sdr-ia-setup]
+verify_jwt = false

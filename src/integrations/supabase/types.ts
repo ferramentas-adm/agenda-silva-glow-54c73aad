@@ -30,6 +30,7 @@ export type Database = {
           closer_returned_at: string | null
           created_at: string
           created_by: string | null
+          crm_lead_id: string | null
           deleted_at: string | null
           deleted_by: string | null
           deletion_reason: string | null
@@ -38,6 +39,7 @@ export type Database = {
           fbp: string | null
           google_event_id: string | null
           id: string
+          idempotency_key: string | null
           is_5k: boolean
           is_venda_avulsa: boolean
           lead_email: string | null
@@ -78,6 +80,7 @@ export type Database = {
           closer_returned_at?: string | null
           created_at?: string
           created_by?: string | null
+          crm_lead_id?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
@@ -86,6 +89,7 @@ export type Database = {
           fbp?: string | null
           google_event_id?: string | null
           id?: string
+          idempotency_key?: string | null
           is_5k?: boolean
           is_venda_avulsa?: boolean
           lead_email?: string | null
@@ -126,6 +130,7 @@ export type Database = {
           closer_returned_at?: string | null
           created_at?: string
           created_by?: string | null
+          crm_lead_id?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
@@ -134,6 +139,7 @@ export type Database = {
           fbp?: string | null
           google_event_id?: string | null
           id?: string
+          idempotency_key?: string | null
           is_5k?: boolean
           is_venda_avulsa?: boolean
           lead_email?: string | null
@@ -1084,6 +1090,102 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      sdr_config: {
+        Row: {
+          chave: string
+          valor: string
+        }
+        Insert: {
+          chave: string
+          valor?: string
+        }
+        Update: {
+          chave?: string
+          valor?: string
+        }
+        Relationships: []
+      }
+      sdr_conversas: {
+        Row: {
+          agendamento_id: string | null
+          classificacao: string | null
+          conversation_id: string
+          created_at: string
+          dados: Json
+          encerrada_motivo: string | null
+          etapa: string | null
+          followups_enviados: number
+          handoff_motivo: string | null
+          last_lead_message_at: string | null
+          lead_id: string | null
+          origem: string | null
+          telefone: string | null
+          tokens_in: number
+          tokens_out: number
+          turnos_agente: number
+          updated_at: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          classificacao?: string | null
+          conversation_id: string
+          created_at?: string
+          dados?: Json
+          encerrada_motivo?: string | null
+          etapa?: string | null
+          followups_enviados?: number
+          handoff_motivo?: string | null
+          last_lead_message_at?: string | null
+          lead_id?: string | null
+          origem?: string | null
+          telefone?: string | null
+          tokens_in?: number
+          tokens_out?: number
+          turnos_agente?: number
+          updated_at?: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          classificacao?: string | null
+          conversation_id?: string
+          created_at?: string
+          dados?: Json
+          encerrada_motivo?: string | null
+          etapa?: string | null
+          followups_enviados?: number
+          handoff_motivo?: string | null
+          last_lead_message_at?: string | null
+          lead_id?: string | null
+          origem?: string | null
+          telefone?: string | null
+          tokens_in?: number
+          tokens_out?: number
+          turnos_agente?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sdr_exclusoes: {
+        Row: {
+          created_at: string
+          motivo: string | null
+          origem: string | null
+          telefone: string
+        }
+        Insert: {
+          created_at?: string
+          motivo?: string | null
+          origem?: string | null
+          telefone: string
+        }
+        Update: {
+          created_at?: string
+          motivo?: string | null
+          origem?: string | null
+          telefone?: string
         }
         Relationships: []
       }
