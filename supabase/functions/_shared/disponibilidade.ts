@@ -3,14 +3,15 @@
 // src/lib/closerBlockExceptions.ts e a revalidação em AgendarPage.handleSubmit.
 //
 // - Grade: horas cheias entre app_settings.business_hours_start/end (default 09:00–23:00).
-// - count = closers distintos com agendamento ativo no horário + agendamentos sem closer.
+// - count = total de agendamentos ativos no horário.
 // - capacity = closers ativos − closers com bloqueio pessoal cobrindo a hora
 //   (closer_blocks pontuais + recorrentes, menos closer_block_exceptions da data).
-// - lotado quando count >= capacity (ou capacity = 0).
+// - No SDR IA, lotado quando count >= capacity + OVERBOOKING_EXTRA.
 
 // deno-lint-ignore-file no-explicit-any
 export const TZ = "America/Sao_Paulo";
 export const MIN_LEAD_MINUTES = 45;
+export const OVERBOOKING_EXTRA = 3;
 
 export interface Closer { id: string; name: string }
 export interface HourInfo {
@@ -19,6 +20,10 @@ export interface HourInfo {
   full: boolean;
   /** Closers ativos livres nessa hora (sem agendamento e sem bloqueio). */
   freeClosers: Closer[];
+  /** Closers ativos elegíveis nessa hora; podem já ter reunião no overbooking. */
+  eligibleClosers: Closer[];
+  /** Quantidade de reuniões ativas por closer nesta hora. */
+  perCloserHour: Map<string, number>;
 }
 export interface DayAvailability {
   dateStr: string;
@@ -160,14 +165,16 @@ export async function loadDayAvailability(
   const activeIds = new Set(closers.map((c) => c.id));
   const blocks = applyBlockExceptions((blocksRes.data ?? []) as Block[], (excRes.data ?? []) as Exc[]);
 
-  const byTime = new Map<string, { closerIds: Set<string>; unassigned: number }>();
+  const byTime = new Map<string, { closerIds: Set<string>; perCloser: Map<string, number>; unassigned: number; total: number }>();
   const perCloserDay = new Map<string, number>();
   for (const r of (agRes.data ?? []) as any[]) {
     const t = String(r.scheduled_time ?? "").slice(0, 5);
     if (!t) continue;
-    const acc = byTime.get(t) ?? { closerIds: new Set<string>(), unassigned: 0 };
+    const acc = byTime.get(t) ?? { closerIds: new Set<string>(), perCloser: new Map<string, number>(), unassigned: 0, total: 0 };
+    acc.total += 1;
     if (r.closer_id) {
       acc.closerIds.add(r.closer_id);
+      acc.perCloser.set(r.closer_id, (acc.perCloser.get(r.closer_id) ?? 0) + 1);
       perCloserDay.set(r.closer_id, (perCloserDay.get(r.closer_id) ?? 0) + 1);
     } else acc.unassigned += 1;
     byTime.set(t, acc);
@@ -190,24 +197,27 @@ export async function loadDayAvailability(
   const allSlots = new Set<string>([...byTime.keys(), ...slots]);
   const hours = new Map<string, HourInfo>();
   for (const slot of allSlots) {
-    const acc = byTime.get(slot) ?? { closerIds: new Set<string>(), unassigned: 0 };
+    const acc = byTime.get(slot) ?? { closerIds: new Set<string>(), perCloser: new Map<string, number>(), unassigned: 0, total: 0 };
     const blocked = blockedAt(slot);
-    const count = acc.closerIds.size + acc.unassigned;
+    const count = acc.total;
     const capacity = Math.max(0, closers.length - blocked.size);
-    const full = capacity === 0 ? count > 0 : count >= capacity;
+    const eligibleClosers = closers.filter((c) => !blocked.has(c.id));
+    const full = eligibleClosers.length === 0 || count >= capacity + OVERBOOKING_EXTRA;
     const freeClosers = closers.filter((c) => !blocked.has(c.id) && !acc.closerIds.has(c.id));
-    hours.set(slot, { count, capacity, full, freeClosers });
+    hours.set(slot, { count, capacity, full, freeClosers, eligibleClosers, perCloserHour: acc.perCloser });
   }
   return { dateStr, slots, hours, perCloserDay, closers };
 }
 
-/** Closer sugerido para uma hora: livre e com menos agendamentos no dia (desempate por nome). */
+/** Closer sugerido: elegível e com menos reuniões na hora; desempata pela carga diária e nome. */
 export function suggestCloser(day: DayAvailability, slot: string): Closer | null {
   const info = day.hours.get(slot);
-  if (!info || info.freeClosers.length === 0) return null;
-  return [...info.freeClosers].sort((a, b) => {
-    const d = (day.perCloserDay.get(a.id) ?? 0) - (day.perCloserDay.get(b.id) ?? 0);
-    return d !== 0 ? d : a.name.localeCompare(b.name, "pt-BR");
+  if (!info || info.eligibleClosers.length === 0) return null;
+  return [...info.eligibleClosers].sort((a, b) => {
+    const hourDiff = (info.perCloserHour.get(a.id) ?? 0) - (info.perCloserHour.get(b.id) ?? 0);
+    if (hourDiff !== 0) return hourDiff;
+    const dayDiff = (day.perCloserDay.get(a.id) ?? 0) - (day.perCloserDay.get(b.id) ?? 0);
+    return dayDiff !== 0 ? dayDiff : a.name.localeCompare(b.name, "pt-BR");
   })[0];
 }
 

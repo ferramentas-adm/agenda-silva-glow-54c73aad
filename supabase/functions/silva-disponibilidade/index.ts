@@ -1,6 +1,6 @@
 // GET /silva-disponibilidade — slots livres para o SDR IA (João Amorim).
-// Regra de "livre" no piloto = lotação global da hora (count < capacity),
-// idêntica à tela Agendar. O closer no slot_id é apenas sugestão.
+// Regra exclusiva do SDR IA: lotação global da hora com +3 vagas extras.
+// O closer no slot_id é escolhido pela menor carga naquela hora.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   MIN_LEAD_MINUTES, addDays, fetchBusinessSlots, labelFor, loadDayAvailability,
