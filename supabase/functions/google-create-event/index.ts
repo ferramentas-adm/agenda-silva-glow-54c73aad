@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-api-key, x-client-info, apikey, content-type',
 };
 
 async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
@@ -79,7 +79,6 @@ async function createAutoRecordingSpace(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(attempt.body),
-        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {
@@ -114,26 +113,36 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const internalKey = req.headers.get("x-api-key");
+    const expectedInternalKey = Deno.env.get("SDR_IA_API_KEY");
+    const isInternalSdrRequest = Boolean(
+      expectedInternalKey && internalKey && internalKey === expectedInternalKey,
+    );
+
+    if (!isInternalSdrRequest && !authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    let callerClaims: Record<string, unknown> | null = null;
+    if (!isInternalSdrRequest) {
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader ?? "" } } }
+      );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-    if (claimsError || !claims?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const token = (authHeader ?? "").replace("Bearer ", "");
+      const { data: claims, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+      if (claimsError || !claims?.claims) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      callerClaims = claims.claims as Record<string, unknown>;
     }
 
     const { closer_id, lead_name, lead_phone, sdr_name, scheduled_date, scheduled_time, duration_minutes } = await req.json();
@@ -289,12 +298,21 @@ serve(async (req) => {
     // ou caiu no fallback, para medir a taxa de sucesso.
     if (autoRecordingMode !== 'off') {
       try {
-        const userId = (claims.claims as Record<string, unknown>).sub as string | undefined;
-        const email = (claims.claims as Record<string, unknown>).email as string | undefined;
+        let userId = callerClaims?.sub as string | undefined;
+        let email = callerClaims?.email as string | undefined;
+        if (isInternalSdrRequest) {
+          const { data: sdrProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('user_id, email')
+            .eq('email', 'joao.amorim.ia@ogruposilva.com.br')
+            .maybeSingle();
+          userId = sdrProfile?.user_id ?? userId;
+          email = sdrProfile?.email ?? email;
+        }
         await supabaseAdmin.from('audit_logs').insert({
           user_id: userId ?? '00000000-0000-0000-0000-000000000000',
-          user_name: email ?? 'Sistema',
-          user_email: email ?? null,
+          user_name: email ?? (isInternalSdrRequest ? 'João Amorim' : 'Sistema'),
+          user_email: email ?? (isInternalSdrRequest ? 'joao.amorim.ia@ogruposilva.com.br' : null),
           action: 'meet_auto_recording',
           entity_type: 'agendamento',
           entity_id: calData.id ?? null,

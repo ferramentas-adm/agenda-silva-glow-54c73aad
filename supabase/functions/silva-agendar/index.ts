@@ -1,8 +1,6 @@
 // POST /silva-agendar — cria agendamento pelo SDR IA (João Amorim).
-// PILOTO: SEMPRE cria sem closer (closer_id = null) na fila "Aguardando atribuição".
-// O slot_id só serve para revalidar a disponibilidade e sugerir o closer na observação.
-// O Meet nasce na atribuição pelo gestor (google-create-event), como já ocorre hoje.
-// TODO (fase 2): closer direto + criação do Meet no próprio POST.
+// Com slot_id contendo closer, atribui imediatamente e reutiliza google-create-event.
+// Sem closer no slot, preserva o fallback na fila "Aguardando atribuição".
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { MIN_LEAD_MINUTES, loadDayAvailability, spParts, toSpIso } from "../_shared/disponibilidade.ts";
@@ -29,7 +27,11 @@ const Body = z.object({
   origem: z.string().optional().default(BOOKING_CHANNEL),
   canal: z.string().optional().default("Tráfego Pago"),
   funil: z.enum(["formulario", "vsl-direta"]).optional(),
-  decisor_presente: z.boolean().optional(),
+  decisor_presente: z.union([z.boolean(), z.string().min(1)]).optional().transform((value) => {
+    if (typeof value !== "string") return value;
+    const normalized = value.trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return normalized !== "nao";
+  }),
   briefing: z.string().max(5000).optional(),
   crm_lead_id: z.string().max(100).optional(),
   crm_conversation_id: z.string().max(100).optional(),
@@ -43,17 +45,22 @@ const normalizePhone = (p: string) => {
   return d;
 };
 
-function toResponse(a: Record<string, unknown>) {
+async function toResponse(supabase: ReturnType<typeof createClient>, a: Record<string, unknown>) {
   const inicio = toSpIso(new Date(`${a.scheduled_date}T${String(a.scheduled_time).slice(0, 5)}:00-03:00`));
+  let closerName: string | null = null;
+  if (typeof a.closer_id === "string" && a.closer_id) {
+    const { data: closer } = await supabase.from("closers").select("name").eq("id", a.closer_id).maybeSingle();
+    closerName = closer?.name ?? null;
+  }
   return {
     agendamento_id: a.id,
     data: a.scheduled_date,
     hora: String(a.scheduled_time).slice(0, 5),
     inicio,
     status: a.status,
-    closer: null,
-    link_reuniao: null,
-    fila_atribuicao: true,
+    closer: closerName,
+    link_reuniao: a.meet_link ?? null,
+    fila_atribuicao: !a.closer_id,
     lead: { nome: a.lead_name, whatsapp: a.lead_phone },
     canal_agendamento: a.booking_channel,
     crm_lead_id: a.crm_lead_id ?? null,
@@ -80,19 +87,32 @@ Deno.serve(async (req) => {
     if (b.idempotency_key) {
       const { data: prev } = await supabase.from("agendamentos").select("*")
         .eq("idempotency_key", b.idempotency_key).is("deleted_at", null).maybeSingle();
-      if (prev) return json({ ...toResponse(prev), idempotente: true }, 200);
+      if (prev) return json({ ...(await toResponse(supabase, prev)), idempotente: true }, 200);
     }
 
     // 1) Resolver início / closer sugerido
     let isoStart = b.inicio ?? "";
-    let suggestedCloserId: string | null = null;
+    let requestedCloserId: string | null = null;
     if (b.slot_id) {
-      const [iso, closerId] = b.slot_id.split("|");
+      const parts = b.slot_id.split("|");
+      if (parts.length > 2 || !parts[0]) {
+        return json({ erro: "payload_invalido", campos: { slot_id: ["Formato inválido"] } }, 400);
+      }
+      const [iso, closerId] = parts;
       isoStart = iso;
-      suggestedCloserId = closerId || null;
+      if (closerId && !z.string().uuid().safeParse(closerId).success) {
+        return json({ erro: "payload_invalido", campos: { slot_id: ["closer_id inválido"] } }, 400);
+      }
+      requestedCloserId = closerId || null;
     }
     const start = new Date(isoStart);
     if (Number.isNaN(start.getTime())) return json({ erro: "inicio_invalido" }, 400);
+    if (b.slot_id && b.inicio) {
+      const explicitStart = new Date(b.inicio);
+      if (Number.isNaN(explicitStart.getTime()) || explicitStart.getTime() !== start.getTime()) {
+        return json({ erro: "payload_invalido", campos: { inicio: ["Não corresponde ao slot_id"] } }, 400);
+      }
+    }
     const now = new Date();
     if (start.getTime() < now.getTime() + MIN_LEAD_MINUTES * 60_000) {
       return json({ erro: "horario_muito_proximo", minimo_minutos: MIN_LEAD_MINUTES }, 409);
@@ -123,16 +143,18 @@ Deno.serve(async (req) => {
     if (!avail.slots.includes(timeStr)) return json({ erro: "horario_fora_da_grade" }, 409);
     const info = avail.hours.get(timeStr);
     if (!info || info.full || info.freeClosers.length === 0) {
-      return json({ erro: "slot_indisponivel", detalhe: "horário lotado; consulte /silva-disponibilidade" }, 409);
+      return json({ erro: "slot_indisponivel" }, 409);
     }
-    let suggestedName: string | null = null;
-    if (suggestedCloserId) {
-      suggestedName = info.freeClosers.find((c) => c.id === suggestedCloserId)?.name ?? null;
-    }
-    if (!suggestedName) {
+    let assignedCloserName: string | null = null;
+    let fallbackSuggestedName: string | null = null;
+    if (requestedCloserId) {
+      assignedCloserName = info.freeClosers.find((c) => c.id === requestedCloserId)?.name ?? null;
+      if (!assignedCloserName) return json({ erro: "slot_indisponivel" }, 409);
+    } else {
       const alt = [...info.freeClosers].sort((a, c) =>
-        (avail.perCloserDay.get(a.id) ?? 0) - (avail.perCloserDay.get(c.id) ?? 0))[0];
-      suggestedName = alt?.name ?? null;
+        ((avail.perCloserDay.get(a.id) ?? 0) - (avail.perCloserDay.get(c.id) ?? 0))
+          || a.name.localeCompare(c.name, "pt-BR"))[0];
+      fallbackSuggestedName = alt?.name ?? null;
     }
 
     // 5) Meta Lead ID via DataCrazy (best effort)
@@ -140,21 +162,57 @@ Deno.serve(async (req) => {
 
     // 6) Observação
     const obsParts: string[] = [];
-    if (suggestedName) obsParts.push(`Closer sugerido: ${suggestedName}`);
+    if (fallbackSuggestedName) obsParts.push(`Closer sugerido: ${fallbackSuggestedName}`);
     obsParts.push(`Agendado pelo SDR IA (${b.sdr})`);
     if (b.funil) obsParts.push(`Funil: ${b.funil}`);
     if (typeof b.decisor_presente === "boolean") obsParts.push(`Decisor presente: ${b.decisor_presente ? "sim" : "não"}`);
     if (b.crm_conversation_id) obsParts.push(`Conversa CRM: ${b.crm_conversation_id}`);
 
-    // 7) INSERT (mesmos defaults da tela; triggers de CRM/CAPI/fila disparam sozinhos)
+    // 7) Com closer, cria Calendar/Meet pelo mesmo fluxo do painel (best effort).
+    let meetLink: string | null = null;
+    let googleEventId: string | null = null;
+    if (requestedCloserId) {
+      try {
+        const functionUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-create-event`;
+        const meetRes = await fetch(functionUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            "apikey": Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+            "x-api-key": expected,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            closer_id: requestedCloserId,
+            lead_name: b.nome.trim(),
+            lead_phone: phone,
+            sdr_name: sdrProfile.full_name || SDR_IA_NAME,
+            scheduled_date: dateStr,
+            scheduled_time: timeStr,
+            duration_minutes: 60,
+          }),
+        });
+        const meetBody = await meetRes.json().catch(() => null);
+        if (meetRes.ok && meetBody?.success) {
+          meetLink = meetBody.meet_link ?? null;
+          googleEventId = meetBody.event_id ?? null;
+        } else {
+          console.error("google-create-event failed", meetRes.status, meetBody);
+        }
+      } catch (meetError) {
+        console.error("google-create-event unexpected error", meetError);
+      }
+    }
+
+    // 8) INSERT (mesmos campos da tela; triggers de CRM/CAPI/fila disparam sozinhos)
     const insert = {
       lead_name: b.nome.trim(),
       lead_phone: phone,
       lead_email: b.email ?? null,
-      closer_id: null,
+      closer_id: requestedCloserId,
       scheduled_date: dateStr,
       scheduled_time: timeStr,
-      status: "pendente",
+      status: requestedCloserId ? "agendada" : "pendente",
       observation: obsParts.join(" | "),
       briefing: b.briefing?.trim() || null,
       channel_type: b.canal,
@@ -167,19 +225,19 @@ Deno.serve(async (req) => {
       meta_lead_id: metaLeadId,
       crm_lead_id: b.crm_lead_id ?? null,
       idempotency_key: b.idempotency_key ?? null,
-      meet_link: null,
-      google_event_id: null,
+      meet_link: meetLink,
+      google_event_id: googleEventId,
     };
     const { data: created, error } = await supabase.from("agendamentos").insert(insert).select("*").single();
     if (error) {
       if (error.code === "23505" && b.idempotency_key) {
         const { data: prev } = await supabase.from("agendamentos").select("*").eq("idempotency_key", b.idempotency_key).single();
-        if (prev) return json({ ...toResponse(prev), idempotente: true }, 200);
+        if (prev) return json({ ...(await toResponse(supabase, prev)), idempotente: true }, 200);
       }
       throw error;
     }
 
-    // 8) Auditoria (trigger pula quando auth.uid() é null)
+    // 9) Auditoria (trigger pula quando auth.uid() é null)
     await supabase.from("audit_logs").insert({
       user_id: sdrProfile.user_id,
       user_name: sdrProfile.full_name,
@@ -188,14 +246,14 @@ Deno.serve(async (req) => {
       entity_type: "agendamento",
       entity_id: created.id,
       details: {
-        lead_name: created.lead_name, closer_name: "", scheduled_date: dateStr, scheduled_time: timeStr,
+         lead_name: created.lead_name, closer_name: assignedCloserName ?? "", scheduled_date: dateStr, scheduled_time: timeStr,
         channel_type: b.canal, booking_channel: BOOKING_CHANNEL, origem: b.origem, via: "silva-agendar",
-        closer_sugerido: suggestedName, crm_lead_id: b.crm_lead_id ?? null,
+         closer_sugerido: fallbackSuggestedName, crm_lead_id: b.crm_lead_id ?? null,
         crm_conversation_id: b.crm_conversation_id ?? null,
       },
     });
 
-    // 9) Tag "agendamento" no CRM (best effort) + vínculo da conversa
+    // 10) Tag "agendamento" no CRM (best effort) + vínculo da conversa
     let tag: string = "skipped";
     if (b.crm_lead_id) tag = await ensureLeadTag(b.crm_lead_id, "agendamento");
     if (b.crm_conversation_id) {
@@ -209,7 +267,11 @@ Deno.serve(async (req) => {
       }, { onConflict: "conversation_id" });
     }
 
-    return json({ ...toResponse(created), closer_sugerido: suggestedName, crm_tag: tag }, 201);
+    return json({
+      ...(await toResponse(supabase, created)),
+      closer_sugerido: fallbackSuggestedName,
+      crm_tag: tag,
+    }, 201);
   } catch (e) {
     console.error("silva-agendar error", e);
     return json({ erro: "internal_error", detalhe: e instanceof Error ? e.message : String(e) }, 500);
