@@ -10,3 +10,5 @@
 - [x] Validar lotação normal +3 e bloqueio da quarta vaga extra.
 - [x] Confirmar o histórico de envio da confirmação da Isabella Barbosa.
 - [x] Reparar os Meets e reenviar a confirmação de André Luiz Borba e Ana Carolina Marques.
+- [ ] Corrigir o fuso dos webhooks de agendamento e o reenvio quando o Meet surgir depois.
+- [ ] Conferir data, hora, closer e Meet dos oito leads solicitados.
