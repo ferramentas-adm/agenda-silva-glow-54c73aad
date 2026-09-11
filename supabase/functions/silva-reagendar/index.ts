@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     if (createError) throw createError;
 
     const { data: closedOld, error: closeError } = await supabase.from("agendamentos").update({
-      status: "reagendada",
+      status: "cancelada",
       cancellation_reason: b.motivo,
     }).eq("id", old.id).eq("status", old.status).select("id").maybeSingle();
     if (closeError || !closedOld) {
