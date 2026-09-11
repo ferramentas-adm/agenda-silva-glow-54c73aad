@@ -115,9 +115,13 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const internalKey = req.headers.get("x-api-key");
     const expectedInternalKey = Deno.env.get("SDR_IA_API_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const isServiceRoleRequest = Boolean(
+      serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`,
+    );
     const isInternalSdrRequest = Boolean(
       expectedInternalKey && internalKey && internalKey === expectedInternalKey,
-    );
+    ) || isServiceRoleRequest;
 
     if (!isInternalSdrRequest && !authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {

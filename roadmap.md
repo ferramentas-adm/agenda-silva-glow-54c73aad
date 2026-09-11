@@ -9,3 +9,4 @@
 - [x] Aplicar overbooking de +3 por horário somente no SDR IA.
 - [x] Validar lotação normal +3 e bloqueio da quarta vaga extra.
 - [x] Confirmar o histórico de envio da confirmação da Isabella Barbosa.
+- [ ] Reparar os Meets e reenviar a confirmação de André Luiz Borba e Ana Carolina Marques.
