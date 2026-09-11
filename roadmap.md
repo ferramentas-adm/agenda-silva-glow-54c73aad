@@ -7,5 +7,5 @@
 - [x] Aceitar boolean ou string em `decisor_presente`.
 - [ ] Validar uma criação real com closer usando a chave do SDR IA.
 - [x] Aplicar overbooking de +3 por horário somente no SDR IA.
-- [ ] Validar lotação normal +3 e bloqueio da quarta vaga extra.
-- [ ] Confirmar o histórico de envio da confirmação da Isabella Barbosa.
+- [x] Validar lotação normal +3 e bloqueio da quarta vaga extra.
+- [x] Confirmar o histórico de envio da confirmação da Isabella Barbosa.
