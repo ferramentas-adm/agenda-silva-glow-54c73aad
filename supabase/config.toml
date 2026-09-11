@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.sdr-ia-setup]
 verify_jwt = false
+
+[functions.sdr-ia-db]
+verify_jwt = false
