@@ -36,8 +36,12 @@ verify_jwt = false
 [functions.silva-agendar]
 verify_jwt = false
 
+[functions.google-create-event]
+verify_jwt = false
+
 [functions.sdr-ia-setup]
 verify_jwt = false
 
 [functions.sdr-ia-db]
 verify_jwt = false
+
