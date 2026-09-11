@@ -12,3 +12,4 @@
 - [x] Reparar os Meets e reenviar a confirmação de André Luiz Borba e Ana Carolina Marques.
 - [x] Corrigir o fuso dos webhooks de agendamento e o reenvio quando o Meet surgir depois.
 - [x] Conferir data, hora, closer e Meet dos oito leads solicitados.
+- [ ] Criar, implantar e validar `/sdr-ia-transcrever` com áudio OGG real.

@@ -45,3 +45,6 @@ verify_jwt = false
 [functions.sdr-ia-db]
 verify_jwt = false
 
+[functions.sdr-ia-transcrever]
+verify_jwt = false
+
