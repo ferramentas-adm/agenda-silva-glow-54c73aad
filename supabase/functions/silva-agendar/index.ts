@@ -3,7 +3,10 @@
 // Sem closer no slot, preserva o fallback na fila "Aguardando atribuição".
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { MIN_LEAD_MINUTES, loadDayAvailability, spParts, suggestCloser, toSpIso } from "../_shared/disponibilidade.ts";
+import {
+  MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
+  spParts, suggestCloser, toSpIso,
+} from "../_shared/disponibilidade.ts";
 import { ensureLeadTag, fetchMetaLeadId } from "../_shared/datacrazyLead.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
@@ -165,7 +168,7 @@ Deno.serve(async (req) => {
     if (b.funil) obsParts.push(`Funil: ${b.funil}`);
     if (typeof b.decisor_presente === "boolean") obsParts.push(`Decisor presente: ${b.decisor_presente ? "sim" : "não"}`);
     if (b.crm_conversation_id) obsParts.push(`Conversa CRM: ${b.crm_conversation_id}`);
-    const overbookingNumber = Math.max(0, info.count - info.capacity + 1);
+    const overbookingNumber = sdrIaOverbookingPosition(info.count, info.capacity);
     if (overbookingNumber > 0) obsParts.push(`Overbooking: extra ${overbookingNumber}/3`);
 
     // 7) Com closer, cria Calendar/Meet pelo mesmo fluxo do painel (best effort).

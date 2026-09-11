@@ -13,6 +13,14 @@ export const TZ = "America/Sao_Paulo";
 export const MIN_LEAD_MINUTES = 45;
 export const OVERBOOKING_EXTRA = 3;
 
+export function isSdrIaHourFull(count: number, capacity: number, eligibleClosers: number): boolean {
+  return eligibleClosers === 0 || count >= capacity + OVERBOOKING_EXTRA;
+}
+
+export function sdrIaOverbookingPosition(countBeforeInsert: number, capacity: number): number {
+  return Math.max(0, countBeforeInsert - capacity + 1);
+}
+
 export interface Closer { id: string; name: string }
 export interface HourInfo {
   count: number;
@@ -202,7 +210,7 @@ export async function loadDayAvailability(
     const count = acc.total;
     const capacity = Math.max(0, closers.length - blocked.size);
     const eligibleClosers = closers.filter((c) => !blocked.has(c.id));
-    const full = eligibleClosers.length === 0 || count >= capacity + OVERBOOKING_EXTRA;
+    const full = isSdrIaHourFull(count, capacity, eligibleClosers.length);
     const freeClosers = closers.filter((c) => !blocked.has(c.id) && !acc.closerIds.has(c.id));
     hours.set(slot, { count, capacity, full, freeClosers, eligibleClosers, perCloserHour: acc.perCloser });
   }
