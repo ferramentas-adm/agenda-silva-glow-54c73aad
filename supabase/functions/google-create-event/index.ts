@@ -298,8 +298,17 @@ serve(async (req) => {
     // ou caiu no fallback, para medir a taxa de sucesso.
     if (autoRecordingMode !== 'off') {
       try {
-        const userId = callerClaims?.sub as string | undefined;
-        const email = callerClaims?.email as string | undefined;
+        let userId = callerClaims?.sub as string | undefined;
+        let email = callerClaims?.email as string | undefined;
+        if (isInternalSdrRequest) {
+          const { data: sdrProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('user_id, email')
+            .eq('email', 'joao.amorim.ia@ogruposilva.com.br')
+            .maybeSingle();
+          userId = sdrProfile?.user_id ?? userId;
+          email = sdrProfile?.email ?? email;
+        }
         await supabaseAdmin.from('audit_logs').insert({
           user_id: userId ?? '00000000-0000-0000-0000-000000000000',
           user_name: email ?? (isInternalSdrRequest ? 'João Amorim' : 'Sistema'),
