@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.sdr-ia-db]
 verify_jwt = false
+
+[functions.repair-urgent-meets]
+verify_jwt = false
