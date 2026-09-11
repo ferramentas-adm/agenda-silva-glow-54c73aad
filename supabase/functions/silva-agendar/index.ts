@@ -3,7 +3,10 @@
 // Sem closer no slot, preserva o fallback na fila "Aguardando atribuição".
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { MIN_LEAD_MINUTES, loadDayAvailability, spParts, toSpIso } from "../_shared/disponibilidade.ts";
+import {
+  MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
+  spParts, suggestCloser, toSpIso,
+} from "../_shared/disponibilidade.ts";
 import { ensureLeadTag, fetchMetaLeadId } from "../_shared/datacrazyLead.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
@@ -138,22 +141,20 @@ Deno.serve(async (req) => {
       return json({ erro: "telefone_ja_agendado", agendamento: dup[0] }, 409);
     }
 
-    // 4) Revalidar slot (mesma regra da tela: lotação global da hora)
+    // 4) Revalidar slot com a capacidade exclusiva do SDR IA (+3 por hora).
     const avail = await loadDayAvailability(supabase, dateStr);
     if (!avail.slots.includes(timeStr)) return json({ erro: "horario_fora_da_grade" }, 409);
     const info = avail.hours.get(timeStr);
-    if (!info || info.full || info.freeClosers.length === 0) {
+    if (!info || info.full || info.eligibleClosers.length === 0) {
       return json({ erro: "slot_indisponivel" }, 409);
     }
     let assignedCloserName: string | null = null;
     let fallbackSuggestedName: string | null = null;
     if (requestedCloserId) {
-      assignedCloserName = info.freeClosers.find((c) => c.id === requestedCloserId)?.name ?? null;
+      assignedCloserName = info.eligibleClosers.find((c) => c.id === requestedCloserId)?.name ?? null;
       if (!assignedCloserName) return json({ erro: "slot_indisponivel" }, 409);
     } else {
-      const alt = [...info.freeClosers].sort((a, c) =>
-        ((avail.perCloserDay.get(a.id) ?? 0) - (avail.perCloserDay.get(c.id) ?? 0))
-          || a.name.localeCompare(c.name, "pt-BR"))[0];
+      const alt = suggestCloser(avail, timeStr);
       fallbackSuggestedName = alt?.name ?? null;
     }
 
@@ -167,6 +168,8 @@ Deno.serve(async (req) => {
     if (b.funil) obsParts.push(`Funil: ${b.funil}`);
     if (typeof b.decisor_presente === "boolean") obsParts.push(`Decisor presente: ${b.decisor_presente ? "sim" : "não"}`);
     if (b.crm_conversation_id) obsParts.push(`Conversa CRM: ${b.crm_conversation_id}`);
+    const overbookingNumber = sdrIaOverbookingPosition(info.count, info.capacity);
+    if (overbookingNumber > 0) obsParts.push(`Overbooking: extra ${overbookingNumber}/3`);
 
     // 7) Com closer, cria Calendar/Meet pelo mesmo fluxo do painel (best effort).
     let meetLink: string | null = null;
@@ -250,6 +253,7 @@ Deno.serve(async (req) => {
         channel_type: b.canal, booking_channel: BOOKING_CHANNEL, origem: b.origem, via: "silva-agendar",
          closer_sugerido: fallbackSuggestedName, crm_lead_id: b.crm_lead_id ?? null,
         crm_conversation_id: b.crm_conversation_id ?? null,
+         overbooking_extra: overbookingNumber || null,
       },
     });
 
