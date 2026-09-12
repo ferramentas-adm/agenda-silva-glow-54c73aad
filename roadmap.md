@@ -16,3 +16,4 @@
 - [x] Criar e implantar `/silva-cancelar` com idempotência, bloqueio de reuniões passadas e auditoria.
 - [x] Criar e implantar `/silva-reagendar` reutilizando disponibilidade, overbooking, Meet e confirmações.
 - [x] Cancelar o agendamento informado do Fábio pelo novo endpoint e validar o resultado.
+- [x] Criar `sdr_downsell`, liberar seu uso no proxy e implantar o endpoint público de eventos com limite por IP.

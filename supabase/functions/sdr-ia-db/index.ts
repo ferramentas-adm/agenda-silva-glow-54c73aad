@@ -1,5 +1,5 @@
 // POST /sdr-ia-db — proxy autenticado do n8n para o PostgREST (service_role interno).
-// Escopo restrito às tabelas do SDR IA: sdr_conversas, sdr_exclusoes, sdr_config.
+// Escopo restrito às tabelas do SDR IA: sdr_conversas, sdr_exclusoes, sdr_config, sdr_downsell.
 // Auth: x-api-key = SDR_IA_API_KEY (verify_jwt = false).
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-api-key, content-type, apikey",
 };
 
-const ALLOWED_TABLES = ["sdr_conversas", "sdr_exclusoes", "sdr_config"];
+const ALLOWED_TABLES = ["sdr_conversas", "sdr_exclusoes", "sdr_config", "sdr_downsell"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       return Response.json({ erro: "path_obrigatorio" }, { status: 400, headers: corsHeaders });
     }
     if (!ALLOWED_TABLES.some((t) => path === t || path.startsWith(`${t}?`) || path.startsWith(`${t}/`))) {
-      return Response.json({ erro: "forbidden", detalhe: "path deve começar com sdr_conversas, sdr_exclusoes ou sdr_config" }, { status: 403, headers: corsHeaders });
+      return Response.json({ erro: "forbidden", detalhe: "path deve começar com sdr_conversas, sdr_exclusoes, sdr_config ou sdr_downsell" }, { status: 403, headers: corsHeaders });
     }
     if (method !== "GET" && method !== "POST") {
       return Response.json({ erro: "method_not_allowed", detalhe: "aceita apenas GET e POST" }, { status: 405, headers: corsHeaders });

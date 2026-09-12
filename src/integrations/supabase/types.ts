@@ -1168,6 +1168,90 @@ export type Database = {
         }
         Relationships: []
       }
+      sdr_downsell: {
+        Row: {
+          clicou_em: string | null
+          comprou_em: string | null
+          created_at: string
+          dados: Json
+          email: string | null
+          enviado_em: string | null
+          etapa: string
+          form_at: string | null
+          form_id: string | null
+          nome: string | null
+          oferta_expira_em: string | null
+          origem: string
+          pagina_vista_em: string | null
+          pedido_id: string | null
+          respondeu_em: string | null
+          telefone: string
+          updated_at: string
+          utm_content: string | null
+        }
+        Insert: {
+          clicou_em?: string | null
+          comprou_em?: string | null
+          created_at?: string
+          dados?: Json
+          email?: string | null
+          enviado_em?: string | null
+          etapa?: string
+          form_at?: string | null
+          form_id?: string | null
+          nome?: string | null
+          oferta_expira_em?: string | null
+          origem?: string
+          pagina_vista_em?: string | null
+          pedido_id?: string | null
+          respondeu_em?: string | null
+          telefone: string
+          updated_at?: string
+          utm_content?: string | null
+        }
+        Update: {
+          clicou_em?: string | null
+          comprou_em?: string | null
+          created_at?: string
+          dados?: Json
+          email?: string | null
+          enviado_em?: string | null
+          etapa?: string
+          form_at?: string | null
+          form_id?: string | null
+          nome?: string | null
+          oferta_expira_em?: string | null
+          origem?: string
+          pagina_vista_em?: string | null
+          pedido_id?: string | null
+          respondeu_em?: string | null
+          telefone?: string
+          updated_at?: string
+          utm_content?: string | null
+        }
+        Relationships: []
+      }
+      sdr_downsell_rate_limits: {
+        Row: {
+          created_at: string
+          ip_hash: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          ip_hash: string
+          request_count?: number
+          window_start: string
+        }
+        Update: {
+          created_at?: string
+          ip_hash?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       sdr_exclusoes: {
         Row: {
           created_at: string
@@ -1496,6 +1580,10 @@ export type Database = {
         Args: { _target_user_id: string }
         Returns: boolean
       }
+      consume_sdr_downsell_rate_limit: {
+        Args: { _ip_hash: string }
+        Returns: boolean
+      }
       current_closer_id: { Args: never; Returns: string }
       dashboard_agendamentos_por_booking_channel: {
         Args: { _base?: string; _from: string; _to: string }
@@ -1711,6 +1799,16 @@ export type Database = {
       reassign_agendamento_closer_for_result: {
         Args: { _agendamento_id: string; _new_closer_id: string }
         Returns: boolean
+      }
+      record_sdr_downsell_event: {
+        Args: {
+          _evento: string
+          _form_id?: string
+          _nome?: string
+          _telefone: string
+          _utm_content?: string
+        }
+        Returns: undefined
       }
       transfer_agendamento_closer: {
         Args: { _agendamento_id: string; _new_closer_id: string }

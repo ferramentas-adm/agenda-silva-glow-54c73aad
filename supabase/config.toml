@@ -54,3 +54,6 @@ verify_jwt = false
 [functions.silva-reagendar]
 verify_jwt = false
 
+[functions.sdr-ia-downsell-evento]
+verify_jwt = false
+
