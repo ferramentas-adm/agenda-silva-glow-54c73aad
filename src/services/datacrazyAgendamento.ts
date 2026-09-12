@@ -91,9 +91,9 @@ export async function resendAgendamentoWebhook({
       sdrName = p?.full_name ?? "";
     }
 
-    // scheduled_date/time já representam o horário civil de São Paulo.
-    // O offset explícito impede o CRM de interpretar 23h BRT como 23h UTC.
-    const scheduledIso = `${ag.scheduled_date}T${ag.scheduled_time}:00-03:00`;
+    // A automação de confirmação trata este campo como hora civil. Não inclua
+    // offset/Z: isso faria 23h de Brasília ser formatado como 02h UTC.
+    const scheduledIso = `${ag.scheduled_date}T${ag.scheduled_time}:00`;
     const createdIso = new Date(ag.created_at)
       .toISOString()
       .replace(/\.\d{3}Z$/, "Z");
@@ -103,6 +103,9 @@ export async function resendAgendamentoWebhook({
       lead_phone: ag.lead_phone,
       status: statusDisplay,
       scheduled_datetime: scheduledIso,
+      scheduled_date: ag.scheduled_date,
+      scheduled_time: ag.scheduled_time.slice(0, 5),
+      scheduled_timezone: "America/Sao_Paulo",
       created_at: createdIso,
       sdr_name: sdrName,
       briefing: ag.briefing ?? "",
