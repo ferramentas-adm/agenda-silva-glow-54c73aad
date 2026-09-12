@@ -17,3 +17,4 @@
 - [x] Criar e implantar `/silva-reagendar` reutilizando disponibilidade, overbooking, Meet e confirmações.
 - [x] Cancelar o agendamento informado do Fábio pelo novo endpoint e validar o resultado.
 - [x] Criar `sdr_downsell`, liberar seu uso no proxy e implantar o endpoint público de eventos com limite por IP.
+- [ ] Padronizar em Brasília todos os payloads de confirmação e lembretes, sem reenviar Camila ou Fábio.
