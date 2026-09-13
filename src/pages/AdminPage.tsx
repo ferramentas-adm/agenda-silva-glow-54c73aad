@@ -1948,7 +1948,7 @@ function ReasonRow({
 }
 
 export default function AdminPage() {
-  const { isGestor, isModerador } = useAuth();
+  const { isGestor, isModerador, role } = useAuth();
   const canManageReasons = isGestor || isModerador;
 
   return (
@@ -2016,22 +2016,26 @@ export default function AdminPage() {
           </Tabs>
         ) : isModerador ? (
           <Tabs defaultValue="lists" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary">
+            <TabsList className={cn("grid w-full bg-secondary", role === "moderador" ? "grid-cols-2" : "grid-cols-1")}>
               <TabsTrigger value="lists" className="gap-1.5 text-xs sm:text-sm">
                 <Plus className="h-3.5 w-3.5" />
                 Listas
               </TabsTrigger>
-              <TabsTrigger value="bloqueios" className="gap-1.5 text-xs sm:text-sm">
-                <CalendarX className="h-3.5 w-3.5" />
-                Bloqueios
-              </TabsTrigger>
+              {role === "moderador" && (
+                <TabsTrigger value="bloqueios" className="gap-1.5 text-xs sm:text-sm">
+                  <CalendarX className="h-3.5 w-3.5" />
+                  Bloqueios
+                </TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="lists">
               <DynamicListsSection />
             </TabsContent>
-            <TabsContent value="bloqueios">
-              <BloqueiosSection />
-            </TabsContent>
+            {role === "moderador" && (
+              <TabsContent value="bloqueios">
+                <BloqueiosSection />
+              </TabsContent>
+            )}
           </Tabs>
         ) : (
           <UsersSection />
