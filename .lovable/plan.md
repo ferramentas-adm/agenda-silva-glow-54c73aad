@@ -1,23 +1,27 @@
-# Corrigir pendências do João Amorim
+# Gerenciar bloqueios do calendário
 
-## Casos confirmados
+## Calendário
 
-Há quatro agendamentos futuros, não excluídos, criados pelo João Amorim que continuam como `pendente` apesar de já terem closer ativo, evento no Google e link do Meet:
+- Tornar cada bloco de compromisso clicável e abrir um modal com closer, motivo, descrição, data e intervalo.
+- Mostrar **Remover bloqueio** e **Editar horário** para Administrador/Gestor e Moderador; o closer dono continuará com a opção de remover o próprio bloqueio.
+- Validar o novo intervalo antes de salvar, atualizar o calendário imediatamente e manter bloqueios recorrentes identificados no modal.
+- Exigir confirmação antes da remoção.
 
-- Isabella Barbosa — 14/09/2026 às 10:00 — Bruno Casari
-- Allan — 14/09/2026 às 15:00 — Pedro Ferro
-- Leonardo Glaynner — 14/09/2026 às 19:00 — Vitor Lima
-- Daniela Puertas — 17/09/2026 às 09:00 — Leandro Borges
+## Administração
 
-## Ação
+- Adicionar a aba **Bloqueios** para Administrador/Gestor e Moderador.
+- Listar bloqueios com nome do closer, data ou recorrência, motivo, descrição e horário.
+- Permitir filtro por data e busca por descrição, seleção individual ou de todos os resultados e remoção em lote com confirmação.
+- Assim, os oito bloqueios de **Reunião interna / Evento de Cultura** de 15/09/2026 poderão ser localizados e removidos juntos pela interface.
 
-- Atualizar somente esses quatro registros de `pendente` para `agendada`.
-- Preservar closer, data, horário, Meet, evento do Google e todos os demais dados.
-- Deixar o fluxo padrão da mudança de status enviar a confirmação correta com horário de Brasília e link do Meet.
-- Registrar a correção no histórico de auditoria, sem recriar eventos ou reuniões.
+## Segurança e histórico
+
+- Ajustar as permissões do banco para Administrador/Gestor e Moderador editarem e removerem bloqueios, preservando ao closer apenas a gestão dos próprios registros.
+- Registrar cada remoção em **Logs de Auditoria**, com usuário responsável, closer, data, horário, motivo, descrição e instante da remoção.
+- Exibir os novos eventos com nomes claros em `/audit-logs`.
 
 ## Validação
 
-- Confirmar que não restou nenhum agendamento do João Amorim em `pendente` que já possua closer e Meet.
-- Conferir os quatro registros após a alteração e garantir que não houve duplicação de evento ou mudança de horário/closer.
-- Verificar o acionamento único do fluxo padrão de confirmação para cada caso.
+- Verificar no computador e no celular a abertura do modal, edição, remoção individual e remoção em lote.
+- Confirmar que o calendário e os seletores de disponibilidade refletem as alterações sem recarregar.
+- Confirmar que usuários sem permissão não recebem ações administrativas e que o closer não remove bloqueios de terceiros.
