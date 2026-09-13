@@ -573,6 +573,9 @@ function formatDetails(log: AuditLog): string {
   }
 
   if (d.closer_name) parts.push(`Closer: ${d.closer_name}`);
+  if (log.entity_type === "closer_block" && d.date) {
+    parts.push(`Bloqueio: ${formatDateBR(String(d.date), d.start_time as string | undefined)}${d.end_time ? `–${String(d.end_time)}` : ""}`);
+  }
   if (d.scheduled_date) {
     parts.push(`Data: ${formatDateBR(String(d.scheduled_date), d.scheduled_time as string | undefined)}`);
   }
@@ -585,6 +588,7 @@ function formatDetails(log: AuditLog): string {
     parts.push(`Status: ${STATUS_LABELS_DETAIL[String(d.status)] || d.status}`);
   }
   if (d.reason) parts.push(`Motivo: ${d.reason}`);
+  if (d.description) parts.push(`Descrição: ${d.description}`);
   if (d.name) parts.push(`Nome: ${d.name}`);
   if (d.role) parts.push(`Função: ${d.role}`);
   if (d.new_role) parts.push(`Nova função: ${d.new_role}`);
