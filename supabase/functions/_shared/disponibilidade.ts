@@ -10,7 +10,8 @@
 
 // deno-lint-ignore-file no-explicit-any
 export const TZ = "America/Sao_Paulo";
-export const MIN_LEAD_MINUTES = 45;
+export const BOOKING_MIN_LEAD_MINUTES = 1;
+export const AVAILABILITY_MIN_LEAD_MINUTES = 10;
 export const OVERBOOKING_EXTRA = 3;
 
 export function isSdrIaHourFull(count: number, capacity: number, eligibleClosers: number): boolean {

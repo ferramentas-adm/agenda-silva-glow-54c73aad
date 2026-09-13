@@ -4,7 +4,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
-  MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
+  BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
   spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { ensureLeadTag, fetchMetaLeadId } from "../_shared/datacrazyLead.ts";
@@ -117,8 +117,8 @@ Deno.serve(async (req) => {
       }
     }
     const now = new Date();
-    if (start.getTime() < now.getTime() + MIN_LEAD_MINUTES * 60_000) {
-      return json({ erro: "horario_muito_proximo", minimo_minutos: MIN_LEAD_MINUTES }, 409);
+    if (start.getTime() < now.getTime() + BOOKING_MIN_LEAD_MINUTES * 60_000) {
+      return json({ erro: "horario_no_passado" }, 409);
     }
     const p = spParts(start);
     if (p.minute !== 0) return json({ erro: "horario_fora_da_grade", detalhe: "use horas cheias" }, 409);

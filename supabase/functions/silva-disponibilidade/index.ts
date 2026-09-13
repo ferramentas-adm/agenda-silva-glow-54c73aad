@@ -3,7 +3,7 @@
 // O closer no slot_id é escolhido pela menor carga naquela hora.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
-  MIN_LEAD_MINUTES, addDays, fetchBusinessSlots, labelFor, loadDayAvailability,
+  AVAILABILITY_MIN_LEAD_MINUTES, addDays, fetchBusinessSlots, labelFor, loadDayAvailability,
   spDateTime, spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     const fromDate = fromParam ? new Date(fromParam) : now;
     if (Number.isNaN(fromDate.getTime())) return json({ erro: "a_partir_de_invalido" }, 400);
-    const minStart = new Date(Math.max(fromDate.getTime(), now.getTime()) + MIN_LEAD_MINUTES * 60_000);
+    const minStart = new Date(Math.max(fromDate.getTime(), now.getTime()) + AVAILABILITY_MIN_LEAD_MINUTES * 60_000);
     const toDate = toParam ? new Date(toParam) : new Date(minStart.getTime() + 3 * 24 * 60 * 60_000);
     if (Number.isNaN(toDate.getTime())) return json({ erro: "ate_invalido" }, 400);
     if (toDate <= minStart) return json({ gerado_em: now.toISOString(), slots: [] });

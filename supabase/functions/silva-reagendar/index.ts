@@ -2,7 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
-  MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
+  BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
   spDateTime, spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { ensureLeadTag } from "../_shared/datacrazyLead.ts";
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
   }
   const start = new Date(slotParts[0]);
   if (Number.isNaN(start.getTime())) return json({ erro: "payload_invalido", campos: { slot_id: ["Início inválido"] } }, 400);
-  if (start.getTime() < Date.now() + MIN_LEAD_MINUTES * 60_000) return json({ erro: "slot_indisponivel" }, 409);
+  if (start.getTime() < Date.now() + BOOKING_MIN_LEAD_MINUTES * 60_000) return json({ erro: "slot_indisponivel" }, 409);
   const startParts = spParts(start);
   if (startParts.minute !== 0) return json({ erro: "slot_indisponivel" }, 409);
   const dateStr = startParts.dateStr;
