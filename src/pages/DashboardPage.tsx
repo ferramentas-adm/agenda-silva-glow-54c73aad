@@ -51,6 +51,7 @@ import VendaDialog from "@/components/VendaDialog";
 import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 import NaoCompareceuDialog from "@/components/NaoCompareceuDialog";
 import NovoAgendamentoPromptDialog, { type NovoAgendamentoLead } from "@/components/NovoAgendamentoPromptDialog";
+import CloserBlockDetailsDialog from "@/components/calendar/CloserBlockDetailsDialog";
 
 import { useCan } from "@/hooks/usePermissions";
 import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamento";
@@ -103,12 +104,15 @@ interface GoogleBusyBlock {
 }
 
 interface CloserBlock {
+  id: string;
   closer_id: string;
   block_date: string;
   start_time: string;
   end_time: string;
   block_type: string;
   description: string | null;
+  is_recurring: boolean;
+  recurrence_weekday: number | null;
 }
 
 // ─── Closer colors ──────────────────────────────────────────────
@@ -214,6 +218,7 @@ export function CalendarContent() {
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
+  const [detailBlock, setDetailBlock] = useState<CloserBlock | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [noShowReasonOpen, setNoShowReasonOpen] = useState(false);
   const [novoAgendamentoLead, setNovoAgendamentoLead] = useState<NovoAgendamentoLead | null>(null);
@@ -435,7 +440,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closer_blocks")
-        .select("closer_id, block_date, start_time, end_time, block_type, description, is_recurring, recurrence_weekday")
+        .select("id, closer_id, block_date, start_time, end_time, block_type, description, is_recurring, recurrence_weekday")
         .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${dayWeekday})`)
         .in("closer_id", closerIds);
       const exceptions = await fetchBlockExceptions(dateStr, closerIds);
@@ -1436,6 +1441,7 @@ export function CalendarContent() {
             closerBlocks={closerBlocks}
             closerIndexMap={closerIndexMap}
             userRolesMap={userRolesMap}
+            onClickBlock={setDetailBlock}
             onDelete={isAdminLike ? requestDelete : undefined}
             onClickAg={setDetailAg}
             onClearHighlight={() => {
@@ -2111,6 +2117,15 @@ export function CalendarContent() {
         onOpenChange={(o) => { if (!o) setNovoAgendamentoLead(null); }}
       />
 
+      <CloserBlockDetailsDialog
+        block={detailBlock}
+        closerName={detailBlock ? (closerMap.get(detailBlock.closer_id) || "Closer removido") : ""}
+        occurrenceDate={dateStr}
+        canEdit={!!detailBlock && (role === "gestor" || role === "moderador")}
+        canRemove={!!detailBlock && (role === "gestor" || role === "moderador" || (role === "closer" && detailBlock.closer_id === myCloserId))}
+        onClose={() => setDetailBlock(null)}
+      />
+
 
       <Dialog open={revertOpen} onOpenChange={(o) => { if (!reverting) { setRevertOpen(o); if (!o) setRevertReason(""); } }}>
         <DialogContent className="sm:max-w-md">
@@ -2172,6 +2187,7 @@ const DayView = memo(function DayView({
   closerIndexMap,
   userRolesMap,
   onDelete,
+  onClickBlock,
   onClickAg,
   onClickEmptySlot,
   onClearHighlight,
@@ -2185,6 +2201,7 @@ const DayView = memo(function DayView({
   closerIndexMap: Map<string, number>;
   userRolesMap: Map<string, string>;
   onDelete?: (target: DeleteTarget) => void;
+  onClickBlock: (block: CloserBlock) => void;
   onClickAg: (ag: Agendamento) => void;
   onClickEmptySlot: (closerId: string, time: string) => void;
   onClearHighlight?: () => void;
@@ -2438,7 +2455,14 @@ const DayView = memo(function DayView({
                         style={{ height: `${span * 72 + (span - 1)}px` }}
                       >
                         {block && (
-                          <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-1 text-[11px] flex-1 min-w-0 overflow-hidden space-y-0.5">
+                          <div
+                            className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-1 text-[11px] flex-1 min-w-0 overflow-hidden space-y-0.5 cursor-pointer hover:bg-amber-500/15 transition-colors"
+                            role="button"
+                            tabIndex={0}
+                            onClick={(event) => { event.stopPropagation(); onClickBlock(block); }}
+                            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClickBlock(block); } }}
+                            aria-label={`Ver bloqueio ${BLOCK_TYPE_LABELS[block.block_type] || block.block_type}`}
+                          >
                             <div className="flex items-center gap-1">
                               <CalendarOff className="h-3 w-3 text-amber-400 shrink-0" />
                               <span className="text-amber-400 font-medium truncate">{BLOCK_TYPE_LABELS[block.block_type] || block.block_type}</span>
@@ -2577,7 +2601,14 @@ const DayView = memo(function DayView({
                       </div>
                     )}
                     {block && agList.length === 0 && (
-                      <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[11px] space-y-0.5">
+                      <div
+                        className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[11px] space-y-0.5 cursor-pointer hover:bg-amber-500/15 transition-colors"
+                        role="button"
+                        tabIndex={0}
+                        onClick={(event) => { event.stopPropagation(); onClickBlock(block); }}
+                        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClickBlock(block); } }}
+                        aria-label={`Ver bloqueio ${BLOCK_TYPE_LABELS[block.block_type] || block.block_type}`}
+                      >
                         <div className="flex items-center gap-1.5">
                           <CalendarOff className="h-3 w-3 text-amber-400 shrink-0" />
                           <span className="text-amber-400 font-medium">{BLOCK_TYPE_LABELS[block.block_type] || block.block_type}</span>

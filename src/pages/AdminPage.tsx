@@ -30,6 +30,7 @@ import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import MeetRolloutPanel from "@/components/admin/MeetRolloutPanel";
 import CrmBulkVendasPanel from "@/components/admin/CrmBulkVendasPanel";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
+import BloqueiosSection from "@/components/admin/BloqueiosSection";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
 import { DEFAULT_BOOKING_CHANNELS } from "@/hooks/useAppSettingList";
@@ -1947,7 +1948,7 @@ function ReasonRow({
 }
 
 export default function AdminPage() {
-  const { isGestor, isModerador } = useAuth();
+  const { isGestor, isModerador, role } = useAuth();
   const canManageReasons = isGestor || isModerador;
 
   return (
@@ -1960,7 +1961,7 @@ export default function AdminPage() {
 
         {isGestor ? (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 bg-secondary">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-7 bg-secondary">
               <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5" />
                 Usuários
@@ -1985,6 +1986,10 @@ export default function AdminPage() {
                 <Send className="h-3.5 w-3.5" />
                 Envio em lote
               </TabsTrigger>
+              <TabsTrigger value="bloqueios" className="gap-1.5 text-xs sm:text-sm">
+                <CalendarX className="h-3.5 w-3.5" />
+                Bloqueios
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -2005,18 +2010,32 @@ export default function AdminPage() {
             <TabsContent value="crm-lote">
               <CrmBulkVendasPanel />
             </TabsContent>
+            <TabsContent value="bloqueios">
+              <BloqueiosSection />
+            </TabsContent>
           </Tabs>
         ) : isModerador ? (
           <Tabs defaultValue="lists" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-1 bg-secondary">
+            <TabsList className={cn("grid w-full bg-secondary", role === "moderador" ? "grid-cols-2" : "grid-cols-1")}>
               <TabsTrigger value="lists" className="gap-1.5 text-xs sm:text-sm">
                 <Plus className="h-3.5 w-3.5" />
                 Listas
               </TabsTrigger>
+              {role === "moderador" && (
+                <TabsTrigger value="bloqueios" className="gap-1.5 text-xs sm:text-sm">
+                  <CalendarX className="h-3.5 w-3.5" />
+                  Bloqueios
+                </TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="lists">
               <DynamicListsSection />
             </TabsContent>
+            {role === "moderador" && (
+              <TabsContent value="bloqueios">
+                <BloqueiosSection />
+              </TabsContent>
+            )}
           </Tabs>
         ) : (
           <UsersSection />

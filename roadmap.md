@@ -18,3 +18,5 @@
 - [x] Cancelar o agendamento informado do Fábio pelo novo endpoint e validar o resultado.
 - [x] Criar `sdr_downsell`, liberar seu uso no proxy e implantar o endpoint público de eventos com limite por IP.
 - [x] Padronizar em Brasília todos os payloads de confirmação e lembretes, sem reenviar Camila ou Fábio.
+- [x] Permitir abrir, editar e remover bloqueios pelo calendário, com confirmação e auditoria.
+- [x] Criar a seção administrativa de bloqueios com filtros e remoção em lote.
