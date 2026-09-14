@@ -319,6 +319,15 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Use este formulário <strong>só para vendas sem reunião no sistema</strong>. Se o lead teve
+            reunião, lance a venda pelo card da reunião no calendário, em
+            "Registrar / atualizar venda" — assim ela entra na Taxa de Conversão.
+          </span>
+        </div>
+
         <div className="grid gap-4 py-2">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2 relative">
