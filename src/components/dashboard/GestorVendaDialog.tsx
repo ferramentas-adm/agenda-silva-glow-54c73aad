@@ -151,6 +151,7 @@ export default function GestorVendaDialog({
           .update({
             vendeu: true,
             valor: valorNum,
+            valor_total_projeto: valorTotalProjeto,
             produto: produto || null,
             venda_origem: vendaOrigem,
             closed_at: brTodayYMD(),
@@ -164,6 +165,7 @@ export default function GestorVendaDialog({
           agendamento_id: agendamentoId,
           vendeu: true,
           valor: valorNum,
+          valor_total_projeto: valorTotalProjeto,
           produto: produto || null,
           venda_origem: vendaOrigem,
           closed_at: brTodayYMD(),
