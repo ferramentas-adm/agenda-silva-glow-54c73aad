@@ -42,6 +42,7 @@ export type Database = {
           idempotency_key: string | null
           is_5k: boolean
           is_venda_avulsa: boolean
+          lead_desqualificado: boolean
           lead_email: string | null
           lead_name: string
           lead_phone: string
@@ -93,6 +94,7 @@ export type Database = {
           idempotency_key?: string | null
           is_5k?: boolean
           is_venda_avulsa?: boolean
+          lead_desqualificado?: boolean
           lead_email?: string | null
           lead_name: string
           lead_phone: string
@@ -144,6 +146,7 @@ export type Database = {
           idempotency_key?: string | null
           is_5k?: boolean
           is_venda_avulsa?: boolean
+          lead_desqualificado?: boolean
           lead_email?: string | null
           lead_name?: string
           lead_phone?: string
@@ -617,6 +620,7 @@ export type Database = {
           business_hours_start: string
           created_at: string
           datacrazy_id: string | null
+          em_treinamento: boolean
           email: string | null
           id: string
           name: string
@@ -629,6 +633,7 @@ export type Database = {
           business_hours_start?: string
           created_at?: string
           datacrazy_id?: string | null
+          em_treinamento?: boolean
           email?: string | null
           id?: string
           name: string
@@ -641,6 +646,7 @@ export type Database = {
           business_hours_start?: string
           created_at?: string
           datacrazy_id?: string | null
+          em_treinamento?: boolean
           email?: string | null
           id?: string
           name?: string
