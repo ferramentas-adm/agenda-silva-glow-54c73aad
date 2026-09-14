@@ -161,6 +161,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
       setProduto(""); setValorColetado(""); setValorTotal(""); setDescricao("");
       setSaleDate(new Date()); setSaving(false);
       setLeadFromDb(false); setShowSuggestions(false); setDebouncedName("");
+      setOverrideJust(""); setLinkReuniaoId(null);
     }
   }, [open]);
 
