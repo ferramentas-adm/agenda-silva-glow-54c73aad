@@ -504,7 +504,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const faturadoCalls = Number(kpiRow?.faturado_calls ?? 0);
     const faturadoAvulsa = Number(kpiRow?.faturado_avulsa ?? 0);
     const faturadoTotal = faturadoCalls + faturadoAvulsa;
-    const taxaColeta = faturadoTotal > 0 ? (coletadoTotal / faturadoTotal) * 100 : 0;
+    
 
     const vendasPrimeiraCall = Number(kpiRow?.vendas_primeira_call ?? 0);
     const vendasFollowOuSegunda = Number(kpiRow?.vendas_follow ?? 0);
@@ -1040,21 +1040,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           loading={loadingVendas}
           onClick={() =>
             openDrill(`Coletado médio — ${dayLabel}`, fechadasIds, fmtBRL(coletadoMedio))
-          }
-        />
-        <KpiCard
-          icon={Percent}
-          label="Taxa de Coleta"
-          value={`${taxaColeta.toFixed(1)}%`}
-          sub={
-            faturadoTotal > 0
-              ? `${fmtBRL(coletadoTotal)} coletado ÷ ${fmtBRL(faturadoTotal)} faturado`
-              : "Sem faturamento no período"
-          }
-          color={taxaColeta >= 80 ? "emerald" : taxaColeta >= 50 ? "primary" : "amber"}
-          loading={loadingVendas}
-          onClick={() =>
-            openDrill(`Taxa de coleta — ${dayLabel}`, fechadasIds, `${taxaColeta.toFixed(1)}%`)
           }
         />
         <KpiCard
