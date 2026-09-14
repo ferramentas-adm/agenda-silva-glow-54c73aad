@@ -34,6 +34,7 @@ export default defineTool({
     const vendasCalls = Number(k?.vendas_calls ?? 0);
     const vendasAvulsas = Number(k?.vendas_avulsas ?? 0);
     const coletado = Number(k?.coletado_calls ?? 0) + Number(k?.coletado_avulsa ?? 0);
+    const faturado = Number(k?.faturado_calls ?? 0) + Number(k?.faturado_avulsa ?? 0);
     const totalReunioes = Number(c?.total_reunioes ?? 0);
     const totalVendasConv = Number(c?.total_vendas ?? 0);
 
@@ -48,34 +49,15 @@ export default defineTool({
         nao_fechou: Number(k?.nao_fechou ?? 0),
         sem_status_realizada: Number(k?.vendas_sem_status_realizada ?? 0),
       },
-      const faturado = Number(k?.faturado_calls ?? 0) + Number(k?.faturado_avulsa ?? 0);
-      return ok({
-        periodo,
-        vendas: {
-          total: vendasCalls + vendasAvulsas,
-          de_call: vendasCalls,
-          avulsas: vendasAvulsas,
-          primeira_call: Number(k?.vendas_primeira_call ?? 0),
-          follow_up: Number(k?.vendas_follow ?? 0),
-          nao_fechou: Number(k?.nao_fechou ?? 0),
-          sem_status_realizada: Number(k?.vendas_sem_status_realizada ?? 0),
-        },
-        financeiro: {
-          coletado,
-          coletado_calls: Number(k?.coletado_calls ?? 0),
-          coletado_avulsa: Number(k?.coletado_avulsa ?? 0),
-          faturado,
-          taxa_de_coleta_percentual: faturado > 0 ? Number(((coletado / faturado) * 100).toFixed(1)) : 0,
-          ticket_medio:
-            vendasCalls + vendasAvulsas > 0 ? Number((coletado / (vendasCalls + vendasAvulsas)).toFixed(2)) : 0,
-        },
-        conversao: {
-          reunioes_consideradas: totalReunioes,
-          vendas_consideradas: totalVendasConv,
-          taxa_percentual: totalReunioes ? Number(((totalVendasConv / totalReunioes) * 100).toFixed(1)) : 0,
-          observacao: "Conversão sobre 1ªs calls (exclui 2ªs reuniões); vendas atribuídas à data da 1ª call.",
-        },
-      });
+      financeiro: {
+        coletado,
+        coletado_calls: Number(k?.coletado_calls ?? 0),
+        coletado_avulsa: Number(k?.coletado_avulsa ?? 0),
+        faturado,
+        taxa_de_coleta_percentual: faturado > 0 ? Number(((coletado / faturado) * 100).toFixed(1)) : 0,
+        ticket_medio:
+          vendasCalls + vendasAvulsas > 0 ? Number((coletado / (vendasCalls + vendasAvulsas)).toFixed(2)) : 0,
+      },
       conversao: {
         reunioes_consideradas: totalReunioes,
         vendas_consideradas: totalVendasConv,
