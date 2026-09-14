@@ -25,6 +25,33 @@ const sleepGlobal = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Dedupe de GETs idênticos em voo (cobre React StrictMode / re-renders).
 const inFlightGets = new Map<string, Promise<unknown>>();
 
+async function invokeProxyDirect(
+  method: string,
+  path: string,
+  payload?: unknown,
+  retryOpts: RetryOptions = {},
+) {
+  return retryWithBackoff(
+    async () => {
+      const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
+        body: { method, path, payload },
+      });
+      if (error) {
+        const wrapped = new Error(`DataCrazy proxy error: ${error.message}`) as Error & {
+          status?: number;
+          context?: unknown;
+        };
+        wrapped.status = (error as { status?: number }).status;
+        wrapped.context = (error as { context?: unknown }).context;
+        throw wrapped;
+      }
+      if (data?.error) throw new Error(`DataCrazy API error: ${data.error}`);
+      return data;
+    },
+    { maxAttempts: 2, timeoutMs: 12_000, label: `datacrazy-direct ${method} ${path}`, ...retryOpts },
+  );
+}
+
 async function api(method: string, path: string, payload?: unknown, retryOpts?: RetryOptions) {
   const isGet = method.toUpperCase() === "GET";
   const dedupeKey = isGet ? `GET ${path}` : null;
@@ -225,11 +252,11 @@ export interface LeadsPage {
 /** Busca UMA página (100 leads) da tag — carga incremental/background. */
 export async function buscarLeadsPagina(tagId: string, page: number): Promise<LeadsPage> {
   if (!tagId) return { data: [], page, total: 0, hasMore: false };
-  const res: any = await api(
+  const res: any = await invokeProxyDirect(
     "GET",
     `/leads/by-tag-page?tagId=${encodeURIComponent(tagId)}&page=${page}`,
     undefined,
-    { timeoutMs: 25_000, maxAttempts: 2 },
+    { timeoutMs: 12_000, maxAttempts: 2 },
   );
   return {
     data: Array.isArray(res?.data) ? res.data : [],
@@ -247,14 +274,12 @@ export async function buscarLeadsPagina(tagId: string, page: number): Promise<Le
 export async function buscarLeadsPorTermo(tagId: string, q: string): Promise<DataCrazyLead[]> {
   const term = q.trim();
   if (!term) return [];
-  const { data, error } = await supabase.functions.invoke("datacrazy-proxy", {
-    body: {
-      method: "GET",
-      path: `/leads/search-compact?tagId=${encodeURIComponent(tagId)}&q=${encodeURIComponent(term)}`,
-    },
-  });
-  if (error) throw new Error(`DataCrazy proxy error: ${error.message}`);
-  if ((data as any)?.error) throw new Error(`DataCrazy API error: ${(data as any).error}`);
+  const data = await invokeProxyDirect(
+    "GET",
+    `/leads/search-compact?tagId=${encodeURIComponent(tagId)}&q=${encodeURIComponent(term)}`,
+    undefined,
+    { maxAttempts: 2, timeoutMs: 12_000 },
+  );
   return Array.isArray((data as any)?.data) ? ((data as any).data as DataCrazyLead[]) : [];
 }
 
@@ -303,7 +328,12 @@ export async function buscarLeadsComTag(tagName: string): Promise<DataCrazyLead[
 }
 
 export async function buscarLead(telefone: string): Promise<DataCrazyLead | null> {
-  const data = await api("GET", `/leads?search=${encodeURIComponent(telefone)}`);
+  const data = await invokeProxyDirect(
+    "GET",
+    `/leads?search=${encodeURIComponent(telefone)}&limit=25`,
+    undefined,
+    { maxAttempts: 2, timeoutMs: 12_000 },
+  );
   const leads = data?.data || data || [];
   return leads.length > 0 ? leads[0] : null;
 }

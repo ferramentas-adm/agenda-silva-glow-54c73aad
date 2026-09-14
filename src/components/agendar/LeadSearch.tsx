@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
-import { Search, X, Tag, RefreshCw, Loader2 } from "lucide-react";
+import { Search, X, RefreshCw, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { buscarLeadsPorTermo } from "@/services/datacrazy";
@@ -42,6 +42,9 @@ const toLead = (l: StoreLead): Lead => ({
 export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSearchProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [showManual, setShowManual] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const tagAgendamentoId = import.meta.env.VITE_DATACRAZY_TAG_AGENDAMENTO || "";
@@ -60,7 +63,7 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
   }, [query]);
 
   const searchEnabled = !!tagAgendamentoId && debouncedQuery.length >= 2;
-  const { data: remoteResults = [], isFetching: searching } = useQuery<StoreLead[]>({
+  const { data: remoteResults = [], isFetching: searching, error: searchError } = useQuery<StoreLead[]>({
     queryKey: ["datacrazy-lead-search", tagAgendamentoId, debouncedQuery.toLowerCase()],
     queryFn: async () => {
       const res = await buscarLeadsPorTermo(tagAgendamentoId, debouncedQuery);
@@ -77,7 +80,7 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
     enabled: searchEnabled,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
-    retry: 0,
+    retry: false,
     placeholderData: (prev) => prev,
   });
 
@@ -116,6 +119,13 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
     if (tagAgendamentoId) void ensureLeads(tagAgendamentoId, true);
   };
 
+  const handleManualSelect = () => {
+    const name = manualName.trim();
+    const phone = manualPhone.replace(/\D/g, "");
+    if (!name || phone.length < 10 || phone.length > 13) return;
+    onSelect({ id: `manual-${crypto.randomUUID()}`, name, phone });
+  };
+
   if (selectedLead) {
     return (
       <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
@@ -124,43 +134,15 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
           <p className="text-xs text-muted-foreground">{selectedLead.phone}</p>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onClear} className="text-muted-foreground hover:text-foreground transition-colors" title="Limpar seleção">
+          <Button variant="ghost" size="icon" onClick={onClear} title="Limpar seleção">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
-  const hasNothing = store.leads.length === 0 && filteredLeads.length === 0;
-
-  // Estado de erro / vazio definitivo: só quando a carga terminou sem nada.
-  if (hasNothing && !store.loading && !searching) {
-    const isUnavailable = store.error instanceof DataCrazyUnavailableError;
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-primary/30 bg-card py-10 text-center">
-        <Tag className="h-8 w-8 text-primary" />
-        <p className="text-sm font-medium text-foreground">
-          {isUnavailable
-            ? "Serviço temporariamente indisponível"
-            : "Nenhum lead disponível para agendamento."}
-        </p>
-        <p className="text-xs text-muted-foreground max-w-xs">
-          {isUnavailable ? (
-            "Não conseguimos carregar os leads do DataCrazy agora. Tente novamente em alguns instantes."
-          ) : (
-            <>
-              Adicione a tag <span className="font-semibold text-primary">"agendamento"</span> ao lead no DataCrazy para que ele apareça aqui.
-            </>
-          )}
-        </p>
-        <Button variant="outline" size="sm" onClick={handleRefresh} className="mt-2 gap-2">
-          <RefreshCw className="h-4 w-4" />
-          {isUnavailable ? "Tentar novamente" : "Atualizar"}
-        </Button>
-      </div>
-    );
-  }
+  const dataCrazySlow = searchError instanceof DataCrazyUnavailableError || store.error instanceof DataCrazyUnavailableError;
 
   return (
     <div ref={wrapperRef} className="space-y-3">
@@ -189,6 +171,41 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
         </Button>
       </div>
 
+      {dataCrazySlow && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <p className="text-sm text-foreground">DataCrazy demorou, tente de novo.</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleRefresh}>Tentar de novo</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowManual(true)}>Digitar manualmente</Button>
+          </div>
+        </div>
+      )}
+
+      {(showManual || (dataCrazySlow && filteredLeads.length === 0)) && (
+        <div className="grid gap-2 rounded-md border border-input p-3 sm:grid-cols-[1fr_1fr_auto]">
+          <Input
+            aria-label="Nome do lead"
+            placeholder="Nome do lead"
+            value={manualName}
+            onChange={(event) => setManualName(event.target.value)}
+          />
+          <Input
+            aria-label="Telefone do lead"
+            placeholder="Telefone com DDD"
+            inputMode="tel"
+            value={manualPhone}
+            onChange={(event) => setManualPhone(event.target.value)}
+          />
+          <Button
+            type="button"
+            onClick={handleManualSelect}
+            disabled={!manualName.trim() || manualPhone.replace(/\D/g, "").length < 10}
+          >
+            Continuar
+          </Button>
+        </div>
+      )}
+
       <div className="max-h-64 overflow-y-auto rounded-lg border border-input bg-popover">
         {filteredLeads.length === 0 ? (
           store.loading || searching ? (
@@ -204,6 +221,9 @@ export default function LeadSearch({ selectedLead, onSelect, onClear }: LeadSear
                 Adicionou a tag <span className="font-semibold">"agendamento"</span> agora no DataCrazy?
                 Clique em <span className="font-semibold">Atualizar</span> — pode levar alguns segundos para sincronizar.
               </p>
+              <Button variant="link" size="sm" className="h-auto px-0" onClick={() => setShowManual(true)}>
+                Digitar nome e telefone manualmente
+              </Button>
             </div>
           )
         ) : (

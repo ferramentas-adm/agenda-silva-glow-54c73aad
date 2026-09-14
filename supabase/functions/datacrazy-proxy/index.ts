@@ -75,8 +75,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
-  maxRetries = 2,
-  timeoutMs = 20_000,
+  maxRetries = 1,
+  timeoutMs = 12_000,
 ): Promise<Response> {
   let attempt = 0;
   while (attempt <= maxRetries) {
@@ -300,14 +300,10 @@ serve(async (req) => {
 
       const tagFilter = tagId ? `filter[tags]=${encodeURIComponent(tagId)}&` : "";
       let items: any[] = [];
-      try {
-        const r = await fetchLeadsUrl(
-          `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
-        );
-        items = r.items;
-      } catch {
-        items = [];
-      }
+      const r = await fetchLeadsUrl(
+        `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
+      );
+      items = r.items;
 
       // Se a API não honrar `search`, filtra localmente o que veio.
       const needle = q.toLowerCase();

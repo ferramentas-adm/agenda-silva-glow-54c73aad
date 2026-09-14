@@ -24,7 +24,7 @@ interface State {
 
 const CACHE_PREFIX = "dc_leads_v1_";
 const CACHE_TTL_MS = 10 * 60_000;
-const CONCURRENCY = 3;
+const CONCURRENCY = 2;
 const MAX_PAGES = 60;
 
 const state: State = {
