@@ -344,7 +344,7 @@ export default function GestorVendaDialog({
               {bumpsTotal > 0 && (
                 <span className="ml-1">
                   ({valorNum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} +{" "}
-                  {bumpsTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" )} em order bumps)
+                  {bumpsTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} em order bumps)
                 </span>
               )}
             </div>
