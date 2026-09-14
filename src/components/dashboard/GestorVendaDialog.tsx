@@ -25,6 +25,8 @@ interface GestorVendaDialogProps {
   agendamentoId: string;
   leadName: string;
   currentStatus?: string | null;
+  /** Valores sugeridos quando ainda não existe venda lançada (ex.: vindo do modal de venda avulsa). */
+  prefill?: { produto?: string | null; valorDigits?: string | null };
   /** Chamado após salvar/remover. `status` = novo status da agenda. */
   onSuccess: (status: string) => void;
 }
@@ -51,7 +53,7 @@ const digitsToNumber = (digits: string) => {
  * automaticamente e o status anterior é guardado para permitir reversão.
  */
 export default function GestorVendaDialog({
-  open, onOpenChange, agendamentoId, leadName, currentStatus, onSuccess,
+  open, onOpenChange, agendamentoId, leadName, currentStatus, prefill, onSuccess,
 }: GestorVendaDialogProps) {
   const { user } = useAuth();
   const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
@@ -97,8 +99,14 @@ export default function GestorVendaDialog({
         if (origem === "primeira_call" || origem === "follow_up") setVendaOrigem(origem);
         setOrderBumps(parseOrderBumpsColumn((data as { order_bumps?: unknown }).order_bumps));
       }
+      // Sugestões vindas do modal de venda avulsa — só preenchem o que está vazio.
+      if (prefill) {
+        if (prefill.produto && !(data as any)?.produto) setProduto(prefill.produto);
+        if (prefill.valorDigits && data?.valor == null) setValor(prefill.valorDigits);
+      }
       setLoadingExisting(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agendamentoId]);
 
   const valorNum = digitsToNumber(valor);

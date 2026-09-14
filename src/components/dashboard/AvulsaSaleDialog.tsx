@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Loader2, PlusCircle, X } from "lucide-react";
+import { AlertTriangle, CalendarIcon, Info, Loader2, PlusCircle, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,6 +21,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { logAudit } from "@/services/auditLog";
+import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 
 const DEFAULT_CHANNEL_TYPES = [
   "Outbound", "Social Selling", "Tráfego Pago", "Formulário",
@@ -85,6 +87,10 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   const [descricao, setDescricao] = useState("");
   const [saleDate, setSaleDate] = useState<Date>(new Date());
   const [saving, setSaving] = useState(false);
+  // Trava anti-duplicidade: se o lead tem reunião no mesmo dia, a venda deve ser
+  // lançada na reunião ("Registrar / atualizar venda"), não como avulsa.
+  const [overrideJust, setOverrideJust] = useState("");
+  const [linkReuniaoId, setLinkReuniaoId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedName(leadName.trim()), 350);
@@ -155,6 +161,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
       setProduto(""); setValorColetado(""); setValorTotal(""); setDescricao("");
       setSaleDate(new Date()); setSaving(false);
       setLeadFromDb(false); setShowSuggestions(false); setDebouncedName("");
+      setOverrideJust(""); setLinkReuniaoId(null);
     }
   }, [open]);
 
@@ -173,6 +180,49 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   };
 
   const phoneDigits = leadPhone.replace(/\D/g, "");
+  const saleDateStr = format(saleDate, "yyyy-MM-dd");
+  const phoneSuffix = phoneDigits.length >= 8 ? phoneDigits.slice(-8) : "";
+  const nameTerm = leadName.trim().replace(/[%,()]/g, " ").trim();
+
+  // ── Dupla verificação: reuniões REAIS deste lead nos últimos 90 dias ──
+  const { data: conflictMeetings = [], isFetching: checkingConflicts } = useQuery({
+    queryKey: ["avulsa-conflict-check", phoneSuffix, nameTerm.toLowerCase()],
+    enabled: open && (phoneSuffix.length === 8 || nameTerm.length >= 3),
+    staleTime: 30_000,
+    retry: 0,
+    queryFn: async () => {
+      const filters: string[] = [];
+      if (phoneSuffix) filters.push(`lead_phone.ilike.%${phoneSuffix}%`);
+      if (nameTerm.length >= 3) filters.push(`lead_name.ilike.%${nameTerm}%`);
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id")
+        .is("deleted_at", null)
+        .eq("is_venda_avulsa", false)
+        .gte("scheduled_date", format(since, "yyyy-MM-dd"))
+        .or(filters.join(","))
+        .order("scheduled_date", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as {
+        id: string; lead_name: string; lead_phone: string | null;
+        scheduled_date: string; scheduled_time: string; status: string; closer_id: string | null;
+      }[];
+    },
+  });
+
+  const sameDayMeeting = useMemo(
+    () => conflictMeetings.find((m) => m.scheduled_date === saleDateStr) ?? null,
+    [conflictMeetings, saleDateStr],
+  );
+  const otherDayMeeting = useMemo(
+    () => (sameDayMeeting ? null : conflictMeetings[0] ?? null),
+    [conflictMeetings, sameDayMeeting],
+  );
+  const fmtDia = (ymd: string) => format(new Date(`${ymd}T12:00:00`), "dd/MM/yyyy");
+  const OVERRIDE_MIN = 30;
 
   const valid = useMemo(() => {
     if (!leadName.trim()) return false;
@@ -186,8 +236,10 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
     if (!(vc > 0)) return false;
     if (!(vt > 0)) return false;
     if (descricao.trim().length < 10) return false;
+    // Reunião no mesmo dia: só libera com justificativa explícita.
+    if (sameDayMeeting && overrideJust.trim().length < OVERRIDE_MIN) return false;
     return true;
-  }, [leadName, phoneDigits, channelType, closerId, produto, produtosList.length, valorColetado, valorTotal, descricao]);
+  }, [leadName, phoneDigits, channelType, closerId, produto, produtosList.length, valorColetado, valorTotal, descricao, sameDayMeeting, overrideJust]);
 
 
   const handleSubmit = async () => {
@@ -230,6 +282,15 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
       } as never);
       if (vErr) throw vErr;
 
+      await logAudit("venda_avulsa_registrada", "venda", (ag as { id: string }).id, {
+        lead_name: leadName.trim(),
+        valor: parseMoney(valorColetado),
+        data_venda: dateStr,
+        override_reuniao_mesmo_dia: !!sameDayMeeting,
+        agendamento_conflitante: sameDayMeeting?.id ?? null,
+        justificativa_override: sameDayMeeting ? overrideJust.trim() : null,
+      });
+
       toast.success("Venda avulsa registrada");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["vendas-tab"] }),
@@ -246,6 +307,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -257,6 +319,15 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
             e credita SDR/Closer, mas <strong>não conta</strong> no denominador de conversão do dia.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Use este formulário <strong>só para vendas sem reunião no sistema</strong>. Se o lead teve
+            reunião, lance a venda pelo card da reunião no calendário, em
+            "Registrar / atualizar venda" — assim ela entra na Taxa de Conversão.
+          </span>
+        </div>
 
         <div className="grid gap-4 py-2">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -459,6 +530,69 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
             />
             <p className="text-xs text-muted-foreground">{descricao.trim().length} caracteres (mínimo 10)</p>
           </div>
+
+          {checkingConflicts && (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Verificando se este lead tem reunião no sistema…
+            </p>
+          )}
+
+          {sameDayMeeting && (
+            <div className="grid gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+              <div className="flex items-start gap-2 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Este lead tem reunião em <strong>{fmtDia(sameDayMeeting.scheduled_date)}</strong> às{" "}
+                  <strong>{sameDayMeeting.scheduled_time}</strong>
+                  {sameDayMeeting.closer_id ? ` com ${closerNameById.get(sameDayMeeting.closer_id) ?? "—"}` : ""}{" "}
+                  (status {sameDayMeeting.status}). Esta venda deve ser lançada na reunião, não como avulsa.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="justify-start"
+                onClick={() => setLinkReuniaoId(sameDayMeeting.id)}
+              >
+                Abrir a reunião e lançar a venda lá
+              </Button>
+              <div className="grid gap-1">
+                <Label className="text-xs">
+                  Se realmente for uma venda separada, justifique (mínimo {OVERRIDE_MIN} caracteres)
+                </Label>
+                <Textarea
+                  value={overrideJust}
+                  onChange={(e) => setOverrideJust(e.target.value)}
+                  placeholder="Ex.: segunda compra do mesmo cliente, sem relação com a reunião do dia."
+                  rows={3}
+                />
+                <p className={cn("text-xs", overrideJust.trim().length >= OVERRIDE_MIN ? "text-emerald-500" : "text-muted-foreground")}>
+                  {overrideJust.trim().length}/{OVERRIDE_MIN} caracteres
+                </p>
+              </div>
+            </div>
+          )}
+
+          {otherDayMeeting && (
+            <div className="grid gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Este lead tem reunião em <strong>{fmtDia(otherDayMeeting.scheduled_date)}</strong> às{" "}
+                  {otherDayMeeting.scheduled_time}. Confirme se esta venda não pertence àquela reunião.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-fit"
+                onClick={() => setLinkReuniaoId(otherDayMeeting.id)}
+              >
+                Abrir a reunião e lançar a venda lá
+              </Button>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -470,6 +604,31 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      {linkReuniaoId && (
+        <GestorVendaDialog
+          open={!!linkReuniaoId}
+          onOpenChange={(o) => { if (!o) setLinkReuniaoId(null); }}
+          agendamentoId={linkReuniaoId}
+          leadName={leadName.trim()}
+          prefill={{
+            produto: produto.trim() || null,
+            valorDigits: parseMoney(valorColetado) > 0
+              ? Math.round(parseMoney(valorColetado) * 100).toString()
+              : null,
+          }}
+          onSuccess={async () => {
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ["vendas-tab"] }),
+              queryClient.invalidateQueries({ queryKey: ["reunioes-list"] }),
+              queryClient.invalidateQueries({ queryKey: ["agendamentos"] }),
+            ]);
+            setLinkReuniaoId(null);
+            onOpenChange(false);
+          }}
+        />
+      )}
+    </>
   );
 }
