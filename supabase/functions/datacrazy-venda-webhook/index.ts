@@ -1,11 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const PayloadSchema = z.object({
+  agendamento_id: z.string().uuid(),
+  registered_at: z.string().datetime({ offset: true }),
+  outcome: z.enum(["fechou", "perdeu", "follow_up", "em_andamento"]),
+}).passthrough();
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -49,22 +56,17 @@ serve(async (req) => {
       throw new Error("DATACRAZY_WEBHOOK_URL is not configured");
     }
 
-    const payload = await req.json();
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-      return new Response(JSON.stringify({ error: "Invalid payload" }), {
+    const parsedPayload = PayloadSchema.safeParse(await req.json());
+    if (!parsedPayload.success) {
+      return new Response(JSON.stringify({ error: parsedPayload.error.flatten().fieldErrors }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const agendamentoId = typeof payload.agendamento_id === "string" ? payload.agendamento_id : null;
-    const registeredAt = typeof payload.registered_at === "string" ? payload.registered_at : "";
-    const outcome = typeof payload.outcome === "string" ? payload.outcome : "";
-    if (!agendamentoId || !registeredAt || !outcome) {
-      return new Response(JSON.stringify({ error: "agendamento_id, registered_at and outcome are required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const payload = parsedPayload.data;
+    const agendamentoId = payload.agendamento_id;
+    const registeredAt = payload.registered_at;
+    const outcome = payload.outcome;
 
     // Marca o tipo de evento para o DataCrazy diferenciar do webhook de status
     const enrichedPayload = {
@@ -84,7 +86,7 @@ serve(async (req) => {
       .from("datacrazy_sales_sync_queue")
       .upsert(
         { idempotency_key: idempotencyKey, agendamento_id: agendamentoId, payload: enrichedPayload },
-        { onConflict: "idempotency_key", ignoreDuplicates: true },
+        { onConflict: "idempotency_key" },
       )
       .select("id, status, attempts")
       .single();

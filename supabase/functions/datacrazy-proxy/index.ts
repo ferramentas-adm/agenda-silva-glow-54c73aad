@@ -188,6 +188,11 @@ serve(async (req) => {
         if (fb) res = await fetchWithRetry(fb, { method: "GET", headers: dcHeadersAgg });
       }
       const txt = await res.text();
+      if (!res.ok) {
+        const error = new Error(`DataCrazy request failed [${res.status}]`) as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
       let parsed: any;
       try { parsed = JSON.parse(txt); } catch { parsed = null; }
       const items = Array.isArray(parsed) ? parsed : parsed?.data || [];
