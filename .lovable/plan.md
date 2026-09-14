@@ -3,12 +3,13 @@
 ## O que muda para quem usa
 
 ### 1. Tela de Agendar — marcar lead desqualificado
-- Novo interruptor **"Lead desqualificado"** na etapa de confirmação (junto de Origem/Canal), com explicação curta: "Só pode ser alocado com closer em treinamento".
+- Novo interruptor **"Lead desqualificado"** na etapa de confirmação (junto de Origem/Canal), visível apenas para gestores/moderadores, com explicação curta: "Só pode ser alocado com closer em treinamento".
 - Ao ligar o interruptor:
   - a lista de closers passa a mostrar **apenas closers em treinamento**;
   - se um closer normal já estava escolhido, a escolha é limpa com aviso;
   - a contagem de horários livres passa a considerar só os closers em treinamento.
 - Ao desligar, a lista volta a mostrar apenas os closers normais (os em treinamento ficam fora, ver item 2).
+- O flag **não aparece** no card do calendário, na lista de reuniões do closer, no Meet, na confirmação/lembrete do lead nem em nenhuma outra interface do closer — somente nas telas de gestor (Agendar, Admin, Dashboard Comercial).
 
 ### 2. Usuários — closer em treinamento
 - Na lista de usuários de Administração, cada usuário com função **Closer** ganha o controle **"Em treinamento"**.
