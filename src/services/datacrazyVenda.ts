@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { retryWithBackoff } from "@/lib/retryWithBackoff";
 
 export interface VendaWebhookPayload {
   agendamento_id: string;
@@ -39,9 +38,8 @@ export interface VendaWebhookPayload {
  * Envia o resultado da reunião (venda) para o webhook do DataCrazy
  * via edge function `datacrazy-venda-webhook`.
  *
- * Retry com backoff exponencial (3 tentativas, 10s timeout cada) para
- * resistir a 502/503/504 transitórios. Erros finais são apenas logados —
- * o registro local da venda já está salvo no banco.
+ * A função de backend faz uma repetição automática e conserva toda falha em
+ * uma fila durável. O registro local da venda nunca depende dessa integração.
  */
 export async function sendVendaToDataCrazy(payload: VendaWebhookPayload) {
   // Para desfechos "fechou" e "perdeu", alinha o payload ao formato do webhook
@@ -63,20 +61,14 @@ export async function sendVendaToDataCrazy(payload: VendaWebhookPayload) {
       : payload;
 
   try {
-    await retryWithBackoff(
-      async () => {
-        const { error } = await supabase.functions.invoke("datacrazy-venda-webhook", {
-          body: enriched,
-        });
-        if (error) {
-          const wrapped = new Error(error.message) as Error & { status?: number };
-          wrapped.status = (error as { status?: number }).status;
-          throw wrapped;
-        }
-      },
-      { label: "datacrazy-venda-webhook" },
-    );
+    const { data, error } = await supabase.functions.invoke("datacrazy-venda-webhook", {
+      body: enriched,
+    });
+    if (error) throw error;
+    if (data?.success === false) {
+      console.warn("[datacrazy-venda-webhook] envio preservado para reenvio posterior");
+    }
   } catch (err) {
-    console.warn("[datacrazy-venda-webhook] falha após retries (não-bloqueante):", err);
+    console.warn("[datacrazy-venda-webhook] falha não-bloqueante:", err);
   }
 }
