@@ -241,6 +241,7 @@ export default function GestorVendaDialog({
         .update({
           vendeu: false,
           valor: null,
+          valor_total_projeto: null,
           produto: null,
           venda_origem: null,
           closed_at: null,
