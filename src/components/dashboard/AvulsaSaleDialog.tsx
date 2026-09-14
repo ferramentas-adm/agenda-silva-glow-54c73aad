@@ -519,6 +519,12 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
               />
             </div>
           </div>
+          {parseMoney(valorTotal) > 0 && parseMoney(valorColetado) > parseMoney(valorTotal) && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              O valor coletado é maior que o valor total do projeto. Confira se não houve erro de digitação.
+            </div>
+          )}
 
           <div className="grid gap-2">
             <Label>Descrição do cliente / o que faz *</Label>

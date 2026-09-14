@@ -17,7 +17,7 @@ import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { brTodayYMD } from "@/lib/timezone";
 import OrderBumpsField from "@/components/OrderBumpsField";
-import { OrderBump, parseOrderBumpsColumn } from "@/lib/orderBumps";
+import { OrderBump, orderBumpsTotal, parseOrderBumpsColumn } from "@/lib/orderBumps";
 
 interface GestorVendaDialogProps {
   open: boolean;
@@ -111,6 +111,8 @@ export default function GestorVendaDialog({
 
   const valorNum = digitsToNumber(valor);
   const valorValido = !isNaN(valorNum) && valorNum > 0;
+  const bumpsTotal = orderBumpsTotal(orderBumps);
+  const valorTotalProjeto = valorValido ? valorNum + bumpsTotal : 0;
   const canSubmit =
     valorValido && !!vendaOrigem && (produtosList.length === 0 || !!produto);
 
@@ -149,6 +151,7 @@ export default function GestorVendaDialog({
           .update({
             vendeu: true,
             valor: valorNum,
+            valor_total_projeto: valorTotalProjeto,
             produto: produto || null,
             venda_origem: vendaOrigem,
             closed_at: brTodayYMD(),
@@ -162,6 +165,7 @@ export default function GestorVendaDialog({
           agendamento_id: agendamentoId,
           vendeu: true,
           valor: valorNum,
+          valor_total_projeto: valorTotalProjeto,
           produto: produto || null,
           venda_origem: vendaOrigem,
           closed_at: brTodayYMD(),
@@ -203,6 +207,7 @@ export default function GestorVendaDialog({
         registered_at: new Date().toISOString(),
         lead_revenue: existing?.lead_revenue ?? null,
         valor_apresentado: valorNum,
+        valor_total_projeto: valorTotalProjeto,
         order_bumps: orderBumps.length ? orderBumps : null,
       } as any);
 
@@ -236,6 +241,7 @@ export default function GestorVendaDialog({
         .update({
           vendeu: false,
           valor: null,
+          valor_total_projeto: null,
           produto: null,
           venda_origem: null,
           closed_at: null,
@@ -328,6 +334,21 @@ export default function GestorVendaDialog({
           </div>
 
           <OrderBumpsField value={orderBumps} onChange={setOrderBumps} idPrefix="gestor-ob" />
+
+          {valorValido && (
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-2 text-xs text-muted-foreground">
+              Valor total do projeto (faturado):{" "}
+              <strong className="text-primary">
+                {valorTotalProjeto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </strong>
+              {bumpsTotal > 0 && (
+                <span className="ml-1">
+                  ({valorNum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} +{" "}
+                  {bumpsTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} em order bumps)
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Origem da venda *</Label>
