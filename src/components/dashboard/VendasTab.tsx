@@ -518,12 +518,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     return {
       totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou,
       taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa,
-      coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow,
+      coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, taxaColeta, pctPrimeiraCall, pctFollow,
       vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco,
     };
   }, [kpiRow, conversaoData]);
 
-  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco } = kpis;
+  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, taxaColeta, pctPrimeiraCall, pctFollow, vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco } = kpis;
 
   // IDs para drilldown da métrica de oferta de preço (baseado nas linhas do período).
   const ofertasPrecoIds = useMemo(
