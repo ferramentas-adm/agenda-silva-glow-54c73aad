@@ -561,6 +561,7 @@ function AgendarPageInner() {
             meeting_reason: resolvedReason,
             channel_type: channelType || null,
             is_5k: false,
+            lead_desqualificado: leadDesqualificado,
             booking_channel: bookingChannel,
             ...metaFields,
           } as any)
@@ -598,6 +599,7 @@ function AgendarPageInner() {
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
         is_5k: false,
+        lead_desqualificado: leadDesqualificado,
         booking_channel: bookingChannel,
         ...metaFields,
       } as any).select("id").single();
