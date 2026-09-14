@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, DollarSign, Target, CalendarClock, AlertTriangle, CheckCircle2, Receipt,
   Filter, X, CalendarIcon, Pencil, Trash2, Loader2, Download, Phone, PlusCircle,
-  Coins, Wallet,
+  Coins, Wallet, Percent,
 } from "lucide-react";
 
 
