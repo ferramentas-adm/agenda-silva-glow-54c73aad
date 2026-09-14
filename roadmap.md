@@ -24,3 +24,4 @@
 - [x] Criar endpoint autenticado e idempotente para a automação registrar o envio do lembrete com vídeo.
 - [ ] Criar e aprovar no Meta o novo template Utility de 24h/1h e configurar o fallback na instância “API OFC - LEMBRETES 2211” (depende de acesso externo).
 - [x] Corrigir os cards Canceladas/No-shows e incluir pendentes no Total agend. dia.
+- [ ] Corrigir somente a autenticação interna do Google Meet em `/silva-agendar` e `/silva-reagendar`, sem reenviar mensagens, e listar reuniões do João sem Meet desde 13/09/2026.
