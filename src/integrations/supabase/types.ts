@@ -773,6 +773,7 @@ export type Database = {
           last_error: string | null
           last_http_status: number | null
           payload: Json
+          response_body: string | null
           sent_at: string | null
           status: string
           updated_at: string
@@ -786,6 +787,7 @@ export type Database = {
           last_error?: string | null
           last_http_status?: number | null
           payload: Json
+          response_body?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string
@@ -799,6 +801,7 @@ export type Database = {
           last_error?: string | null
           last_http_status?: number | null
           payload?: Json
+          response_body?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string

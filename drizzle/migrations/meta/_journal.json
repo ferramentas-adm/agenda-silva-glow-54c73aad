@@ -57,6 +57,13 @@
       "when": 1789348796184,
       "tag": "0007_create_datacrazy_sales_sync_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789348828415,
+      "tag": "0008_add_datacrazy_sales_sync_response",
+      "breakpoints": true
     }
   ]
 }
