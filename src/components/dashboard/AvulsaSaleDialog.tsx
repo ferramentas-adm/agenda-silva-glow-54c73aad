@@ -282,6 +282,15 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
       } as never);
       if (vErr) throw vErr;
 
+      await logAudit("venda_avulsa_registrada", "venda", (ag as { id: string }).id, {
+        lead_name: leadName.trim(),
+        valor: parseMoney(valorColetado),
+        data_venda: dateStr,
+        override_reuniao_mesmo_dia: !!sameDayMeeting,
+        agendamento_conflitante: sameDayMeeting?.id ?? null,
+        justificativa_override: sameDayMeeting ? overrideJust.trim() : null,
+      });
+
       toast.success("Venda avulsa registrada");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["vendas-tab"] }),
