@@ -17,7 +17,7 @@ import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { brTodayYMD } from "@/lib/timezone";
 import OrderBumpsField from "@/components/OrderBumpsField";
-import { OrderBump, parseOrderBumpsColumn } from "@/lib/orderBumps";
+import { OrderBump, orderBumpsTotal, parseOrderBumpsColumn } from "@/lib/orderBumps";
 
 interface GestorVendaDialogProps {
   open: boolean;
