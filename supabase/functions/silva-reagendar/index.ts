@@ -38,7 +38,6 @@ async function createMeet(
     const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/google-create-event`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
         "x-api-key": expectedKey,
         "Content-Type": "application/json",
       },
