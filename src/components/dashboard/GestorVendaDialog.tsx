@@ -207,6 +207,7 @@ export default function GestorVendaDialog({
         registered_at: new Date().toISOString(),
         lead_revenue: existing?.lead_revenue ?? null,
         valor_apresentado: valorNum,
+        valor_total_projeto: valorTotalProjeto,
         order_bumps: orderBumps.length ? orderBumps : null,
       } as any);
 
