@@ -183,6 +183,7 @@ function AgendarPageInner() {
   const [meetingReason, setMeetingReason] = useState<string | null>(searchParams.get("meeting_reason"));
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
   const [channelType, setChannelType] = useState<string | null>(searchParams.get("channel"));
+  const [leadDesqualificado, setLeadDesqualificado] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
@@ -194,6 +195,13 @@ function AgendarPageInner() {
   );
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
+
+  // Ao trocar o flag de lead desqualificado, limpa o closer escolhido para
+  // evitar alocar um lead desqualificado com um closer normal (ou vice-versa).
+  useEffect(() => {
+    setCloserId(null);
+    setTime(null);
+  }, [leadDesqualificado]);
   
 
 
