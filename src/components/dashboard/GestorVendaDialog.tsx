@@ -335,6 +335,18 @@ export default function GestorVendaDialog({
 
           <OrderBumpsField value={orderBumps} onChange={setOrderBumps} idPrefix="gestor-ob" />
 
+          {valorValido && (
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-2 text-xs text-muted-foreground">
+              Valor total do projeto (faturado):{" "}
+              <strong className="text-primary">
+                {valorTotalProjeto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </strong>
+              {bumpsTotal > 0 && (
+                <span className="ml-1">({fmtBRL(valorNum)} + {fmtBRL(bumpsTotal)} em order bumps)</span>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Origem da venda *</Label>
             <RadioGroup
