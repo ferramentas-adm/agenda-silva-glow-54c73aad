@@ -763,6 +763,51 @@ export type Database = {
         }
         Relationships: []
       }
+      datacrazy_sales_sync_queue: {
+        Row: {
+          agendamento_id: string | null
+          attempts: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          last_http_status: number | null
+          payload: Json
+          response_body: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          attempts?: number
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          last_http_status?: number | null
+          payload: Json
+          response_body?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          attempts?: number
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          last_http_status?: number | null
+          payload?: Json
+          response_body?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_ai_analysis: {
         Row: {
           agendamento_id: string

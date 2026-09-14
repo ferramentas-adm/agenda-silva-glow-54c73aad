@@ -75,8 +75,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
-  maxRetries = 2,
-  timeoutMs = 20_000,
+  maxRetries = 1,
+  timeoutMs = 12_000,
 ): Promise<Response> {
   let attempt = 0;
   while (attempt <= maxRetries) {
@@ -188,6 +188,11 @@ serve(async (req) => {
         if (fb) res = await fetchWithRetry(fb, { method: "GET", headers: dcHeadersAgg });
       }
       const txt = await res.text();
+      if (!res.ok) {
+        const error = new Error(`DataCrazy request failed [${res.status}]`) as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
       let parsed: any;
       try { parsed = JSON.parse(txt); } catch { parsed = null; }
       const items = Array.isArray(parsed) ? parsed : parsed?.data || [];
@@ -300,14 +305,10 @@ serve(async (req) => {
 
       const tagFilter = tagId ? `filter[tags]=${encodeURIComponent(tagId)}&` : "";
       let items: any[] = [];
-      try {
-        const r = await fetchLeadsUrl(
-          `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
-        );
-        items = r.items;
-      } catch {
-        items = [];
-      }
+      const r = await fetchLeadsUrl(
+        `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
+      );
+      items = r.items;
 
       // Se a API não honrar `search`, filtra localmente o que veio.
       const needle = q.toLowerCase();

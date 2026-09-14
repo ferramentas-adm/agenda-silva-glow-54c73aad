@@ -14,7 +14,7 @@ export class DataCrazyUnavailableError extends Error {
   }
 }
 
-const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
 function extractStatus(err: unknown): number | null {
   if (!err || typeof err !== "object") return null;
