@@ -43,6 +43,13 @@
       "when": 1789282677262,
       "tag": "0005_allow_managers_update_closer_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789346509253,
+      "tag": "0006_add_video_reminder_tracking",
+      "breakpoints": true
     }
   ]
 }
