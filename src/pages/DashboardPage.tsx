@@ -550,7 +550,7 @@ export function CalendarContent() {
   const goToday = () => setCurrentDate(new Date());
 
   // ─── Métricas canônicas (compartilhadas com o Dashboard Comercial) ───
-  // Regras em src/lib/agendaMetrics.ts: sem `pendente`, total = SDR + 2ª reunião,
+  // Regras em src/lib/agendaMetrics.ts: inclui `pendente`, total = SDR + 2ª reunião,
   // inativos contam sempre.
   const TOTAL_STATUSES = AGENDA_TOTAL_STATUSES as readonly string[];
 
@@ -1061,7 +1061,7 @@ export function CalendarContent() {
           const sourceAgendamentos = isCloserView ? closerOwnAgendamentos : metricsPool;
           const totalLabel = isCloserView ? "Total Closer" : "Total real. dia";
 
-          // Total agend. dia: SDR + 2ª reunião (status válidos, sem pendente)
+          // Total agend. dia: SDR + 2ª reunião, incluindo pendentes de atribuição.
           const totalAgend = m.totalAgend;
           const totalAgendLabel = "Total agend. dia";
 
