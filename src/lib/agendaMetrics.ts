@@ -13,7 +13,6 @@
  * - Os cards Canceladas e No-shows seguem o status bruto; o card combinado
  *   continua sendo a soma dos dois.
  */
-import { splitNaoCompareceu } from "@/lib/noShowReasons";
 import { brPartsOf } from "@/lib/timezone";
 
 /** Status considerados válidos para qualquer total/contagem dos painéis. */
