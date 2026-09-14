@@ -180,7 +180,6 @@ Deno.serve(async (req) => {
         const meetRes = await fetch(functionUrl, {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
             "x-api-key": expected,
             "Content-Type": "application/json",
           },
