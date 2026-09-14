@@ -54,7 +54,7 @@ export default defineTool({
         coletado_calls: Number(k?.coletado_calls ?? 0),
         coletado_avulsa: Number(k?.coletado_avulsa ?? 0),
         faturado,
-        taxa_de_coleta_percentual: faturado > 0 ? Number(((coletado / faturado) * 100).toFixed(1)) : 0,
+        
         ticket_medio:
           vendasCalls + vendasAvulsas > 0 ? Number((coletado / (vendasCalls + vendasAvulsas)).toFixed(2)) : 0,
       },
