@@ -111,6 +111,8 @@ export default function GestorVendaDialog({
 
   const valorNum = digitsToNumber(valor);
   const valorValido = !isNaN(valorNum) && valorNum > 0;
+  const bumpsTotal = orderBumpsTotal(orderBumps);
+  const valorTotalProjeto = valorValido ? valorNum + bumpsTotal : 0;
   const canSubmit =
     valorValido && !!vendaOrigem && (produtosList.length === 0 || !!produto);
 
