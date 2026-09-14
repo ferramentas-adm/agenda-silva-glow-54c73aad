@@ -53,7 +53,7 @@ const digitsToNumber = (digits: string) => {
  * automaticamente e o status anterior é guardado para permitir reversão.
  */
 export default function GestorVendaDialog({
-  open, onOpenChange, agendamentoId, leadName, currentStatus, onSuccess,
+  open, onOpenChange, agendamentoId, leadName, currentStatus, prefill, onSuccess,
 }: GestorVendaDialogProps) {
   const { user } = useAuth();
   const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
