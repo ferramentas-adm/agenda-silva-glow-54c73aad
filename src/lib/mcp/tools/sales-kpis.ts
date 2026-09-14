@@ -48,11 +48,13 @@ export default defineTool({
         nao_fechou: Number(k?.nao_fechou ?? 0),
         sem_status_realizada: Number(k?.vendas_sem_status_realizada ?? 0),
       },
+      const faturado = Number(k?.faturado_calls ?? 0) + Number(k?.faturado_avulsa ?? 0);
       financeiro: {
         coletado,
         coletado_calls: Number(k?.coletado_calls ?? 0),
         coletado_avulsa: Number(k?.coletado_avulsa ?? 0),
-        faturado: Number(k?.faturado_calls ?? 0) + Number(k?.faturado_avulsa ?? 0),
+        faturado,
+        taxa_de_coleta_percentual: faturado > 0 ? Number(((coletado / faturado) * 100).toFixed(1)) : 0,
         ticket_medio:
           vendasCalls + vendasAvulsas > 0 ? Number((coletado / (vendasCalls + vendasAvulsas)).toFixed(2)) : 0,
       },
