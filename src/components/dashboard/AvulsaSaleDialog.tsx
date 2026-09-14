@@ -180,6 +180,49 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   };
 
   const phoneDigits = leadPhone.replace(/\D/g, "");
+  const saleDateStr = format(saleDate, "yyyy-MM-dd");
+  const phoneSuffix = phoneDigits.length >= 8 ? phoneDigits.slice(-8) : "";
+  const nameTerm = leadName.trim().replace(/[%,()]/g, " ").trim();
+
+  // ── Dupla verificação: reuniões REAIS deste lead nos últimos 90 dias ──
+  const { data: conflictMeetings = [], isFetching: checkingConflicts } = useQuery({
+    queryKey: ["avulsa-conflict-check", phoneSuffix, nameTerm.toLowerCase()],
+    enabled: open && (phoneSuffix.length === 8 || nameTerm.length >= 3),
+    staleTime: 30_000,
+    retry: 0,
+    queryFn: async () => {
+      const filters: string[] = [];
+      if (phoneSuffix) filters.push(`lead_phone.ilike.%${phoneSuffix}%`);
+      if (nameTerm.length >= 3) filters.push(`lead_name.ilike.%${nameTerm}%`);
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, closer_id")
+        .is("deleted_at", null)
+        .eq("is_venda_avulsa", false)
+        .gte("scheduled_date", format(since, "yyyy-MM-dd"))
+        .or(filters.join(","))
+        .order("scheduled_date", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as {
+        id: string; lead_name: string; lead_phone: string | null;
+        scheduled_date: string; scheduled_time: string; status: string; closer_id: string | null;
+      }[];
+    },
+  });
+
+  const sameDayMeeting = useMemo(
+    () => conflictMeetings.find((m) => m.scheduled_date === saleDateStr) ?? null,
+    [conflictMeetings, saleDateStr],
+  );
+  const otherDayMeeting = useMemo(
+    () => (sameDayMeeting ? null : conflictMeetings[0] ?? null),
+    [conflictMeetings, sameDayMeeting],
+  );
+  const fmtDia = (ymd: string) => format(new Date(`${ymd}T12:00:00`), "dd/MM/yyyy");
+  const OVERRIDE_MIN = 30;
 
   const valid = useMemo(() => {
     if (!leadName.trim()) return false;
@@ -193,8 +236,10 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
     if (!(vc > 0)) return false;
     if (!(vt > 0)) return false;
     if (descricao.trim().length < 10) return false;
+    // Reunião no mesmo dia: só libera com justificativa explícita.
+    if (sameDayMeeting && overrideJust.trim().length < OVERRIDE_MIN) return false;
     return true;
-  }, [leadName, phoneDigits, channelType, closerId, produto, produtosList.length, valorColetado, valorTotal, descricao]);
+  }, [leadName, phoneDigits, channelType, closerId, produto, produtosList.length, valorColetado, valorTotal, descricao, sameDayMeeting, overrideJust]);
 
 
   const handleSubmit = async () => {
