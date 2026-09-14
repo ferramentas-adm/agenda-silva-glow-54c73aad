@@ -79,21 +79,29 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
     const { data: queued, error: queueError } = await admin
       .from("datacrazy_sales_sync_queue")
-      .upsert(
-        {
-          idempotency_key: idempotencyKey,
-          agendamento_id: agendamentoId,
-          payload: enrichedPayload,
-          status: "coberto_pelo_lote",
-          attempts: 0,
-          last_http_status: null,
-          last_error: null,
-          response_body: null,
-        },
-        { onConflict: "idempotency_key" },
-      )
+      .insert({
+        idempotency_key: idempotencyKey,
+        agendamento_id: agendamentoId,
+        payload: enrichedPayload,
+        status: "coberto_pelo_lote",
+        attempts: 0,
+        last_http_status: null,
+        last_error: null,
+        response_body: null,
+      })
       .select("id, status")
-      .single();
+      .maybeSingle();
+    if (queueError?.code === "23505") {
+      return new Response(JSON.stringify({
+        success: true,
+        queued: true,
+        duplicate: true,
+        external_delivery: false,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (queueError || !queued) throw queueError ?? new Error("Could not persist sync payload");
 
     return new Response(JSON.stringify({
