@@ -99,8 +99,14 @@ export default function GestorVendaDialog({
         if (origem === "primeira_call" || origem === "follow_up") setVendaOrigem(origem);
         setOrderBumps(parseOrderBumpsColumn((data as { order_bumps?: unknown }).order_bumps));
       }
+      // Sugestões vindas do modal de venda avulsa — só preenchem o que está vazio.
+      if (prefill) {
+        if (prefill.produto && !(data as any)?.produto) setProduto(prefill.produto);
+        if (prefill.valorDigits && data?.valor == null) setValor(prefill.valorDigits);
+      }
       setLoadingExisting(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agendamentoId]);
 
   const valorNum = digitsToNumber(valor);
