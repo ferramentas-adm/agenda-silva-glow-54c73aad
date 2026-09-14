@@ -24,8 +24,8 @@
 - Ao atribuir/transferir closer pelo calendário ou pela fila, a mesma regra vale.
 
 ### 4. Dashboard — Métricas SDRs
-- Reuniões de leads desqualificados **saem de todas as contagens da aba "Métricas SDRs"** (total do dia, agendadas, confirmadas, realizadas, canceladas, no-show, taxa de comparecimento e drill-downs).
-- Os cards do Calendário continuam contando tudo, como hoje (decisão do usuário).
+- Reuniões de leads desqualificados **saem de todas as contagens da aba "Métricas SDRs"** dentro de `/dashboard-comercial` (total do dia, agendadas, confirmadas, realizadas, canceladas, no-show, taxa de comparecimento e drill-downs).
+- Os cards na parte superior da tela **Calendário** (`/dashboard`) continuam contando tudo, como hoje — Total agend. dia, Total SDR, Total Closers, Closer Realizada, Agendadas, Confirmadas, Realizadas, Canceladas, No-shows e Não comparecimento (decisão do usuário).
 
 ### 5. Dashboard — Vendas
 - Vendas de leads desqualificados **continuam contando** normalmente nos números de venda.
