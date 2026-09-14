@@ -9,6 +9,8 @@ interface CloserSelectorProps {
   selectedDate: Date | undefined;
   selectedCloserId: string | null;
   onSelect: (closerId: string) => void;
+  /** Se true, lista apenas closers em treinamento; se false, exclui treinamento. */
+  treinamento?: boolean;
 }
 
 interface CloserWithAvailability {
@@ -29,20 +31,22 @@ function countSlotsFromRanges(_ranges: { start: string; end: string }[]): number
   return FIXED_SLOTS.length;
 }
 
-export default function CloserSelector({ selectedDate, selectedCloserId, onSelect }: CloserSelectorProps) {
+export default function CloserSelector({ selectedDate, selectedCloserId, onSelect, treinamento = false }: CloserSelectorProps) {
   const { slots: businessSlots } = useBusinessHours();
   const dateStr = selectedDate
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
     : null;
 
   const { data: closers = [] } = useQuery<CloserWithAvailability[]>({
-    queryKey: ["closers-availability", dateStr, businessSlots.join(",")],
+    queryKey: ["closers-availability", dateStr, businessSlots.join(","), treinamento],
     queryFn: async () => {
-      const { data: activeClosers } = await supabase
+      let q = supabase
         .from("closers")
-        .select("id, name, business_hours_start, business_hours_end, business_hours_ranges")
+        .select("id, name, business_hours_start, business_hours_end, business_hours_ranges, em_treinamento")
         .eq("active", true)
+        .eq("em_treinamento", treinamento)
         .order("name");
+      const { data: activeClosers } = await q;
 
       if (!activeClosers?.length) return [];
 
