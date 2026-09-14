@@ -906,6 +906,21 @@ function AgendarPageInner() {
                 </div>
               )}
 
+              {isAdmin && (
+                <div className="flex items-center justify-between rounded-md bg-secondary/50 px-4 py-3">
+                  <div className="space-y-0.5">
+                    <label className="text-sm font-medium">Lead desqualificado</label>
+                    <p className="text-xs text-muted-foreground">
+                      Só pode ser alocado com closer em treinamento.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={leadDesqualificado}
+                    onCheckedChange={setLeadDesqualificado}
+                  />
+                </div>
+              )}
+
 
               {/* Closer: campo "Justificar Reagendamento" aparece em qualquer agendamento (novo ou reagendamento) */}
               {isCloser && (
