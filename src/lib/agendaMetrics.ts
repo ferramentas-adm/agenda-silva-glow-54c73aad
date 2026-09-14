@@ -6,18 +6,19 @@
  * painéis — é isso que garante que os números batam.
  *
  * Regras canônicas:
- * - `pendente` / `nao_confirmada` (aguardando atribuição) NUNCA contam.
+ * - `pendente` conta no total para que a fila de atribuição não desapareça.
+ * - `nao_confirmada` continua fora do total.
  * - Total do dia = agendas de SDR + 2ª reunião criada por closer.
  * - Usuários inativos contam sempre (histórico não muda ao inativar alguém).
- * - Cancelado x No-show vêm do motivo escolhido em "Não compareceu"
- *   (`splitNaoCompareceu`), não do status bruto.
+ * - Os cards Canceladas e No-shows seguem o status bruto; o card combinado
+ *   continua sendo a soma dos dois.
  */
-import { splitNaoCompareceu } from "@/lib/noShowReasons";
 import { brPartsOf } from "@/lib/timezone";
 
 /** Status considerados válidos para qualquer total/contagem dos painéis. */
 export const AGENDA_TOTAL_STATUSES = [
   "agendada",
+  "pendente",
   "confirmada",
   "realizada",
   "cancelada",
@@ -74,7 +75,7 @@ export const hasElapsed = (a: AgendaMetricInput, now = brPartsOf()): boolean => 
 
 
 export interface AgendaMetrics {
-  /** Total do dia = SDR + 2ª reunião (sem pendente). */
+  /** Total do dia = SDR + 2ª reunião, incluindo pendentes de atribuição. */
   totalAgend: number;
   totalSdr: number;
   totalCloser: number;
@@ -128,7 +129,8 @@ export function computeAgendaMetrics<T extends AgendaMetricInput>(
   const agendadaList = byStatus("agendada");
   const confirmadaList = byStatus("confirmada");
   const realizadaList = byStatus("realizada");
-  const { cancelada, noShow } = splitNaoCompareceu(scoped as any);
+  const cancelada = byStatus("cancelada");
+  const noShow = byStatus("no_show");
 
   const closerRealizadaList = scoped.filter(
     (a) => a.status === "realizada" && isSecondMeetingAgenda(a, roleMap),

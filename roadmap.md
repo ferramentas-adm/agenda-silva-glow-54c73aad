@@ -23,3 +23,4 @@
 - [x] Adicionar o campo `lembrete_video_enviado` e expô-lo em `/silva-reunioes`.
 - [x] Criar endpoint autenticado e idempotente para a automação registrar o envio do lembrete com vídeo.
 - [ ] Criar e aprovar no Meta o novo template Utility de 24h/1h e configurar o fallback na instância “API OFC - LEMBRETES 2211” (depende de acesso externo).
+- [x] Corrigir os cards Canceladas/No-shows e incluir pendentes no Total agend. dia.
