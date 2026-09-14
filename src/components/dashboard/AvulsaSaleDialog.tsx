@@ -529,6 +529,69 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
             />
             <p className="text-xs text-muted-foreground">{descricao.trim().length} caracteres (mínimo 10)</p>
           </div>
+
+          {checkingConflicts && (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Verificando se este lead tem reunião no sistema…
+            </p>
+          )}
+
+          {sameDayMeeting && (
+            <div className="grid gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+              <div className="flex items-start gap-2 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Este lead tem reunião em <strong>{fmtDia(sameDayMeeting.scheduled_date)}</strong> às{" "}
+                  <strong>{sameDayMeeting.scheduled_time}</strong>
+                  {sameDayMeeting.closer_id ? ` com ${closerNameById.get(sameDayMeeting.closer_id) ?? "—"}` : ""}{" "}
+                  (status {sameDayMeeting.status}). Esta venda deve ser lançada na reunião, não como avulsa.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="justify-start"
+                onClick={() => setLinkReuniaoId(sameDayMeeting.id)}
+              >
+                Abrir a reunião e lançar a venda lá
+              </Button>
+              <div className="grid gap-1">
+                <Label className="text-xs">
+                  Se realmente for uma venda separada, justifique (mínimo {OVERRIDE_MIN} caracteres)
+                </Label>
+                <Textarea
+                  value={overrideJust}
+                  onChange={(e) => setOverrideJust(e.target.value)}
+                  placeholder="Ex.: segunda compra do mesmo cliente, sem relação com a reunião do dia."
+                  rows={3}
+                />
+                <p className={cn("text-xs", overrideJust.trim().length >= OVERRIDE_MIN ? "text-emerald-500" : "text-muted-foreground")}>
+                  {overrideJust.trim().length}/{OVERRIDE_MIN} caracteres
+                </p>
+              </div>
+            </div>
+          )}
+
+          {otherDayMeeting && (
+            <div className="grid gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Este lead tem reunião em <strong>{fmtDia(otherDayMeeting.scheduled_date)}</strong> às{" "}
+                  {otherDayMeeting.scheduled_time}. Confirme se esta venda não pertence àquela reunião.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-fit"
+                onClick={() => setLinkReuniaoId(otherDayMeeting.id)}
+              >
+                Abrir a reunião e lançar a venda lá
+              </Button>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -540,6 +603,28 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {linkReuniaoId && (
+        <GestorVendaDialog
+          open={!!linkReuniaoId}
+          onOpenChange={(o) => { if (!o) setLinkReuniaoId(null); }}
+          agendamentoId={linkReuniaoId}
+          leadName={leadName.trim()}
+          prefill={{
+            produto: produto.trim() || null,
+            valorDigits: valorColetado.replace(/\D/g, "") || null,
+          }}
+          onSuccess={async () => {
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ["vendas-tab"] }),
+              queryClient.invalidateQueries({ queryKey: ["reunioes-list"] }),
+              queryClient.invalidateQueries({ queryKey: ["agendamentos"] }),
+            ]);
+            setLinkReuniaoId(null);
+            onOpenChange(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
