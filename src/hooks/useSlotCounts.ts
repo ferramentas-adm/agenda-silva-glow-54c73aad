@@ -23,10 +23,10 @@ export type SlotInfo = {
   full: boolean;
 };
 
-export function useSlotCounts(dateStr: string | null | undefined) {
+export function useSlotCounts(dateStr: string | null | undefined, treinamento: boolean = false) {
   const { slots: businessSlots } = useBusinessHours();
   return useQuery<Map<string, SlotInfo>>({
-    queryKey: ["slot-counts-v2", dateStr, businessSlots.join(",")],
+    queryKey: ["slot-counts-v2", dateStr, businessSlots.join(","), treinamento],
     enabled: !!dateStr,
     staleTime: 30 * 1000,
     queryFn: async () => {
@@ -40,7 +40,7 @@ export function useSlotCounts(dateStr: string | null | undefined) {
           .eq("scheduled_date", dateStr!)
           .is("deleted_at", null)
           .neq("status", "cancelada"),
-        supabase.from("closers").select("id").eq("active", true),
+        supabase.from("closers").select("id, em_treinamento").eq("active", true),
         supabase
           .from("closer_blocks")
           .select("start_time, end_time, is_recurring, recurrence_weekday, block_date, closer_id")
@@ -53,8 +53,9 @@ export function useSlotCounts(dateStr: string | null | undefined) {
       if (closersRes.error) throw closersRes.error;
       if (blocksRes.error) throw blocksRes.error;
 
-      const activeCloserIds = new Set<string>((closersRes.data ?? []).map((c: any) => c.id));
-      const activeCount = activeCloserIds.size;
+      const matchingClosers = (closersRes.data ?? []).filter((c: any) => !!c.em_treinamento === treinamento);
+      const matchingCloserIds = new Set<string>(matchingClosers.map((c: any) => c.id));
+      const activeCount = matchingClosers.length;
       const blocks = applyBlockExceptions((blocksRes.data ?? []) as any[], exceptions);
 
 
@@ -63,6 +64,8 @@ export function useSlotCounts(dateStr: string | null | undefined) {
       for (const r of (agRes.data ?? []) as any[]) {
         const t = String(r.scheduled_time ?? "").slice(0, 5);
         if (!t) continue;
+        // Só conta agendamentos alocados a closers do mesmo recorte ou sem closer.
+        if (r.closer_id && !matchingCloserIds.has(r.closer_id)) continue;
         const acc = byTime.get(t) ?? { closerIds: new Set<string>(), unassigned: 0 };
         if (r.closer_id) acc.closerIds.add(r.closer_id);
         else acc.unassigned += 1;
@@ -74,7 +77,7 @@ export function useSlotCounts(dateStr: string | null | undefined) {
         if (Number.isNaN(slotH)) return 0;
         const blocked = new Set<string>();
         for (const b of blocks) {
-          if (!b.closer_id || !activeCloserIds.has(b.closer_id)) continue;
+          if (!b.closer_id || !matchingCloserIds.has(b.closer_id)) continue;
           const startH = parseInt(String(b.start_time ?? "00").slice(0, 2), 10);
           const endH = parseInt(String(b.end_time ?? "00").slice(0, 2), 10);
           const endM = parseInt(String(b.end_time ?? "00").slice(3, 5), 10) || 0;
