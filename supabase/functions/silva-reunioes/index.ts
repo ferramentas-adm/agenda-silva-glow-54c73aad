@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
     .select(`
       id, lead_name, lead_phone, scheduled_date, scheduled_time, status,
       is_venda_avulsa, is_5k, meeting_reason, channel_type,
+      lembrete_video_enviado,
       closers ( id, name, email )
     `)
     .gte("scheduled_date", since)
@@ -94,6 +95,7 @@ Deno.serve(async (req) => {
       is_5k: a.is_5k ?? false,
       meeting_reason: a.meeting_reason ?? null,
       channel_type: a.channel_type ?? null,
+      lembrete_video_enviado: a.lembrete_video_enviado ?? null,
       agendamento_id: a.id,
     };
   });

@@ -57,3 +57,6 @@ verify_jwt = false
 [functions.sdr-ia-downsell-evento]
 verify_jwt = false
 
+[functions.silva-lembrete-video-enviado]
+verify_jwt = false
+
