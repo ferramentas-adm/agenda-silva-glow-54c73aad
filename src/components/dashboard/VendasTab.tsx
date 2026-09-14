@@ -504,6 +504,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const faturadoCalls = Number(kpiRow?.faturado_calls ?? 0);
     const faturadoAvulsa = Number(kpiRow?.faturado_avulsa ?? 0);
     const faturadoTotal = faturadoCalls + faturadoAvulsa;
+    const taxaColeta = faturadoTotal > 0 ? (coletadoTotal / faturadoTotal) * 100 : 0;
 
     const vendasPrimeiraCall = Number(kpiRow?.vendas_primeira_call ?? 0);
     const vendasFollowOuSegunda = Number(kpiRow?.vendas_follow ?? 0);
