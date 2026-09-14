@@ -87,6 +87,10 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   const [descricao, setDescricao] = useState("");
   const [saleDate, setSaleDate] = useState<Date>(new Date());
   const [saving, setSaving] = useState(false);
+  // Trava anti-duplicidade: se o lead tem reunião no mesmo dia, a venda deve ser
+  // lançada na reunião ("Registrar / atualizar venda"), não como avulsa.
+  const [overrideJust, setOverrideJust] = useState("");
+  const [linkReuniaoId, setLinkReuniaoId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedName(leadName.trim()), 350);
