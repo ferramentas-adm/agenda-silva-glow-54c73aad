@@ -20,3 +20,6 @@
 - [x] Padronizar em Brasília todos os payloads de confirmação e lembretes, sem reenviar Camila ou Fábio.
 - [x] Permitir abrir, editar e remover bloqueios pelo calendário, com confirmação e auditoria.
 - [x] Criar a seção administrativa de bloqueios com filtros e remoção em lote.
+- [x] Adicionar o campo `lembrete_video_enviado` e expô-lo em `/silva-reunioes`.
+- [x] Criar endpoint autenticado e idempotente para a automação registrar o envio do lembrete com vídeo.
+- [ ] Criar e aprovar no Meta o novo template Utility de 24h/1h e configurar o fallback na instância “API OFC - LEMBRETES 2211” (depende de acesso externo).
