@@ -1043,6 +1043,21 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           }
         />
         <KpiCard
+          icon={Percent}
+          label="Taxa de Coleta"
+          value={`${taxaColeta.toFixed(1)}%`}
+          sub={
+            faturadoTotal > 0
+              ? `${fmtBRL(coletadoTotal)} coletado ÷ ${fmtBRL(faturadoTotal)} faturado`
+              : "Sem faturamento no período"
+          }
+          color={taxaColeta >= 80 ? "emerald" : taxaColeta >= 50 ? "primary" : "amber"}
+          loading={loadingVendas}
+          onClick={() =>
+            openDrill(`Taxa de coleta — ${dayLabel}`, fechadasIds, `${taxaColeta.toFixed(1)}%`)
+          }
+        />
+        <KpiCard
           icon={CheckCircle2}
           label="Vendas Fechadas"
           value={String(totalVendas)}
