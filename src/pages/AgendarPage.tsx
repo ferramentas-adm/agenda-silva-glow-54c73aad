@@ -801,6 +801,7 @@ function AgendarPageInner() {
                 selectedDate={date}
                 selectedCloserId={closerId}
                 onSelect={setCloserId}
+                treinamento={leadDesqualificado}
               />
             </>
           )}
@@ -834,6 +835,7 @@ function AgendarPageInner() {
                     closerId={closerId}
                     date={date}
                     selectedTime={time}
+                    treinamento={leadDesqualificado}
                     onSelect={(t, dur) => {
                       setTime(t);
                       setDurationMinutes(dur ?? 60);
