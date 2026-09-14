@@ -25,6 +25,8 @@ interface GestorVendaDialogProps {
   agendamentoId: string;
   leadName: string;
   currentStatus?: string | null;
+  /** Valores sugeridos quando ainda não existe venda lançada (ex.: vindo do modal de venda avulsa). */
+  prefill?: { produto?: string | null; valorDigits?: string | null };
   /** Chamado após salvar/remover. `status` = novo status da agenda. */
   onSuccess: (status: string) => void;
 }
