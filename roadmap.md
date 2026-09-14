@@ -25,3 +25,4 @@
 - [ ] Criar e aprovar no Meta o novo template Utility de 24h/1h e configurar o fallback na instância “API OFC - LEMBRETES 2211” (depende de acesso externo).
 - [x] Corrigir os cards Canceladas/No-shows e incluir pendentes no Total agend. dia.
 - [x] Corrigir somente a autenticação interna do Google Meet em `/silva-agendar` e `/silva-reagendar`, sem reenviar mensagens, e listar reuniões do João sem Meet desde 13/09/2026.
+- [x] Desligar o webhook de vendas em tempo real, registrar novos resultados como cobertos pelo lote e preservar o envio diário existente.

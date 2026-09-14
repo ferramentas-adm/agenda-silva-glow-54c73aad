@@ -35,11 +35,11 @@ export interface VendaWebhookPayload {
 }
 
 /**
- * Envia o resultado da reunião (venda) para o webhook do DataCrazy
+ * Registra o resultado da reunião na fila de auditoria do DataCrazy
  * via edge function `datacrazy-venda-webhook`.
  *
- * A função de backend faz uma repetição automática e conserva toda falha em
- * uma fila durável. O registro local da venda nunca depende dessa integração.
+ * O envio em tempo real está desativado: o CRM é atualizado exclusivamente
+ * pelo lote diário. O registro local da venda nunca depende desta chamada.
  */
 export async function sendVendaToDataCrazy(payload: VendaWebhookPayload) {
   // Para desfechos "fechou" e "perdeu", alinha o payload ao formato do webhook
@@ -61,14 +61,11 @@ export async function sendVendaToDataCrazy(payload: VendaWebhookPayload) {
       : payload;
 
   try {
-    const { data, error } = await supabase.functions.invoke("datacrazy-venda-webhook", {
+    const { error } = await supabase.functions.invoke("datacrazy-venda-webhook", {
       body: enriched,
     });
     if (error) throw error;
-    if (data?.success === false) {
-      console.warn("[datacrazy-venda-webhook] envio preservado para reenvio posterior");
-    }
   } catch (err) {
-    console.warn("[datacrazy-venda-webhook] falha não-bloqueante:", err);
+    console.warn("[datacrazy-venda-webhook] registro não-bloqueante falhou:", err);
   }
 }
