@@ -21,6 +21,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { logAudit } from "@/services/auditLog";
+import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 
 const DEFAULT_CHANNEL_TYPES = [
   "Outbound", "Social Selling", "Tráfego Pago", "Formulário",
