@@ -307,6 +307,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -603,6 +604,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
           </Button>
         </DialogFooter>
       </DialogContent>
+      </Dialog>
 
       {linkReuniaoId && (
         <GestorVendaDialog
@@ -612,7 +614,9 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
           leadName={leadName.trim()}
           prefill={{
             produto: produto.trim() || null,
-            valorDigits: valorColetado.replace(/\D/g, "") || null,
+            valorDigits: parseMoney(valorColetado) > 0
+              ? Math.round(parseMoney(valorColetado) * 100).toString()
+              : null,
           }}
           onSuccess={async () => {
             await Promise.all([
@@ -625,6 +629,6 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
           }}
         />
       )}
-    </Dialog>
+    </>
   );
 }
