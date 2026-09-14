@@ -51,11 +51,6 @@ serve(async (req) => {
       });
     }
 
-    const webhookUrl = Deno.env.get("DATACRAZY_WEBHOOK_URL");
-    if (!webhookUrl) {
-      throw new Error("DATACRAZY_WEBHOOK_URL is not configured");
-    }
-
     const parsedPayload = PayloadSchema.safeParse(await req.json());
     if (!parsedPayload.success) {
       return new Response(JSON.stringify({ error: parsedPayload.error.flatten().fieldErrors }), {
@@ -85,62 +80,28 @@ serve(async (req) => {
     const { data: queued, error: queueError } = await admin
       .from("datacrazy_sales_sync_queue")
       .upsert(
-        { idempotency_key: idempotencyKey, agendamento_id: agendamentoId, payload: enrichedPayload },
+        {
+          idempotency_key: idempotencyKey,
+          agendamento_id: agendamentoId,
+          payload: enrichedPayload,
+          status: "coberto_pelo_lote",
+          attempts: 0,
+          last_http_status: null,
+          last_error: null,
+          response_body: null,
+        },
         { onConflict: "idempotency_key" },
       )
-      .select("id, status, attempts")
+      .select("id, status")
       .single();
     if (queueError || !queued) throw queueError ?? new Error("Could not persist sync payload");
-    if (queued.status === "sent") {
-      return new Response(JSON.stringify({ success: true, queued: false, duplicate: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
-    let lastStatus: number | null = null;
-    let lastBody = "";
-    let lastError = "";
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
-      try {
-        const response = await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(enrichedPayload),
-          signal: AbortSignal.timeout(12_000),
-        });
-        lastStatus = response.status;
-        lastBody = (await response.text()).slice(0, 4000);
-        if (response.ok) {
-          await admin.from("datacrazy_sales_sync_queue").update({
-            status: "sent",
-            attempts: queued.attempts + attempt,
-            last_http_status: response.status,
-            last_error: null,
-            response_body: lastBody || null,
-            sent_at: new Date().toISOString(),
-          }).eq("id", queued.id);
-          return new Response(JSON.stringify({ success: true, queued: false }), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        lastError = `DataCrazy venda webhook failed [${response.status}]`;
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : "DataCrazy request failed";
-      }
-      if (attempt === 1) await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
-    await admin.from("datacrazy_sales_sync_queue").update({
-      status: "pending",
-      attempts: queued.attempts + 2,
-      last_http_status: lastStatus,
-      last_error: lastError,
-      response_body: lastBody || null,
-    }).eq("id", queued.id);
-    console.error(lastError, lastBody);
-    return new Response(JSON.stringify({ success: false, queued: true, error: lastError }), {
+    return new Response(JSON.stringify({
+      success: true,
+      queued: true,
+      status: queued.status,
+      external_delivery: false,
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
