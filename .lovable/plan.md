@@ -41,10 +41,11 @@ Migração (aditiva, sem quebra):
 - `reassign_agendamento_closer_for_result` e `transfer_agendamento_closer` continuam válidas — a checagem roda no trigger, sem duplicar regra.
 
 Frontend:
-- `src/pages/AgendarPage.tsx`: estado `leadDesqualificado`; `Switch` na etapa de confirmação; grava `lead_desqualificado` no insert e no update de mesmo dia; limpa `closerId` quando o valor muda; passa a flag para `CloserSelector` e para `useSlotCounts`/`useSlotLimit`.
+- `src/pages/AgendarPage.tsx`: estado `leadDesqualificado`; `Switch` na etapa de confirmação (só renderizado para gestor/moderador); grava `lead_desqualificado` no insert e no update de mesmo dia; limpa `closerId` quando o valor muda; passa a flag para `CloserSelector` e para `useSlotCounts`/`useSlotLimit`.
 - `src/components/agendar/CloserSelector.tsx`: nova prop `treinamento: boolean`; a query passa a filtrar `closers.em_treinamento` igual à flag e entra na `queryKey`.
 - `src/hooks/useSlotCounts.ts`: nova opção `treinamento` — capacidade e contagem consideram somente o subconjunto de closers correspondente (chave de cache inclui a flag). Sem closer elegível livre → horário mostrado como cheio (trava pedida).
 - `src/pages/AdminPage.tsx`: linha de usuário com função closer ganha `Switch` "Em treinamento" que faz `update` em `closers.em_treinamento` casando por e-mail do perfil, com `logAudit("toggle_closer_treinamento", ...)`; o `select` de closers da página passa a trazer o campo.
 - `src/pages/DashboardComercialPage.tsx`: as consultas de agendamentos passam a trazer `lead_desqualificado`; o pool enviado a `computeAgendaMetrics` na aba "Métricas SDRs" filtra `!lead_desqualificado`. `src/lib/agendaMetrics.ts` recebe o campo em `AgendaMetricInput` (documentado), sem mudar a regra usada pelo Calendário.
 - `src/components/dashboard/VendasTab.tsx`: as queries de vendas passam a trazer `agendamentos.lead_desqualificado`; novo `KpiCard` "Vendas Fechadas (desqualificados)" com drill-down reaproveitando `MetricDrilldownDialog`; linha de apoio no card "Vendas Fechadas".
+- O flag **não é exposto** nos cards do calendário, no tooltip de reunião, no diálogo de venda do closer, no VendaDialog, na fila de atribuição, no Meet nem em nenhum payload para automações externas.
 - Tipos regenerados após a migração. Sem alteração em RPCs de vendas/conversão, lote diário do CRM, CAPI ou endpoints `silva-*`.
