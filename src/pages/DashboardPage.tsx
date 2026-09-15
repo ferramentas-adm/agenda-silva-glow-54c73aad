@@ -670,15 +670,15 @@ export function CalendarContent() {
 
   // Quem pode TRANSFERIR o lead para outro closer:
   // - gestor / supervisor: sempre
-  // - moderador: apenas "Moderador de SDR"
+  // - moderador: qualquer tipo
   // - closer: APENAS se for o dono atual do lead (nunca pode "puxar" lead de outro)
   const canTransfer = useMemo(() => {
     if (!detailAg) return false;
     if (role === "gestor" || role === "supervisor") return true;
-    if ((role === "moderador" || role === "apresentador")) return moderadorTipo === "sdr";
+    if (role === "moderador" || role === "apresentador") return true;
     if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
     return false;
-  }, [detailAg, role, myCloserId, moderadorTipo]);
+  }, [detailAg, role, myCloserId]);
 
   const handleTransferLead = async () => {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
