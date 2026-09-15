@@ -2581,6 +2581,17 @@ const DayView = memo(function DayView({
                               )}>
                                 B
                               </span>
+                              {isDiretor(ag) && (
+                                <span
+                                  className={cn(
+                                    "absolute bottom-0 right-0 rounded-tl-md rounded-br-md px-1.5 py-0.5 font-bold leading-none bg-red-600 text-white",
+                                    isCompact ? "text-[8px]" : "text-[10px]"
+                                  )}
+                                  title={DIRETOR_TOOLTIP}
+                                >
+                                  DIR
+                                </span>
+                              )}
                               {(() => {
                                 const isCloserBooked = (ag.created_by ? userRolesMap.get(ag.created_by) === "closer" : false) || ag.meeting_reason === "segunda_reuniao";
                                 if (!ag.is_5k && !isCloserBooked) return null;

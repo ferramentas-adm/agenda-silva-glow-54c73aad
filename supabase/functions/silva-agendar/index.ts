@@ -29,7 +29,7 @@ const Body = z.object({
   sdr: z.string().optional().default(SDR_IA_NAME),
   origem: z.string().optional().default(BOOKING_CHANNEL),
   canal: z.string().optional().default("Tráfego Pago"),
-  funil: z.enum(["formulario", "vsl-direta"]).optional(),
+  funil: z.enum(["formulario", "vsl-direta", "diretor"]).optional(),
   decisor_presente: z.union([z.boolean(), z.string().min(1)]).optional().transform((value) => {
     if (typeof value !== "string") return value;
     const normalized = value.trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
