@@ -269,6 +269,10 @@ export default function BloqueioMassaPage() {
           .in("status", ["pendente", "confirmada", "nao_confirmada", "agendada", "realizada"]);
         if (mode === "pontual") {
           mq = mq.eq("scheduled_date", pickedDateToYMD(date!));
+        } else if (mode === "periodo") {
+          mq = mq
+            .gte("scheduled_date", periodDates![0])
+            .lte("scheduled_date", periodDates![periodDates!.length - 1]);
         } else {
           mq = mq.gte("scheduled_date", todayStr);
         }
