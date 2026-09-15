@@ -642,16 +642,16 @@ function UsersSection() {
         .update({ em_treinamento: !user.emTreinamento })
         .eq("id", user.closerId);
       if (error) throw error;
-      await logAudit({
-        action: "toggle_closer_treinamento",
-        entity_type: "closer",
-        entity_id: user.closerId,
-        details: {
+      await logAudit(
+        "toggle_closer_treinamento",
+        "closer",
+        user.closerId,
+        {
           closer_name: user.name,
           previous: user.emTreinamento,
           current: !user.emTreinamento,
         },
-      });
+      );
       toast.success(user.emTreinamento ? "Closer removido do treinamento" : "Closer marcado como em treinamento");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (e: any) {
