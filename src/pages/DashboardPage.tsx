@@ -682,18 +682,11 @@ export function CalendarContent() {
 
   const handleTransferLead = async () => {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
-    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
-    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    // Transferência entre turmas é permitida: a marcação do lead passa a
+    // acompanhar a turma do closer de destino (ajuste feito pelo banco).
     const targetCloser = transferableClosers.find((c) => c.id === transferTarget);
     const isDesqLead = !!(detailAg as any).lead_desqualificado;
-    if (targetCloser && !!targetCloser.em_treinamento !== isDesqLead) {
-      toast.error(
-        isDesqLead
-          ? "Lead desqualificado só pode ser transferido para um closer da Turma B."
-          : "Lead qualificado só pode ser transferido para um closer da Turma A."
-      );
-      return;
-    }
+    const trocaTurma = !!targetCloser && !!targetCloser.em_treinamento !== isDesqLead;
     setTransferring(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-transfer-event", {
@@ -717,14 +710,22 @@ export function CalendarContent() {
         meet_link_new: newMeetLink,
         google_warnings: warnings,
       });
-      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: transferTarget, meet_link: newMeetLink }));
-      setDetailAg({ ...detailAg, closer_id: transferTarget, meet_link: newMeetLink });
+      const novaMarca = trocaTurma ? !isDesqLead : isDesqLead;
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: transferTarget, meet_link: newMeetLink, lead_desqualificado: novaMarca } as any));
+      setDetailAg({ ...detailAg, closer_id: transferTarget, meet_link: newMeetLink, lead_desqualificado: novaMarca } as any);
       if (warnings.includes("new_closer_not_connected")) {
         toast.warning(`Lead transferido para ${newName}, mas o novo closer não tem Google Calendar conectado.`);
       } else if (warnings.includes("create_event_failed")) {
         toast.warning(`Lead transferido para ${newName}, mas falhou ao criar o evento no Google.`);
       } else {
         toast.success(`Lead transferido para ${newName}`);
+      }
+      if (trocaTurma) {
+        toast.info(
+          novaMarca
+            ? `A reunião passou para a Turma B, então o lead ficou marcado como desqualificado.`
+            : `A reunião passou para a Turma A, então a marca de lead desqualificado foi retirada.`
+        );
       }
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
       setTransferOpen(false);
@@ -763,18 +764,11 @@ export function CalendarContent() {
 
   const handleChangeCloser = async (newCloserId: string) => {
     if (!detailAg || newCloserId === detailAg.closer_id) return;
-    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
-    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    // Troca entre turmas é permitida: a marcação do lead acompanha a turma
+    // do closer de destino (ajuste feito pelo banco).
     const target = allClosers.find((c) => c.id === newCloserId);
     const isDesq = !!(detailAg as any).lead_desqualificado;
-    if (target && !!target.em_treinamento !== isDesq) {
-      toast.error(
-        isDesq
-          ? "Lead desqualificado só pode ser atribuído a um closer da Turma B."
-          : "Lead qualificado só pode ser atribuído a um closer da Turma A."
-      );
-      return;
-    }
+    const trocaTurma = !!target && !!target.em_treinamento !== isDesq;
     try {
       const { data, error } = await supabase
         .from("agendamentos")
@@ -788,9 +782,17 @@ export function CalendarContent() {
       const oldName = closerMap.get(detailAg.closer_id) || "—";
       const newName = closerMap.get(newCloserId) || "—";
       // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
-      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: newCloserId }));
-      setDetailAg({ ...detailAg, closer_id: newCloserId });
+      const novaMarca = trocaTurma ? !isDesq : isDesq;
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: newCloserId, lead_desqualificado: novaMarca } as any));
+      setDetailAg({ ...detailAg, closer_id: newCloserId, lead_desqualificado: novaMarca } as any);
       toast.success(`Closer alterado para ${newName}`);
+      if (trocaTurma) {
+        toast.info(
+          novaMarca
+            ? "A reunião passou para a Turma B, então o lead ficou marcado como desqualificado."
+            : "A reunião passou para a Turma A, então a marca de lead desqualificado foi retirada."
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao alterar closer");
