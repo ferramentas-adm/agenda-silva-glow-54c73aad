@@ -286,7 +286,7 @@ function UsersSection() {
         .select("user_id, role");
       const { data: closers } = await supabase
         .from("closers")
-        .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id, auto_recording_enabled")
+        .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id, auto_recording_enabled, em_treinamento")
         .order("name");
       // Conexões Google dos closers (para status/desconexão no painel do gestor)
       const { data: googleTokens } = await supabase
@@ -301,7 +301,7 @@ function UsersSection() {
 
 
       // Build a map of closer info by email
-      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean }>();
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean; emTreinamento: boolean }>();
       (closers ?? []).forEach((c: any) => {
         if (c.email) {
           const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
