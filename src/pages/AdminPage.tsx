@@ -634,13 +634,13 @@ function UsersSection() {
   const [togglingSdrOverrideId, setTogglingSdrOverrideId] = useState<string | null>(null);
   const [togglingTreinamentoId, setTogglingTreinamentoId] = useState<string | null>(null);
 
-  const handleToggleTreinamento = async (user: any) => {
-    if (!user.closerId) return;
+  const handleToggleTreinamento = async (user: any, nextValue: boolean) => {
+    if (!user.closerId || user.emTreinamento === nextValue) return;
     setTogglingTreinamentoId(user.userId);
     try {
       const { error } = await supabase
         .from("closers")
-        .update({ em_treinamento: !user.emTreinamento })
+        .update({ em_treinamento: nextValue })
         .eq("id", user.closerId);
       if (error) throw error;
       await logAudit(
@@ -650,13 +650,13 @@ function UsersSection() {
         {
           closer_name: user.name,
           previous: user.emTreinamento,
-          current: !user.emTreinamento,
+          current: nextValue,
         },
       );
-      toast.success(user.emTreinamento ? "Closer removido do treinamento" : "Closer marcado como em treinamento");
+      toast.success(nextValue ? "Closer alocado na Turma B" : "Closer alocado na Turma A");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (e: any) {
-      toast.error(e.message || "Erro ao alterar status de treinamento");
+      toast.error(e.message || "Erro ao alterar turma do closer");
     } finally {
       setTogglingTreinamentoId(null);
     }
