@@ -408,7 +408,7 @@ export function CalendarContent() {
   }, [queryClient, user?.id, dateStr]);
 
   // Fetch Google Calendar events for all selected closers
-  const closerIds = useMemo(() => Array.from(selectedIds).sort(), [selectedIds]);
+  const closerIds = useMemo(() => Array.from(effectiveSelectedIds).sort(), [effectiveSelectedIds]);
   const closerIdsKey = closerIds.join(",");
 
   const { data: googleBusyBlocks = [] } = useQuery<GoogleBusyBlock[]>({
@@ -463,7 +463,7 @@ export function CalendarContent() {
 
   const filtered = useMemo(() => {
     return agendamentos.filter((a) => {
-      if (!a.closer_id || !selectedIds.has(a.closer_id)) return false;
+      if (!a.closer_id || !effectiveSelectedIds.has(a.closer_id)) return false;
       const ownerSdr =
         a.sdr_responsavel_id ||
         (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
@@ -475,7 +475,7 @@ export function CalendarContent() {
       }
       return true;
     });
-  }, [agendamentos, selectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
+  }, [agendamentos, effectiveSelectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
 
   // ─── Busca de lead no calendário (dia exibido) ────────────────
   const [leadSearch, setLeadSearch] = useState("");
