@@ -1784,8 +1784,19 @@ export function CalendarContent() {
                   abaixo, junto de Confirmar / Realizada / Cancelar / No-show. */}
 
 
-              {/* Botão "Transferir lead para outro closer" escondido por solicitação.
-                  Lógica de transferência preservada (handleTransferLead + dialog). */}
+              {canTransfer && detailAg.closer_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full"
+                  onClick={() => {
+                    setTransferTarget("");
+                    setTransferOpen(true);
+                  }}
+                >
+                  <Users className="h-3.5 w-3.5" />Mudar closer da reunião
+                </Button>
+              )}
 
 
               {/* Lançar venda — gestor/moderador/supervisor/apresentador lançam a venda
