@@ -682,18 +682,11 @@ export function CalendarContent() {
 
   const handleTransferLead = async () => {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
-    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
-    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    // Transferência entre turmas é permitida: a marcação do lead passa a
+    // acompanhar a turma do closer de destino (ajuste feito pelo banco).
     const targetCloser = transferableClosers.find((c) => c.id === transferTarget);
     const isDesqLead = !!(detailAg as any).lead_desqualificado;
-    if (targetCloser && !!targetCloser.em_treinamento !== isDesqLead) {
-      toast.error(
-        isDesqLead
-          ? "Lead desqualificado só pode ser transferido para um closer da Turma B."
-          : "Lead qualificado só pode ser transferido para um closer da Turma A."
-      );
-      return;
-    }
+    const trocaTurma = !!targetCloser && !!targetCloser.em_treinamento !== isDesqLead;
     setTransferring(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-transfer-event", {
