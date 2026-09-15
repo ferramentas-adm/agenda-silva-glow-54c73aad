@@ -209,12 +209,16 @@ function AgendarPageInner() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name")
+        .select("id, name, em_treinamento")
         .eq("active", true)
         .order("name");
       return data ?? [];
     },
   });
+
+  const selectedCloser = closers.find((c) => c.id === closerId);
+  const incompativel =
+    !!selectedCloser && (selectedCloser.em_treinamento ?? false) !== leadDesqualificado;
 
   // Fetch SDR users for admin selector (role 'sdr' + "Atua como SDR")
   const { data: sdrUsers = [] } = useQuery({
