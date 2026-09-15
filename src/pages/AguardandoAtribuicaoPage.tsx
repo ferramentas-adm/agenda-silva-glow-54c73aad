@@ -503,7 +503,45 @@ export default function AguardandoAtribuicaoPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-end gap-2">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="space-y-1">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Turma do lead
+                        </span>
+                        <ToggleGroup
+                          type="single"
+                          value={desqEfetivo ? "turma_b" : "turma_a"}
+                          onValueChange={(v) => {
+                            if (!v) return;
+                            const next = v === "turma_b";
+                            if (next === desqEfetivo) return;
+                            setTurmaOverride((s) => ({ ...s, [a.id]: next }));
+                            // Closer da turma anterior deixa de ser válido.
+                            setSelecting((s) => {
+                              const { [a.id]: _drop, ...rest } = s;
+                              return rest;
+                            });
+                          }}
+                          className="justify-start"
+                        >
+                          <ToggleGroupItem
+                            value="turma_a"
+                            size="sm"
+                            className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                            title="Lead qualificado — closers da Turma A"
+                          >
+                            Turma A
+                          </ToggleGroupItem>
+                          <ToggleGroupItem
+                            value="turma_b"
+                            size="sm"
+                            className="h-8 px-3 text-xs data-[state=on]:bg-amber-500 data-[state=on]:text-white"
+                            title="Lead desqualificado — closers da Turma B (em treinamento)"
+                          >
+                            Turma B
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
                       <div className="min-w-[200px]">
                         <Select
                           value={selecting[a.id] ?? ""}
