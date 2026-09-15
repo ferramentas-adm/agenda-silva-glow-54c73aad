@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { logAudit } from "@/services/auditLog";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Navigate } from "react-router-dom";
 
@@ -52,6 +54,9 @@ export default function AguardandoAtribuicaoPage() {
   const { limit: closerSlotLimit } = useCloserSlotLimit();
   const queryClient = useQueryClient();
   const [selecting, setSelecting] = useState<Record<string, string>>({});
+  // Reclassificação de turma feita pelo gestor no momento da atribuição.
+  // id do agendamento → lead_desqualificado efetivo.
+  const [turmaOverride, setTurmaOverride] = useState<Record<string, boolean>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [errorDialog, setErrorDialog] = useState<{ agendamento: Agendamento; alsoDelete: boolean } | null>(null);
   const [errorDescription, setErrorDescription] = useState("");
@@ -255,7 +260,7 @@ export default function AguardandoAtribuicaoPage() {
     return reason;
   }
 
-  const handleAssign = async (a: Agendamento) => {
+  const handleAssign = async (a: Agendamento, desqEfetivo: boolean) => {
     const closerId = selecting[a.id];
     if (!closerId) {
       toast.error("Selecione um Closer.");
@@ -308,9 +313,19 @@ export default function AguardandoAtribuicaoPage() {
           closer_id: closerId,
           meet_link: meetLink,
           google_event_id: googleEventId,
+          lead_desqualificado: desqEfetivo,
         } as any)
         .eq("id", a.id);
       if (error) throw error;
+
+      const originalDesq = Boolean(a.lead_desqualificado);
+      if (originalDesq !== desqEfetivo) {
+        logAudit("reclassificar_turma_lead", "agendamento", a.id, {
+          lead_name: a.lead_name,
+          de: originalDesq ? "Turma B (desqualificado)" : "Turma A (qualificado)",
+          para: desqEfetivo ? "Turma B (desqualificado)" : "Turma A (qualificado)",
+        });
+      }
 
       toast.success(`Closer atribuído${meetLink ? " e link do Meet gerado" : ""}.`);
       if (!meetLink) {
@@ -414,9 +429,12 @@ export default function AguardandoAtribuicaoPage() {
               const isReschedule = !!a.original_agendamento_id;
               const original = isReschedule ? originalById(a.original_agendamento_id) : null;
               const hist = leadHistory(a.lead_phone, a.id);
+              const desqOriginal = Boolean(a.lead_desqualificado);
+              const desqEfetivo = turmaOverride[a.id] ?? desqOriginal;
+              const reclassificado = desqEfetivo !== desqOriginal;
               const closerOptions = closers
                 // Lead desqualificado só pode ser atribuído à Turma B (e o inverso).
-                .filter((c) => Boolean(c.em_treinamento) === Boolean(a.lead_desqualificado))
+                .filter((c) => Boolean(c.em_treinamento) === desqEfetivo)
                 .map((c) => {
                   const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
                   const load = closerLoad(c.id, a.scheduled_date, a.scheduled_time);
@@ -442,9 +460,14 @@ export default function AguardandoAtribuicaoPage() {
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                           {meetingReasonLabel(a.meeting_reason, isReschedule)}
                         </span>
-                        {a.lead_desqualificado && (
+                        {desqEfetivo && (
                           <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                             Lead desqualificado · Turma B
+                          </span>
+                        )}
+                        {reclassificado && (
+                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                            Reclassificado para {desqEfetivo ? "Turma B" : "Turma A"} (salva ao atribuir)
                           </span>
                         )}
                         {isReschedule && original && (
@@ -480,7 +503,45 @@ export default function AguardandoAtribuicaoPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-end gap-2">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="space-y-1">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Turma do lead
+                        </span>
+                        <ToggleGroup
+                          type="single"
+                          value={desqEfetivo ? "turma_b" : "turma_a"}
+                          onValueChange={(v) => {
+                            if (!v) return;
+                            const next = v === "turma_b";
+                            if (next === desqEfetivo) return;
+                            setTurmaOverride((s) => ({ ...s, [a.id]: next }));
+                            // Closer da turma anterior deixa de ser válido.
+                            setSelecting((s) => {
+                              const { [a.id]: _drop, ...rest } = s;
+                              return rest;
+                            });
+                          }}
+                          className="justify-start"
+                        >
+                          <ToggleGroupItem
+                            value="turma_a"
+                            size="sm"
+                            className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                            title="Lead qualificado — closers da Turma A"
+                          >
+                            Turma A
+                          </ToggleGroupItem>
+                          <ToggleGroupItem
+                            value="turma_b"
+                            size="sm"
+                            className="h-8 px-3 text-xs data-[state=on]:bg-amber-500 data-[state=on]:text-white"
+                            title="Lead desqualificado — closers da Turma B (em treinamento)"
+                          >
+                            Turma B
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
                       <div className="min-w-[200px]">
                         <Select
                           value={selecting[a.id] ?? ""}
@@ -516,7 +577,7 @@ export default function AguardandoAtribuicaoPage() {
                         </Select>
                       </div>
                       <Button
-                        onClick={() => handleAssign(a)}
+                        onClick={() => handleAssign(a, desqEfetivo)}
                         disabled={
                           savingId === a.id ||
                           !selecting[a.id] ||
