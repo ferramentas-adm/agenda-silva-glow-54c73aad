@@ -197,12 +197,6 @@ function AgendarPageInner() {
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
 
-  // Ao trocar o flag de lead desqualificado, limpa o closer escolhido para
-  // evitar alocar um lead desqualificado com um closer normal (ou vice-versa).
-  useEffect(() => {
-    setCloserId(null);
-    setTime(null);
-  }, [leadDesqualificado]);
   
 
 
