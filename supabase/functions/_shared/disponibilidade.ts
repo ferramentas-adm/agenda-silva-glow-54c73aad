@@ -153,18 +153,21 @@ export function applyBlockExceptions<T extends Block>(blocks: T[], exceptions: E
 }
 
 /** Calcula a lotação de todas as horas de um dia (mesma regra de useSlotCounts). */
+export type Turma = "A" | "B";
+
 export async function loadDayAvailability(
   supabase: any,
   dateStr: string,
   businessSlots?: string[],
+  turma: Turma = "A",
 ): Promise<DayAvailability> {
   const slots = businessSlots ?? (await fetchBusinessSlots(supabase));
   const weekday = weekdayOf(dateStr);
   const [agRes, closersRes, blocksRes, excRes] = await Promise.all([
     supabase.from("agendamentos").select("scheduled_time, closer_id")
       .eq("scheduled_date", dateStr).is("deleted_at", null).neq("status", "cancelada"),
-    // Turma B (em treinamento) só atende lead desqualificado — o SDR IA nunca aloca nesses.
-    supabase.from("closers").select("id, name").eq("active", true).eq("em_treinamento", false).order("name"),
+    // Turma A (padrão) atende lead qualificado; Turma B (em treinamento) só lead desqualificado.
+    supabase.from("closers").select("id, name").eq("active", true).eq("em_treinamento", turma === "B").order("name"),
     supabase.from("closer_blocks").select("start_time, end_time, closer_id")
       .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`),
     supabase.from("closer_block_exceptions").select("closer_id, start_time, end_time").eq("exception_date", dateStr),
