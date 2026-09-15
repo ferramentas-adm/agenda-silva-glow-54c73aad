@@ -5,6 +5,7 @@ import {
   BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
   spDateTime, spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
+import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag } from "../_shared/datacrazyLead.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
@@ -207,6 +208,6 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("silva-reagendar error", error);
-    return json({ erro: "internal_error", detalhe: error instanceof Error ? error.message : String(error) }, 500);
+    return json({ erro: "internal_error", detalhe: errorDetail(error) }, 500);
   }
 });
