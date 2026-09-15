@@ -11,6 +11,7 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
+import { TurmaFilter } from "@/components/calendar/TurmaFilter";
 import BriefingDrawer from "@/components/BriefingDrawer";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
@@ -166,7 +167,18 @@ interface DeleteTarget {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function CalendarContent() {
-  const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
+  const {
+    closers,
+    selectedIds,
+    effectiveSelectedIds,
+    toggle,
+    isLoading,
+    isCloserRole,
+    turma,
+    setTurma,
+    countTurmaA,
+    countTurmaB,
+  } = useCloserFilter();
   
   const { user, role } = useAuth();
   const canEditTime = useCan("edit_appointment_time");
