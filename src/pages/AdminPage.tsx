@@ -1039,6 +1039,21 @@ function UsersSection() {
                             <Video className={`h-3.5 w-3.5 ${u.autoRecordingEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
                           </Button>
                         )}
+                        {u.role === "closer" && u.closerId && canActOn(u.role) && (
+                          <span
+                            title={
+                              u.emTreinamento
+                                ? "Closer em treinamento — só recebe leads desqualificados"
+                                : "Marcar closer como em treinamento (só recebe leads desqualificados)"
+                            }
+                          >
+                            <Switch
+                              checked={u.emTreinamento}
+                              onCheckedChange={() => handleToggleTreinamento(u)}
+                              disabled={togglingTreinamentoId === u.userId}
+                            />
+                          </span>
+                        )}
                         {u.role === "closer" && u.closerId && (
 
                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Horário de trabalho"
