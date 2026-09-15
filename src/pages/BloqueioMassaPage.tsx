@@ -173,6 +173,9 @@ export default function BloqueioMassaPage() {
     if (!blockType) return toast.error("Selecione um motivo");
     if (!rangesValid) return toast.error("Em cada intervalo, o fim deve ser depois do início");
     if (mode === "pontual" && !date) return toast.error("Selecione a data");
+    if (mode === "periodo" && !periodDays) return toast.error("Selecione a data inicial e a final do período");
+    if (mode === "periodo" && periodDays && periodDays.length > MAX_PERIOD_DAYS)
+      return toast.error(`O período máximo é de ${MAX_PERIOD_DAYS} dias`);
     if (mode === "recorrente" && weekdays.length === 0) return toast.error("Selecione ao menos um dia da semana");
 
     setSubmitting(true);
