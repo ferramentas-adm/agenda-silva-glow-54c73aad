@@ -444,7 +444,7 @@ export default function BloqueioMassaPage() {
 
           {/* Form */}
           <div className="glass-card space-y-4 rounded-xl border border-primary/10 p-4">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 type="button"
                 variant={mode === "pontual" ? "default" : "outline"}
@@ -453,6 +453,15 @@ export default function BloqueioMassaPage() {
               >
                 <CalendarIcon className="h-4 w-4" />
                 Pontual
+              </Button>
+              <Button
+                type="button"
+                variant={mode === "periodo" ? "default" : "outline"}
+                className="gap-2"
+                onClick={() => setMode("periodo")}
+              >
+                <CalendarRange className="h-4 w-4" />
+                Período
               </Button>
               <Button
                 type="button"
