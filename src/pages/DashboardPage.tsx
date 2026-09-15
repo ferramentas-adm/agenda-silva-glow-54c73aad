@@ -782,9 +782,17 @@ export function CalendarContent() {
       const oldName = closerMap.get(detailAg.closer_id) || "—";
       const newName = closerMap.get(newCloserId) || "—";
       // Auditoria registrada automaticamente pelo trigger log_agendamento_change.
-      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: newCloserId }));
-      setDetailAg({ ...detailAg, closer_id: newCloserId });
+      const novaMarca = trocaTurma ? !isDesq : isDesq;
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: newCloserId, lead_desqualificado: novaMarca } as any));
+      setDetailAg({ ...detailAg, closer_id: newCloserId, lead_desqualificado: novaMarca } as any);
       toast.success(`Closer alterado para ${newName}`);
+      if (trocaTurma) {
+        toast.info(
+          novaMarca
+            ? "A reunião passou para a Turma B, então o lead ficou marcado como desqualificado."
+            : "A reunião passou para a Turma A, então a marca de lead desqualificado foi retirada."
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao alterar closer");
