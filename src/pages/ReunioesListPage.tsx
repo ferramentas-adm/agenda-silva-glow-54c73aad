@@ -18,6 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { isDiretor, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -1042,6 +1043,11 @@ export default function ReunioesListPage() {
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1 items-start">
                             <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
+                            {isDiretor(ag) && (
+                              <Badge className="text-[10px] bg-red-600 text-white hover:bg-red-600" title={DIRETOR_TOOLTIP}>
+                                DIRETOR
+                              </Badge>
+                            )}
                             {(ag as any).is_venda_avulsa && (
                               <Badge className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/15">
                                 Venda avulsa
@@ -1218,7 +1224,14 @@ export default function ReunioesListPage() {
       <Dialog open={!!detailTarget} onOpenChange={(open) => { if (!open) setDetailTarget(null); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{detailTarget?.lead_name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
+              {detailTarget?.lead_name}
+              {isDiretor(detailTarget) && (
+                <Badge className="text-[10px] bg-red-600 text-white hover:bg-red-600" title={DIRETOR_TOOLTIP}>
+                  DIRETOR
+                </Badge>
+              )}
+            </DialogTitle>
             <DialogDescription>
               {detailTarget && (
                 <>

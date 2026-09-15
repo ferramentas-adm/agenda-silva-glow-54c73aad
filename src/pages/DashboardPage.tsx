@@ -12,6 +12,9 @@ import {
 import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
 import { TurmaFilter } from "@/components/calendar/TurmaFilter";
+import { FunilFilter } from "@/components/calendar/FunilFilter";
+import { isDiretor, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { linkifyText } from "@/lib/linkify";
 import BriefingDrawer from "@/components/BriefingDrawer";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
@@ -178,6 +181,8 @@ export function CalendarContent() {
     setTurma,
     countTurmaA,
     countTurmaB,
+    funil,
+    setFunil,
   } = useCloserFilter();
   
   const { user, role } = useAuth();
@@ -473,9 +478,14 @@ export function CalendarContent() {
       if (selectedSdrId !== "all") {
         if (ownerSdr !== selectedSdrId) return false;
       }
+      if (funil !== "todos") {
+        const diretor = isDiretor(a);
+        if (funil === "diretor" && !diretor) return false;
+        if (funil === "padrao" && diretor) return false;
+      }
       return true;
     });
-  }, [agendamentos, effectiveSelectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
+  }, [agendamentos, effectiveSelectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user, funil]);
 
   // ─── Busca de lead no calendário (dia exibido) ────────────────
   const [leadSearch, setLeadSearch] = useState("");
@@ -1295,12 +1305,15 @@ export function CalendarContent() {
             </div>
           ) : (
             <div className="space-y-2">
-              <TurmaFilter
-                value={turma}
-                onChange={setTurma}
-                countA={countTurmaA}
-                countB={countTurmaB}
-              />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <TurmaFilter
+                  value={turma}
+                  onChange={setTurma}
+                  countA={countTurmaA}
+                  countB={countTurmaB}
+                />
+                <FunilFilter value={funil} onChange={setFunil} />
+              </div>
               <div className="overflow-x-auto -mx-1 px-1">
                 <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
               </div>
@@ -1529,6 +1542,14 @@ export function CalendarContent() {
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               <User className="h-5 w-5 text-primary" />
               {detailAg?.lead_name}
+              {isDiretor(detailAg) && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 px-2 py-0.5 rounded-full"
+                  title={DIRETOR_TOOLTIP}
+                >
+                  Diretor
+                </span>
+              )}
               {detailAg?.meta_lead_id && (
                 <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                   Lead ID: {detailAg.meta_lead_id}
@@ -1665,10 +1686,35 @@ export function CalendarContent() {
                 </Button>
               )}
 
+              {/* Briefing completo, com quebras de linha preservadas */}
+              {detailAg.briefing?.trim() && (
+                <div
+                  className={cn(
+                    "rounded-lg border p-3 space-y-1.5",
+                    isDiretor(detailAg)
+                      ? "border-red-500/40 bg-red-500/10"
+                      : "border-border bg-muted/30"
+                  )}
+                >
+                  <p className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wider",
+                    isDiretor(detailAg) ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                  )}>
+                    Briefing {isDiretor(detailAg) ? "— Funil Diretor (oferta R$10 mil)" : ""}
+                  </p>
+                  <div
+                    className="text-sm leading-6 text-foreground/90 whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
+                    style={{ overflowWrap: "anywhere" }}
+                  >
+                    {linkifyText(detailAg.briefing)}
+                  </div>
+                </div>
+              )}
+
               {/* Briefing section - opens drawer */}
               {detailAg.briefing ? (
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
-                  <FileText className="h-3.5 w-3.5" />Ver briefing
+                  <FileText className="h-3.5 w-3.5" />Ver briefing completo
                 </Button>
               ) : (
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
@@ -2535,6 +2581,17 @@ const DayView = memo(function DayView({
                               )}>
                                 B
                               </span>
+                              {isDiretor(ag) && (
+                                <span
+                                  className={cn(
+                                    "absolute bottom-0 right-0 rounded-tl-md rounded-br-md px-1.5 py-0.5 font-bold leading-none bg-red-600 text-white",
+                                    isCompact ? "text-[8px]" : "text-[10px]"
+                                  )}
+                                  title={DIRETOR_TOOLTIP}
+                                >
+                                  DIR
+                                </span>
+                              )}
                               {(() => {
                                 const isCloserBooked = (ag.created_by ? userRolesMap.get(ag.created_by) === "closer" : false) || ag.meeting_reason === "segunda_reuniao";
                                 if (!ag.is_5k && !isCloserBooked) return null;
