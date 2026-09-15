@@ -64,6 +64,7 @@ export default function BloqueioMassaPage() {
   const [mode, setMode] = useState<Mode>("pontual");
 
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [ranges, setRanges] = useState<{ start: string; end: string }[]>([
     { start: "09:00", end: "10:00" },
@@ -155,11 +156,17 @@ export default function BloqueioMassaPage() {
 
   const allSelected = closers.length > 0 && selected.length === closers.length;
 
+  const periodDays =
+    mode === "periodo" && dateRange?.from && dateRange?.to
+      ? eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
+      : null;
+  const periodValid = !!periodDays && periodDays.length <= MAX_PERIOD_DAYS;
+
   const canSubmit =
     selected.length > 0 &&
     !!blockType &&
     rangesValid &&
-    (mode === "pontual" ? !!date : weekdays.length > 0);
+    (mode === "pontual" ? !!date : mode === "periodo" ? periodValid : weekdays.length > 0);
 
   const handleSubmit = async () => {
     if (selected.length === 0) return toast.error("Selecione ao menos um closer");
