@@ -75,6 +75,7 @@ interface AgendamentoRow {
   status: string;
   meeting_reason: string | null;
   is_venda_avulsa: boolean | null;
+  lead_desqualificado: boolean | null;
 }
 
 interface CloserRow {
@@ -154,7 +155,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const VENDA_SELECT = `
     id, agendamento_id, vendeu, valor, valor_total_projeto, produto, order_bumps, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
     motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
-    agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
+    agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa, lead_desqualificado)
   `;
 
 
