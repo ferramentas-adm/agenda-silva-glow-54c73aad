@@ -710,14 +710,22 @@ export function CalendarContent() {
         meet_link_new: newMeetLink,
         google_warnings: warnings,
       });
-      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: transferTarget, meet_link: newMeetLink }));
-      setDetailAg({ ...detailAg, closer_id: transferTarget, meet_link: newMeetLink });
+      const novaMarca = trocaTurma ? !isDesqLead : isDesqLead;
+      patchAgendamentosCache(detailAg.id, (a) => ({ ...a, closer_id: transferTarget, meet_link: newMeetLink, lead_desqualificado: novaMarca } as any));
+      setDetailAg({ ...detailAg, closer_id: transferTarget, meet_link: newMeetLink, lead_desqualificado: novaMarca } as any);
       if (warnings.includes("new_closer_not_connected")) {
         toast.warning(`Lead transferido para ${newName}, mas o novo closer não tem Google Calendar conectado.`);
       } else if (warnings.includes("create_event_failed")) {
         toast.warning(`Lead transferido para ${newName}, mas falhou ao criar o evento no Google.`);
       } else {
         toast.success(`Lead transferido para ${newName}`);
+      }
+      if (trocaTurma) {
+        toast.info(
+          novaMarca
+            ? `A reunião passou para a Turma B, então o lead ficou marcado como desqualificado.`
+            : `A reunião passou para a Turma A, então a marca de lead desqualificado foi retirada.`
+        );
       }
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
       setTransferOpen(false);
