@@ -1,85 +1,66 @@
-# Indicador "Em call" com eventos reais do Google Meet
+# Marca "Em call" com atualização manual
 
 ## Objetivo
 
-Sinalizar ao time de SDRs, em tempo real, quando a reunião entre lead e closer está de fato acontecendo: badge vermelha pulsante **"Em call"** no bloco do calendário e na listagem de reuniões, com filtro rápido. A detecção usa **eventos reais do Google Meet** (Google Workspace Events API) e só liga quando **as duas partes estão juntas na sala** — closer e lead, não apenas o closer esperando.
+Dar ao time de SDRs um sinal claro de que a reunião entre lead e closer está acontecendo naquele momento. Sem depender de eventos do Google: quem está na call (o closer) — ou um gestor — marca manualmente, e a marca aparece na hora para todo mundo no calendário e na listagem de reuniões.
 
+## Como funciona
 
-## Como funciona a conexão com o Google
+1. No card de detalhes da reunião e na linha da listagem existe um botão **"Iniciar call"**.
+2. Ao clicar, a reunião fica marcada como **Em call**: badge vermelha pulsante no bloco do calendário, na listagem e no card.
+3. O botão vira **"Encerrar call"**. Ao clicar, a marca sai.
+4. A marca também sai sozinha quando a reunião recebe um resultado (realizada, no-show, cancelada) ou quando passa muito tempo do fim previsto (limpeza automática), para não ficar reunião "em call" esquecida da noite anterior.
+5. Como a tela já recebe atualizações em tempo real, o SDR vê a marca acender sem precisar recarregar.
 
-- O Google Meet **não** tem webhook simples. O caminho oficial é a **Google Workspace Events API**: criamos uma *subscription* sobre a sala (space) do Meet da reunião e o Google publica eventos (`conferenceStarted`, `participantJoined`, `participantLeft`, `conferenceEnded`) num tópico **Pub/Sub**, que entrega via push num endpoint nosso.
-- É uma conexão **híbrida**: API (para criar/renovar assinaturas) + webhook (Pub/Sub push → nossa edge function).
-- As subscriptions do Google **expiram** (dias). Uma rotina agendada renova automaticamente.
-- O escopo OAuth `meetings.space.created`, já concedido pelos closers no piloto de gravação automática, é suficiente para assinar eventos da sala. Closers sem esse escopo ficam fora da detecção real (fallback abaixo).
+## Quem pode marcar
+
+- O closer dono da reunião.
+- Gestor, supervisor, moderador e apresentador (qualquer reunião).
+- SDR e demais papéis apenas visualizam a marca.
 
 ## Implementação
 
-### 1. Infraestrutura no Google Cloud (manual, guiada)
+### 1. Banco de dados
 
-No mesmo projeto GCP do OAuth (GOOGLE_CLIENT_ID):
+Migração em `agendamentos`:
 
-- Ativar **Google Workspace Events API** e **Pub/Sub API**.
-- Criar o tópico Pub/Sub (ex.: `meet-events`) e dar permissão de publicação ao service account do Meet (`meet-api-event-push@system.gserviceaccount.com`).
-- Criar assinatura push apontando para a URL da nova edge function `google-meet-events`.
+- `em_call_desde timestamptz` — quando a call foi marcada como iniciada.
+- `em_call_ate timestamptz` — quando foi encerrada.
+- `em_call_por uuid` — quem marcou (para o histórico).
 
-### 2. Banco de dados
+Índice parcial para as reuniões em call (consulta do filtro "Em call agora"). Nenhum campo existente é alterado; o enum `appointment_status` **não** muda, para não afetar métricas, webhooks, DataCrazy nem CAPI.
 
-- Migração em `agendamentos`: `meet_space_name text` (nome do recurso `spaces/...`, necessário para assinar eventos) e `em_call_desde timestamptz` / `em_call_ate timestamptz` (janela real detectada).
-- Tabela `meet_event_subscriptions`: `agendamento_id`, `subscription_name`, `space_name`, `expire_time`, `status` — para renovação.
-- Realtime já existente em `agendamentos` atualiza a tela sem refresh.
+Políticas de atualização: reaproveitar as regras já existentes de `agendamentos` (closer dono + gestores), restritas a esses três campos novos.
 
-### 3. Captura do nome da sala
+### 2. Regra de "em call"
 
-- `google-create-event` passa a gravar o `space.name` retornado pela Meet API v2 (o piloto de gravação já cria a sala via API). Para eventos criados só pelo Calendar (`conferenceData`), resolver o space pelo código do link via `spaces/{code}`; quando não for possível, a reunião fica sem detecção (sem badge).
+Uma reunião está em call quando `em_call_desde` está preenchido e `em_call_ate` está vazio. A limpeza automática (fim previsto + 2 horas) roda por rotina agendada e preenche `em_call_ate`, marcando no histórico que foi encerramento automático.
 
-### 4. Edge functions
+### 3. Interface
 
-- `meet-subscriptions-manager` (agendada, a cada hora): cria a subscription para reuniões de hoje/amanhã que tenham `meet_space_name` e renova as que expiram em menos de 24h.
-- `google-meet-events` (webhook push do Pub/Sub, `verify_jwt=false`, token próprio de verificação): recebe os eventos, decodifica e mantém, por reunião, a lista de participantes presentes.
+- **Calendário**: badge "EM CALL" vermelha pulsante no bloco da reunião; botão Iniciar/Encerrar call no card de detalhes, logo abaixo dos dados principais.
+- **Listagem de reuniões**: mesma badge na linha e o botão na área de ações.
+- **Filtro rápido "Em call agora"** no topo do calendário e da listagem.
+- Tooltip/legenda mostra desde que horário está em call, no horário de Brasília.
 
-**Regra de "Em call" (as duas partes juntas):**
+### 4. Histórico
 
-- `participantJoined` / `participantLeft` atualizam a contagem de presentes e classificam cada participante:
-  - **closer** = participante identificado (`signedinUser`) cujo e-mail Google é o do closer da reunião;
-  - **lead** = qualquer outro participante (convidado anônimo/`anonymousUser` ou e-mail diferente).
-- `em_call_desde` só é gravado quando existe **ao menos um closer identificado E ao menos um outro participante** na sala ao mesmo tempo.
-- `em_call_ate` é gravado quando essa condição deixa de valer (o closer sai, o lead sai, ou `conferenceEnded`).
-- Se o lead entrar antes do closer, a badge só acende quando o closer entrar — e vice-versa. Closer sozinho na sala **não** conta como "Em call".
-- Estado de presença guardado em `meet_presenca` (`agendamento_id`, `participant_key`, `tipo`, `entrou_em`, `saiu_em`) para tornar o processamento idempotente e auditável.
-- Resposta 200 rápida ao Pub/Sub (ack); eventos duplicados (mesmo `eventId`) são ignorados.
+Cada início e encerramento manual é registrado no histórico de atividades (`/audit-logs`) com ação `em_call_iniciada` / `em_call_encerrada`, o nome de quem marcou e a hora.
 
-### 5. Interface
+## Escopo preservado
 
-- **Calendário**: badge vermelha pulsante "Em call" no bloco da reunião enquanto `em_call_desde` estiver preenchido e `em_call_ate` vazio.
-- **Listagem de reuniões**: mesma badge na linha.
-- **Filtro rápido** "Em call agora" no topo do calendário e da listagem.
-- Tooltip mostra desde que horário a call está rolando (horário de Brasília).
-- Todos que veem o calendário veem a badge, SDRs inclusos.
-
-### 6. Fallback e limites declarados
-
-- Reunião cujo closer não tem escopo/space gerenciável: sem eventos reais, sem badge (não inventamos "Em call" pelo horário, para não dar sinal falso ao SDR).
-- Se o closer entrar por uma conta Google diferente da cadastrada, ele será classificado como "outro participante"; nesse caso a badge só acende com dois presentes, o que ainda representa uma call real.
-- Eventos chegam com poucos segundos de atraso (Pub/Sub) — aceitável.
-- Nada é enviado ao lead, ao DataCrazy ou ao Meta; nenhum lembrete é afetado.
-
+- Nada é enviado ao lead, ao DataCrazy, ao Meta CAPI ou às automações de lembrete.
+- Nenhuma alteração em `/silva-agendar`, `/silva-reunioes`, `/silva-vendas`, disponibilidade, turmas, overbooking ou Google Calendar/Meet.
+- Timezone America/Sao_Paulo em toda exibição; timestamps gravados em UTC.
 
 ## Validação
 
-- Criar reunião de teste com a closer piloto: entrar só com a conta da closer e confirmar que a badge **não** acende.
-- Entrar com um segundo participante (outra conta/aba) e confirmar `em_call_desde` gravado e badge aparecendo no calendário e na listagem sem refresh.
-- Sair com um dos dois e conferir `em_call_ate` e o sumiço da badge.
-- Testar renovação da subscription e idempotência (mesmo evento duplicado não altera nada).
-- Build + git diff --check.
+- Marcar e desmarcar uma reunião de teste e conferir a badge no calendário e na listagem, em duas abas (tempo real).
+- Conferir que closer não-dono e SDR não veem o botão.
+- Conferir os dois registros no histórico de atividades.
+- Conferir que dar resultado à reunião encerra a marca.
+- Build e verificação de compilação.
 
-## Detalhes técnicos
+## Nota
 
-- Workspace Events API: `POST https://workspaceevents.googleapis.com/v1/subscriptions` com `targetResource=//meet.googleapis.com/spaces/{space}`, `eventTypes` de conference/participant, `notificationEndpoint.pubsubTopic`.
-- Renovação: `PATCH subscriptions/{name}` (updateMask `ttl`).
-- Pub/Sub push: verificação por token no path/query; payload base64 em `message.data` com `ce-type` do evento.
-- Timezone America/Sao_Paulo em qualquer exibição; timestamps gravados em UTC.
-- Não altera `/silva-reunioes`, `/silva-vendas`, CAPI, DataCrazy nem validações de agendamento.
-
-## Pré-requisito fora do app (você)
-
-A etapa 1 (ativar APIs, criar tópico Pub/Sub e permissões) acontece no console do Google Cloud do mesmo projeto do OAuth. Eu te guio passo a passo na hora — é coisa de 10 minutos, sem custo relevante no volume de reuniões do painel.
+Se mais adiante você quiser a detecção automática (Google Meet avisando quando lead e closer estão juntos na sala), este desenho já fica pronto para isso: os mesmos campos `em_call_desde`/`em_call_ate` passariam a ser preenchidos pelo evento do Google, sem mexer na interface.
