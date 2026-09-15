@@ -31,6 +31,16 @@ Deno.serve(async (req) => {
     const limitParam = parseInt(url.searchParams.get("limite") ?? "6", 10);
     const limite = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 50) : 6;
 
+    const turmaParam = url.searchParams.get("turma");
+    let turma: "A" | "B" = "A";
+    if (turmaParam !== null) {
+      const normalized = turmaParam.trim().toUpperCase();
+      if (normalized !== "A" && normalized !== "B") {
+        return json({ erro: "turma_invalida", detalhe: "use turma=A (lead qualificado) ou turma=B (lead desqualificado)" }, 400);
+      }
+      turma = normalized;
+    }
+
     const fromDate = fromParam ? new Date(fromParam) : now;
     if (Number.isNaN(fromDate.getTime())) return json({ erro: "a_partir_de_invalido" }, 400);
     const minStart = new Date(Math.max(fromDate.getTime(), now.getTime()) + AVAILABILITY_MIN_LEAD_MINUTES * 60_000);
@@ -46,7 +56,7 @@ Deno.serve(async (req) => {
 
     const slots: { slot_id: string; inicio: string; label: string }[] = [];
     for (let day = startDay; day <= endDay && slots.length < limite; day = addDays(day, 1)) {
-      const avail = await loadDayAvailability(supabase, day, businessSlots);
+      const avail = await loadDayAvailability(supabase, day, businessSlots, turma);
       for (const slot of businessSlots) {
         if (slots.length >= limite) break;
         const start = spDateTime(day, slot);
@@ -62,7 +72,7 @@ Deno.serve(async (req) => {
         });
       }
     }
-    return json({ gerado_em: now.toISOString(), slots });
+    return json({ gerado_em: now.toISOString(), turma, slots });
   } catch (e) {
     console.error("silva-disponibilidade error", e);
     return json({ erro: "internal_error", detalhe: errorDetail(e) }, 500);
