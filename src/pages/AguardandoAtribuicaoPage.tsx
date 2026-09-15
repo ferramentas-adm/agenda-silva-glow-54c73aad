@@ -37,6 +37,7 @@ interface Agendamento {
   original_agendamento_id: string | null;
   sdr_error: boolean | null;
   sdr_error_description?: string | null;
+  lead_desqualificado?: boolean | null;
 }
 
 interface Closer {
@@ -73,7 +74,7 @@ export default function AguardandoAtribuicaoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id, sdr_error, sdr_error_description")
+        .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, duration_minutes, briefing, observation, channel_type, sdr_responsavel_id, created_by, meeting_reason, is_5k, original_agendamento_id, sdr_error, sdr_error_description, lead_desqualificado")
         .is("closer_id", null)
         .is("deleted_at", null)
         // Reuniões já finalizadas (realizada / não compareceu / cancelada) não voltam
@@ -414,6 +415,8 @@ export default function AguardandoAtribuicaoPage() {
               const original = isReschedule ? originalById(a.original_agendamento_id) : null;
               const hist = leadHistory(a.lead_phone, a.id);
               const closerOptions = closers
+                // Lead desqualificado só pode ser atribuído à Turma B (e o inverso).
+                .filter((c) => Boolean(c.em_treinamento) === Boolean(a.lead_desqualificado))
                 .map((c) => {
                   const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
                   const load = closerLoad(c.id, a.scheduled_date, a.scheduled_time);
