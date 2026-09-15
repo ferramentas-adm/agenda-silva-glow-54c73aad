@@ -107,7 +107,8 @@ Deno.serve(async (req) => {
     }
 
     // Valida a vaga antes de alterar a reunião antiga.
-    const availability = await loadDayAvailability(supabase, dateStr);
+    const turma: "A" | "B" = old.lead_desqualificado ? "B" : "A";
+    const availability = await loadDayAvailability(supabase, dateStr, undefined, turma);
     if (!availability.slots.includes(timeStr)) return json({ erro: "slot_indisponivel" }, 409);
     const info = availability.hours.get(timeStr);
     if (!info || info.full || info.eligibleClosers.length === 0) return json({ erro: "slot_indisponivel" }, 409);
@@ -148,6 +149,7 @@ Deno.serve(async (req) => {
       duration_minutes: old.duration_minutes ?? 60,
       is_5k: old.is_5k ?? false,
       is_venda_avulsa: old.is_venda_avulsa ?? false,
+      lead_desqualificado: old.lead_desqualificado ?? false,
       meta_lead_id: old.meta_lead_id,
       crm_lead_id: old.crm_lead_id,
       fbp: old.fbp,
