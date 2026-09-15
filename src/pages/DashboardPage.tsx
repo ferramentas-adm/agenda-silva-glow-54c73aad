@@ -12,6 +12,8 @@ import {
 import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
 import { TurmaFilter } from "@/components/calendar/TurmaFilter";
+import { FunilFilter } from "@/components/calendar/FunilFilter";
+import { isDiretor, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
 import BriefingDrawer from "@/components/BriefingDrawer";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
@@ -178,6 +180,8 @@ export function CalendarContent() {
     setTurma,
     countTurmaA,
     countTurmaB,
+    funil,
+    setFunil,
   } = useCloserFilter();
   
   const { user, role } = useAuth();
@@ -473,9 +477,14 @@ export function CalendarContent() {
       if (selectedSdrId !== "all") {
         if (ownerSdr !== selectedSdrId) return false;
       }
+      if (funil !== "todos") {
+        const diretor = isDiretor(a);
+        if (funil === "diretor" && !diretor) return false;
+        if (funil === "padrao" && diretor) return false;
+      }
       return true;
     });
-  }, [agendamentos, effectiveSelectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
+  }, [agendamentos, effectiveSelectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user, funil]);
 
   // ─── Busca de lead no calendário (dia exibido) ────────────────
   const [leadSearch, setLeadSearch] = useState("");
@@ -1295,12 +1304,15 @@ export function CalendarContent() {
             </div>
           ) : (
             <div className="space-y-2">
-              <TurmaFilter
-                value={turma}
-                onChange={setTurma}
-                countA={countTurmaA}
-                countB={countTurmaB}
-              />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <TurmaFilter
+                  value={turma}
+                  onChange={setTurma}
+                  countA={countTurmaA}
+                  countB={countTurmaB}
+                />
+                <FunilFilter value={funil} onChange={setFunil} />
+              </div>
               <div className="overflow-x-auto -mx-1 px-1">
                 <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
               </div>
