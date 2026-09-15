@@ -224,6 +224,11 @@ export default function BloqueioMassaPage() {
         scopeQuery.or(
           `and(is_recurring.eq.false,block_date.eq.${targetDate}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`
         );
+      } else if (mode === "periodo") {
+        const periodWeekdays = [...new Set((periodDays ?? []).map((d) => d.getDay()))];
+        scopeQuery.or(
+          `and(is_recurring.eq.false,block_date.gte.${periodDates![0]},block_date.lte.${periodDates![periodDates!.length - 1]}),and(is_recurring.eq.true,recurrence_weekday.in.(${periodWeekdays.join(",")}))`
+        );
       } else {
         scopeQuery.eq("is_recurring", true).in("recurrence_weekday", weekdays);
       }
