@@ -54,6 +54,9 @@ export default function AguardandoAtribuicaoPage() {
   const { limit: closerSlotLimit } = useCloserSlotLimit();
   const queryClient = useQueryClient();
   const [selecting, setSelecting] = useState<Record<string, string>>({});
+  // Reclassificação de turma feita pelo gestor no momento da atribuição.
+  // id do agendamento → lead_desqualificado efetivo.
+  const [turmaOverride, setTurmaOverride] = useState<Record<string, boolean>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [errorDialog, setErrorDialog] = useState<{ agendamento: Agendamento; alsoDelete: boolean } | null>(null);
   const [errorDescription, setErrorDescription] = useState("");
