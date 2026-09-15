@@ -4,7 +4,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
-  BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
+  BOOKING_MIN_LEAD_MINUTES, isWithinTurmaBWindow, loadDayAvailability, sdrIaOverbookingPosition,
+  TURMA_B_MAX_PER_HOUR, TURMA_B_WINDOW_END_HOUR, TURMA_B_WINDOW_START_HOUR,
   spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
@@ -150,8 +151,20 @@ Deno.serve(async (req) => {
     // 4) Revalidar slot com a capacidade exclusiva do SDR IA (+3 por hora).
     const turma: "A" | "B" = b.lead_desqualificado ? "B" : "A";
     const avail = await loadDayAvailability(supabase, dateStr, undefined, turma);
+    if (turma === "B" && !isWithinTurmaBWindow(timeStr)) {
+      return json({
+        erro: "fora_da_janela_turma_b",
+        detalhe: `Lead desqualificado só pode ser agendado entre ${TURMA_B_WINDOW_START_HOUR}h e ${TURMA_B_WINDOW_END_HOUR}h; horário pedido: ${timeStr}`,
+      }, 409);
+    }
     if (!avail.slots.includes(timeStr)) return json({ erro: "horario_fora_da_grade" }, 409);
     const info = avail.hours.get(timeStr);
+    if (turma === "B" && info && info.count >= TURMA_B_MAX_PER_HOUR) {
+      return json({
+        erro: "turma_b_lotada",
+        detalhe: `Turma B já tem ${info.count} reuniões às ${timeStr} (teto de ${TURMA_B_MAX_PER_HOUR} por horário)`,
+      }, 409);
+    }
     if (!info || info.full || info.eligibleClosers.length === 0) {
       return json({ erro: "slot_indisponivel" }, 409);
     }
