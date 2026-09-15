@@ -42,6 +42,7 @@ interface Agendamento {
 interface Closer {
   id: string;
   name: string;
+  em_treinamento?: boolean | null;
 }
 
 export default function AguardandoAtribuicaoPage() {
