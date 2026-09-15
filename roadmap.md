@@ -29,3 +29,4 @@
 - [x] Bloquear lançamento de venda avulsa quando o lead tem reunião no mesmo dia (atalho para lançar na reunião + justificativa auditada) e corrigir a venda da Leslie de 12/09.
 - [x] Adicionar e remover card "Taxa de Coleta" (removido porque valor total do projeto deixou de ser informado).
 - [x] Toggle de lead desqualificado no agendamento, closer em treinamento, filtro nas Métricas SDRs e card separado de vendas desqualificadas.
+- [x] Corrigir 500 do `slot_id` em `/silva-agendar` (closer Turma B), cair para a fila e devolver a mensagem real de erro.
