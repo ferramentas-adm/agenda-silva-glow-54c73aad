@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video, Send,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video, Send,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -245,9 +245,6 @@ function UsersSection() {
 
 
   // DataCrazy ID edit state
-  const [datacrazyTarget, setDatacrazyTarget] = useState<{ userId: string; name: string; type: string; currentId: string; closerId?: string } | null>(null);
-  const [editDatacrazyId, setEditDatacrazyId] = useState("");
-  const [savingDatacrazyId, setSavingDatacrazyId] = useState(false);
   const [ramalTarget, setRamalTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editRamal, setEditRamal] = useState("");
   const [savingRamal, setSavingRamal] = useState(false);
@@ -301,7 +298,7 @@ function UsersSection() {
 
 
       // Build a map of closer info by email
-      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean; emTreinamento: boolean }>();
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; autoRecordingEnabled: boolean; emTreinamento: boolean }>();
       (closers ?? []).forEach((c: any) => {
         if (c.email) {
           const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
@@ -312,7 +309,6 @@ function UsersSection() {
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
-            datacrazyId: c.datacrazy_id || "",
             autoRecordingEnabled: c.auto_recording_enabled === true,
             emTreinamento: c.em_treinamento === true,
           });
@@ -338,7 +334,6 @@ function UsersSection() {
           hoursStart: closerInfo?.hoursStart || "09:00",
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
-          datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
           autoRecordingEnabled: closerInfo?.autoRecordingEnabled === true,
           emTreinamento: closerInfo?.emTreinamento === true,
           googleConnected: closerInfo?.closerId ? googleTokenMap.has(closerInfo.closerId) : false,
@@ -375,7 +370,6 @@ function UsersSection() {
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
-            datacrazyId: c.datacrazy_id || "",
             autoRecordingEnabled: c.auto_recording_enabled === true,
             emTreinamento: c.em_treinamento === true,
             googleConnected: googleTokenMap.has(c.id),
@@ -1063,10 +1057,6 @@ function UsersSection() {
                         )}
                         {canActOn(u.role) && (
                           <>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
-                              onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
-                              <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
-                            </Button>
                             {u.type === "profile" && (
                               <Button variant="ghost" size="icon" className="h-7 w-7" title={`Ramal API4COM${u.api4comExtension ? ': ' + u.api4comExtension : ' (não configurado)'}`}
                                 onClick={() => { setRamalTarget({ userId: u.userId, name: u.name }); setEditRamal(u.api4comExtension || ""); }}>
