@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   UserPlus, Users, AlertCircle,
-  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Link2, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video, Send,
+  Loader2, Pencil, Trash2, Settings, Save, X, Check, KeyRound, Eye, EyeOff, ArrowRightLeft, Copy, RefreshCw, Clock, Search, CalendarPlus, CalendarX, Plus, ShieldAlert, ShieldCheck, UserCog, PhoneCall, Video, Send,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseDeletionReasons, type DeletionReason } from "@/hooks/useDeletionReasons";
@@ -245,9 +245,6 @@ function UsersSection() {
 
 
   // DataCrazy ID edit state
-  const [datacrazyTarget, setDatacrazyTarget] = useState<{ userId: string; name: string; type: string; currentId: string; closerId?: string } | null>(null);
-  const [editDatacrazyId, setEditDatacrazyId] = useState("");
-  const [savingDatacrazyId, setSavingDatacrazyId] = useState(false);
   const [ramalTarget, setRamalTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editRamal, setEditRamal] = useState("");
   const [savingRamal, setSavingRamal] = useState(false);
@@ -301,7 +298,7 @@ function UsersSection() {
 
 
       // Build a map of closer info by email
-      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean; emTreinamento: boolean }>();
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; autoRecordingEnabled: boolean; emTreinamento: boolean }>();
       (closers ?? []).forEach((c: any) => {
         if (c.email) {
           const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
@@ -312,7 +309,6 @@ function UsersSection() {
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
-            datacrazyId: c.datacrazy_id || "",
             autoRecordingEnabled: c.auto_recording_enabled === true,
             emTreinamento: c.em_treinamento === true,
           });
@@ -338,7 +334,6 @@ function UsersSection() {
           hoursStart: closerInfo?.hoursStart || "09:00",
           hoursEnd: closerInfo?.hoursEnd || "23:00",
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
-          datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
           autoRecordingEnabled: closerInfo?.autoRecordingEnabled === true,
           emTreinamento: closerInfo?.emTreinamento === true,
           googleConnected: closerInfo?.closerId ? googleTokenMap.has(closerInfo.closerId) : false,
@@ -375,7 +370,6 @@ function UsersSection() {
             hoursStart: c.business_hours_start || "09:00",
             hoursEnd: c.business_hours_end || "23:00",
             ranges,
-            datacrazyId: c.datacrazy_id || "",
             autoRecordingEnabled: c.auto_recording_enabled === true,
             emTreinamento: c.em_treinamento === true,
             googleConnected: googleTokenMap.has(c.id),
@@ -648,16 +642,16 @@ function UsersSection() {
         .update({ em_treinamento: !user.emTreinamento })
         .eq("id", user.closerId);
       if (error) throw error;
-      await logAudit({
-        action: "toggle_closer_treinamento",
-        entity_type: "closer",
-        entity_id: user.closerId,
-        details: {
+      await logAudit(
+        "toggle_closer_treinamento",
+        "closer",
+        user.closerId,
+        {
           closer_name: user.name,
           previous: user.emTreinamento,
           current: !user.emTreinamento,
         },
-      });
+      );
       toast.success(user.emTreinamento ? "Closer removido do treinamento" : "Closer marcado como em treinamento");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (e: any) {
@@ -1063,10 +1057,6 @@ function UsersSection() {
                         )}
                         {canActOn(u.role) && (
                           <>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title={`ID DataCrazy${u.datacrazyId ? ': ' + u.datacrazyId.slice(0, 8) + '...' : ' (não configurado)'}`}
-                              onClick={() => { setDatacrazyTarget({ userId: u.userId, name: u.name, type: u.type, currentId: u.datacrazyId || "", closerId: u.closerId }); setEditDatacrazyId(u.datacrazyId || ""); }}>
-                              <Link2 className={`h-3.5 w-3.5 ${u.datacrazyId ? 'text-primary' : 'text-muted-foreground'}`} />
-                            </Button>
                             {u.type === "profile" && (
                               <Button variant="ghost" size="icon" className="h-7 w-7" title={`Ramal API4COM${u.api4comExtension ? ': ' + u.api4comExtension : ' (não configurado)'}`}
                                 onClick={() => { setRamalTarget({ userId: u.userId, name: u.name }); setEditRamal(u.api4comExtension || ""); }}>
@@ -1468,63 +1458,6 @@ function UsersSection() {
               }}
             >
               {savingAutoRec ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* DataCrazy ID dialog */}
-
-      <AlertDialog open={!!datacrazyTarget} onOpenChange={(open) => { if (!open) setDatacrazyTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>ID DataCrazy</AlertDialogTitle>
-            <AlertDialogDescription>
-              Configure o ID do DataCrazy para <strong>{datacrazyTarget?.name}</strong>. Este ID é usado para criar atividades e vincular ações no CRM.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2 py-2">
-            <Input
-              placeholder="Ex: fca47567-94b8-418f-b087-e6c4d10e71bb"
-              value={editDatacrazyId}
-              onChange={(e) => setEditDatacrazyId(e.target.value.trim())}
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              Encontre este ID na plataforma DataCrazy, na página do usuário.
-            </p>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={savingDatacrazyId}
-              onClick={async () => {
-                if (!datacrazyTarget) return;
-                setSavingDatacrazyId(true);
-                try {
-                  if (datacrazyTarget.type === "closer" || datacrazyTarget.closerId) {
-                    const closerId = datacrazyTarget.closerId || datacrazyTarget.userId;
-                    const { error } = await supabase.from("closers")
-                      .update({ datacrazy_id: editDatacrazyId || null } as any)
-                      .eq("id", closerId);
-                    if (error) throw error;
-                  }
-                  if (datacrazyTarget.type === "profile") {
-                    const { error } = await supabase.from("profiles")
-                      .update({ datacrazy_id: editDatacrazyId || null } as any)
-                      .eq("user_id", datacrazyTarget.userId);
-                    if (error) throw error;
-                  }
-                  toast.success("ID DataCrazy atualizado!");
-                  queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
-                  setDatacrazyTarget(null);
-                } catch (err: any) {
-                  toast.error(err.message || "Erro ao salvar");
-                }
-                setSavingDatacrazyId(false);
-              }}
-            >
-              {savingDatacrazyId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

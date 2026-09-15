@@ -1061,7 +1061,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           label="Vendas Fechadas (desqualificados)"
           value={String(fechadasDesqualificadoIds.length)}
           sub={fechadasDesqualificadoIds.length > 0 ? "Leads desqualificados no período" : "Nenhuma venda de lead desqualificado no período"}
-          color="amber"
+          color="primary"
           loading={loadingVendas}
           onClick={() =>
             openDrill(`Vendas fechadas (desqualificados) — ${dayLabel}`, fechadasDesqualificadoIds)
