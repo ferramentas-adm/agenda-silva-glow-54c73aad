@@ -102,7 +102,7 @@ export default function AguardandoAtribuicaoPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name")
+        .select("id, name, em_treinamento")
         .eq("active", true)
         .not("name", "ilike", "%amanda padilha%")
         .order("name");
