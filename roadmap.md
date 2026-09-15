@@ -30,3 +30,5 @@
 - [x] Adicionar e remover card "Taxa de Coleta" (removido porque valor total do projeto deixou de ser informado).
 - [x] Toggle de lead desqualificado no agendamento, closer em treinamento, filtro nas Métricas SDRs e card separado de vendas desqualificadas.
 - [x] Corrigir 500 do `slot_id` em `/silva-agendar` (closer Turma B), cair para a fila e devolver a mensagem real de erro.
+- [x] Corrigir o travamento do toggle "Lead desqualificado" na tela de agendar (aviso + bloqueio, sem limpar a escolha).
+- [x] Mostrar a Turma (A/B) de cada closer ao lado do nome no dropdown de "Aguardando Atribuição".
