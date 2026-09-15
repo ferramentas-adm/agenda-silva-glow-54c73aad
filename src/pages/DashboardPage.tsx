@@ -172,6 +172,7 @@ interface DeleteTarget {
 export function CalendarContent() {
   const {
     closers,
+    allClosers,
     selectedIds,
     effectiveSelectedIds,
     toggle,
