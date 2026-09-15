@@ -8,16 +8,24 @@ interface Closer {
   name: string;
   active: boolean;
   email: string | null;
+  em_treinamento?: boolean | null;
 }
+
+export type TurmaFilterValue = "todos" | "a" | "b";
 
 function getStorageKey(userId: string) {
   return `closer-filter-${userId}`;
+}
+
+function getTurmaStorageKey(userId: string) {
+  return `closer-turma-${userId}`;
 }
 
 export function useCloserFilter() {
   const { user, role } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+  const [turma, setTurmaState] = useState<TurmaFilterValue>("todos");
   const lastReconciledRef = useRef("");
 
   const { data: closers = [], isLoading } = useQuery({
@@ -25,12 +33,33 @@ export function useCloserFilter() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name, active, email")
+        .select("id, name, active, email, em_treinamento")
         .eq("active", true)
         .order("name");
       return (data ?? []) as Closer[];
     },
   });
+
+  // Turma persistida por usuário
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const saved = localStorage.getItem(getTurmaStorageKey(user.id));
+      if (saved === "a" || saved === "b" || saved === "todos") setTurmaState(saved);
+    } catch {}
+  }, [user?.id]);
+
+  const setTurma = useCallback(
+    (v: TurmaFilterValue) => {
+      setTurmaState(v);
+      if (user) {
+        try {
+          localStorage.setItem(getTurmaStorageKey(user.id), v);
+        } catch {}
+      }
+    },
+    [user?.id]
+  );
 
   // Initialize from localStorage or select all (closers only see their own)
   useEffect(() => {
