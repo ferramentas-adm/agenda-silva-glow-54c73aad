@@ -1564,8 +1564,8 @@ export function CalendarContent() {
           setViewBriefing(false);
         }
       }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-md p-4 sm:p-5">
+          <DialogHeader className="space-y-1">
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               <User className="h-5 w-5 text-primary" />
               {detailAg?.lead_name}
@@ -1587,7 +1587,7 @@ export function CalendarContent() {
           </DialogHeader>
 
           {detailAg && !editMode && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-xs">Data</p>
@@ -1654,6 +1654,20 @@ export function CalendarContent() {
                   )}
                 </div>
               </div>
+
+              {canTransfer && detailAg.closer_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full border-primary/40 text-primary"
+                  onClick={() => {
+                    setTransferTarget("");
+                    setTransferOpen(true);
+                  }}
+                >
+                  <Users className="h-3.5 w-3.5" />Mudar closer da reunião
+                </Button>
+              )}
 
               <div className="space-y-1">
                 <p className="text-muted-foreground text-xs">Status atual</p>
@@ -1729,7 +1743,7 @@ export function CalendarContent() {
               {detailAg.briefing?.trim() && (
                 <div
                   className={cn(
-                    "rounded-lg border p-3 space-y-1.5",
+                    "rounded-lg border p-2.5 space-y-1.5",
                     isDiretor(detailAg)
                       ? "border-red-500/40 bg-red-500/10"
                       : "border-border bg-muted/30"
@@ -1742,7 +1756,7 @@ export function CalendarContent() {
                     Briefing {isDiretor(detailAg) ? "— Funil Diretor (oferta R$10 mil)" : ""}
                   </p>
                   <div
-                    className="text-sm leading-6 text-foreground/90 whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
+                    className="text-sm leading-5 text-foreground/90 whitespace-pre-wrap break-words max-h-32 overflow-y-auto"
                     style={{ overflowWrap: "anywhere" }}
                   >
                     {linkifyText(detailAg.briefing)}
@@ -1782,21 +1796,6 @@ export function CalendarContent() {
 
               {/* Botão "Reagendar" foi movido para a seção "Alterar status"
                   abaixo, junto de Confirmar / Realizada / Cancelar / No-show. */}
-
-
-              {canTransfer && detailAg.closer_id && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs w-full"
-                  onClick={() => {
-                    setTransferTarget("");
-                    setTransferOpen(true);
-                  }}
-                >
-                  <Users className="h-3.5 w-3.5" />Mudar closer da reunião
-                </Button>
-              )}
 
 
               {/* Lançar venda — gestor/moderador/supervisor/apresentador lançam a venda
