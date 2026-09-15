@@ -577,7 +577,7 @@ export default function AguardandoAtribuicaoPage() {
                         </Select>
                       </div>
                       <Button
-                        onClick={() => handleAssign(a)}
+                        onClick={() => handleAssign(a, desqEfetivo)}
                         disabled={
                           savingId === a.id ||
                           !selecting[a.id] ||
