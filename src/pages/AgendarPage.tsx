@@ -881,6 +881,18 @@ function AgendarPageInner() {
                 />
               </div>
 
+              {incompativel && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Combinação não permitida</AlertTitle>
+                  <AlertDescription>
+                    {leadDesqualificado
+                      ? "Lead desqualificado não pode ser alocado com closer da Turma A. Volte e escolha um closer da Turma B (em treinamento) ou deixe o closer como 'A definir' (fila de atribuição)."
+                      : "Lead qualificado não pode ser alocado com closer em treinamento (Turma B). Volte e escolha um closer da Turma A ou deixe o closer como 'A definir' (fila de atribuição)."}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {isAdmin && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
