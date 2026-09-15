@@ -682,6 +682,18 @@ export function CalendarContent() {
 
   const handleTransferLead = async () => {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
+    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
+    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    const targetCloser = transferableClosers.find((c) => c.id === transferTarget);
+    const isDesqLead = !!(detailAg as any).lead_desqualificado;
+    if (targetCloser && !!targetCloser.em_treinamento !== isDesqLead) {
+      toast.error(
+        isDesqLead
+          ? "Lead desqualificado só pode ser transferido para um closer da Turma B."
+          : "Lead qualificado só pode ser transferido para um closer da Turma A."
+      );
+      return;
+    }
     setTransferring(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-transfer-event", {
@@ -742,7 +754,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name")
+        .select("id, name, em_treinamento")
         .eq("active", true)
         .order("name", { ascending: true });
       return data ?? [];
@@ -751,6 +763,18 @@ export function CalendarContent() {
 
   const handleChangeCloser = async (newCloserId: string) => {
     if (!detailAg || newCloserId === detailAg.closer_id) return;
+    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
+    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    const target = allClosers.find((c) => c.id === newCloserId);
+    const isDesq = !!(detailAg as any).lead_desqualificado;
+    if (target && !!target.em_treinamento !== isDesq) {
+      toast.error(
+        isDesq
+          ? "Lead desqualificado só pode ser atribuído a um closer da Turma B."
+          : "Lead qualificado só pode ser atribuído a um closer da Turma A."
+      );
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from("agendamentos")
