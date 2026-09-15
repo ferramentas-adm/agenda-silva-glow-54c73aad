@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +42,7 @@ interface Agendamento {
 interface Closer {
   id: string;
   name: string;
+  em_treinamento?: boolean | null;
 }
 
 export default function AguardandoAtribuicaoPage() {
@@ -100,7 +102,7 @@ export default function AguardandoAtribuicaoPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name")
+        .select("id, name, em_treinamento")
         .eq("active", true)
         .not("name", "ilike", "%amanda padilha%")
         .order("name");
@@ -487,10 +489,19 @@ export default function AguardandoAtribuicaoPage() {
                                 disabled={c.blocked || c.full}
                                 className={c.blocked || c.full ? "opacity-50" : ""}
                               >
-                                {c.name}
-                                {c.blocked
-                                  ? " · agenda bloqueada"
-                                  : ` · ${c.load}/${closerSlotLimit}${c.full ? " cheio" : ""}`}
+                                <span className="inline-flex items-center gap-2">
+                                  {c.name}
+                                  {c.em_treinamento ? (
+                                    <Badge className="bg-amber-500 text-white hover:bg-amber-600">B</Badge>
+                                  ) : (
+                                    <Badge variant="default">A</Badge>
+                                  )}
+                                </span>
+                                <span className="ml-auto text-muted-foreground">
+                                  {c.blocked
+                                    ? " · agenda bloqueada"
+                                    : ` · ${c.load}/${closerSlotLimit}${c.full ? " cheio" : ""}`}
+                                </span>
                               </SelectItem>
                             ))}
                           </SelectContent>

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, ArrowRight, ArrowLeft, Link as LinkIcon, FileText, CheckCircle2 } from "lucide-react";
+import { CalendarIcon, ArrowRight, ArrowLeft, Link as LinkIcon, FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import AppLayout from "@/components/AppLayout";
@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { countsAsSdr } from "@/lib/sdrOverrides";
@@ -196,12 +197,6 @@ function AgendarPageInner() {
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
 
-  // Ao trocar o flag de lead desqualificado, limpa o closer escolhido para
-  // evitar alocar um lead desqualificado com um closer normal (ou vice-versa).
-  useEffect(() => {
-    setCloserId(null);
-    setTime(null);
-  }, [leadDesqualificado]);
   
 
 
@@ -214,12 +209,16 @@ function AgendarPageInner() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name")
+        .select("id, name, em_treinamento")
         .eq("active", true)
         .order("name");
       return data ?? [];
     },
   });
+
+  const selectedCloser = closers.find((c) => c.id === closerId);
+  const incompativel =
+    !!selectedCloser && (selectedCloser.em_treinamento ?? false) !== leadDesqualificado;
 
   // Fetch SDR users for admin selector (role 'sdr' + "Atua como SDR")
   const { data: sdrUsers = [] } = useQuery({
@@ -882,6 +881,18 @@ function AgendarPageInner() {
                 />
               </div>
 
+              {incompativel && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Combinação não permitida</AlertTitle>
+                  <AlertDescription>
+                    {leadDesqualificado
+                      ? "Lead desqualificado não pode ser alocado com closer da Turma A. Volte e escolha um closer da Turma B (em treinamento) ou deixe o closer como 'A definir' (fila de atribuição)."
+                      : "Lead qualificado não pode ser alocado com closer em treinamento (Turma B). Volte e escolha um closer da Turma A ou deixe o closer como 'A definir' (fila de atribuição)."}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {isAdmin && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">
@@ -1041,6 +1052,7 @@ function AgendarPageInner() {
               disabled={
                 submitting ||
                 !canGoNext.confirm ||
+                incompativel ||
                 (isCloser && !meetingReasonCustom.trim()) ||
                 (channelTypeRequired && !channelType) ||
                 !bookingChannel
