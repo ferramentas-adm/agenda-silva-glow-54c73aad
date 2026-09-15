@@ -34,24 +34,35 @@ No mesmo projeto GCP do OAuth (GOOGLE_CLIENT_ID):
 
 ### 4. Edge functions
 
-- `meet-subscriptions-manager` (agendada, a cada hora): cria a subscription do dia para reuniões de hoje/amanhã com `meet_space_name`, e renova as que expiram em <24h.
-- `google-meet-events` (webhook push do Pub/Sub, `verify_jwt=false`, token de verificação próprio): recebe os eventos, decodifica, e atualiza `agendamentos`:
-  - `conferenceStarted` ou primeiro `participantJoined` → grava `em_call_desde = agora`.
-  - `conferenceEnded` ou saída do último participante → grava `em_call_ate`.
-- Resposta sempre 200 rápida ao Pub/Sub (ack), processamento idempotente por `eventId`.
+- `meet-subscriptions-manager` (agendada, a cada hora): cria a subscription para reuniões de hoje/amanhã que tenham `meet_space_name` e renova as que expiram em menos de 24h.
+- `google-meet-events` (webhook push do Pub/Sub, `verify_jwt=false`, token próprio de verificação): recebe os eventos, decodifica e mantém, por reunião, a lista de participantes presentes.
+
+**Regra de "Em call" (as duas partes juntas):**
+
+- `participantJoined` / `participantLeft` atualizam a contagem de presentes e classificam cada participante:
+  - **closer** = participante identificado (`signedinUser`) cujo e-mail Google é o do closer da reunião;
+  - **lead** = qualquer outro participante (convidado anônimo/`anonymousUser` ou e-mail diferente).
+- `em_call_desde` só é gravado quando existe **ao menos um closer identificado E ao menos um outro participante** na sala ao mesmo tempo.
+- `em_call_ate` é gravado quando essa condição deixa de valer (o closer sai, o lead sai, ou `conferenceEnded`).
+- Se o lead entrar antes do closer, a badge só acende quando o closer entrar — e vice-versa. Closer sozinho na sala **não** conta como "Em call".
+- Estado de presença guardado em `meet_presenca` (`agendamento_id`, `participant_key`, `tipo`, `entrou_em`, `saiu_em`) para tornar o processamento idempotente e auditável.
+- Resposta 200 rápida ao Pub/Sub (ack); eventos duplicados (mesmo `eventId`) são ignorados.
 
 ### 5. Interface
 
-- **Calendário**: badge vermelha pulsante "Em call" no bloco da reunião enquanto `em_call_desde` preenchido e `em_call_ate` vazio (e horário atual dentro do dia da reunião).
+- **Calendário**: badge vermelha pulsante "Em call" no bloco da reunião enquanto `em_call_desde` estiver preenchido e `em_call_ate` vazio.
 - **Listagem de reuniões**: mesma badge na linha.
-- **Filtro rápido** "Agora" no topo do calendário: mostra só reuniões em call.
-- Sem mudança de papéis: todos que veem o calendário veem a badge (SDRs inclusos).
+- **Filtro rápido** "Em call agora" no topo do calendário e da listagem.
+- Tooltip mostra desde que horário a call está rolando (horário de Brasília).
+- Todos que veem o calendário veem a badge, SDRs inclusos.
 
 ### 6. Fallback e limites declarados
 
-- Reunião cujo closer não tem escopo/space gerenciável: sem eventos reais; a badge pode ser ligada por horário (opcional, configurável — padrão: desligado, para não confundir "está na hora" com "está acontecendo").
-- Eventos do Meet chegam com segundos de atraso (Pub/Sub) — aceitável.
+- Reunião cujo closer não tem escopo/space gerenciável: sem eventos reais, sem badge (não inventamos "Em call" pelo horário, para não dar sinal falso ao SDR).
+- Se o closer entrar por uma conta Google diferente da cadastrada, ele será classificado como "outro participante"; nesse caso a badge só acende com dois presentes, o que ainda representa uma call real.
+- Eventos chegam com poucos segundos de atraso (Pub/Sub) — aceitável.
 - Nada é enviado ao lead, ao DataCrazy ou ao Meta; nenhum lembrete é afetado.
+
 
 ## Validação
 
