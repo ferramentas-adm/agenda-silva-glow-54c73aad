@@ -181,21 +181,22 @@ export default function BloqueioMassaPage() {
     setSubmitting(true);
     try {
       const todayStr = pickedDateToYMD(new Date());
+      const periodDates =
+        mode === "periodo" && periodDays ? periodDays.map((d) => pickedDateToYMD(d)) : null;
       const rows = selected.flatMap((closerId) =>
         ranges.flatMap((r) => {
-          if (mode === "pontual") {
-            return [
-              {
-                closer_id: closerId,
-                block_date: pickedDateToYMD(date!),
-                start_time: r.start,
-                end_time: r.end,
-                block_type: blockType,
-                description: description || null,
-                is_recurring: false,
-                recurrence_weekday: null as number | null,
-              },
-            ];
+          if (mode === "pontual" || mode === "periodo") {
+            const dates = mode === "pontual" ? [pickedDateToYMD(date!)] : periodDates!;
+            return dates.map((d) => ({
+              closer_id: closerId,
+              block_date: d,
+              start_time: r.start,
+              end_time: r.end,
+              block_type: blockType,
+              description: description || null,
+              is_recurring: false,
+              recurrence_weekday: null as number | null,
+            }));
           }
           return weekdays.map((wd) => ({
             closer_id: closerId,
