@@ -13,6 +13,8 @@ export const TZ = "America/Sao_Paulo";
 export const BOOKING_MIN_LEAD_MINUTES = 1;
 export const AVAILABILITY_MIN_LEAD_MINUTES = 10;
 export const OVERBOOKING_EXTRA = 3;
+/** Teto de reuniões por horário na Turma A. */
+export const TURMA_A_MAX_PER_HOUR = 30;
 /** Teto de reuniões por horário na Turma B (10 closers em treinamento). */
 export const TURMA_B_MAX_PER_HOUR = 13;
 /** Janela de atendimento da Turma B (horas cheias, inclusive). */
@@ -24,8 +26,10 @@ export function isWithinTurmaBWindow(slot: string): boolean {
   return h >= TURMA_B_WINDOW_START_HOUR && h <= TURMA_B_WINDOW_END_HOUR;
 }
 
-export function isSdrIaHourFull(count: number, capacity: number, eligibleClosers: number): boolean {
-  return eligibleClosers === 0 || count >= capacity + OVERBOOKING_EXTRA;
+export function isSdrIaHourFull(count: number, capacity: number, eligibleClosers: number, turma: Turma = "A"): boolean {
+  if (eligibleClosers === 0) return true;
+  if (turma === "A") return count >= TURMA_A_MAX_PER_HOUR;
+  return count >= capacity + OVERBOOKING_EXTRA;
 }
 
 export function sdrIaOverbookingPosition(countBeforeInsert: number, capacity: number): number {
@@ -233,7 +237,7 @@ export async function loadDayAvailability(
     const count = acc.total;
     const capacity = Math.max(0, closers.length - blocked.size);
     const eligibleClosers = closers.filter((c) => !blocked.has(c.id));
-    const full = isSdrIaHourFull(count, capacity, eligibleClosers.length)
+    const full = isSdrIaHourFull(count, capacity, eligibleClosers.length, turma)
       || (isB && (count >= TURMA_B_MAX_PER_HOUR || !isWithinTurmaBWindow(slot)));
     const freeClosers = closers.filter((c) => !blocked.has(c.id) && !acc.closerIds.has(c.id));
     hours.set(slot, { count, capacity, full, freeClosers, eligibleClosers, perCloserHour: acc.perCloser });

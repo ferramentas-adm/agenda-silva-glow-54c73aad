@@ -5,7 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
   BOOKING_MIN_LEAD_MINUTES, isWithinTurmaBWindow, loadDayAvailability, sdrIaOverbookingPosition,
-  TURMA_B_MAX_PER_HOUR, TURMA_B_WINDOW_END_HOUR, TURMA_B_WINDOW_START_HOUR,
+  TURMA_A_MAX_PER_HOUR, TURMA_B_MAX_PER_HOUR, TURMA_B_WINDOW_END_HOUR, TURMA_B_WINDOW_START_HOUR,
   spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
@@ -159,6 +159,12 @@ Deno.serve(async (req) => {
     }
     if (!avail.slots.includes(timeStr)) return json({ erro: "horario_fora_da_grade" }, 409);
     const info = avail.hours.get(timeStr);
+    if (turma === "A" && info && info.count >= TURMA_A_MAX_PER_HOUR) {
+      return json({
+        erro: "turma_a_lotada",
+        detalhe: `Turma A já tem ${info.count} reuniões às ${timeStr} (teto de ${TURMA_A_MAX_PER_HOUR} por horário)`,
+      }, 409);
+    }
     if (turma === "B" && info && info.count >= TURMA_B_MAX_PER_HOUR) {
       return json({
         erro: "turma_b_lotada",
