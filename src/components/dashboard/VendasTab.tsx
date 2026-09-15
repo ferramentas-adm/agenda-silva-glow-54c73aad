@@ -565,10 +565,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // IDs para drill-down
   const drilldownIds = useMemo(() => {
     const fechadasIds = vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id);
+    const fechadasDesqualificadoIds = vendasDia.filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.lead_desqualificado).map((v) => v.agendamento_id);
     const conversaoIds = Array.from(new Set([...(conversaoData?.ids ?? []), ...fechadasIds]));
     return {
       vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
       fechadasIds,
+      fechadasDesqualificadoIds,
       fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao && agMap.get(v.agendamento_id)?.meeting_reason !== "segunda_reuniao").map((v) => v.agendamento_id),
       fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao")).map((v) => v.agendamento_id),
       naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
@@ -576,7 +578,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     };
   }, [vendasDia, agMap, conversaoData]);
 
-  const { vendasDiaIds, fechadasIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds, conversaoIds } = drilldownIds;
+  const { vendasDiaIds, fechadasIds, fechadasDesqualificadoIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds, conversaoIds } = drilldownIds;
 
   // Filtros do card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
