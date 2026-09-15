@@ -280,6 +280,9 @@ function AgendarPageInner() {
     if (editData.sdr_responsavel_id && !selectedSdrId) {
       setSelectedSdrId(editData.sdr_responsavel_id);
     }
+    if (typeof editData.lead_desqualificado === "boolean") {
+      setLeadDesqualificado(editData.lead_desqualificado);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editData, role]);
 
