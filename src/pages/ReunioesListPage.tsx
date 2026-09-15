@@ -144,7 +144,7 @@ export default function ReunioesListPage() {
   const { data: closers = [] } = useQuery({
     queryKey: ["closers-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("closers").select("id, name, email").eq("active", true).order("name");
+      const { data } = await supabase.from("closers").select("id, name, email, em_treinamento").eq("active", true).order("name");
       return data || [];
     },
   });
@@ -527,6 +527,18 @@ export default function ReunioesListPage() {
 
   const handleTransferCloser = async (ag: any, newCloserId: string) => {
     if (!newCloserId || newCloserId === ag.closer_id) return;
+    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
+    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    const targetCloser = closers.find((c: any) => c.id === newCloserId);
+    const isDesqLead = !!ag.lead_desqualificado;
+    if (targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead) {
+      toast.error(
+        isDesqLead
+          ? "Lead desqualificado só pode ser transferido para um closer da Turma B."
+          : "Lead qualificado só pode ser transferido para um closer da Turma A."
+      );
+      return;
+    }
     const oldName = closerMap[ag.closer_id] || "—";
     const newName = closerMap[newCloserId] || "—";
     try {
@@ -1025,9 +1037,21 @@ export default function ReunioesListPage() {
                                 <SelectValue placeholder="—" />
                               </SelectTrigger>
                               <SelectContent>
-                                {closers.map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                ))}
+                                 {closers.map((c: any) => (
+                                   <SelectItem key={c.id} value={c.id}>
+                                     <span className="flex items-center gap-2">
+                                       {c.name}
+                                       <Badge
+                                         variant="outline"
+                                         className={c.em_treinamento
+                                           ? "text-[10px] px-1 py-0 border-amber-500 text-amber-500"
+                                           : "text-[10px] px-1 py-0 border-primary text-primary"}
+                                       >
+                                         {c.em_treinamento ? "B" : "A"}
+                                       </Badge>
+                                     </span>
+                                   </SelectItem>
+                                 ))}
                               </SelectContent>
                             </Select>
                           ) : (

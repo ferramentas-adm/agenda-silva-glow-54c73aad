@@ -209,6 +209,9 @@ export function useCloserFilter() {
 
   return {
     closers: visibleClosers,
+    // Lista completa (sem filtro de turma/papel) — usada em dropdowns de
+    // troca/transferência de closer, que precisam mostrar TODAS as turmas.
+    allClosers: closers,
     selectedIds,
     effectiveSelectedIds,
     toggle,

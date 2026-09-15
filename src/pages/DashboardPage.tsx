@@ -172,6 +172,7 @@ interface DeleteTarget {
 export function CalendarContent() {
   const {
     closers,
+    allClosers,
     selectedIds,
     effectiveSelectedIds,
     toggle,
@@ -681,6 +682,18 @@ export function CalendarContent() {
 
   const handleTransferLead = async () => {
     if (!detailAg || !transferTarget || transferTarget === detailAg.closer_id) return;
+    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
+    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    const targetCloser = transferableClosers.find((c) => c.id === transferTarget);
+    const isDesqLead = !!(detailAg as any).lead_desqualificado;
+    if (targetCloser && !!targetCloser.em_treinamento !== isDesqLead) {
+      toast.error(
+        isDesqLead
+          ? "Lead desqualificado só pode ser transferido para um closer da Turma B."
+          : "Lead qualificado só pode ser transferido para um closer da Turma A."
+      );
+      return;
+    }
     setTransferring(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-transfer-event", {
@@ -741,7 +754,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name")
+        .select("id, name, em_treinamento")
         .eq("active", true)
         .order("name", { ascending: true });
       return data ?? [];
@@ -750,6 +763,18 @@ export function CalendarContent() {
 
   const handleChangeCloser = async (newCloserId: string) => {
     if (!detailAg || newCloserId === detailAg.closer_id) return;
+    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
+    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    const target = allClosers.find((c) => c.id === newCloserId);
+    const isDesq = !!(detailAg as any).lead_desqualificado;
+    if (target && !!target.em_treinamento !== isDesq) {
+      toast.error(
+        isDesq
+          ? "Lead desqualificado só pode ser atribuído a um closer da Turma B."
+          : "Lead qualificado só pode ser atribuído a um closer da Turma A."
+      );
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from("agendamentos")
@@ -1578,8 +1603,20 @@ export function CalendarContent() {
                         <SelectValue placeholder="Selecionar closer" />
                       </SelectTrigger>
                       <SelectContent>
-                        {closers.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        {allClosers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            <span className="flex items-center gap-2">
+                              {c.name}
+                              <Badge
+                                variant="outline"
+                                className={c.em_treinamento
+                                  ? "text-[10px] px-1 py-0 border-amber-500 text-amber-500"
+                                  : "text-[10px] px-1 py-0 border-primary text-primary"}
+                              >
+                                {c.em_treinamento ? "B" : "A"}
+                              </Badge>
+                            </span>
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1905,7 +1942,19 @@ export function CalendarContent() {
                   {transferableClosers
                     .filter((c) => c.id !== detailAg?.closer_id)
                     .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex items-center gap-2">
+                          {c.name}
+                          <Badge
+                            variant="outline"
+                            className={c.em_treinamento
+                              ? "text-[10px] px-1 py-0 border-amber-500 text-amber-500"
+                              : "text-[10px] px-1 py-0 border-primary text-primary"}
+                          >
+                            {c.em_treinamento ? "B" : "A"}
+                          </Badge>
+                        </span>
+                      </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
