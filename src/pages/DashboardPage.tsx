@@ -764,18 +764,11 @@ export function CalendarContent() {
 
   const handleChangeCloser = async (newCloserId: string) => {
     if (!detailAg || newCloserId === detailAg.closer_id) return;
-    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
-    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    // Troca entre turmas é permitida: a marcação do lead acompanha a turma
+    // do closer de destino (ajuste feito pelo banco).
     const target = allClosers.find((c) => c.id === newCloserId);
     const isDesq = !!(detailAg as any).lead_desqualificado;
-    if (target && !!target.em_treinamento !== isDesq) {
-      toast.error(
-        isDesq
-          ? "Lead desqualificado só pode ser atribuído a um closer da Turma B."
-          : "Lead qualificado só pode ser atribuído a um closer da Turma A."
-      );
-      return;
-    }
+    const trocaTurma = !!target && !!target.em_treinamento !== isDesq;
     try {
       const { data, error } = await supabase
         .from("agendamentos")
