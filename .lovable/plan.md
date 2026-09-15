@@ -30,7 +30,7 @@ No mesmo projeto GCP do OAuth (GOOGLE_CLIENT_ID):
 
 ### 3. Captura do nome da sala
 
-- `google-create-event` passa a gravar o `space.name` retornado pela Meet API v2 (piloto de gravação já cria a sala via API). Para eventos criados só pelo Calendar (conferenceData), extrair o código do Meet do link e resolver o space via `spaces/{code}` — se a API permitir com o escopo atual; senão, essas reuniões ficam no fallback por horário.
+- `google-create-event` passa a gravar o `space.name` retornado pela Meet API v2 (o piloto de gravação já cria a sala via API). Para eventos criados só pelo Calendar (`conferenceData`), resolver o space pelo código do link via `spaces/{code}`; quando não for possível, a reunião fica sem detecção (sem badge).
 
 ### 4. Edge functions
 
@@ -66,8 +66,9 @@ No mesmo projeto GCP do OAuth (GOOGLE_CLIENT_ID):
 
 ## Validação
 
-- Criar reunião de teste com a closer piloto (Meet via API), abrir a sala com 2 abas, conferir `em_call_desde` gravado e badge aparecendo no calendário sem refresh.
-- Sair da sala e conferir `em_call_ate` e sumiço da badge.
+- Criar reunião de teste com a closer piloto: entrar só com a conta da closer e confirmar que a badge **não** acende.
+- Entrar com um segundo participante (outra conta/aba) e confirmar `em_call_desde` gravado e badge aparecendo no calendário e na listagem sem refresh.
+- Sair com um dos dois e conferir `em_call_ate` e o sumiço da badge.
 - Testar renovação da subscription e idempotência (mesmo evento duplicado não altera nada).
 - Build + git diff --check.
 
