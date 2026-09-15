@@ -637,6 +637,36 @@ function UsersSection() {
   };
 
   const [togglingSdrOverrideId, setTogglingSdrOverrideId] = useState<string | null>(null);
+  const [togglingTreinamentoId, setTogglingTreinamentoId] = useState<string | null>(null);
+
+  const handleToggleTreinamento = async (user: any) => {
+    if (!user.closerId) return;
+    setTogglingTreinamentoId(user.userId);
+    try {
+      const { error } = await supabase
+        .from("closers")
+        .update({ em_treinamento: !user.emTreinamento })
+        .eq("id", user.closerId);
+      if (error) throw error;
+      await logAudit({
+        action: "toggle_closer_treinamento",
+        entity_type: "closer",
+        entity_id: user.closerId,
+        details: {
+          closer_name: user.name,
+          previous: user.emTreinamento,
+          current: !user.emTreinamento,
+        },
+      });
+      toast.success(user.emTreinamento ? "Closer removido do treinamento" : "Closer marcado como em treinamento");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao alterar status de treinamento");
+    } finally {
+      setTogglingTreinamentoId(null);
+    }
+  };
+
   const handleToggleSdrOverride = async (user: any) => {
     setTogglingSdrOverrideId(user.userId);
     try {
