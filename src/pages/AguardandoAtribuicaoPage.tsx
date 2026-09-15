@@ -489,10 +489,19 @@ export default function AguardandoAtribuicaoPage() {
                                 disabled={c.blocked || c.full}
                                 className={c.blocked || c.full ? "opacity-50" : ""}
                               >
-                                {c.name}
-                                {c.blocked
-                                  ? " · agenda bloqueada"
-                                  : ` · ${c.load}/${closerSlotLimit}${c.full ? " cheio" : ""}`}
+                                <span className="inline-flex items-center gap-2">
+                                  {c.name}
+                                  {c.em_treinamento ? (
+                                    <Badge className="bg-amber-500 text-white hover:bg-amber-600">B</Badge>
+                                  ) : (
+                                    <Badge variant="default">A</Badge>
+                                  )}
+                                </span>
+                                <span className="ml-auto text-muted-foreground">
+                                  {c.blocked
+                                    ? " · agenda bloqueada"
+                                    : ` · ${c.load}/${closerSlotLimit}${c.full ? " cheio" : ""}`}
+                                </span>
                               </SelectItem>
                             ))}
                           </SelectContent>
