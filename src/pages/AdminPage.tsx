@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -633,13 +634,13 @@ function UsersSection() {
   const [togglingSdrOverrideId, setTogglingSdrOverrideId] = useState<string | null>(null);
   const [togglingTreinamentoId, setTogglingTreinamentoId] = useState<string | null>(null);
 
-  const handleToggleTreinamento = async (user: any) => {
-    if (!user.closerId) return;
+  const handleToggleTreinamento = async (user: any, nextValue: boolean) => {
+    if (!user.closerId || user.emTreinamento === nextValue) return;
     setTogglingTreinamentoId(user.userId);
     try {
       const { error } = await supabase
         .from("closers")
-        .update({ em_treinamento: !user.emTreinamento })
+        .update({ em_treinamento: nextValue })
         .eq("id", user.closerId);
       if (error) throw error;
       await logAudit(
@@ -649,13 +650,13 @@ function UsersSection() {
         {
           closer_name: user.name,
           previous: user.emTreinamento,
-          current: !user.emTreinamento,
+          current: nextValue,
         },
       );
-      toast.success(user.emTreinamento ? "Closer removido do treinamento" : "Closer marcado como em treinamento");
+      toast.success(nextValue ? "Closer alocado na Turma B" : "Closer alocado na Turma A");
       queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
     } catch (e: any) {
-      toast.error(e.message || "Erro ao alterar status de treinamento");
+      toast.error(e.message || "Erro ao alterar turma do closer");
     } finally {
       setTogglingTreinamentoId(null);
     }
@@ -1034,19 +1035,35 @@ function UsersSection() {
                           </Button>
                         )}
                         {u.role === "closer" && u.closerId && canActOn(u.role) && (
-                          <span
+                          <ToggleGroup
+                            type="single"
+                            value={u.emTreinamento ? "turma_b" : "turma_a"}
+                            onValueChange={(value) => {
+                              if (value) handleToggleTreinamento(u, value === "turma_b");
+                            }}
+                            disabled={togglingTreinamentoId === u.userId}
                             title={
                               u.emTreinamento
-                                ? "Closer em treinamento — só recebe leads desqualificados"
-                                : "Marcar closer como em treinamento (só recebe leads desqualificados)"
+                                ? "Turma B: closer em treinamento — só recebe leads desqualificados"
+                                : "Turma A: closer normal — recebe leads qualificados"
                             }
+                            className="h-7 rounded-md border border-border bg-background p-0.5"
                           >
-                            <Switch
-                              checked={u.emTreinamento}
-                              onCheckedChange={() => handleToggleTreinamento(u)}
-                              disabled={togglingTreinamentoId === u.userId}
-                            />
-                          </span>
+                            <ToggleGroupItem
+                              value="turma_a"
+                              aria-label="Turma A"
+                              className="h-5 px-1.5 text-[10px] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                            >
+                              Turma A
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                              value="turma_b"
+                              aria-label="Turma B"
+                              className="h-5 px-1.5 text-[10px] data-[state=on]:bg-amber-500 data-[state=on]:text-white"
+                            >
+                              Turma B
+                            </ToggleGroupItem>
+                          </ToggleGroup>
                         )}
                         {u.role === "closer" && u.closerId && (
 
