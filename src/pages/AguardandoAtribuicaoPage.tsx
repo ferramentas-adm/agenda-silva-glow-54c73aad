@@ -313,9 +313,19 @@ export default function AguardandoAtribuicaoPage() {
           closer_id: closerId,
           meet_link: meetLink,
           google_event_id: googleEventId,
+          lead_desqualificado: desqEfetivo,
         } as any)
         .eq("id", a.id);
       if (error) throw error;
+
+      const originalDesq = Boolean(a.lead_desqualificado);
+      if (originalDesq !== desqEfetivo) {
+        logAudit("reclassificar_turma_lead", "agendamento", a.id, {
+          lead_name: a.lead_name,
+          de: originalDesq ? "Turma B (desqualificado)" : "Turma A (qualificado)",
+          para: desqEfetivo ? "Turma B (desqualificado)" : "Turma A (qualificado)",
+        });
+      }
 
       toast.success(`Closer atribuído${meetLink ? " e link do Meet gerado" : ""}.`);
       if (!meetLink) {
