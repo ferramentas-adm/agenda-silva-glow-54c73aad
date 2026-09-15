@@ -14,6 +14,7 @@ import CloserFilterBar from "@/components/CloserFilterBar";
 import { TurmaFilter } from "@/components/calendar/TurmaFilter";
 import { FunilFilter } from "@/components/calendar/FunilFilter";
 import { isDiretor, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { linkifyText } from "@/lib/linkify";
 import BriefingDrawer from "@/components/BriefingDrawer";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
@@ -1541,6 +1542,14 @@ export function CalendarContent() {
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               <User className="h-5 w-5 text-primary" />
               {detailAg?.lead_name}
+              {isDiretor(detailAg) && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 px-2 py-0.5 rounded-full"
+                  title={DIRETOR_TOOLTIP}
+                >
+                  Diretor
+                </span>
+              )}
               {detailAg?.meta_lead_id && (
                 <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                   Lead ID: {detailAg.meta_lead_id}
@@ -1677,10 +1686,35 @@ export function CalendarContent() {
                 </Button>
               )}
 
+              {/* Briefing completo, com quebras de linha preservadas */}
+              {detailAg.briefing?.trim() && (
+                <div
+                  className={cn(
+                    "rounded-lg border p-3 space-y-1.5",
+                    isDiretor(detailAg)
+                      ? "border-red-500/40 bg-red-500/10"
+                      : "border-border bg-muted/30"
+                  )}
+                >
+                  <p className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wider",
+                    isDiretor(detailAg) ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                  )}>
+                    Briefing {isDiretor(detailAg) ? "— Funil Diretor (oferta R$10 mil)" : ""}
+                  </p>
+                  <div
+                    className="text-sm leading-6 text-foreground/90 whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
+                    style={{ overflowWrap: "anywhere" }}
+                  >
+                    {linkifyText(detailAg.briefing)}
+                  </div>
+                </div>
+              )}
+
               {/* Briefing section - opens drawer */}
               {detailAg.briefing ? (
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
-                  <FileText className="h-3.5 w-3.5" />Ver briefing
+                  <FileText className="h-3.5 w-3.5" />Ver briefing completo
                 </Button>
               ) : (
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full" onClick={() => setViewBriefing(true)}>
