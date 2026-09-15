@@ -1035,19 +1035,35 @@ function UsersSection() {
                           </Button>
                         )}
                         {u.role === "closer" && u.closerId && canActOn(u.role) && (
-                          <span
+                          <ToggleGroup
+                            type="single"
+                            value={u.emTreinamento ? "turma_b" : "turma_a"}
+                            onValueChange={(value) => {
+                              if (value) handleToggleTreinamento(u, value === "turma_b");
+                            }}
+                            disabled={togglingTreinamentoId === u.userId}
                             title={
                               u.emTreinamento
-                                ? "Closer em treinamento — só recebe leads desqualificados"
-                                : "Marcar closer como em treinamento (só recebe leads desqualificados)"
+                                ? "Turma B: closer em treinamento — só recebe leads desqualificados"
+                                : "Turma A: closer normal — recebe leads qualificados"
                             }
+                            className="h-7 rounded-md border border-border bg-background p-0.5"
                           >
-                            <Switch
-                              checked={u.emTreinamento}
-                              onCheckedChange={() => handleToggleTreinamento(u)}
-                              disabled={togglingTreinamentoId === u.userId}
-                            />
-                          </span>
+                            <ToggleGroupItem
+                              value="turma_a"
+                              aria-label="Turma A"
+                              className="h-5 px-1.5 text-[10px] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                            >
+                              Turma A
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                              value="turma_b"
+                              aria-label="Turma B"
+                              className="h-5 px-1.5 text-[10px] data-[state=on]:bg-amber-500 data-[state=on]:text-white"
+                            >
+                              Turma B
+                            </ToggleGroupItem>
+                          </ToggleGroup>
                         )}
                         {u.role === "closer" && u.closerId && (
 
