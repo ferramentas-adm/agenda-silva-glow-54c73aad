@@ -163,7 +163,8 @@ export async function loadDayAvailability(
   const [agRes, closersRes, blocksRes, excRes] = await Promise.all([
     supabase.from("agendamentos").select("scheduled_time, closer_id")
       .eq("scheduled_date", dateStr).is("deleted_at", null).neq("status", "cancelada"),
-    supabase.from("closers").select("id, name").eq("active", true).order("name"),
+    // Turma B (em treinamento) só atende lead desqualificado — o SDR IA nunca aloca nesses.
+    supabase.from("closers").select("id, name").eq("active", true).eq("em_treinamento", false).order("name"),
     supabase.from("closer_blocks").select("start_time, end_time, closer_id")
       .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`),
     supabase.from("closer_block_exceptions").select("closer_id, start_time, end_time").eq("exception_date", dateStr),

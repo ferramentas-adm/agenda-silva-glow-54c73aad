@@ -7,6 +7,7 @@ import {
   BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
   spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
+import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag, fetchMetaLeadId } from "../_shared/datacrazyLead.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
@@ -152,8 +153,14 @@ Deno.serve(async (req) => {
     let fallbackSuggestedName: string | null = null;
     if (requestedCloserId) {
       assignedCloserName = info.eligibleClosers.find((c) => c.id === requestedCloserId)?.name ?? null;
-      if (!assignedCloserName) return json({ erro: "slot_indisponivel" }, 409);
-    } else {
+      if (!assignedCloserName) {
+        // Closer do slot_id ficou indisponível (ocupado, bloqueado, inativo ou Turma B):
+        // cai para a fila de atribuição em vez de falhar.
+        console.warn("closer do slot_id indisponível, caindo para a fila", requestedCloserId, dateStr, timeStr);
+        requestedCloserId = null;
+      }
+    }
+    if (!requestedCloserId) {
       const alt = suggestCloser(avail, timeStr);
       fallbackSuggestedName = alt?.name ?? null;
     }
@@ -276,6 +283,6 @@ Deno.serve(async (req) => {
     }, 201);
   } catch (e) {
     console.error("silva-agendar error", e);
-    return json({ erro: "internal_error", detalhe: e instanceof Error ? e.message : String(e) }, 500);
+    return json({ erro: "internal_error", detalhe: errorDetail(e) }, 500);
   }
 });

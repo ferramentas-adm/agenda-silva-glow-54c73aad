@@ -6,6 +6,7 @@ import {
   AVAILABILITY_MIN_LEAD_MINUTES, addDays, fetchBusinessSlots, labelFor, loadDayAvailability,
   spDateTime, spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
+import { errorDetail } from "../_shared/erro.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,6 +65,6 @@ Deno.serve(async (req) => {
     return json({ gerado_em: now.toISOString(), slots });
   } catch (e) {
     console.error("silva-disponibilidade error", e);
-    return json({ erro: "internal_error", detalhe: e instanceof Error ? e.message : String(e) }, 500);
+    return json({ erro: "internal_error", detalhe: errorDetail(e) }, 500);
   }
 });

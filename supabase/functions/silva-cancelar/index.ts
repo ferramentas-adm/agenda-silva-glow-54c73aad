@@ -2,6 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { spDateTime, toSpIso } from "../_shared/disponibilidade.ts";
+import { errorDetail } from "../_shared/erro.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
 const SDR_IA_NAME = "João Amorim";
@@ -104,6 +105,6 @@ Deno.serve(async (req) => {
     return json(await responseFor(supabase, cancelled));
   } catch (error) {
     console.error("silva-cancelar error", error);
-    return json({ erro: "internal_error", detalhe: error instanceof Error ? error.message : String(error) }, 500);
+    return json({ erro: "internal_error", detalhe: errorDetail(error) }, 500);
   }
 });

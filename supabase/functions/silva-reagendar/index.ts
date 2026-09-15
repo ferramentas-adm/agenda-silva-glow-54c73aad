@@ -5,6 +5,7 @@ import {
   BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
   spDateTime, spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
+import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag } from "../_shared/datacrazyLead.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
@@ -110,8 +111,8 @@ Deno.serve(async (req) => {
     if (!availability.slots.includes(timeStr)) return json({ erro: "slot_indisponivel" }, 409);
     const info = availability.hours.get(timeStr);
     if (!info || info.full || info.eligibleClosers.length === 0) return json({ erro: "slot_indisponivel" }, 409);
-    const requestedCloser = info.eligibleClosers.find((closer) => closer.id === requestedCloserId);
-    if (!requestedCloser) return json({ erro: "slot_indisponivel" }, 409);
+    // Closer do slot_id indisponível não invalida o horário: escolhemos outro elegível.
+    const requestedCloser = info.eligibleClosers.find((closer) => closer.id === requestedCloserId) ?? null;
 
     // Mantém o closer anterior quando ele continua elegível; caso contrário usa o closer do slot.
     const previousCloser = typeof old.closer_id === "string"
@@ -207,6 +208,6 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("silva-reagendar error", error);
-    return json({ erro: "internal_error", detalhe: error instanceof Error ? error.message : String(error) }, 500);
+    return json({ erro: "internal_error", detalhe: errorDetail(error) }, 500);
   }
 });
