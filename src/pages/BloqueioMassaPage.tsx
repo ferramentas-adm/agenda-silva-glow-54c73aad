@@ -500,6 +500,53 @@ export default function BloqueioMassaPage() {
                   />
                 </PopoverContent>
               </Popover>
+            ) : mode === "periodo" ? (
+              <div className="space-y-1.5">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start font-normal",
+                        !dateRange?.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarRange className="mr-2 h-4 w-4" />
+                      {dateRange?.from
+                        ? dateRange.to
+                          ? `${format(dateRange.from, "dd/MM/yyyy")} → ${format(dateRange.to, "dd/MM/yyyy")}`
+                          : `${format(dateRange.from, "dd/MM/yyyy")} → selecione o fim`
+                        : "Selecione o período"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={1}
+                      disabled={(d) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return d < today;
+                      }}
+                      locale={ptBR}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                {dateRange?.from && dateRange?.to && periodDays && (
+                  <p
+                    className={cn(
+                      "text-xs",
+                      periodDays.length > MAX_PERIOD_DAYS ? "text-destructive" : "text-muted-foreground"
+                    )}
+                  >
+                    {periodDays.length} dia(s) no período
+                    {periodDays.length > MAX_PERIOD_DAYS && ` — o máximo é ${MAX_PERIOD_DAYS} dias`}
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="space-y-2">
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
