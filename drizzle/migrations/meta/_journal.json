@@ -78,6 +78,13 @@
       "when": 1789430187096,
       "tag": "0010_lead_desqualificado_e_closer_em_treinamento",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789467245947,
+      "tag": "0011_allow_closer_transfer_across_turmas",
+      "breakpoints": true
     }
   ]
 }
