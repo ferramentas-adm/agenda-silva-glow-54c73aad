@@ -152,8 +152,14 @@ Deno.serve(async (req) => {
     let fallbackSuggestedName: string | null = null;
     if (requestedCloserId) {
       assignedCloserName = info.eligibleClosers.find((c) => c.id === requestedCloserId)?.name ?? null;
-      if (!assignedCloserName) return json({ erro: "slot_indisponivel" }, 409);
-    } else {
+      if (!assignedCloserName) {
+        // Closer do slot_id ficou indisponível (ocupado, bloqueado, inativo ou Turma B):
+        // cai para a fila de atribuição em vez de falhar.
+        console.warn("closer do slot_id indisponível, caindo para a fila", requestedCloserId, dateStr, timeStr);
+        requestedCloserId = null;
+      }
+    }
+    if (!requestedCloserId) {
       const alt = suggestCloser(avail, timeStr);
       fallbackSuggestedName = alt?.name ?? null;
     }

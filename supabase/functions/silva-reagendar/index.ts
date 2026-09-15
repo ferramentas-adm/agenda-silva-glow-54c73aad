@@ -110,8 +110,8 @@ Deno.serve(async (req) => {
     if (!availability.slots.includes(timeStr)) return json({ erro: "slot_indisponivel" }, 409);
     const info = availability.hours.get(timeStr);
     if (!info || info.full || info.eligibleClosers.length === 0) return json({ erro: "slot_indisponivel" }, 409);
-    const requestedCloser = info.eligibleClosers.find((closer) => closer.id === requestedCloserId);
-    if (!requestedCloser) return json({ erro: "slot_indisponivel" }, 409);
+    // Closer do slot_id indisponível não invalida o horário: escolhemos outro elegível.
+    const requestedCloser = info.eligibleClosers.find((closer) => closer.id === requestedCloserId) ?? null;
 
     // Mantém o closer anterior quando ele continua elegível; caso contrário usa o closer do slot.
     const previousCloser = typeof old.closer_id === "string"
