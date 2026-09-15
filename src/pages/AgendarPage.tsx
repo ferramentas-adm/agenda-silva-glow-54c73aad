@@ -1052,6 +1052,7 @@ function AgendarPageInner() {
               disabled={
                 submitting ||
                 !canGoNext.confirm ||
+                incompativel ||
                 (isCloser && !meetingReasonCustom.trim()) ||
                 (channelTypeRequired && !channelType) ||
                 !bookingChannel
