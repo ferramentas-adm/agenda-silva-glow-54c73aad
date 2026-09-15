@@ -429,9 +429,12 @@ export default function AguardandoAtribuicaoPage() {
               const isReschedule = !!a.original_agendamento_id;
               const original = isReschedule ? originalById(a.original_agendamento_id) : null;
               const hist = leadHistory(a.lead_phone, a.id);
+              const desqOriginal = Boolean(a.lead_desqualificado);
+              const desqEfetivo = turmaOverride[a.id] ?? desqOriginal;
+              const reclassificado = desqEfetivo !== desqOriginal;
               const closerOptions = closers
                 // Lead desqualificado só pode ser atribuído à Turma B (e o inverso).
-                .filter((c) => Boolean(c.em_treinamento) === Boolean(a.lead_desqualificado))
+                .filter((c) => Boolean(c.em_treinamento) === desqEfetivo)
                 .map((c) => {
                   const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
                   const load = closerLoad(c.id, a.scheduled_date, a.scheduled_time);
