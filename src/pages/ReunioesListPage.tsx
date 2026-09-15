@@ -527,18 +527,11 @@ export default function ReunioesListPage() {
 
   const handleTransferCloser = async (ag: any, newCloserId: string) => {
     if (!newCloserId || newCloserId === ag.closer_id) return;
-    // Trava de turma: lead qualificado (Turma A) não pode ir para closer em
-    // treinamento (Turma B) e vice-versa — a mesma regra do trigger do banco.
+    // Transferência entre turmas é permitida: a marcação do lead acompanha a
+    // turma do closer de destino (ajuste feito pelo banco).
     const targetCloser = closers.find((c: any) => c.id === newCloserId);
     const isDesqLead = !!ag.lead_desqualificado;
-    if (targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead) {
-      toast.error(
-        isDesqLead
-          ? "Lead desqualificado só pode ser transferido para um closer da Turma B."
-          : "Lead qualificado só pode ser transferido para um closer da Turma A."
-      );
-      return;
-    }
+    const trocaTurma = !!targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead;
     const oldName = closerMap[ag.closer_id] || "—";
     const newName = closerMap[newCloserId] || "—";
     try {
