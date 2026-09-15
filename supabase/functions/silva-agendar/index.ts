@@ -40,6 +40,11 @@ const Body = z.object({
   crm_lead_id: z.string().max(100).optional(),
   crm_conversation_id: z.string().max(100).optional(),
   idempotency_key: z.string().min(1).max(200).optional(),
+  lead_desqualificado: z.union([z.boolean(), z.string().min(1)]).optional().transform((value) => {
+    if (typeof value !== "string") return value ?? false;
+    const n = value.trim().toLocaleLowerCase("pt-BR");
+    return n === "true" || n === "1" || n === "sim";
+  }),
   email: z.string().email().optional(),
 });
 
@@ -143,7 +148,8 @@ Deno.serve(async (req) => {
     }
 
     // 4) Revalidar slot com a capacidade exclusiva do SDR IA (+3 por hora).
-    const avail = await loadDayAvailability(supabase, dateStr);
+    const turma: "A" | "B" = b.lead_desqualificado ? "B" : "A";
+    const avail = await loadDayAvailability(supabase, dateStr, undefined, turma);
     if (!avail.slots.includes(timeStr)) return json({ erro: "horario_fora_da_grade" }, 409);
     const info = avail.hours.get(timeStr);
     if (!info || info.full || info.eligibleClosers.length === 0) {
@@ -235,9 +241,14 @@ Deno.serve(async (req) => {
       idempotency_key: b.idempotency_key ?? null,
       meet_link: meetLink,
       google_event_id: googleEventId,
+      lead_desqualificado: b.lead_desqualificado ?? false,
     };
     const { data: created, error } = await supabase.from("agendamentos").insert(insert).select("*").single();
     if (error) {
+      const detalhe = errorDetail(error);
+      if (/turma|desqualificad|treinamento/i.test(detalhe)) {
+        return json({ erro: "turma_incompativel", detalhe }, 409);
+      }
       if (error.code === "23505" && b.idempotency_key) {
         const { data: prev } = await supabase.from("agendamentos").select("*").eq("idempotency_key", b.idempotency_key).single();
         if (prev) return json({ ...(await toResponse(supabase, prev)), idempotente: true }, 200);
@@ -255,7 +266,7 @@ Deno.serve(async (req) => {
       entity_id: created.id,
       details: {
          lead_name: created.lead_name, closer_name: assignedCloserName ?? "", scheduled_date: dateStr, scheduled_time: timeStr,
-        channel_type: b.canal, booking_channel: BOOKING_CHANNEL, origem: b.origem, via: "silva-agendar",
+        channel_type: b.canal, booking_channel: BOOKING_CHANNEL, lead_desqualificado: b.lead_desqualificado ?? false, origem: b.origem, via: "silva-agendar",
          closer_sugerido: fallbackSuggestedName, crm_lead_id: b.crm_lead_id ?? null,
         crm_conversation_id: b.crm_conversation_id ?? null,
          overbooking_extra: overbookingNumber || null,
