@@ -442,6 +442,11 @@ export default function AguardandoAtribuicaoPage() {
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                           {meetingReasonLabel(a.meeting_reason, isReschedule)}
                         </span>
+                        {a.lead_desqualificado && (
+                          <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                            Lead desqualificado · Turma B
+                          </span>
+                        )}
                         {isReschedule && original && (
                           <span
                             className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground"
