@@ -165,8 +165,31 @@ export function useCloserFilter() {
     if (isCloserRole && user?.email) {
       return closers.filter((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
     }
+    if (turma === "a") return closers.filter((c) => !c.em_treinamento);
+    if (turma === "b") return closers.filter((c) => !!c.em_treinamento);
     return closers;
-  }, [closers, isCloserRole, user?.email]);
+  }, [closers, isCloserRole, user?.email, turma]);
 
-  return { closers: visibleClosers, selectedIds, toggle, isLoading: isLoading || !initialized, isCloserRole };
+  const countTurmaA = useMemo(() => closers.filter((c) => !c.em_treinamento).length, [closers]);
+  const countTurmaB = useMemo(() => closers.filter((c) => !!c.em_treinamento).length, [closers]);
+
+  // Interseção entre a seleção do usuário e os closers visíveis na turma atual —
+  // preserva a seleção ao alternar entre turmas.
+  const effectiveSelectedIds = useMemo(() => {
+    const visible = new Set(visibleClosers.map((c) => c.id));
+    return new Set([...selectedIds].filter((id) => visible.has(id)));
+  }, [visibleClosers, selectedIds]);
+
+  return {
+    closers: visibleClosers,
+    selectedIds,
+    effectiveSelectedIds,
+    toggle,
+    isLoading: isLoading || !initialized,
+    isCloserRole,
+    turma,
+    setTurma,
+    countTurmaA,
+    countTurmaB,
+  };
 }
