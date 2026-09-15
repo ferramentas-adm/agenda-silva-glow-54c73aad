@@ -11,6 +11,7 @@ import {
 
 import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
+import { TurmaFilter } from "@/components/calendar/TurmaFilter";
 import BriefingDrawer from "@/components/BriefingDrawer";
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
@@ -166,7 +167,18 @@ interface DeleteTarget {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export function CalendarContent() {
-  const { closers, selectedIds, toggle, isLoading, isCloserRole } = useCloserFilter();
+  const {
+    closers,
+    selectedIds,
+    effectiveSelectedIds,
+    toggle,
+    isLoading,
+    isCloserRole,
+    turma,
+    setTurma,
+    countTurmaA,
+    countTurmaB,
+  } = useCloserFilter();
   
   const { user, role } = useAuth();
   const canEditTime = useCan("edit_appointment_time");
@@ -396,7 +408,7 @@ export function CalendarContent() {
   }, [queryClient, user?.id, dateStr]);
 
   // Fetch Google Calendar events for all selected closers
-  const closerIds = useMemo(() => Array.from(selectedIds).sort(), [selectedIds]);
+  const closerIds = useMemo(() => Array.from(effectiveSelectedIds).sort(), [effectiveSelectedIds]);
   const closerIdsKey = closerIds.join(",");
 
   const { data: googleBusyBlocks = [] } = useQuery<GoogleBusyBlock[]>({
@@ -451,7 +463,7 @@ export function CalendarContent() {
 
   const filtered = useMemo(() => {
     return agendamentos.filter((a) => {
-      if (!a.closer_id || !selectedIds.has(a.closer_id)) return false;
+      if (!a.closer_id || !effectiveSelectedIds.has(a.closer_id)) return false;
       const ownerSdr =
         a.sdr_responsavel_id ||
         (a.created_by && userRolesMap.get(a.created_by) === "sdr" ? a.created_by : null);
@@ -463,7 +475,7 @@ export function CalendarContent() {
       }
       return true;
     });
-  }, [agendamentos, selectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
+  }, [agendamentos, effectiveSelectedIds, selectedSdrId, userRolesMap, isSdrRole, onlyMySdr, user]);
 
   // ─── Busca de lead no calendário (dia exibido) ────────────────
   const [leadSearch, setLeadSearch] = useState("");
@@ -1282,8 +1294,16 @@ export function CalendarContent() {
               ))}
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-1 px-1">
-              <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
+            <div className="space-y-2">
+              <TurmaFilter
+                value={turma}
+                onChange={setTurma}
+                countA={countTurmaA}
+                countB={countTurmaB}
+              />
+              <div className="overflow-x-auto -mx-1 px-1">
+                <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
+              </div>
             </div>
           )
         )}
@@ -1424,7 +1444,7 @@ export function CalendarContent() {
 
 
         {/* Content */}
-        {isLoading || loadingAgendamentos || (closers.length > 0 && selectedIds.size === 0) ? (
+        {isLoading || loadingAgendamentos || (closers.length > 0 && effectiveSelectedIds.size === 0 && turma === "todos") ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-20 w-full rounded-xl" />
@@ -1434,7 +1454,7 @@ export function CalendarContent() {
 
           <DayView
             date={currentDate}
-            closers={closers.filter((c) => selectedIds.has(c.id))}
+            closers={closers.filter((c) => effectiveSelectedIds.has(c.id))}
             agendamentos={filtered}
             highlightAgId={highlightAgId}
             busyBlocks={googleBusyBlocks}

@@ -8,16 +8,24 @@ interface Closer {
   name: string;
   active: boolean;
   email: string | null;
+  em_treinamento?: boolean | null;
 }
+
+export type TurmaFilterValue = "todos" | "a" | "b";
 
 function getStorageKey(userId: string) {
   return `closer-filter-${userId}`;
+}
+
+function getTurmaStorageKey(userId: string) {
+  return `closer-turma-${userId}`;
 }
 
 export function useCloserFilter() {
   const { user, role } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+  const [turma, setTurmaState] = useState<TurmaFilterValue>("todos");
   const lastReconciledRef = useRef("");
 
   const { data: closers = [], isLoading } = useQuery({
@@ -25,12 +33,33 @@ export function useCloserFilter() {
     queryFn: async () => {
       const { data } = await supabase
         .from("closers")
-        .select("id, name, active, email")
+        .select("id, name, active, email, em_treinamento")
         .eq("active", true)
         .order("name");
       return (data ?? []) as Closer[];
     },
   });
+
+  // Turma persistida por usuário
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const saved = localStorage.getItem(getTurmaStorageKey(user.id));
+      if (saved === "a" || saved === "b" || saved === "todos") setTurmaState(saved);
+    } catch {}
+  }, [user?.id]);
+
+  const setTurma = useCallback(
+    (v: TurmaFilterValue) => {
+      setTurmaState(v);
+      if (user) {
+        try {
+          localStorage.setItem(getTurmaStorageKey(user.id), v);
+        } catch {}
+      }
+    },
+    [user?.id]
+  );
 
   // Initialize from localStorage or select all (closers only see their own)
   useEffect(() => {
@@ -136,8 +165,31 @@ export function useCloserFilter() {
     if (isCloserRole && user?.email) {
       return closers.filter((c) => c.email?.toLowerCase() === user.email!.toLowerCase());
     }
+    if (turma === "a") return closers.filter((c) => !c.em_treinamento);
+    if (turma === "b") return closers.filter((c) => !!c.em_treinamento);
     return closers;
-  }, [closers, isCloserRole, user?.email]);
+  }, [closers, isCloserRole, user?.email, turma]);
 
-  return { closers: visibleClosers, selectedIds, toggle, isLoading: isLoading || !initialized, isCloserRole };
+  const countTurmaA = useMemo(() => closers.filter((c) => !c.em_treinamento).length, [closers]);
+  const countTurmaB = useMemo(() => closers.filter((c) => !!c.em_treinamento).length, [closers]);
+
+  // Interseção entre a seleção do usuário e os closers visíveis na turma atual —
+  // preserva a seleção ao alternar entre turmas.
+  const effectiveSelectedIds = useMemo(() => {
+    const visible = new Set(visibleClosers.map((c) => c.id));
+    return new Set([...selectedIds].filter((id) => visible.has(id)));
+  }, [visibleClosers, selectedIds]);
+
+  return {
+    closers: visibleClosers,
+    selectedIds,
+    effectiveSelectedIds,
+    toggle,
+    isLoading: isLoading || !initialized,
+    isCloserRole,
+    turma,
+    setTurma,
+    countTurmaA,
+    countTurmaB,
+  };
 }
