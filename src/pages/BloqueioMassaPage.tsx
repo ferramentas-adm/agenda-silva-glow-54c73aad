@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { eachDayOfInterval, format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,7 +34,9 @@ const MASS_BLOCK_REASONS = [
 const WEEKDAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const WEEKDAYS_LABEL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-type Mode = "pontual" | "recorrente";
+type Mode = "pontual" | "periodo" | "recorrente";
+
+const MAX_PERIOD_DAYS = 31;
 
 interface CloserRow {
   id: string;
