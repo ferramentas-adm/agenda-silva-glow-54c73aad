@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, ArrowRight, ArrowLeft, Link as LinkIcon, FileText, CheckCircle2 } from "lucide-react";
+import { CalendarIcon, ArrowRight, ArrowLeft, Link as LinkIcon, FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import AppLayout from "@/components/AppLayout";
