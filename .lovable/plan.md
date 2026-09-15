@@ -2,7 +2,8 @@
 
 ## Objetivo
 
-Sinalizar ao time de SDRs, em tempo real, quando a reunião entre lead e closer está de fato acontecendo: badge vermelha pulsante **"Em call"** no bloco do calendário e na listagem de reuniões, com filtro rápido. A detecção usa **eventos reais do Google Meet** (Google Workspace Events API), não apenas o horário.
+Sinalizar ao time de SDRs, em tempo real, quando a reunião entre lead e closer está de fato acontecendo: badge vermelha pulsante **"Em call"** no bloco do calendário e na listagem de reuniões, com filtro rápido. A detecção usa **eventos reais do Google Meet** (Google Workspace Events API) e só liga quando **as duas partes estão juntas na sala** — closer e lead, não apenas o closer esperando.
+
 
 ## Como funciona a conexão com o Google
 
