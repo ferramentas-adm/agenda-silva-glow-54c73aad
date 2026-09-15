@@ -1603,8 +1603,20 @@ export function CalendarContent() {
                         <SelectValue placeholder="Selecionar closer" />
                       </SelectTrigger>
                       <SelectContent>
-                        {closers.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        {allClosers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            <span className="flex items-center gap-2">
+                              {c.name}
+                              <Badge
+                                variant="outline"
+                                className={c.em_treinamento
+                                  ? "text-[10px] px-1 py-0 border-amber-500 text-amber-500"
+                                  : "text-[10px] px-1 py-0 border-primary text-primary"}
+                              >
+                                {c.em_treinamento ? "B" : "A"}
+                              </Badge>
+                            </span>
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1930,7 +1942,19 @@ export function CalendarContent() {
                   {transferableClosers
                     .filter((c) => c.id !== detailAg?.closer_id)
                     .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex items-center gap-2">
+                          {c.name}
+                          <Badge
+                            variant="outline"
+                            className={c.em_treinamento
+                              ? "text-[10px] px-1 py-0 border-amber-500 text-amber-500"
+                              : "text-[10px] px-1 py-0 border-primary text-primary"}
+                          >
+                            {c.em_treinamento ? "B" : "A"}
+                          </Badge>
+                        </span>
+                      </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
