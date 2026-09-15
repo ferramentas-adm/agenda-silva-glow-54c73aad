@@ -13,6 +13,16 @@ export const TZ = "America/Sao_Paulo";
 export const BOOKING_MIN_LEAD_MINUTES = 1;
 export const AVAILABILITY_MIN_LEAD_MINUTES = 10;
 export const OVERBOOKING_EXTRA = 3;
+/** Teto de reuniões por horário na Turma B (10 closers em treinamento). */
+export const TURMA_B_MAX_PER_HOUR = 13;
+/** Janela de atendimento da Turma B (horas cheias, inclusive). */
+export const TURMA_B_WINDOW_START_HOUR = 10;
+export const TURMA_B_WINDOW_END_HOUR = 21;
+
+export function isWithinTurmaBWindow(slot: string): boolean {
+  const h = parseInt(slot.slice(0, 2), 10);
+  return h >= TURMA_B_WINDOW_START_HOUR && h <= TURMA_B_WINDOW_END_HOUR;
+}
 
 export function isSdrIaHourFull(count: number, capacity: number, eligibleClosers: number): boolean {
   return eligibleClosers === 0 || count >= capacity + OVERBOOKING_EXTRA;
@@ -161,20 +171,24 @@ export async function loadDayAvailability(
   businessSlots?: string[],
   turma: Turma = "A",
 ): Promise<DayAvailability> {
-  const slots = businessSlots ?? (await fetchBusinessSlots(supabase));
+  const isB = turma === "B";
+  const allBusinessSlots = businessSlots ?? (await fetchBusinessSlots(supabase));
+  const slots = isB ? allBusinessSlots.filter(isWithinTurmaBWindow) : allBusinessSlots;
   const weekday = weekdayOf(dateStr);
   const [agRes, closersRes, blocksRes, excRes] = await Promise.all([
-    supabase.from("agendamentos").select("scheduled_time, closer_id")
+    supabase.from("agendamentos").select("scheduled_time, closer_id, lead_desqualificado")
       .eq("scheduled_date", dateStr).is("deleted_at", null).neq("status", "cancelada"),
     // Turma A (padrão) atende lead qualificado; Turma B (em treinamento) só lead desqualificado.
-    supabase.from("closers").select("id, name").eq("active", true).eq("em_treinamento", turma === "B").order("name"),
+    supabase.from("closers").select("id, name, em_treinamento").eq("active", true).order("name"),
     supabase.from("closer_blocks").select("start_time, end_time, closer_id")
       .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`),
     supabase.from("closer_block_exceptions").select("closer_id, start_time, end_time").eq("exception_date", dateStr),
   ]);
   for (const r of [agRes, closersRes, blocksRes, excRes]) if (r.error) throw r.error;
 
-  const closers: Closer[] = (closersRes.data ?? []).map((c: any) => ({ id: c.id, name: c.name }));
+  const closers: Closer[] = (closersRes.data ?? [])
+    .filter((c: any) => Boolean(c.em_treinamento) === isB)
+    .map((c: any) => ({ id: c.id, name: c.name }));
   const activeIds = new Set(closers.map((c) => c.id));
   const blocks = applyBlockExceptions((blocksRes.data ?? []) as Block[], (excRes.data ?? []) as Exc[]);
 
@@ -183,6 +197,10 @@ export async function loadDayAvailability(
   for (const r of (agRes.data ?? []) as any[]) {
     const t = String(r.scheduled_time ?? "").slice(0, 5);
     if (!t) continue;
+    // Lotação independente por turma: só conta o que pertence a esta turma.
+    if (r.closer_id) {
+      if (!activeIds.has(r.closer_id)) continue;
+    } else if (Boolean(r.lead_desqualificado) !== isB) continue;
     const acc = byTime.get(t) ?? { closerIds: new Set<string>(), perCloser: new Map<string, number>(), unassigned: 0, total: 0 };
     acc.total += 1;
     if (r.closer_id) {
@@ -215,7 +233,8 @@ export async function loadDayAvailability(
     const count = acc.total;
     const capacity = Math.max(0, closers.length - blocked.size);
     const eligibleClosers = closers.filter((c) => !blocked.has(c.id));
-    const full = isSdrIaHourFull(count, capacity, eligibleClosers.length);
+    const full = isSdrIaHourFull(count, capacity, eligibleClosers.length)
+      || (isB && (count >= TURMA_B_MAX_PER_HOUR || !isWithinTurmaBWindow(slot)));
     const freeClosers = closers.filter((c) => !blocked.has(c.id) && !acc.closerIds.has(c.id));
     hours.set(slot, { count, capacity, full, freeClosers, eligibleClosers, perCloserHour: acc.perCloser });
   }
