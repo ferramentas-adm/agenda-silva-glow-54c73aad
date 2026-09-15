@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import type { FunilFilterValue } from "@/lib/funilDiretor";
 
 interface Closer {
   id: string;
@@ -21,11 +22,16 @@ function getTurmaStorageKey(userId: string) {
   return `closer-turma-${userId}`;
 }
 
+function getFunilStorageKey(userId: string) {
+  return `closer-funil-${userId}`;
+}
+
 export function useCloserFilter() {
   const { user, role } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
   const [turma, setTurmaState] = useState<TurmaFilterValue>("todos");
+  const [funil, setFunilState] = useState<FunilFilterValue>("todos");
   const lastReconciledRef = useRef("");
 
   const { data: closers = [], isLoading } = useQuery({
@@ -55,6 +61,27 @@ export function useCloserFilter() {
       if (user) {
         try {
           localStorage.setItem(getTurmaStorageKey(user.id), v);
+        } catch {}
+      }
+    },
+    [user?.id]
+  );
+
+  // Funil persistido por usuário
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const saved = localStorage.getItem(getFunilStorageKey(user.id));
+      if (saved === "diretor" || saved === "padrao" || saved === "todos") setFunilState(saved);
+    } catch {}
+  }, [user?.id]);
+
+  const setFunil = useCallback(
+    (v: FunilFilterValue) => {
+      setFunilState(v);
+      if (user) {
+        try {
+          localStorage.setItem(getFunilStorageKey(user.id), v);
         } catch {}
       }
     },
@@ -191,5 +218,7 @@ export function useCloserFilter() {
     setTurma,
     countTurmaA,
     countTurmaB,
+    funil,
+    setFunil,
   };
 }
