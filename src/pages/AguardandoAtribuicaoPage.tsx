@@ -260,7 +260,7 @@ export default function AguardandoAtribuicaoPage() {
     return reason;
   }
 
-  const handleAssign = async (a: Agendamento) => {
+  const handleAssign = async (a: Agendamento, desqEfetivo: boolean) => {
     const closerId = selecting[a.id];
     if (!closerId) {
       toast.error("Selecione um Closer.");
