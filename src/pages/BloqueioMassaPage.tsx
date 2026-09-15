@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { eachDayOfInterval, format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, CalendarDays, CalendarOff, Clock, LockOpen, Plus, Repeat, Search, Trash2, Users } from "lucide-react";
+import { CalendarIcon, CalendarDays, CalendarOff, CalendarRange, Clock, LockOpen, Plus, Repeat, Search, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { pickedDateToYMD } from "@/lib/timezone";
@@ -33,7 +34,9 @@ const MASS_BLOCK_REASONS = [
 const WEEKDAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const WEEKDAYS_LABEL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-type Mode = "pontual" | "recorrente";
+type Mode = "pontual" | "periodo" | "recorrente";
+
+const MAX_PERIOD_DAYS = 31;
 
 interface CloserRow {
   id: string;
@@ -61,6 +64,7 @@ export default function BloqueioMassaPage() {
   const [mode, setMode] = useState<Mode>("pontual");
 
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [ranges, setRanges] = useState<{ start: string; end: string }[]>([
     { start: "09:00", end: "10:00" },
@@ -152,37 +156,47 @@ export default function BloqueioMassaPage() {
 
   const allSelected = closers.length > 0 && selected.length === closers.length;
 
+  const periodDays =
+    mode === "periodo" && dateRange?.from && dateRange?.to
+      ? eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
+      : null;
+  const periodValid = !!periodDays && periodDays.length <= MAX_PERIOD_DAYS;
+
   const canSubmit =
     selected.length > 0 &&
     !!blockType &&
     rangesValid &&
-    (mode === "pontual" ? !!date : weekdays.length > 0);
+    (mode === "pontual" ? !!date : mode === "periodo" ? periodValid : weekdays.length > 0);
 
   const handleSubmit = async () => {
     if (selected.length === 0) return toast.error("Selecione ao menos um closer");
     if (!blockType) return toast.error("Selecione um motivo");
     if (!rangesValid) return toast.error("Em cada intervalo, o fim deve ser depois do início");
     if (mode === "pontual" && !date) return toast.error("Selecione a data");
+    if (mode === "periodo" && !periodDays) return toast.error("Selecione a data inicial e a final do período");
+    if (mode === "periodo" && periodDays && periodDays.length > MAX_PERIOD_DAYS)
+      return toast.error(`O período máximo é de ${MAX_PERIOD_DAYS} dias`);
     if (mode === "recorrente" && weekdays.length === 0) return toast.error("Selecione ao menos um dia da semana");
 
     setSubmitting(true);
     try {
       const todayStr = pickedDateToYMD(new Date());
+      const periodDates =
+        mode === "periodo" && periodDays ? periodDays.map((d) => pickedDateToYMD(d)) : null;
       const rows = selected.flatMap((closerId) =>
         ranges.flatMap((r) => {
-          if (mode === "pontual") {
-            return [
-              {
-                closer_id: closerId,
-                block_date: pickedDateToYMD(date!),
-                start_time: r.start,
-                end_time: r.end,
-                block_type: blockType,
-                description: description || null,
-                is_recurring: false,
-                recurrence_weekday: null as number | null,
-              },
-            ];
+          if (mode === "pontual" || mode === "periodo") {
+            const dates = mode === "pontual" ? [pickedDateToYMD(date!)] : periodDates!;
+            return dates.map((d) => ({
+              closer_id: closerId,
+              block_date: d,
+              start_time: r.start,
+              end_time: r.end,
+              block_type: blockType,
+              description: description || null,
+              is_recurring: false,
+              recurrence_weekday: null as number | null,
+            }));
           }
           return weekdays.map((wd) => ({
             closer_id: closerId,
@@ -209,6 +223,11 @@ export default function BloqueioMassaPage() {
         const weekday = new Date(`${targetDate}T12:00:00`).getDay();
         scopeQuery.or(
           `and(is_recurring.eq.false,block_date.eq.${targetDate}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`
+        );
+      } else if (mode === "periodo") {
+        const periodWeekdays = [...new Set((periodDays ?? []).map((d) => d.getDay()))];
+        scopeQuery.or(
+          `and(is_recurring.eq.false,block_date.gte.${periodDates![0]},block_date.lte.${periodDates![periodDates!.length - 1]}),and(is_recurring.eq.true,recurrence_weekday.in.(${periodWeekdays.join(",")}))`
         );
       } else {
         scopeQuery.eq("is_recurring", true).in("recurrence_weekday", weekdays);
@@ -250,6 +269,10 @@ export default function BloqueioMassaPage() {
           .in("status", ["pendente", "confirmada", "nao_confirmada", "agendada", "realizada"]);
         if (mode === "pontual") {
           mq = mq.eq("scheduled_date", pickedDateToYMD(date!));
+        } else if (mode === "periodo") {
+          mq = mq
+            .gte("scheduled_date", periodDates![0])
+            .lte("scheduled_date", periodDates![periodDates!.length - 1]);
         } else {
           mq = mq.gte("scheduled_date", todayStr);
         }
@@ -282,6 +305,7 @@ export default function BloqueioMassaPage() {
 
       setSelected([]);
       setDate(undefined);
+      setDateRange(undefined);
       setWeekdays([]);
       setDescription("");
       queryClient.invalidateQueries({ queryKey: ["closer-blocks"] });
@@ -420,7 +444,7 @@ export default function BloqueioMassaPage() {
 
           {/* Form */}
           <div className="glass-card space-y-4 rounded-xl border border-primary/10 p-4">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 type="button"
                 variant={mode === "pontual" ? "default" : "outline"}
@@ -429,6 +453,15 @@ export default function BloqueioMassaPage() {
               >
                 <CalendarIcon className="h-4 w-4" />
                 Pontual
+              </Button>
+              <Button
+                type="button"
+                variant={mode === "periodo" ? "default" : "outline"}
+                className="gap-2"
+                onClick={() => setMode("periodo")}
+              >
+                <CalendarRange className="h-4 w-4" />
+                Período
               </Button>
               <Button
                 type="button"
@@ -467,6 +500,53 @@ export default function BloqueioMassaPage() {
                   />
                 </PopoverContent>
               </Popover>
+            ) : mode === "periodo" ? (
+              <div className="space-y-1.5">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start font-normal",
+                        !dateRange?.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarRange className="mr-2 h-4 w-4" />
+                      {dateRange?.from
+                        ? dateRange.to
+                          ? `${format(dateRange.from, "dd/MM/yyyy")} → ${format(dateRange.to, "dd/MM/yyyy")}`
+                          : `${format(dateRange.from, "dd/MM/yyyy")} → selecione o fim`
+                        : "Selecione o período"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={1}
+                      disabled={(d) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return d < today;
+                      }}
+                      locale={ptBR}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                {dateRange?.from && dateRange?.to && periodDays && (
+                  <p
+                    className={cn(
+                      "text-xs",
+                      periodDays.length > MAX_PERIOD_DAYS ? "text-destructive" : "text-muted-foreground"
+                    )}
+                  >
+                    {periodDays.length} dia(s) no período
+                    {periodDays.length > MAX_PERIOD_DAYS && ` — o máximo é ${MAX_PERIOD_DAYS} dias`}
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="space-y-2">
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
