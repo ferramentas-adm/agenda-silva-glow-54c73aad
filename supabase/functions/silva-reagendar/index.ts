@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
   BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
-  spDateTime, spParts, suggestCloser, toSpIso,
+  spDateTime, spParts, suggestCloser, toSpIso, TURMA_A_MAX_PER_HOUR,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag } from "../_shared/datacrazyLead.ts";
@@ -111,6 +111,12 @@ Deno.serve(async (req) => {
     const availability = await loadDayAvailability(supabase, dateStr, undefined, turma);
     if (!availability.slots.includes(timeStr)) return json({ erro: "slot_indisponivel" }, 409);
     const info = availability.hours.get(timeStr);
+    if (turma === "A" && info && info.count >= TURMA_A_MAX_PER_HOUR) {
+      return json({
+        erro: "turma_a_lotada",
+        detalhe: `Turma A já tem ${info.count} reuniões às ${timeStr} (teto de ${TURMA_A_MAX_PER_HOUR} por horário)`,
+      }, 409);
+    }
     if (!info || info.full || info.eligibleClosers.length === 0) return json({ erro: "slot_indisponivel" }, 409);
     // Closer do slot_id indisponível não invalida o horário: escolhemos outro elegível.
     const requestedCloser = info.eligibleClosers.find((closer) => closer.id === requestedCloserId) ?? null;
