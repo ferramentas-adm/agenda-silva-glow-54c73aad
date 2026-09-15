@@ -37,6 +37,8 @@ export interface AgendaMetricInput {
   scheduled_time?: string | null;
   cancellation_reason?: string | null;
   created_at?: string | null;
+  /** Só usado pelas métricas de gestor; o Calendário não filtra por esse campo. */
+  lead_desqualificado?: boolean | null;
 }
 
 /** Mapa user_id -> função (já com o override "Atua como SDR" aplicado). */

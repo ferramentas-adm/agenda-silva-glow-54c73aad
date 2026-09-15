@@ -71,6 +71,7 @@ interface AgendamentoMetric {
   cancellation_reason: string | null;
   lead_phone: string | null;
   meeting_reason: string | null;
+  lead_desqualificado: boolean;
 }
 
 interface SDRProfile {
@@ -215,7 +216,7 @@ export default function DashboardComercialPage() {
       const { data, error } = await build(
         supabase
           .from("agendamentos")
-          .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id, cancellation_reason, lead_phone, meeting_reason")
+          .select("id, scheduled_date, scheduled_time, created_at, status, channel_type, created_by, sdr_responsavel_id, original_agendamento_id, cancellation_reason, lead_phone, meeting_reason, lead_desqualificado")
           .is("deleted_at", null)
       ).range(from, from + pageSize - 1);
       if (error || !data || data.length === 0) break;
@@ -390,7 +391,7 @@ export default function DashboardComercialPage() {
     const inScope = (a: AgendamentoMetric) =>
       isCountableStatus(a.status) && (isSdrAg(a) || isSecondMeetingAgendaShared(a, roleMap));
 
-    const sdrAgs = agendamentos.filter(inScope);
+    const sdrAgs = agendamentos.filter(inScope).filter(a => !a.lead_desqualificado);
     // Para "Geradas/Criadas" usamos o pool fetched por created_at (createdAgs)
     // — assim incluímos reuniões criadas hoje mesmo que agendadas para fora
     // do range mensal (o pool `agendamentos` é filtrado por scheduled_date).

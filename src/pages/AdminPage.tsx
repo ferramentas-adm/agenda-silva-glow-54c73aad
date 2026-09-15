@@ -286,7 +286,7 @@ function UsersSection() {
         .select("user_id, role");
       const { data: closers } = await supabase
         .from("closers")
-        .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id, auto_recording_enabled")
+        .select("id, name, email, active, business_hours_start, business_hours_end, business_hours_ranges, datacrazy_id, auto_recording_enabled, em_treinamento")
         .order("name");
       // Conexões Google dos closers (para status/desconexão no painel do gestor)
       const { data: googleTokens } = await supabase
@@ -301,7 +301,7 @@ function UsersSection() {
 
 
       // Build a map of closer info by email
-      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean }>();
+      const closerMap = new Map<string, { closerId: string; hoursStart: string; hoursEnd: string; ranges: { start: string; end: string }[]; datacrazyId: string; autoRecordingEnabled: boolean; emTreinamento: boolean }>();
       (closers ?? []).forEach((c: any) => {
         if (c.email) {
           const ranges = c.business_hours_ranges && Array.isArray(c.business_hours_ranges) && c.business_hours_ranges.length > 0
@@ -314,6 +314,7 @@ function UsersSection() {
             ranges,
             datacrazyId: c.datacrazy_id || "",
             autoRecordingEnabled: c.auto_recording_enabled === true,
+            emTreinamento: c.em_treinamento === true,
           });
         }
       });
@@ -339,6 +340,7 @@ function UsersSection() {
           ranges: closerInfo?.ranges || [{ start: "09:00", end: "23:00" }],
           datacrazyId: closerInfo?.datacrazyId || (p as any).datacrazy_id || "",
           autoRecordingEnabled: closerInfo?.autoRecordingEnabled === true,
+          emTreinamento: closerInfo?.emTreinamento === true,
           googleConnected: closerInfo?.closerId ? googleTokenMap.has(closerInfo.closerId) : false,
           googleHasMeetScope: closerInfo?.closerId
             ? googleTokenMap.get(closerInfo.closerId)?.hasMeetScope === true
@@ -375,6 +377,7 @@ function UsersSection() {
             ranges,
             datacrazyId: c.datacrazy_id || "",
             autoRecordingEnabled: c.auto_recording_enabled === true,
+            emTreinamento: c.em_treinamento === true,
             googleConnected: googleTokenMap.has(c.id),
             googleHasMeetScope: googleTokenMap.get(c.id)?.hasMeetScope === true,
 
@@ -634,6 +637,36 @@ function UsersSection() {
   };
 
   const [togglingSdrOverrideId, setTogglingSdrOverrideId] = useState<string | null>(null);
+  const [togglingTreinamentoId, setTogglingTreinamentoId] = useState<string | null>(null);
+
+  const handleToggleTreinamento = async (user: any) => {
+    if (!user.closerId) return;
+    setTogglingTreinamentoId(user.userId);
+    try {
+      const { error } = await supabase
+        .from("closers")
+        .update({ em_treinamento: !user.emTreinamento })
+        .eq("id", user.closerId);
+      if (error) throw error;
+      await logAudit({
+        action: "toggle_closer_treinamento",
+        entity_type: "closer",
+        entity_id: user.closerId,
+        details: {
+          closer_name: user.name,
+          previous: user.emTreinamento,
+          current: !user.emTreinamento,
+        },
+      });
+      toast.success(user.emTreinamento ? "Closer removido do treinamento" : "Closer marcado como em treinamento");
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao alterar status de treinamento");
+    } finally {
+      setTogglingTreinamentoId(null);
+    }
+  };
+
   const handleToggleSdrOverride = async (user: any) => {
     setTogglingSdrOverrideId(user.userId);
     try {
@@ -1005,6 +1038,21 @@ function UsersSection() {
                           >
                             <Video className={`h-3.5 w-3.5 ${u.autoRecordingEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
                           </Button>
+                        )}
+                        {u.role === "closer" && u.closerId && canActOn(u.role) && (
+                          <span
+                            title={
+                              u.emTreinamento
+                                ? "Closer em treinamento — só recebe leads desqualificados"
+                                : "Marcar closer como em treinamento (só recebe leads desqualificados)"
+                            }
+                          >
+                            <Switch
+                              checked={u.emTreinamento}
+                              onCheckedChange={() => handleToggleTreinamento(u)}
+                              disabled={togglingTreinamentoId === u.userId}
+                            />
+                          </span>
                         )}
                         {u.role === "closer" && u.closerId && (
 

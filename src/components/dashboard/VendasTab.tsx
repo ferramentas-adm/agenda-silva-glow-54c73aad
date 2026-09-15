@@ -75,6 +75,7 @@ interface AgendamentoRow {
   status: string;
   meeting_reason: string | null;
   is_venda_avulsa: boolean | null;
+  lead_desqualificado: boolean | null;
 }
 
 interface CloserRow {
@@ -154,7 +155,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const VENDA_SELECT = `
     id, agendamento_id, vendeu, valor, valor_total_projeto, produto, order_bumps, follow_up, follow_up_date, follow_up_time, segunda_reuniao,
     motivo_nao_fechamento, observacoes, closed_at, created_at, updated_at,
-    agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa)
+    agendamentos!inner(id, closer_id, scheduled_date, scheduled_time, lead_name, lead_phone, channel_type, created_at, created_by, sdr_responsavel_id, status, meeting_reason, is_venda_avulsa, lead_desqualificado)
   `;
 
 
@@ -564,10 +565,12 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // IDs para drill-down
   const drilldownIds = useMemo(() => {
     const fechadasIds = vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id);
+    const fechadasDesqualificadoIds = vendasDia.filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.lead_desqualificado).map((v) => v.agendamento_id);
     const conversaoIds = Array.from(new Set([...(conversaoData?.ids ?? []), ...fechadasIds]));
     return {
       vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
       fechadasIds,
+      fechadasDesqualificadoIds,
       fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao && agMap.get(v.agendamento_id)?.meeting_reason !== "segunda_reuniao").map((v) => v.agendamento_id),
       fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao")).map((v) => v.agendamento_id),
       naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
@@ -575,7 +578,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     };
   }, [vendasDia, agMap, conversaoData]);
 
-  const { vendasDiaIds, fechadasIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds, conversaoIds } = drilldownIds;
+  const { vendasDiaIds, fechadasIds, fechadasDesqualificadoIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds, conversaoIds } = drilldownIds;
 
   // Filtros do card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
@@ -1051,6 +1054,17 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           loading={loadingVendas}
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds)
+          }
+        />
+        <KpiCard
+          icon={CheckCircle2}
+          label="Vendas Fechadas (desqualificados)"
+          value={String(fechadasDesqualificadoIds.length)}
+          sub={fechadasDesqualificadoIds.length > 0 ? "Leads desqualificados no período" : "Nenhuma venda de lead desqualificado no período"}
+          color="amber"
+          loading={loadingVendas}
+          onClick={() =>
+            openDrill(`Vendas fechadas (desqualificados) — ${dayLabel}`, fechadasDesqualificadoIds)
           }
         />
         <KpiCard

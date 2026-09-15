@@ -71,6 +71,13 @@
       "when": 1789350780294,
       "tag": "0009_mark_realtime_sales_covered_by_batch",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789430187096,
+      "tag": "0010_lead_desqualificado_e_closer_em_treinamento",
+      "breakpoints": true
     }
   ]
 }

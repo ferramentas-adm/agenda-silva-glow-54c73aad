@@ -23,6 +23,8 @@ interface TimeSlotPickerProps {
   date: Date;
   selectedTime: string | null;
   onSelect: (time: string, durationMinutes?: number) => void;
+  /** Se true, calcula lotação apenas com closers em treinamento. */
+  treinamento?: boolean;
 }
 
 function timeToMin(t: string): number | null {
@@ -118,7 +120,7 @@ function isCustomTimeConflicting(
   return googleConflict;
 }
 
-export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect }: TimeSlotPickerProps) {
+export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect, treinamento = false }: TimeSlotPickerProps) {
   const { role } = useAuth();
   const canForceFullSlot = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
   const isSdr = role === "sdr";
@@ -209,7 +211,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect 
   const calendarConnected = !globalMode && (calendarData?.connected ?? false);
 
   // Lotação dinâmica: capacidade = closers ativos disponíveis no slot.
-  const { data: slotCounts } = useSlotCounts(dateStr);
+  const { data: slotCounts } = useSlotCounts(dateStr, treinamento);
   const { limit: slotLimit } = useSlotLimit();
   const infoFor = (slot: string) => slotCounts?.get(slot) ?? { count: 0, capacity: 0, full: false };
   const countFor = (slot: string) => infoFor(slot).count;

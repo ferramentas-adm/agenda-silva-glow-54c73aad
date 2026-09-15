@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { countsAsSdr } from "@/lib/sdrOverrides";
@@ -182,6 +183,7 @@ function AgendarPageInner() {
   const [meetingReason, setMeetingReason] = useState<string | null>(searchParams.get("meeting_reason"));
   const [meetingReasonCustom, setMeetingReasonCustom] = useState("");
   const [channelType, setChannelType] = useState<string | null>(searchParams.get("channel"));
+  const [leadDesqualificado, setLeadDesqualificado] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
@@ -193,6 +195,13 @@ function AgendarPageInner() {
   );
   const [success, setSuccess] = useState<AgendamentoData | null>(null);
   const [selectedSdrId, setSelectedSdrId] = useState<string | null>(null);
+
+  // Ao trocar o flag de lead desqualificado, limpa o closer escolhido para
+  // evitar alocar um lead desqualificado com um closer normal (ou vice-versa).
+  useEffect(() => {
+    setCloserId(null);
+    setTime(null);
+  }, [leadDesqualificado]);
   
 
 
@@ -270,6 +279,9 @@ function AgendarPageInner() {
     }
     if (editData.sdr_responsavel_id && !selectedSdrId) {
       setSelectedSdrId(editData.sdr_responsavel_id);
+    }
+    if (typeof editData.lead_desqualificado === "boolean") {
+      setLeadDesqualificado(editData.lead_desqualificado);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editData, role]);
@@ -552,6 +564,7 @@ function AgendarPageInner() {
             meeting_reason: resolvedReason,
             channel_type: channelType || null,
             is_5k: false,
+            lead_desqualificado: leadDesqualificado,
             booking_channel: bookingChannel,
             ...metaFields,
           } as any)
@@ -589,6 +602,7 @@ function AgendarPageInner() {
         meeting_reason: resolvedReason,
         channel_type: channelType || null,
         is_5k: false,
+        lead_desqualificado: leadDesqualificado,
         booking_channel: bookingChannel,
         ...metaFields,
       } as any).select("id").single();
@@ -792,6 +806,7 @@ function AgendarPageInner() {
                 selectedDate={date}
                 selectedCloserId={closerId}
                 onSelect={setCloserId}
+                treinamento={leadDesqualificado}
               />
             </>
           )}
@@ -825,6 +840,7 @@ function AgendarPageInner() {
                     closerId={closerId}
                     date={date}
                     selectedTime={time}
+                    treinamento={leadDesqualificado}
                     onSelect={(t, dur) => {
                       setTime(t);
                       setDurationMinutes(dur ?? 60);
@@ -892,6 +908,21 @@ function AgendarPageInner() {
                   {!selectedSdrId && (
                     <p className="text-xs text-muted-foreground">Se nenhum SDR for selecionado, você será registrado como o SDR responsável.</p>
                   )}
+                </div>
+              )}
+
+              {isAdmin && (
+                <div className="flex items-center justify-between rounded-md bg-secondary/50 px-4 py-3">
+                  <div className="space-y-0.5">
+                    <label className="text-sm font-medium">Lead desqualificado</label>
+                    <p className="text-xs text-muted-foreground">
+                      Só pode ser alocado com closer em treinamento.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={leadDesqualificado}
+                    onCheckedChange={setLeadDesqualificado}
+                  />
                 </div>
               )}
 
