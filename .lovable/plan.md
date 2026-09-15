@@ -19,6 +19,14 @@ Não limpar mais nada automaticamente. Em vez disso: avisar e **bloquear a confi
 4. **Nada muda para quem não vê o interruptor** (SDR/closer): o fluxo deles continua igual — eles não escolhem o flag, e a trava do banco (`enforce_desqualificado_closer_treinamento`) segue como última linha de defesa.
 5. Sem migração, sem mudança em API, RLS, edge functions, calendário ou métricas.
 
+## Item extra: identificar a Turma no dropdown de "Aguardando Atribuição"
+
+6. No dropdown de transferência/atribuição de closer (tela de agendamentos pendentes / fila), ao lado do nome de cada closer, exibir um selo pequeno:
+   - **"A"** para closers normais (Turma A);
+   - **"B"** para closers em treinamento (Turma B).
+   - O selo usa a mesma convenção de cores do filtro do calendário (Turma A = primária, Turma B = âmbar).
+7. Sem alterar a regra de filtro — o dropdown já deve mostrar todos os closers; agora só acrescenta a identificação da turma.
+
 ## Detalhes técnicos
 
 - `src/pages/AgendarPage.tsx`:
