@@ -99,6 +99,13 @@
       "when": 1789583082842,
       "tag": "0013_lead_greeting_name",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789592390175,
+      "tag": "0014_desqualificado_conta_so_com_venda",
+      "breakpoints": true
     }
   ]
 }
