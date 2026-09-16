@@ -24,6 +24,7 @@ const Body = z.object({
   slot_id: z.string().min(1),
   motivo: z.string().trim().min(1).max(500),
   reagendado_por: z.literal("João Amorim (IA)"),
+  nome: z.string().trim().min(1).max(200).optional(),
 });
 
 type Client = ReturnType<typeof createClient>;
@@ -96,9 +97,8 @@ Deno.serve(async (req) => {
     const { data: old, error: oldError } = await supabase.from("agendamentos").select("*")
       .eq("id", b.agendamento_id).is("deleted_at", null).maybeSingle();
     if (oldError) throw oldError;
-    if (!old || (old.created_by !== sdrProfile.user_id && old.booking_channel !== "sdr-ia")) {
-      return json({ erro: "nao_encontrado" }, 404);
-    }
+    // Aceita reuniões de qualquer origem (SDR IA ou criadas pela tela).
+    if (!old) return json({ erro: "nao_encontrado" }, 404);
     if (["realizada", "cancelada", "no_show", "reagendada"].includes(old.status)) {
       return json({ erro: "ja_realizada" }, 409);
     }
