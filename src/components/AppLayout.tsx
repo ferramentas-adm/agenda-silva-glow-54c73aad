@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users, UserPlus, CalendarPlus } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useMyCloserId } from "@/hooks/useMyCloserId";
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ensureLeads } from "@/services/leadsStore";
 import logo from "@/assets/logo.png";
@@ -296,9 +296,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-
-      {/* Closer blocks dialog */}
-      <CloserBlockDialog open={blocksOpen} onOpenChange={setBlocksOpen} />
     </div>
   );
 }
