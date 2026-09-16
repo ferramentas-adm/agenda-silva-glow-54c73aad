@@ -251,7 +251,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Base combinada (deduplicada) usada pelos quadros que precisam das três listas.
   const vendas = useMemo<VendaRow[]>(() => {
     const m = new Map<string, VendaRow>();
-    [...vendasFechadas, ...vendasNaoFechou, ...followUpsAtivosRows].forEach((v) => m.set(v.id, v));
+    [...vendasFechadas, ...vendasNaoFechou, ...followUpsAtivosRows]
+      .filter(contaNaMetrica)
+      .forEach((v) => m.set(v.id, v));
     return Array.from(m.values());
   }, [vendasFechadas, vendasNaoFechou, followUpsAtivosRows]);
 
