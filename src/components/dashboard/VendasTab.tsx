@@ -91,6 +91,20 @@ interface VendasTabProps {
 // Saldo Residual: considerar apenas vendas fechadas a partir desta data.
 export const SALDO_RESIDUAL_FROM = "2026-08-01";
 
+/**
+ * Reunião de lead desqualificado só entra em qualquer número (faturamento,
+ * motivos, ranking, tendências, realizadas) quando virou venda com valor
+ * coletado (> 0). Sem valor coletado, é como se a reunião não existisse.
+ */
+export function contaNaMetrica(row: {
+  vendeu?: boolean | null;
+  valor?: number | null;
+  agendamentos?: { lead_desqualificado?: boolean | null } | null;
+}): boolean {
+  if (!row.agendamentos?.lead_desqualificado) return true;
+  return !!row.vendeu && Number(row.valor ?? 0) > 0;
+}
+
 const COLORS = [
   "hsl(var(--primary))",
   "hsl(217 91% 60%)",
