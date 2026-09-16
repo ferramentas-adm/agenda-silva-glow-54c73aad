@@ -309,6 +309,8 @@ Deno.serve(async (req) => {
     return json({
       ...(await toResponse(supabase, created)),
       closer_sugerido: fallbackSuggestedName,
+      // false quando o closer do slot_id ficou indisponível e a reunião caiu na fila.
+      closer_do_slot_respeitado: b.slot_id ? Boolean(requestedCloserId) : null,
       crm_tag: tag,
     }, 201);
   } catch (e) {
