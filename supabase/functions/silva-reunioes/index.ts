@@ -46,6 +46,9 @@ Deno.serve(async (req) => {
   const statusList = statusParam
     ? statusParam.split(",").map((s) => s.trim()).filter(Boolean)
     : null;
+  // Canceladas por rotina interna (atribuir closer, bloqueio de horário, teto por closer)
+  // são ruído no relatório: ficam ocultas por padrão. Use mostrar_tudo=1 para ver todas.
+  const mostrarTudo = ["1", "true", "sim"].includes((url.searchParams.get("mostrar_tudo") ?? "").toLowerCase());
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -57,7 +60,7 @@ Deno.serve(async (req) => {
     .select(`
       id, lead_name, lead_phone, scheduled_date, scheduled_time, status,
       is_venda_avulsa, is_5k, meeting_reason, channel_type,
-      lembrete_video_enviado,
+      lembrete_video_enviado, cancellation_reason, observation,
       closers ( id, name, email )
     `)
     .gte("scheduled_date", since)
@@ -81,7 +84,14 @@ Deno.serve(async (req) => {
     });
   }
 
-  const reunioes = (data ?? []).map((a: any) => {
+  const AUTO_CANCEL = /atribui|atribuir closer|bloqueio de hor|teto por closer|limite por closer|realocad|conserto (interno|de closer)/i;
+  const isRuido = (a: any) =>
+    a.status === "cancelada" && AUTO_CANCEL.test(String(a.cancellation_reason ?? ""));
+
+  const visiveis = (data ?? []).filter((a: any) => mostrarTudo || !isRuido(a));
+  const ocultadas = (data ?? []).length - visiveis.length;
+
+  const reunioes = visiveis.map((a: any) => {
     const closer = a.closers ?? {};
     return {
       closer: closer.name ?? null,
@@ -96,6 +106,8 @@ Deno.serve(async (req) => {
       meeting_reason: a.meeting_reason ?? null,
       channel_type: a.channel_type ?? null,
       lembrete_video_enviado: a.lembrete_video_enviado ?? null,
+      motivo_cancelamento: a.cancellation_reason ?? null,
+      cancelamento_automatico: isRuido(a),
       agendamento_id: a.id,
     };
   });
@@ -104,6 +116,8 @@ Deno.serve(async (req) => {
     JSON.stringify({
       count: reunioes.length,
       since_used: since,
+      canceladas_automaticas_ocultadas: ocultadas,
+      mostrar_tudo: mostrarTudo,
       sincronizado_em: new Date().toISOString(),
       reunioes,
     }),

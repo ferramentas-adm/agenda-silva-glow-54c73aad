@@ -63,3 +63,6 @@ verify_jwt = false
 [functions.silva-atualizar-lead]
 verify_jwt = false
 
+[functions.silva-atribuir-closer]
+verify_jwt = false
+
