@@ -301,7 +301,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       // O filtro final por "data efetiva de subida" acontece client-side em BRT.
       const { data, error } = await supabase
         .from("vendas")
-        .select(sel("agendamento_id, valor, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)"))
+        .select(sel("agendamento_id, valor, vendeu, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at, lead_desqualificado)"))
         .eq("vendeu", true)
         .is("agendamentos.deleted_at", null)
         .or(
@@ -309,7 +309,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           `and(closed_at.is.null,updated_at.gte.${uploadPeriod.startUtc},updated_at.lt.${uploadPeriod.endUtc})`,
         );
       if (error) throw error;
-      return ((data ?? []) as any[]).map((v) => ({
+      return ((data ?? []) as any[]).filter(contaNaMetrica).map((v) => ({
         agendamento_id: v.agendamento_id,
         valor: v.valor,
         follow_up: v.follow_up,
