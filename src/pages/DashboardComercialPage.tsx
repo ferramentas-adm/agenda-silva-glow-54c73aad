@@ -522,7 +522,7 @@ export default function DashboardComercialPage() {
     const ocorridas = dayM.ocorridas;
     const taxaComp = ocorridas > 0 ? (dayM.ocorridasRealizada / ocorridas) * 100 : null;
 
-    const prevMonthSdr = prevMonthAgs.filter(inScope);
+    const prevMonthSdr = prevMonthAgs.filter(inScope).filter(contaTurma);
 
     return {
       todayScheduled: totalDia,
