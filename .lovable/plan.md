@@ -18,9 +18,9 @@ Hoje os desqualificados estão fora de tudo. Passam a entrar apenas quando houve
 Exemplo de hoje (16/09): 97 realizadas no total, 27 de desqualificados. Se, digamos, 6 dessas 27 fecharam venda, "Realizadas" em Métricas SDRs passa de 70 para 76.
 
 ### Vendas (Dashboard Comercial)
-Hoje a Taxa de Conversão conta todas as reuniões realizadas. Passa a descartar as reuniões de desqualificados que não venderam — o denominador cai, e a conversão passa a refletir só o esforço que conta. Vendas de desqualificado continuam contando no faturamento, nos motivos, no ranking de closers e nas tendências.
+Reunião realizada de lead desqualificado **sem valor coletado** sai de tudo: faturamento, motivos de não fechamento, ranking de closers, tendências, Taxa de Conversão (numerador e denominador) e qualquer contagem de reuniões realizadas. É como se a reunião não existisse para esses números.
 
-O card "Vendas Fechadas (desqualificados)" continua como está — ele é justamente o recorte dessas vendas.
+Reunião de desqualificado **com valor coletado** conta normalmente em todos esses lugares, e o card "Vendas Fechadas (desqualificados)" segue mostrando esse recorte.
 
 ### Calendário (/dashboard)
 Sem mudança: continua mostrando e contando todas as reuniões do dia, inclusive as de desqualificados que não venderam. É a tela operacional do dia — esconder reunião real ali atrapalharia o acompanhamento. Se preferir aplicar a regra lá também, é só dizer.
