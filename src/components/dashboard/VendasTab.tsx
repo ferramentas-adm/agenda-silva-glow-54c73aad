@@ -560,7 +560,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Follow-ups (escopo geral — não dependem do dia selecionado).
   // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
   const followUpStats = useMemo(() => {
-    const ativos = followUpsAtivosRows.filter((v) => {
+    const ativos = followUpsAtivosRows.filter(contaNaMetrica).filter((v) => {
       if (!v.follow_up || !v.follow_up_date) return false;
       if (isCloserView) {
         const ag = agMap.get(v.agendamento_id);
@@ -904,7 +904,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const todayDateStr = format(todayDate, "yyyy-MM-dd");
 
     return followUpsAtivosRows
-
+      .filter(contaNaMetrica)
       .filter((v) => v.follow_up && v.follow_up_date)
       .map((v) => {
         const ag = agMap.get(v.agendamento_id);
