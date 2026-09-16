@@ -91,7 +91,9 @@ Deno.serve(async (req) => {
     // Cria Meet só se a reunião ainda não tem link (nunca substitui o link existente).
     let meetLink: string | null = ag.meet_link ?? null;
     let googleEventId: string | null = ag.google_event_id ?? null;
-    if (!meetLink) {
+    // Reunião já passada só recebe o closer (conserto de histórico), sem criar evento no Google.
+    const jaPassou = spDateTime(dateStr, timeStr).getTime() <= Date.now();
+    if (!meetLink && !jaPassou) {
       try {
         const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/google-create-event`, {
           method: "POST",
