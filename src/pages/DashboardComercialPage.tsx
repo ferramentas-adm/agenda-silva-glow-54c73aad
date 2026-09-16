@@ -276,8 +276,9 @@ export default function DashboardComercialPage() {
     const s = new Set<string>();
     agendamentos.forEach(a => s.add(a.id));
     createdAgs.forEach(a => s.add(a.id));
+    prevMonthAgs.forEach(a => s.add(a.id));
     return Array.from(s).sort();
-  }, [agendamentos, createdAgs]);
+  }, [agendamentos, createdAgs, prevMonthAgs]);
 
   // Assinatura estável do conjunto de IDs: a chave anterior usava apenas
   // (length, primeiro, último) e podia reaproveitar cache de conjuntos diferentes.
