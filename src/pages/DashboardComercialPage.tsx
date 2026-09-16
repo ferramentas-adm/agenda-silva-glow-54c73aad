@@ -539,7 +539,7 @@ export default function DashboardComercialPage() {
       noShowIds: dayM.ids.noShow,
       canceladoIds: dayM.ids.cancelada,
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, roleMap, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, roleMap, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap, soldWithValueSet]);
 
 
 
