@@ -4,13 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, Settings, LogOut, Menu, X, ScrollText, CalendarOff, List, Sun, Moon, BarChart3, CalendarClock, Wallet, Users, UserPlus, CalendarPlus } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useMyCloserId } from "@/hooks/useMyCloserId";
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ensureLeads } from "@/services/leadsStore";
 import logo from "@/assets/logo.png";
 import { tenantConfig } from "@/config/tenant";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
-import CloserBlockDialog from "@/components/CloserBlockDialog";
+
 import NotificationBell from "@/components/NotificationBell";
 import PendingMeetingsBanner from "@/components/PendingMeetingsBanner";
 import OverdueFollowUpsBanner from "@/components/OverdueFollowUpsBanner";
@@ -23,7 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, role, signOut, isGestor } = useAuth();
   const isModerador = (role === "moderador" || role === "apresentador");
   const location = useLocation();
-  const [blocksOpen, setBlocksOpen] = useState(false);
+
 
   // Warm-up da base de leads do DataCrazy: começa a carregar em background
   // já ao montar o layout (páginas incrementais), para a etapa 1 de /agendar
@@ -64,9 +64,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Fetch closer record (apenas para saber se o usuário tem registro de closer)
-  const { data: myCloserId } = useMyCloserId();
-  const closerRecord = myCloserId ? { id: myCloserId } : null;
 
   const { can } = usePermissions();
 
@@ -176,21 +173,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
 
           <div className="h-2" />
-
-          {isCloser && closerRecord && (
-            <button
-              onClick={() => setBlocksOpen(true)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[hsl(0_0%_100%/0.05)] hover:text-foreground transition-all duration-200 border border-transparent"
-            >
-              <CalendarOff className="h-5 w-5 shrink-0" />
-              <span className={cn(
-                "whitespace-nowrap transition-all duration-300",
-                expanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-              )}>
-                Compromissos
-              </span>
-            </button>
-          )}
         </nav>
 
         {/* Footer */}
@@ -266,15 +248,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               </Link>
             ))}
-            {isCloser && closerRecord && (
-              <button
-                onClick={() => { setBlocksOpen(true); setMobileOpen(false); }}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                <CalendarOff className="h-5 w-5" />
-                Compromissos
-              </button>
-            )}
             <button
               onClick={toggleTheme}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -323,9 +296,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-
-      {/* Closer blocks dialog */}
-      <CloserBlockDialog open={blocksOpen} onOpenChange={setBlocksOpen} />
     </div>
   );
 }

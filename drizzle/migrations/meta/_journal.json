@@ -85,6 +85,13 @@
       "when": 1789467245947,
       "tag": "0011_allow_closer_transfer_across_turmas",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789525186165,
+      "tag": "0012_only_managers_manage_closer_blocks",
+      "breakpoints": true
     }
   ]
 }
