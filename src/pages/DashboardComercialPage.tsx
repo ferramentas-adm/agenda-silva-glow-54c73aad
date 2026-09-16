@@ -328,6 +328,22 @@ export default function DashboardComercialPage() {
     [soldVendas],
   );
 
+  /** Pools já sem as reuniões de lead desqualificado que não geraram venda. */
+  const contaNaMetrica = useCallback(
+    (a: AgendamentoMetric) => !a.lead_desqualificado || soldWithValueSet.has(a.id),
+    [soldWithValueSet],
+  );
+  const agendamentosContam = useMemo(
+    () => agendamentos.filter(contaNaMetrica),
+    [agendamentos, contaNaMetrica],
+  );
+  const createdAgsContam = useMemo(
+    () => createdAgs.filter(contaNaMetrica),
+    [createdAgs, contaNaMetrica],
+  );
+
+
+
 
   // SDR profiles
   const { data: sdrProfiles = [] } = useQuery<SDRProfile[]>({
