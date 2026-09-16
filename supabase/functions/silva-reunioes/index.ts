@@ -106,6 +106,8 @@ Deno.serve(async (req) => {
       meeting_reason: a.meeting_reason ?? null,
       channel_type: a.channel_type ?? null,
       lembrete_video_enviado: a.lembrete_video_enviado ?? null,
+      motivo_cancelamento: a.cancellation_reason ?? null,
+      cancelamento_automatico: isRuido(a),
       agendamento_id: a.id,
     };
   });
@@ -114,6 +116,8 @@ Deno.serve(async (req) => {
     JSON.stringify({
       count: reunioes.length,
       since_used: since,
+      canceladas_automaticas_ocultadas: ocultadas,
+      mostrar_tudo: mostrarTudo,
       sincronizado_em: new Date().toISOString(),
       reunioes,
     }),
