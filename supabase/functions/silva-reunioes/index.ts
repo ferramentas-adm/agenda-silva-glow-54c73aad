@@ -46,6 +46,9 @@ Deno.serve(async (req) => {
   const statusList = statusParam
     ? statusParam.split(",").map((s) => s.trim()).filter(Boolean)
     : null;
+  // Canceladas por rotina interna (atribuir closer, bloqueio de horário, teto por closer)
+  // são ruído no relatório: ficam ocultas por padrão. Use mostrar_tudo=1 para ver todas.
+  const mostrarTudo = ["1", "true", "sim"].includes((url.searchParams.get("mostrar_tudo") ?? "").toLowerCase());
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
