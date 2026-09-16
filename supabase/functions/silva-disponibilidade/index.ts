@@ -4,7 +4,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   AVAILABILITY_MIN_LEAD_MINUTES, addDays, fetchBusinessSlots, labelFor, loadDayAvailability,
-  spDateTime, spParts, suggestCloser, toSpIso,
+  remainingVagas, spDateTime, spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 
