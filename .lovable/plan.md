@@ -2,9 +2,11 @@
 
 ## Regra nova (vale para hoje e para todo o histórico)
 
+Venda, aqui, é **reunião realizada com pagamento coletado** — qualquer valor coletado serve. Registro de venda sem valor coletado não é venda para efeito dessa regra.
+
 Reunião de lead desqualificado:
-- **Vendeu = sim** → conta normalmente, em todos os cards de métricas e de vendas.
-- **Não vendeu** (não fechou, no-show, cancelada, ainda em aberto) → não conta em nada.
+- **Virou venda com pagamento coletado** → conta normalmente, em todos os cards de métricas e de vendas.
+- **Sem pagamento coletado** (não fechou, no-show, cancelada, em aberto, ou marcada como vendida mas sem valor coletado) → não conta em nada.
 
 Como os números são calculados a partir dos dados a cada acesso, a regra passa a valer automaticamente para todos os dias passados — não é preciso corrigir registro por registro.
 
