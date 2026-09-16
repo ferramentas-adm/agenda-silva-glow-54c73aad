@@ -1835,6 +1835,8 @@ export type Database = {
       is_manager: { Args: never; Returns: boolean }
       is_manager_or_apresentador: { Args: never; Returns: boolean }
       is_manager_or_sdr: { Args: never; Returns: boolean }
+      lead_display_name: { Args: { _name: string }; Returns: string }
+      lead_first_name: { Args: { _name: string }; Returns: string }
       limpar_registros_antigos: {
         Args: never
         Returns: {

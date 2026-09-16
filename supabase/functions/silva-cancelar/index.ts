@@ -62,12 +62,11 @@ Deno.serve(async (req) => {
     const sdrProfile = await loadSdrProfile(supabase);
     if (!sdrProfile) return json({ erro: "sdr_ia_nao_configurado", detalhe: "execute /sdr-ia-setup" }, 500);
 
+    // Aceita reuniões de qualquer origem (SDR IA ou criadas pela tela).
     const { data: appointment, error: loadError } = await supabase.from("agendamentos").select("*")
       .eq("id", parsed.data.agendamento_id).is("deleted_at", null).maybeSingle();
     if (loadError) throw loadError;
-    if (!appointment || (appointment.created_by !== sdrProfile.user_id && appointment.booking_channel !== "sdr-ia")) {
-      return json({ erro: "nao_encontrado" }, 404);
-    }
+    if (!appointment) return json({ erro: "nao_encontrado" }, 404);
 
     if (appointment.status === "cancelada") return json(await responseFor(supabase, appointment));
     const startsAt = spDateTime(appointment.scheduled_date, String(appointment.scheduled_time).slice(0, 5));

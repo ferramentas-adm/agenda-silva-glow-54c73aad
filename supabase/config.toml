@@ -60,3 +60,6 @@ verify_jwt = false
 [functions.silva-lembrete-video-enviado]
 verify_jwt = false
 
+[functions.silva-atualizar-lead]
+verify_jwt = false
+
