@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, memo, Fragment } from "react";
+import { useState, useMemo, useCallback, useEffect, memo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, parseISO, differenceInCalendarDays } from "date-fns";
 import type { DateRange } from "react-day-picker";
@@ -744,8 +744,8 @@ export default function DashboardComercialPage() {
           <RankingSDRsTab
             sdrProfiles={sdrProfiles}
             updatedAgo={updatedAgo}
-            createdAgs={createdAgs}
-            agendamentos={agendamentos}
+            createdAgs={createdAgsContam}
+            agendamentos={agendamentosContam}
             currentDate={currentDate}
             dateRange={dateRange}
           />
@@ -755,8 +755,8 @@ export default function DashboardComercialPage() {
         {activeTabKey === "produtividade" && (
 
           <ProdutividadeSDRTab
-            agendamentos={agendamentos}
-            createdAgs={createdAgs}
+            agendamentos={agendamentosContam}
+            createdAgs={createdAgsContam}
             sdrProfiles={sdrProfiles}
             currentDate={currentDate}
             dateRange={dateRange}
