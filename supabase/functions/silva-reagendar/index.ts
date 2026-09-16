@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
     if (overbookingNumber > 0) noteParts.push(`Overbooking: extra ${overbookingNumber}/3`);
 
     const insert = {
-      lead_name: old.lead_name,
+      lead_name: b.nome ?? old.lead_name,
       lead_phone: old.lead_phone,
       lead_email: old.lead_email,
       lead_state: old.lead_state,
