@@ -398,12 +398,16 @@ export default function DashboardComercialPage() {
     const inScope = (a: AgendamentoMetric) =>
       isCountableStatus(a.status) && (isSdrAg(a) || isSecondMeetingAgendaShared(a, roleMap));
 
-    const sdrAgs = agendamentos.filter(inScope).filter(a => !a.lead_desqualificado);
+    // Lead desqualificado só conta quando virou venda com valor coletado (> 0).
+    const contaTurma = (a: AgendamentoMetric) =>
+      !a.lead_desqualificado || soldWithValueSet.has(a.id);
+
+    const sdrAgs = agendamentos.filter(inScope).filter(contaTurma);
     // Para "Geradas/Criadas" usamos o pool fetched por created_at (createdAgs)
     // — assim incluímos reuniões criadas hoje mesmo que agendadas para fora
     // do range mensal (o pool `agendamentos` é filtrado por scheduled_date).
     const sdrCreatedAgs = createdAgs.filter(
-      a => isSdrAg(a) && !a.original_agendamento_id,
+      a => isSdrAg(a) && !a.original_agendamento_id && contaTurma(a),
     );
 
 
