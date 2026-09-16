@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, memo, Fragment } from "react";
+import { useState, useMemo, useCallback, useEffect, memo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, parseISO, differenceInCalendarDays } from "date-fns";
 import type { DateRange } from "react-day-picker";
@@ -276,8 +276,9 @@ export default function DashboardComercialPage() {
     const s = new Set<string>();
     agendamentos.forEach(a => s.add(a.id));
     createdAgs.forEach(a => s.add(a.id));
+    prevMonthAgs.forEach(a => s.add(a.id));
     return Array.from(s).sort();
-  }, [agendamentos, createdAgs]);
+  }, [agendamentos, createdAgs, prevMonthAgs]);
 
   // Assinatura estável do conjunto de IDs: a chave anterior usava apenas
   // (length, primeiro, último) e podia reaproveitar cache de conjuntos diferentes.
@@ -320,6 +321,29 @@ export default function DashboardComercialPage() {
     soldVendas.forEach(v => m.set(v.agendamento_id, Number(v.valor) || 0));
     return m;
   }, [soldVendas]);
+
+  // Vendas com valor coletado (> 0). É o que qualifica uma reunião de lead
+  // desqualificado a entrar nas métricas: sem valor coletado, não conta em nada.
+  const soldWithValueSet = useMemo(
+    () => new Set(soldVendas.filter(v => Number(v.valor) > 0).map(v => v.agendamento_id)),
+    [soldVendas],
+  );
+
+  /** Pools já sem as reuniões de lead desqualificado que não geraram venda. */
+  const contaNaMetrica = useCallback(
+    (a: AgendamentoMetric) => !a.lead_desqualificado || soldWithValueSet.has(a.id),
+    [soldWithValueSet],
+  );
+  const agendamentosContam = useMemo(
+    () => agendamentos.filter(contaNaMetrica),
+    [agendamentos, contaNaMetrica],
+  );
+  const createdAgsContam = useMemo(
+    () => createdAgs.filter(contaNaMetrica),
+    [createdAgs, contaNaMetrica],
+  );
+
+
 
 
   // SDR profiles
@@ -391,12 +415,16 @@ export default function DashboardComercialPage() {
     const inScope = (a: AgendamentoMetric) =>
       isCountableStatus(a.status) && (isSdrAg(a) || isSecondMeetingAgendaShared(a, roleMap));
 
-    const sdrAgs = agendamentos.filter(inScope).filter(a => !a.lead_desqualificado);
+    // Lead desqualificado só conta quando virou venda com valor coletado (> 0).
+    const contaTurma = (a: AgendamentoMetric) =>
+      !a.lead_desqualificado || soldWithValueSet.has(a.id);
+
+    const sdrAgs = agendamentos.filter(inScope).filter(contaTurma);
     // Para "Geradas/Criadas" usamos o pool fetched por created_at (createdAgs)
     // — assim incluímos reuniões criadas hoje mesmo que agendadas para fora
     // do range mensal (o pool `agendamentos` é filtrado por scheduled_date).
     const sdrCreatedAgs = createdAgs.filter(
-      a => isSdrAg(a) && !a.original_agendamento_id,
+      a => isSdrAg(a) && !a.original_agendamento_id && contaTurma(a),
     );
 
 
@@ -494,7 +522,7 @@ export default function DashboardComercialPage() {
     const ocorridas = dayM.ocorridas;
     const taxaComp = ocorridas > 0 ? (dayM.ocorridasRealizada / ocorridas) * 100 : null;
 
-    const prevMonthSdr = prevMonthAgs.filter(inScope);
+    const prevMonthSdr = prevMonthAgs.filter(inScope).filter(contaTurma);
 
     return {
       todayScheduled: totalDia,
@@ -528,7 +556,7 @@ export default function DashboardComercialPage() {
       noShowIds: dayM.ids.noShow,
       canceladoIds: dayM.ids.cancelada,
     };
-  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, roleMap, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap]);
+  }, [agendamentos, createdAgs, prevMonthAgs, dateStr, yesterdayStr, tomorrowStr, monthStart, monthEnd, roleMap, sdrProfiles, isRangeActive, rangeFromStr, rangeToStr, soldSet, soldValueMap, soldWithValueSet]);
 
 
 
@@ -717,8 +745,8 @@ export default function DashboardComercialPage() {
           <RankingSDRsTab
             sdrProfiles={sdrProfiles}
             updatedAgo={updatedAgo}
-            createdAgs={createdAgs}
-            agendamentos={agendamentos}
+            createdAgs={createdAgsContam}
+            agendamentos={agendamentosContam}
             currentDate={currentDate}
             dateRange={dateRange}
           />
@@ -728,8 +756,8 @@ export default function DashboardComercialPage() {
         {activeTabKey === "produtividade" && (
 
           <ProdutividadeSDRTab
-            agendamentos={agendamentos}
-            createdAgs={createdAgs}
+            agendamentos={agendamentosContam}
+            createdAgs={createdAgsContam}
             sdrProfiles={sdrProfiles}
             currentDate={currentDate}
             dateRange={dateRange}

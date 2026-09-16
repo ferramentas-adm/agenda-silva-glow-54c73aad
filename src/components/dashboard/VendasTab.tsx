@@ -91,6 +91,20 @@ interface VendasTabProps {
 // Saldo Residual: considerar apenas vendas fechadas a partir desta data.
 export const SALDO_RESIDUAL_FROM = "2026-08-01";
 
+/**
+ * Reunião de lead desqualificado só entra em qualquer número (faturamento,
+ * motivos, ranking, tendências, realizadas) quando virou venda com valor
+ * coletado (> 0). Sem valor coletado, é como se a reunião não existisse.
+ */
+export function contaNaMetrica(row: {
+  vendeu?: boolean | null;
+  valor?: number | null;
+  agendamentos?: { lead_desqualificado?: boolean | null } | null;
+}): boolean {
+  if (!row.agendamentos?.lead_desqualificado) return true;
+  return !!row.vendeu && Number(row.valor ?? 0) > 0;
+}
+
 const COLORS = [
   "hsl(var(--primary))",
   "hsl(217 91% 60%)",
@@ -251,7 +265,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Base combinada (deduplicada) usada pelos quadros que precisam das três listas.
   const vendas = useMemo<VendaRow[]>(() => {
     const m = new Map<string, VendaRow>();
-    [...vendasFechadas, ...vendasNaoFechou, ...followUpsAtivosRows].forEach((v) => m.set(v.id, v));
+    [...vendasFechadas, ...vendasNaoFechou, ...followUpsAtivosRows]
+      .filter(contaNaMetrica)
+      .forEach((v) => m.set(v.id, v));
     return Array.from(m.values());
   }, [vendasFechadas, vendasNaoFechou, followUpsAtivosRows]);
 
@@ -285,7 +301,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       // O filtro final por "data efetiva de subida" acontece client-side em BRT.
       const { data, error } = await supabase
         .from("vendas")
-        .select(sel("agendamento_id, valor, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at)"))
+        .select(sel("agendamento_id, valor, vendeu, follow_up, segunda_reuniao, venda_origem, updated_at, closed_at, agendamentos!inner(scheduled_date, meeting_reason, closer_id, deleted_at, lead_desqualificado)"))
         .eq("vendeu", true)
         .is("agendamentos.deleted_at", null)
         .or(
@@ -293,7 +309,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           `and(closed_at.is.null,updated_at.gte.${uploadPeriod.startUtc},updated_at.lt.${uploadPeriod.endUtc})`,
         );
       if (error) throw error;
-      return ((data ?? []) as any[]).map((v) => ({
+      return ((data ?? []) as any[]).filter(contaNaMetrica).map((v) => ({
         agendamento_id: v.agendamento_id,
         valor: v.valor,
         follow_up: v.follow_up,
@@ -544,7 +560,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Follow-ups (escopo geral — não dependem do dia selecionado).
   // Para closer logado, aplica filtro adicional para mostrar apenas seus próprios follow-ups.
   const followUpStats = useMemo(() => {
-    const ativos = followUpsAtivosRows.filter((v) => {
+    const ativos = followUpsAtivosRows.filter(contaNaMetrica).filter((v) => {
       if (!v.follow_up || !v.follow_up_date) return false;
       if (isCloserView) {
         const ag = agMap.get(v.agendamento_id);
@@ -888,7 +904,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const todayDateStr = format(todayDate, "yyyy-MM-dd");
 
     return followUpsAtivosRows
-
+      .filter(contaNaMetrica)
       .filter((v) => v.follow_up && v.follow_up_date)
       .map((v) => {
         const ag = agMap.get(v.agendamento_id);
