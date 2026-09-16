@@ -4,7 +4,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   AVAILABILITY_MIN_LEAD_MINUTES, addDays, fetchBusinessSlots, labelFor, loadDayAvailability,
-  spDateTime, spParts, suggestCloser, toSpIso,
+  remainingVagas, spDateTime, spParts, suggestCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 
@@ -54,7 +54,19 @@ Deno.serve(async (req) => {
     const startDay = spParts(minStart).dateStr;
     const endDay = spParts(toDate).dateStr;
 
-    const slots: { slot_id: string; inicio: string; label: string }[] = [];
+    // por_closer=1 devolve um slot por closer livre na mesma hora (opt-in).
+    const porCloserParam = (url.searchParams.get("por_closer") ?? "").trim().toLowerCase();
+    const porCloser = porCloserParam === "1" || porCloserParam === "true" || porCloserParam === "sim";
+
+    type Slot = {
+      slot_id: string;
+      inicio: string;
+      label: string;
+      vagas: number;
+      closers_livres: number;
+      closer: { id: string; nome: string } | null;
+    };
+    const slots: Slot[] = [];
     for (let day = startDay; day <= endDay && slots.length < limite; day = addDays(day, 1)) {
       const avail = await loadDayAvailability(supabase, day, businessSlots, turma);
       for (const slot of businessSlots) {
@@ -63,16 +75,41 @@ Deno.serve(async (req) => {
         if (start < minStart || start > toDate) continue;
         const info = avail.hours.get(slot);
         if (!info || info.full) continue;
+        const vagas = remainingVagas(info, turma);
+        if (vagas <= 0) continue;
+        const inicio = toSpIso(start);
+        const label = labelFor(day, slot, todayStr);
+        const livres = info.freeClosers.length ? info.freeClosers : info.eligibleClosers;
+        if (!livres.length) continue; // sem closer livre não há como atender
+
+        if (porCloser) {
+          for (const c of livres.slice(0, Math.min(vagas, livres.length))) {
+            if (slots.length >= limite) break;
+            slots.push({
+              slot_id: `${inicio}|${c.id}`,
+              inicio,
+              label,
+              vagas,
+              closers_livres: livres.length,
+              closer: { id: c.id, nome: c.name },
+            });
+          }
+          continue;
+        }
+
         const closer = suggestCloser(avail, slot);
-        if (!closer) continue; // sem closer livre não há como atender
+        if (!closer) continue;
         slots.push({
-          slot_id: `${toSpIso(start)}|${closer.id}`,
-          inicio: toSpIso(start),
-          label: labelFor(day, slot, todayStr),
+          slot_id: `${inicio}|${closer.id}`,
+          inicio,
+          label,
+          vagas,
+          closers_livres: livres.length,
+          closer: { id: closer.id, nome: closer.name },
         });
       }
     }
-    return json({ gerado_em: now.toISOString(), turma, slots });
+    return json({ gerado_em: now.toISOString(), turma, por_closer: porCloser, slots });
   } catch (e) {
     console.error("silva-disponibilidade error", e);
     return json({ erro: "internal_error", detalhe: errorDetail(e) }, 500);

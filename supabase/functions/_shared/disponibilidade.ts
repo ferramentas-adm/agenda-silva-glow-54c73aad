@@ -36,6 +36,13 @@ export function sdrIaOverbookingPosition(countBeforeInsert: number, capacity: nu
   return Math.max(0, countBeforeInsert - capacity + 1);
 }
 
+/** Quantas marcações a hora ainda aceita nesta turma (0 quando lotada). */
+export function remainingVagas(info: HourInfo, turma: Turma = "A"): number {
+  if (info.eligibleClosers.length === 0) return 0;
+  const teto = turma === "A" ? TURMA_A_MAX_PER_HOUR : Math.min(TURMA_B_MAX_PER_HOUR, info.capacity + OVERBOOKING_EXTRA);
+  return Math.max(0, teto - info.count);
+}
+
 export interface Closer { id: string; name: string }
 export interface HourInfo {
   count: number;
