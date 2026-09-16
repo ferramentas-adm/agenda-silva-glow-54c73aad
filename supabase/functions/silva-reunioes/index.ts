@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     .select(`
       id, lead_name, lead_phone, scheduled_date, scheduled_time, status,
       is_venda_avulsa, is_5k, meeting_reason, channel_type,
-      lembrete_video_enviado,
+      lembrete_video_enviado, cancellation_reason, observation,
       closers ( id, name, email )
     `)
     .gte("scheduled_date", since)
@@ -84,7 +84,14 @@ Deno.serve(async (req) => {
     });
   }
 
-  const reunioes = (data ?? []).map((a: any) => {
+  const AUTO_CANCEL = /atribui|atribuir closer|bloqueio de hor|teto por closer|limite por closer|realocad|conserto (interno|de closer)/i;
+  const isRuido = (a: any) =>
+    a.status === "cancelada" && AUTO_CANCEL.test(String(a.cancellation_reason ?? ""));
+
+  const visiveis = (data ?? []).filter((a: any) => mostrarTudo || !isRuido(a));
+  const ocultadas = (data ?? []).length - visiveis.length;
+
+  const reunioes = visiveis.map((a: any) => {
     const closer = a.closers ?? {};
     return {
       closer: closer.name ?? null,
