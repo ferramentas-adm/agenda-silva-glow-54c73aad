@@ -27,16 +27,25 @@ Sem mudança: continua mostrando e contando todas as reuniões do dia, inclusive
 
 ## Detalhes técnicos
 
-Regra única: `not lead_desqualificado OR existe venda com vendeu = true` para o agendamento.
+Predicado único de "conta na métrica":
+
+```text
+not lead_desqualificado
+OR exists (venda do agendamento com vendeu = true e valor coletado > 0)
+```
+
+O valor coletado é `vendas.valor` (o valor efetivamente coletado; `valor_total_projeto` é o faturado). Qualquer valor acima de zero satisfaz a regra; `null` ou `0` não.
 
 Frontend (`src/pages/DashboardComercialPage.tsx`):
-- O `soldSet` já existente (vendas com `vendeu = true`) passa a ser carregado a partir do pool completo de agendamentos do período, incluindo os desqualificados, antes do cálculo das métricas.
+- O `soldSet` já existente passa a ser carregado a partir do pool completo de agendamentos do período (incluindo desqualificados) e a filtrar `vendeu = true` **e** `valor > 0`.
 - Trocar `.filter(a => !a.lead_desqualificado)` na linha do `sdrAgs` por `.filter(a => !a.lead_desqualificado || soldSet.has(a.id))`.
 - Ajustar as dependências do `useMemo` de `metrics` para incluir `soldSet`; nenhuma mudança em `src/lib/agendaMetrics.ts`.
+- Verificar se `soldValueMap` (usado em valores por canal) deve seguir o mesmo corte de `valor > 0` para não divergir.
 
 Banco — migração de RPCs, aplicando o mesmo predicado ao lado de `deleted_at is null`:
 - `dashboard_conversao_period` — na CTE `ags` (afeta reuniões e conversão).
-- `dashboard_vendas_kpis`, `dashboard_vendas_closer_perf`, `dashboard_vendas_motivos`, `dashboard_vendas_realizadas_sem_closer` — nas contagens de realizadas (as vendas em si não mudam, porque venda implica vendeu = true).
+- `dashboard_vendas_kpis`, `dashboard_vendas_closer_perf`, `dashboard_vendas_motivos`, `dashboard_vendas_realizadas_sem_closer` — nas contagens de realizadas.
+- `dashboard_agendas_por_canal`, `dashboard_agendamentos_por_booking_channel`, `dashboard_trend_sdr`, `dashboard_trend_vendas` — mesmo predicado nas contagens de agendamentos/realizadas.
 - `dashboard_agendas_por_canal`, `dashboard_agendamentos_por_booking_channel`, `dashboard_trend_sdr`, `dashboard_trend_vendas` — mesmo predicado nas contagens de agendamentos/realizadas.
 
 Implementado como função auxiliar `public.agendamento_conta_metrica(_agendamento_id uuid, _lead_desqualificado boolean)` (`stable`, `security definer`, `search_path = public`) ou como `exists (select 1 from vendas ...)` inline, o que der melhor plano; as RPCs de período são sensíveis a performance, então a versão final usa uma CTE materializada de agendamentos vendidos em vez de subconsulta por linha.
