@@ -321,6 +321,13 @@ export default function DashboardComercialPage() {
     return m;
   }, [soldVendas]);
 
+  // Vendas com valor coletado (> 0). É o que qualifica uma reunião de lead
+  // desqualificado a entrar nas métricas: sem valor coletado, não conta em nada.
+  const soldWithValueSet = useMemo(
+    () => new Set(soldVendas.filter(v => Number(v.valor) > 0).map(v => v.agendamento_id)),
+    [soldVendas],
+  );
+
 
   // SDR profiles
   const { data: sdrProfiles = [] } = useQuery<SDRProfile[]>({
