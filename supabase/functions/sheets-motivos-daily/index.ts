@@ -44,6 +44,7 @@ const HEADERS = [
   "Valor apresentado",
   "Faturamento do lead",
   "Data do lançamento",
+  "Fechou depois?",
 ];
 
 /** Ontem em BRT (America/Sao_Paulo, UTC-3). */
@@ -271,6 +272,38 @@ Deno.serve(async (req) => {
         );
       }
 
+      // ── Fechamento posterior do mesmo lead ───────────────────────
+      // Telefone normalizado -> data (ymd BRT) do primeiro fechamento com
+      // vendeu = true e valor > 0 (nova reunião ou venda avulsa).
+      const normPhone = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "");
+      const brtYmd = (iso: string) =>
+        new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const closeByPhone = new Map<string, string>();
+      const phones = [
+        ...new Set(agList.map((a) => normPhone(a.lead_phone)).filter(Boolean)),
+      ];
+      for (let i = 0; i < phones.length; i += 200) {
+        const { data, error } = await admin
+          .from("vendas")
+          .select("valor, closed_at, created_at, agendamentos!inner(lead_phone, deleted_at)")
+          .eq("vendeu", true)
+          .gt("valor", 0)
+          .is("agendamentos.deleted_at", null)
+          .in("agendamentos.lead_phone", phones.slice(i, i + 200));
+        if (error) return await fail(error.message);
+        for (const r of (data ?? []) as {
+          closed_at: string | null;
+          created_at: string;
+          agendamentos?: { lead_phone: string | null };
+        }[]) {
+          const phone = normPhone(r.agendamentos?.lead_phone);
+          if (!phone) continue;
+          const ymd = r.closed_at ?? brtYmd(r.created_at);
+          const cur = closeByPhone.get(phone);
+          if (!cur || ymd < cur) closeByPhone.set(phone, ymd);
+        }
+      }
+
       const sorted = vendas
         .map((v) => ({ v, ag: agMap.get(v.agendamento_id)! }))
         .filter((r) => !!r.ag)
@@ -280,6 +313,9 @@ Deno.serve(async (req) => {
         const motivo = v.motivo_nao_fechamento ?? "";
         motivoCount.set(motivo, (motivoCount.get(motivo) ?? 0) + 1);
         const sdrId = ag.sdr_responsavel_id ?? ag.created_by ?? null;
+        const closeYmd = closeByPhone.get(normPhone(ag.lead_phone));
+        const fechouDepois =
+          closeYmd && closeYmd > ag.scheduled_date ? `Sim — ${dateBR(closeYmd)}` : "Não";
         rowsData.push([
           dateBR(ag.scheduled_date),
           ag.scheduled_time ?? "",
@@ -294,6 +330,7 @@ Deno.serve(async (req) => {
           v.valor != null ? String(v.valor) : "",
           v.lead_revenue ?? "",
           dateBR(v.closed_at ?? v.created_at.slice(0, 10)),
+          fechouDepois,
         ]);
       }
     }

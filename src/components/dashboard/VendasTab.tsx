@@ -639,6 +639,58 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     });
   }, [vendas, agMap, periodFrom, periodTo, isCloserView, myCloserId, motivosCloserFilter, motivosChannelFilter, motivosPrecoFilter]);
 
+  // Leads recuperados: venda posterior do MESMO lead (telefone normalizado) com
+  // vendeu = true e valor > 0, lançada depois da reunião em que não fechou.
+  // Usado para marcar "Fechou em DD/MM" no CSV de motivos — contagens não mudam.
+  const phoneNorm = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "");
+  const brtYmdOf = (iso: string | null | undefined) =>
+    iso ? new Date(new Date(iso).getTime() - 3 * 3600_000).toISOString().slice(0, 10) : null;
+  const { data: recoveredCloseByPhone = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["vendas-tab-recovered-closes", periodFrom, periodTo],
+    queryFn: async () => {
+      const phones = Array.from(
+        new Set(
+          vendas
+            .filter((v) => !v.vendeu)
+            .map((v) => phoneNorm(v.agendamentos?.lead_phone))
+            .filter(Boolean) as string[],
+        ),
+      );
+      const byPhone = new Map<string, string>();
+      for (let i = 0; i < phones.length; i += 300) {
+        const chunk = phones.slice(i, i + 300);
+        if (chunk.length === 0) continue;
+        const { data, error } = await supabase
+          .from("vendas")
+          .select("id, valor, closed_at, created_at, agendamentos!inner(lead_phone, scheduled_date, deleted_at)")
+          .eq("vendeu", true)
+          .gt("valor", 0)
+          .is("agendamentos.deleted_at", null)
+          .in("agendamentos.lead_phone", chunk);
+        if (error) throw error;
+        for (const r of (data ?? []) as any[]) {
+          const phone = phoneNorm(r.agendamentos?.lead_phone);
+          if (!phone) continue;
+          const ymd = r.closed_at ?? brtYmdOf(r.created_at);
+          if (!ymd) continue;
+          const cur = byPhone.get(phone);
+          if (!cur || ymd < cur) byPhone.set(phone, ymd);
+        }
+      }
+      return byPhone;
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+  // Data (dd/mm/aaaa) do fechamento posterior do lead, se veio DEPOIS da reunião.
+  const recoveredDateFor = (v: VendaRow): string | null => {
+    const ag = v.agendamentos;
+    const close = recoveredCloseByPhone.get(phoneNorm(ag?.lead_phone));
+    if (!close || !ag) return null;
+    return close > ag.scheduled_date ? close : null;
+  };
+
+
 
   // Download CSV dos leads que estão na seção "Motivos de Não Fechamento".
   // Os textos longos (briefing/resumo/observações) não vêm nas consultas dos
@@ -675,6 +727,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       "Lead", "Telefone", "Data agendamento", "Hora", "Closer", "SDR", "Origem do lead",
       "Criado em", "Status reunião", "Motivo do não fechamento",
       "Explicação do porquê não fechou", "Resumo do cliente", "Briefing", "Observações",
+      "Fechou depois",
     ];
 
     const escape = (val: unknown) => {
@@ -693,6 +746,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       const closerName = ag?.closer_id ? closerMap.get(ag.closer_id) || "" : "";
       const sdrId = ag?.sdr_responsavel_id ?? ag?.created_by ?? null;
       const sdrName = sdrId ? profilesMap.get(sdrId) || "" : "";
+      const recovered = recoveredDateFor(v);
+      const recoveredLabel = recovered
+        ? `Sim (${format(new Date(recovered + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })})`
+        : "Não";
       return [
         ag?.lead_name ?? "",
         ag?.lead_phone ?? "",
@@ -708,6 +765,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         extra?.resumo_venda ?? "",
         extra?.briefing ?? "",
         extra?.observacoes ?? "",
+        recoveredLabel,
       ].map(escape).join(";");
     });
 
