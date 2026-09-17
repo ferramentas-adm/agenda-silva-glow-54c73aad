@@ -58,6 +58,14 @@ const monthOf = (ymd: string) => ymd.slice(0, 7);
 const sheetTitleOf = (ymd: string) => ymd.split("-").reverse().join("-");
 const dateBR = (ymd: string | null) => (ymd ? ymd.split("-").reverse().join("/") : "");
 
+// Telefone no padrão 5511998765432 (só dígitos, com DDI 55 quando faz sentido).
+const formatPhoneE164BR = (raw: string | null | undefined) => {
+  const digits = (raw ?? "").replace(/\D/g, "").replace(/^0+/, "");
+  if (!digits) return "";
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  return digits;
+};
+
 async function sheets(
   path: string,
   init: { method?: string; body?: unknown; query?: string } = {},
@@ -320,7 +328,10 @@ Deno.serve(async (req) => {
           dateBR(ag.scheduled_date),
           ag.scheduled_time ?? "",
           ag.lead_name ?? "",
-          ag.lead_phone ?? "",
+          // Apóstrofo inicial: o Google grava como texto (não vira 5,5119E+12).
+          formatPhoneE164BR(ag.lead_phone)
+            ? `'${formatPhoneE164BR(ag.lead_phone)}`
+            : "",
           ag.closer_id ? closerMap.get(ag.closer_id) ?? "" : "",
           sdrId ? profileMap.get(sdrId) ?? "" : "",
           ag.channel_type ?? "",

@@ -643,6 +643,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // vendeu = true e valor > 0, lançada depois da reunião em que não fechou.
   // Usado para marcar "Fechou em DD/MM" no CSV de motivos — contagens não mudam.
   const phoneNorm = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "");
+  // Telefone no padrão 5511998765432 para exportações.
+  const formatPhoneE164BR = (raw: string | null | undefined) => {
+    const digits = (raw ?? "").replace(/\D/g, "").replace(/^0+/, "");
+    if (!digits) return "";
+    if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+    return digits;
+  };
   const brtYmdOf = (iso: string | null | undefined) =>
     iso ? new Date(new Date(iso).getTime() - 3 * 3600_000).toISOString().slice(0, 10) : null;
   const { data: recoveredCloseByPhone = new Map<string, string>() } = useQuery<Map<string, string>>({
@@ -752,7 +759,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         : "Não";
       return [
         ag?.lead_name ?? "",
-        ag?.lead_phone ?? "",
+        formatPhoneE164BR(ag?.lead_phone),
         ag ? fmtScheduledDate(ag.scheduled_date) : "",
         ag?.scheduled_time ?? "",
         closerName,
