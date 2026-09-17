@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { CalendarX2 } from "lucide-react";
+import { CalendarX2, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ interface Row {
   closer_id: string | null;
   created_by: string | null;
   sdr_responsavel_id: string | null;
+  closers?: { name: string } | null;
 }
 
 const NO_REASON_LABEL = "Sem motivo informado";
@@ -58,6 +60,7 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
   const [dateField, setDateField] = useState<DateField>("scheduled");
   const [sdrFilter, setSdrFilter] = useState<string>("all");
   const [drilldown, setDrilldown] = useState<{ label: string; rows: Row[] } | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const isRange = !!(dateRange?.from && dateRange?.to);
   const fromStr = format(isRange ? dateRange!.from! : currentDate, "yyyy-MM-dd");
@@ -69,7 +72,7 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
       let q = supabase
         .from("agendamentos")
         .select(
-          "id, lead_name, lead_phone, scheduled_date, scheduled_time, created_at, status, cancellation_reason, closer_id, created_by, sdr_responsavel_id",
+          "id, lead_name, lead_phone, scheduled_date, scheduled_time, created_at, status, cancellation_reason, closer_id, created_by, sdr_responsavel_id, closers ( name )",
         )
         .in("status", ["no_show", "cancelada"])
         .is("deleted_at", null);
@@ -156,6 +159,149 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
     ? `${format(dateRange!.from!, "dd/MM/yyyy")} — ${format(dateRange!.to!, "dd/MM/yyyy")}`
     : format(currentDate, "dd/MM/yyyy");
 
+  /** Telefone no padrão 5511998765432 (só dígitos, com DDI 55). */
+  const phoneDigits = (p: string | null | undefined) => {
+    const d = (p ?? "").replace(/\D/g, "");
+    if (!d) return "";
+    if (d.startsWith("55") && d.length >= 12) return d;
+    if (d.length === 10 || d.length === 11) return `55${d}`;
+    return d;
+  };
+
+  const leadKeyOf = (r: Row) =>
+    phoneDigits(r.lead_phone) || `nome:${(r.lead_name || "").trim().toLowerCase()}`;
+
+  const handleDownloadNuncaCompareceram = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // Agrupa os não comparecimentos do período por lead (registro mais recente)
+      const byLead = new Map<string, { latest: Row; count: number }>();
+      filtered.forEach((r) => {
+        const key = leadKeyOf(r);
+        const cur = byLead.get(key);
+        if (!cur) byLead.set(key, { latest: r, count: 1 });
+        else {
+          cur.count += 1;
+          const newer =
+            `${r.scheduled_date}${r.scheduled_time ?? ""}` >
+            `${cur.latest.scheduled_date}${cur.latest.scheduled_time ?? ""}`;
+          if (newer) cur.latest = r;
+        }
+      });
+
+      if (byLead.size === 0) {
+        toast.info("Nenhum não comparecimento no período selecionado.");
+        return;
+      }
+
+      const phones = Array.from(byLead.keys()).filter((k) => !k.startsWith("nome:"));
+
+      // Telefones que já compareceram em qualquer reunião realizada (qualquer data)
+      const compareceram = new Set<string>();
+      const CHUNK = 300;
+      for (let i = 0; i < phones.length; i += CHUNK) {
+        const slice = phones[i] ? phones.slice(i, i + CHUNK) : [];
+        if (!slice.length) continue;
+        // busca por sufixo de 10/11 dígitos para tolerar formatações diferentes no banco
+        const variants = slice.flatMap((p) => [p, p.replace(/^55/, "")]);
+        const { data, error } = await supabase
+          .from("agendamentos")
+          .select("lead_phone")
+          .eq("status", "realizada")
+          .is("deleted_at", null)
+          .in("lead_phone", variants)
+          .limit(5000);
+        if (error) throw error;
+        (data ?? []).forEach((d: any) => {
+          const key = phoneDigits(d.lead_phone);
+          if (key) compareceram.add(key);
+        });
+      }
+
+      // Nomes: para leads sem telefone, checa realizada por nome exato
+      const nomesSemTelefone = Array.from(byLead.entries())
+        .filter(([k]) => k.startsWith("nome:"))
+        .map(([, v]) => v.latest.lead_name)
+        .filter(Boolean);
+      const nomesCompareceram = new Set<string>();
+      if (nomesSemTelefone.length) {
+        const { data } = await supabase
+          .from("agendamentos")
+          .select("lead_name")
+          .eq("status", "realizada")
+          .is("deleted_at", null)
+          .in("lead_name", nomesSemTelefone)
+          .limit(5000);
+        (data ?? []).forEach((d: any) =>
+          nomesCompareceram.add((d.lead_name || "").trim().toLowerCase()),
+        );
+      }
+
+      const finalRows = Array.from(byLead.entries())
+        .filter(([key]) =>
+          key.startsWith("nome:")
+            ? !nomesCompareceram.has(key.slice(5))
+            : !compareceram.has(key),
+        )
+        .sort((a, b) =>
+          a[1].latest.scheduled_date < b[1].latest.scheduled_date ? 1 : -1,
+        );
+
+      if (finalRows.length === 0) {
+        toast.info("Todos os leads do período já compareceram em alguma reunião.");
+        return;
+      }
+
+      const headers = [
+        "Nome do lead",
+        "Telefone",
+        "Data da reunião",
+        "Hora",
+        "Situação",
+        "Justificativa do não comparecimento",
+        "Qtd. de não comparecimentos",
+        "SDR responsável",
+        "Closer",
+      ];
+
+      const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+      const lines = [headers.join(";")];
+      finalRows.forEach(([, { latest, count }]) => {
+        lines.push(
+          [
+            esc(latest.lead_name || ""),
+            esc(phoneDigits(latest.lead_phone)),
+            esc(format(new Date(`${latest.scheduled_date}T12:00:00`), "dd/MM/yyyy")),
+            esc(latest.scheduled_time ?? ""),
+            esc(latest.status === "cancelada" ? "Cancelada" : "Não compareceu"),
+            esc((latest.cancellation_reason || "").trim() || NO_REASON_LABEL),
+            esc(String(count)),
+            esc(sdrNameById.get(sdrIdOf(latest) ?? "") ?? ""),
+            esc(latest.closers?.name ?? ""),
+          ].join(";"),
+        );
+      });
+
+      const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `leads-nunca-compareceram-${fromStr}_${toStr}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${finalRows.length} lead(s) exportado(s).`);
+    } catch (e: any) {
+      console.error("Erro ao exportar CSV de nunca compareceram:", e);
+      toast.error("Não foi possível gerar o arquivo. Tente novamente.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -197,6 +343,21 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
               <option key={p.user_id} value={p.user_id}>{p.full_name}</option>
             ))}
           </select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={handleDownloadNuncaCompareceram}
+            disabled={exporting || isLoading}
+          >
+            {exporting ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5 mr-1" />
+            )}
+            Baixar CSV — nunca compareceram
+          </Button>
 
           {updatedAgo && (
             <span className="text-[11px] text-muted-foreground">Atualizado {updatedAgo}</span>
