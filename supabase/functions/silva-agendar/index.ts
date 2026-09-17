@@ -6,7 +6,7 @@ import { z } from "npm:zod@3";
 import {
   BOOKING_MIN_LEAD_MINUTES, isWithinTurmaBWindow, loadDayAvailability, sdrIaOverbookingPosition,
   TURMA_A_MAX_PER_HOUR, TURMA_B_MAX_PER_HOUR, TURMA_B_WINDOW_END_HOUR, TURMA_B_WINDOW_START_HOUR,
-  spParts, suggestCloser, suggestFreeCloser, toSpIso,
+  spParts, suggestFreeCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag, fetchMetaLeadId } from "../_shared/datacrazyLead.ts";
@@ -47,6 +47,8 @@ const Body = z.object({
     return n === "true" || n === "1" || n === "sim";
   }),
   email: z.string().email().optional(),
+  // Roda todas as validações e devolve o desfecho sem gravar nada.
+  dry_run: z.boolean().optional().default(false),
 });
 
 const normalizePhone = (p: string) => {
@@ -176,26 +178,54 @@ Deno.serve(async (req) => {
     }
     let assignedCloserName: string | null = null;
     let fallbackSuggestedName: string | null = null;
+    let closerDoSlotRespeitado: boolean | null = b.slot_id ? true : null;
+    let motivoRealocacao: string | null = null;
     if (requestedCloserId) {
       // TRAVA DE SEGURANÇA: compromisso/bloqueio nunca é removido nem sobrescrito.
       if (info.blockedCloserIds.has(requestedCloserId)) {
         const { data: blocked } = await supabase.from("closers").select("name").eq("id", requestedCloserId).maybeSingle();
-        return json({
-          erro: "slot_bloqueado",
-          detalhe: `${blocked?.name ?? "O closer do slot"} tem compromisso/bloqueio às ${timeStr} de ${dateStr}. Consulte /silva-disponibilidade novamente.`,
-        }, 409);
-      }
-      assignedCloserName = info.eligibleClosers.find((c) => c.id === requestedCloserId)?.name ?? null;
-      if (!assignedCloserName) {
-        // Closer do slot_id ficou indisponível (ocupado, inativo ou Turma B):
-        // cai para a fila de atribuição em vez de falhar.
-        console.warn("closer do slot_id indisponível, caindo para a fila", requestedCloserId, dateStr, timeStr);
+        motivoRealocacao = `${blocked?.name ?? "O closer do slot"} tem compromisso/bloqueio às ${timeStr} de ${dateStr}`;
         requestedCloserId = null;
+      } else {
+        assignedCloserName = info.eligibleClosers.find((c) => c.id === requestedCloserId)?.name ?? null;
+        if (!assignedCloserName) {
+          motivoRealocacao = `O closer do slot ficou indisponível às ${timeStr} de ${dateStr}`;
+          requestedCloserId = null;
+        }
       }
     }
     if (!requestedCloserId) {
-      const alt = suggestFreeCloser(avail, timeStr) ?? suggestCloser(avail, timeStr);
-      fallbackSuggestedName = alt?.name ?? null;
+      // Nunca terminar em "pendente": realoca para outro closer livre ou recusa.
+      const alt = suggestFreeCloser(avail, timeStr);
+      if (!alt) {
+        return json({
+          erro: "slot_bloqueado",
+          detalhe: `${motivoRealocacao ? `${motivoRealocacao}. ` : ""}Nenhum closer livre às ${timeStr} de ${dateStr}. Ofereça outro horário (/silva-disponibilidade).`,
+        }, 409);
+      }
+      requestedCloserId = alt.id;
+      assignedCloserName = alt.name;
+      fallbackSuggestedName = alt.name;
+      if (b.slot_id) closerDoSlotRespeitado = false;
+    }
+
+    if (b.dry_run) {
+      return json({
+        dry_run: true,
+        gravado: false,
+        data: dateStr,
+        hora: timeStr,
+        inicio: toSpIso(start),
+        status: "agendada",
+        closer: assignedCloserName,
+        closer_id: requestedCloserId,
+        closer_do_slot_respeitado: closerDoSlotRespeitado,
+        closer_realocado: Boolean(motivoRealocacao),
+        motivo_realocacao: motivoRealocacao,
+        fila_atribuicao: false,
+        turma,
+        vagas_restantes: Math.max(0, (turma === "A" ? TURMA_A_MAX_PER_HOUR : TURMA_B_MAX_PER_HOUR) - info.count),
+      }, 200);
     }
 
     // 5) Meta Lead ID via DataCrazy (best effort)
@@ -203,7 +233,7 @@ Deno.serve(async (req) => {
 
     // 6) Observação
     const obsParts: string[] = [];
-    if (fallbackSuggestedName) obsParts.push(`Closer sugerido: ${fallbackSuggestedName}`);
+    if (motivoRealocacao) obsParts.push(`Closer realocado (${motivoRealocacao})`);
     obsParts.push(`Agendado pelo SDR IA (${b.sdr})`);
     if (b.funil) obsParts.push(`Funil: ${b.funil}`);
     if (typeof b.decisor_presente === "boolean") obsParts.push(`Decisor presente: ${b.decisor_presente ? "sim" : "não"}`);
@@ -317,8 +347,10 @@ Deno.serve(async (req) => {
     return json({
       ...(await toResponse(supabase, created)),
       closer_sugerido: fallbackSuggestedName,
-      // false quando o closer do slot_id ficou indisponível e a reunião caiu na fila.
-      closer_do_slot_respeitado: b.slot_id ? Boolean(requestedCloserId) : null,
+      // false quando o closer do slot_id estava indisponível e outro closer livre assumiu.
+      closer_do_slot_respeitado: closerDoSlotRespeitado,
+      closer_realocado: Boolean(motivoRealocacao),
+      motivo_realocacao: motivoRealocacao,
       crm_tag: tag,
     }, 201);
   } catch (e) {
