@@ -727,6 +727,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       "Lead", "Telefone", "Data agendamento", "Hora", "Closer", "SDR", "Origem do lead",
       "Criado em", "Status reunião", "Motivo do não fechamento",
       "Explicação do porquê não fechou", "Resumo do cliente", "Briefing", "Observações",
+      "Fechou depois",
     ];
 
     const escape = (val: unknown) => {
