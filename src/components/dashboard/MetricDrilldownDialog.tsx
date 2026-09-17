@@ -445,6 +445,21 @@ export default function MetricDrilldownDialog({
                           </Badge>
                         );
                       })()}
+                      {(() => {
+                        const ownV = vendaMap.get(d.id) as any;
+                        if (ownV?.vendeu === true) return null;
+                        const close = recoveredCloseMap.get(d.id);
+                        if (!close) return null;
+                        const dateLabel = format(new Date(close + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR });
+                        return (
+                          <Badge
+                            className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/15"
+                            title={`Este lead fechou venda depois, em ${dateLabel}`}
+                          >
+                            Fechou em {dateLabel}
+                          </Badge>
+                        );
+                      })()}
                       <Badge className={STATUS_COLOR[d.status] || "bg-muted"}>
                         {STATUS_LABEL[d.status] || d.status}
                       </Badge>
