@@ -6,7 +6,7 @@ import { z } from "npm:zod@3";
 import {
   BOOKING_MIN_LEAD_MINUTES, isWithinTurmaBWindow, loadDayAvailability, sdrIaOverbookingPosition,
   TURMA_A_MAX_PER_HOUR, TURMA_B_MAX_PER_HOUR, TURMA_B_WINDOW_END_HOUR, TURMA_B_WINDOW_START_HOUR,
-  spParts, suggestCloser, suggestFreeCloser, toSpIso,
+  spParts, suggestFreeCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag, fetchMetaLeadId } from "../_shared/datacrazyLead.ts";
