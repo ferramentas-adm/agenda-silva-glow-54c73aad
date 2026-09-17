@@ -1,32 +1,42 @@
-# Gráfico de pizza "Não comparecimento" por motivo fixo
+# Não comparecimento: motivo na pizza, descrição na justificativa
 
-## Problema
-A pizza da aba "Não comparecimento" fatia por `cancellation_reason` cru. Esse campo guarda duas coisas:
-- **Motivo** escolhido no formulário (lista fixa da tela, conforme print): No-show, Cancelou por desistência, Cancelou por imprevisto pessoal, Não acompanhado pelo SDR, Sem closer disponível, Alterou horário para o mesmo dia (+ motivos personalizados do Admin).
-- **Justificativa** em texto livre digitada no cancelamento ("remarcar", "Cliente desistiu", "solicitou reagendamento", etc.) — hoje cada texto vira uma fatia, o que polui a aba.
+## Por que aparecem "outros motivos"
+A lista da tela é fixa (No-show, Cancelou por desistência, Cancelou por imprevisto pessoal, Não acompanhado pelo SDR, Sem closer disponível, Alterou horário para o mesmo dia — editável em Admin > Listas), mas o mesmo campo do motivo é preenchido com **texto livre** por outros caminhos:
 
-Verificado no banco: dos registros, só ~2.000 têm motivo fixo; o resto é texto livre (dezenas de variações de "remarcar" e afins).
+- As rotas de **cancelar** e **reagendar** usadas pelas automações/SDR IA gravam no motivo o texto que recebem ("remarcar", "solicitou reagendamento", "atribuir closer (estava pendente na fila)", "turma B: lead nao qualificado…").
+- Na tela de **novo agendamento**, ao encerrar a reunião anterior do mesmo lead, é usada **outra lista** (Imprevisto do lead, Sem motivo explícito, Desistiu, Outros) e, sem escolha, o texto automático "Lead reagendou para outro dia".
+- Registros antigos, de antes da lista atual.
 
-## Solução (só a aba, CSVs não mudam)
-`src/components/dashboard/NaoComparecimentoTab.tsx`:
+Resultado: 2.457 registros sem motivo, ~2.000 com motivo da lista e centenas de variações livres — cada uma virando uma fatia na pizza.
 
-1. **Normalização do motivo**: comparar `cancellation_reason` com a lista de motivos (case/acento-insensitive, trim). Reusar as constantes existentes de `src/lib/noShowReasons.ts` (CANCEL_REASONS, NO_SHOW_REASON, SAME_DAY_RESCHEDULE_REASON) e os motivos personalizados carregados de `profiles`/config do Admin (mesma fonte usada pelo diálogo de não comparecimento, `NaoCompareceuDialog`).
+## O que fazer
 
-2. **Pizza passa a agrupar por motivo fixo**:
-   - Texto que casa com um motivo da lista → fatia daquele motivo.
-   - Texto livre que não casa com nada → fatia única **"Outros motivos"** (agrupa todas as justificativas livres; drill-down mostra cada justificativa).
-   - Vazio → mantém "Sem motivo informado".
-   - Total da pizza continua igual ao card "Total não comparecimento".
+### 1. Separar motivo de justificativa
+- Novo campo de **justificativa** na reunião (não mexe em nada existente).
+- Motivo passa a aceitar **somente** valores da lista oficial; qualquer descrição livre vai para a justificativa.
+- Rotas de cancelar/reagendar: o texto recebido é gravado na justificativa; o motivo é preenchido quando o texto casa com um item da lista, senão fica como **"Outros"** (novo item da lista).
+- Tela de novo agendamento passa a usar a **mesma lista oficial** ao encerrar a reunião anterior; o texto livre vai para a justificativa.
+- Histórico: sem alterar dados, quando não houver justificativa própria a tela mostra o texto antigo do motivo como justificativa.
 
-3. **Drill-down** (clique na fatia/legenda): além dos dados atuais (lead, telefone, data, SDR), mostrar a **justificativa original** (texto cru do `cancellation_reason`) de cada registro da fatia.
+### 2. Pizza por motivo (como no print)
+- Fatias apenas dos motivos da lista + "Outros" + "Sem motivo informado". Nada de texto livre virando fatia.
+- Total da pizza continua igual ao card "Total não comparecimento".
+- Ao clicar na fatia, a lista detalhada mostra lead, data, SDR e a **justificativa** de cada registro.
+- Legenda lateral acompanha os mesmos agrupamentos.
 
-4. **Legenda lateral** acompanha os mesmos agrupamentos (motivos fixos + "Outros motivos" + "Sem motivo informado").
+### 3. CSVs
+- CSV "nunca compareceram" ganha as duas informações: coluna **Motivo** (da lista) e coluna **Justificativa** (texto).
 
-## O que NÃO muda
-- CSV "nunca compareceram": segue com a coluna de **Justificativa** em texto cru (é para isso que ela serve).
-- Cards de resumo (Total / Cancelado / No-show / Não contabilizado) e a lógica de `classifyNaoCompareceu`.
-- Nenhum dado é alterado no banco; nenhum endpoint é tocado.
+## O que não muda
+- Cards de resumo (Total / Cancelado / No-show / Não contabilizado) e a regra que decide em qual quadro cada reunião entra.
+- Formato de respostas das rotas (só ganham campo novo), lembretes, integrações e demais abas.
+
+## Detalhes técnicos
+- Migração: `alter table agendamentos add column cancellation_note text` + grants/RLS já existentes na tabela.
+- Escrita: `silva-cancelar`, `silva-reagendar`, `src/services/reagendamento.ts`, `OverdueMeetingsLockOverlay`, `PendingMeetingsBanner`, `DashboardPage` (patch de status).
+- Normalização do motivo (trim, sem acento, case-insensitive) em `src/lib/noShowReasons.ts`, consumida pela pizza em `NaoComparecimentoTab.tsx`.
+- "Outros" acrescentado a `DEFAULT_NO_SHOW_REASONS`.
 
 ## Validação
-- Build OK via log de observabilidade.
-- Conferir no preview que a pizza tem só as fatias dos motivos (casando com o print) e que "Outros motivos" agrupa os textos livres.
+- Build OK pelo log de observabilidade.
+- Conferir no preview que a pizza mostra só os motivos da lista e que a justificativa aparece no detalhe.
