@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { CalendarX2 } from "lucide-react";
+import { CalendarX2, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ interface Row {
   closer_id: string | null;
   created_by: string | null;
   sdr_responsavel_id: string | null;
+  closers?: { name: string } | null;
 }
 
 const NO_REASON_LABEL = "Sem motivo informado";
