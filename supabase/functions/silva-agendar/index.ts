@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
 
     // 6) Observação
     const obsParts: string[] = [];
-    if (fallbackSuggestedName) obsParts.push(`Closer sugerido: ${fallbackSuggestedName}`);
+    if (motivoRealocacao) obsParts.push(`Closer realocado (${motivoRealocacao})`);
     obsParts.push(`Agendado pelo SDR IA (${b.sdr})`);
     if (b.funil) obsParts.push(`Funil: ${b.funil}`);
     if (typeof b.decisor_presente === "boolean") obsParts.push(`Decisor presente: ${b.decisor_presente ? "sim" : "não"}`);
@@ -347,8 +347,10 @@ Deno.serve(async (req) => {
     return json({
       ...(await toResponse(supabase, created)),
       closer_sugerido: fallbackSuggestedName,
-      // false quando o closer do slot_id ficou indisponível e a reunião caiu na fila.
-      closer_do_slot_respeitado: b.slot_id ? Boolean(requestedCloserId) : null,
+      // false quando o closer do slot_id estava indisponível e outro closer livre assumiu.
+      closer_do_slot_respeitado: closerDoSlotRespeitado,
+      closer_realocado: Boolean(motivoRealocacao),
+      motivo_realocacao: motivoRealocacao,
       crm_tag: tag,
     }, 201);
   } catch (e) {
