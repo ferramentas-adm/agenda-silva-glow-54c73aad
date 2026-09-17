@@ -759,7 +759,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         : "Não";
       return [
         ag?.lead_name ?? "",
-        ag?.lead_phone ?? "",
+        formatPhoneE164BR(ag?.lead_phone),
         ag ? fmtScheduledDate(ag.scheduled_date) : "",
         ag?.scheduled_time ?? "",
         closerName,
