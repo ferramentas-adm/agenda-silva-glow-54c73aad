@@ -52,6 +52,8 @@ export interface HourInfo {
   freeClosers: Closer[];
   /** Closers ativos elegíveis nessa hora; podem já ter reunião no overbooking. */
   eligibleClosers: Closer[];
+  /** Closers com compromisso/bloqueio cobrindo a hora — NUNCA podem receber reunião. */
+  blockedCloserIds: Set<string>;
   /** Quantidade de reuniões ativas por closer nesta hora. */
   perCloserHour: Map<string, number>;
 }
