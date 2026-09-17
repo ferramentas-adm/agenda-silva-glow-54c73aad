@@ -66,3 +66,6 @@ verify_jwt = false
 [functions.silva-atribuir-closer]
 verify_jwt = false
 
+[functions.silva-bloqueios]
+verify_jwt = false
+
