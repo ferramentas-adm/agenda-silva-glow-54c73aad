@@ -328,7 +328,10 @@ Deno.serve(async (req) => {
           dateBR(ag.scheduled_date),
           ag.scheduled_time ?? "",
           ag.lead_name ?? "",
-          ag.lead_phone ?? "",
+          // Apóstrofo inicial: o Google grava como texto (não vira 5,5119E+12).
+          formatPhoneE164BR(ag.lead_phone)
+            ? `'${formatPhoneE164BR(ag.lead_phone)}`
+            : "",
           ag.closer_id ? closerMap.get(ag.closer_id) ?? "" : "",
           sdrId ? profileMap.get(sdrId) ?? "" : "",
           ag.channel_type ?? "",
