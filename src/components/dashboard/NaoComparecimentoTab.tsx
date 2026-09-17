@@ -60,6 +60,7 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
   const [dateField, setDateField] = useState<DateField>("scheduled");
   const [sdrFilter, setSdrFilter] = useState<string>("all");
   const [drilldown, setDrilldown] = useState<{ label: string; rows: Row[] } | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const isRange = !!(dateRange?.from && dateRange?.to);
   const fromStr = format(isRange ? dateRange!.from! : currentDate, "yyyy-MM-dd");
@@ -71,7 +72,7 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
       let q = supabase
         .from("agendamentos")
         .select(
-          "id, lead_name, lead_phone, scheduled_date, scheduled_time, created_at, status, cancellation_reason, closer_id, created_by, sdr_responsavel_id",
+          "id, lead_name, lead_phone, scheduled_date, scheduled_time, created_at, status, cancellation_reason, closer_id, created_by, sdr_responsavel_id, closers ( name )",
         )
         .in("status", ["no_show", "cancelada"])
         .is("deleted_at", null);
