@@ -10,7 +10,7 @@ Hoje, quando um lead que "não fechou" compra depois (nova reunião ou venda avu
 - No card "Motivos de não fechamento" (lista detalhada e CSV exportado), cada linha de lead que fechou posteriormente ganha um selo discreto: **"Fechou em DD/MM"**.
 - O que conta como "fechou depois": existe uma venda do mesmo lead (identificado pelo telefone normalizado) com `vendeu = true` e `valor > 0`, lançada depois da reunião em que não fechou — seja em nova reunião, seja em venda avulsa.
 - As **contagens por motivo e o total não mudam** — é apenas uma marcação visual sobre o que já existe.
-- O CSV baixado do card ganha a coluna "Fechou depois" com a data.
+- O CSV baixado do card **e o arquivo CSV offline** (o mesmo formato, para download/baixar quando precisar) ganham a coluna "Fechou depois" com a data.
 
 ## 2. Planilha do Google Sheets — nova coluna
 
