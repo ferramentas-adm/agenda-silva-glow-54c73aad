@@ -174,6 +174,41 @@ export default function MetricDrilldownDialog({
     },
   });
 
+  // Leads recuperados: venda posterior do MESMO lead (telefone normalizado)
+  // com vendeu = true e valor > 0, lançada depois da reunião em que não fechou.
+  const { data: recoveredCloseMap = new Map<string, string>() } = useQuery<Map<string, string>>({
+    queryKey: ["drilldown-recovered-closes", leadPhones.join(",")],
+    enabled: open && leadPhones.length > 0,
+    queryFn: async () => {
+      const norm = (p: string) => p.replace(/\D/g, "");
+      const { data } = await supabase
+        .from("vendas")
+        .select("id, valor, closed_at, created_at, agendamentos!inner(lead_phone, scheduled_date, deleted_at)")
+        .eq("vendeu", true)
+        .gt("valor", 0)
+        .is("agendamentos.deleted_at", null)
+        .in("agendamentos.lead_phone", leadPhones)
+        .range(0, 9999);
+      // Telefone normalizado -> data (ymd) do primeiro fechamento com valor > 0
+      const byPhone = new Map<string, string>();
+      for (const r of (data ?? []) as any[]) {
+        const phone = norm(r.agendamentos?.lead_phone ?? "");
+        if (!phone) continue;
+        const ymd = r.closed_at ?? brDateOf(r.created_at);
+        const cur = byPhone.get(phone);
+        if (!cur || ymd < cur) byPhone.set(phone, ymd);
+      }
+      const m = new Map<string, string>();
+      for (const d of details) {
+        const phone = norm(d.lead_phone ?? "");
+        const close = byPhone.get(phone);
+        // Só marca se o fechamento veio DEPOIS da reunião em que não fechou
+        if (close && close > d.scheduled_date) m.set(d.id, close);
+      }
+      return m;
+    },
+  });
+
   const { data: followUpCloseDateMap = new Map<string, string>() } = useQuery<Map<string, string>>({
     queryKey: ["drilldown-fu-closes", agendamentoIds.join(",")],
     enabled: open && agendamentoIds.length > 0,
