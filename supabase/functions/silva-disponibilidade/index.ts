@@ -4,7 +4,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   AVAILABILITY_MIN_LEAD_MINUTES, addDays, fetchBusinessSlots, labelFor, loadDayAvailability,
-  remainingVagas, spDateTime, spParts, suggestCloser, toSpIso,
+  remainingVagas, spDateTime, spParts, suggestFreeCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 
@@ -79,7 +79,9 @@ Deno.serve(async (req) => {
         if (vagas <= 0) continue;
         const inicio = toSpIso(start);
         const label = labelFor(day, slot, todayStr);
-        const livres = info.freeClosers.length ? info.freeClosers : info.eligibleClosers;
+        // Só closers SEM compromisso/bloqueio e SEM reunião na hora.
+        // Nunca cair para eligibleClosers: isso oferecia hora bloqueada/ocupada.
+        const livres = info.freeClosers;
         if (!livres.length) continue; // sem closer livre não há como atender
 
         if (porCloser) {
@@ -97,7 +99,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const closer = suggestCloser(avail, slot);
+        const closer = suggestFreeCloser(avail, slot);
         if (!closer) continue;
         slots.push({
           slot_id: `${inicio}|${closer.id}`,
