@@ -746,6 +746,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       const closerName = ag?.closer_id ? closerMap.get(ag.closer_id) || "" : "";
       const sdrId = ag?.sdr_responsavel_id ?? ag?.created_by ?? null;
       const sdrName = sdrId ? profilesMap.get(sdrId) || "" : "";
+      const recovered = recoveredDateFor(v);
+      const recoveredLabel = recovered
+        ? `Sim (${format(new Date(recovered + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })})`
+        : "Não";
       return [
         ag?.lead_name ?? "",
         ag?.lead_phone ?? "",
@@ -761,6 +765,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         extra?.resumo_venda ?? "",
         extra?.briefing ?? "",
         extra?.observacoes ?? "",
+        recoveredLabel,
       ].map(escape).join(";");
     });
 
