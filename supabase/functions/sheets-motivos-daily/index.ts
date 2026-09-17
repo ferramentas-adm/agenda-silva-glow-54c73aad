@@ -313,6 +313,9 @@ Deno.serve(async (req) => {
         const motivo = v.motivo_nao_fechamento ?? "";
         motivoCount.set(motivo, (motivoCount.get(motivo) ?? 0) + 1);
         const sdrId = ag.sdr_responsavel_id ?? ag.created_by ?? null;
+        const closeYmd = closeByPhone.get(normPhone(ag.lead_phone));
+        const fechouDepois =
+          closeYmd && closeYmd > ag.scheduled_date ? `Sim — ${dateBR(closeYmd)}` : "Não";
         rowsData.push([
           dateBR(ag.scheduled_date),
           ag.scheduled_time ?? "",
@@ -327,6 +330,7 @@ Deno.serve(async (req) => {
           v.valor != null ? String(v.valor) : "",
           v.lead_revenue ?? "",
           dateBR(v.closed_at ?? v.created_at.slice(0, 10)),
+          fechouDepois,
         ]);
       }
     }
