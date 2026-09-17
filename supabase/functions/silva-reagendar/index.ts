@@ -146,6 +146,7 @@ Deno.serve(async (req) => {
     const noteParts = [old.observation].filter(Boolean);
     noteParts.push(`Reagendado pelo SDR IA (${b.reagendado_por})`);
     noteParts.push(`Motivo do reagendamento: ${b.motivo}`);
+    if (motivoRealocacao) noteParts.push(`Closer realocado (${motivoRealocacao})`);
     const overbookingNumber = sdrIaOverbookingPosition(info.count, info.capacity);
     if (overbookingNumber > 0) noteParts.push(`Overbooking: extra ${overbookingNumber}/3`);
 
@@ -227,6 +228,9 @@ Deno.serve(async (req) => {
       inicio: toSpIso(spDateTime(dateStr, timeStr)),
       closer: assignedCloser.name,
       link_reuniao: created.meet_link ?? null,
+      status: "agendada",
+      closer_realocado: Boolean(motivoRealocacao),
+      motivo_realocacao: motivoRealocacao,
     });
   } catch (error) {
     console.error("silva-reagendar error", error);
