@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
   BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
-  spDateTime, spParts, suggestCloser, toSpIso, TURMA_A_MAX_PER_HOUR,
+  spDateTime, spParts, suggestCloser, suggestFreeCloser, toSpIso, TURMA_A_MAX_PER_HOUR,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag } from "../_shared/datacrazyLead.ts";
@@ -118,15 +118,25 @@ Deno.serve(async (req) => {
       }, 409);
     }
     if (!info || info.full || info.eligibleClosers.length === 0) return json({ erro: "slot_indisponivel" }, 409);
+    // TRAVA DE SEGURANÇA: compromisso/bloqueio nunca é removido nem sobrescrito.
+    if (info.blockedCloserIds.has(requestedCloserId)) {
+      const { data: blocked } = await supabase.from("closers").select("name").eq("id", requestedCloserId).maybeSingle();
+      return json({
+        erro: "slot_bloqueado",
+        detalhe: `${blocked?.name ?? "O closer do slot"} tem compromisso/bloqueio às ${timeStr} de ${dateStr}. Consulte /silva-disponibilidade novamente.`,
+      }, 409);
+    }
     // Closer do slot_id indisponível não invalida o horário: escolhemos outro elegível.
     const requestedCloser = info.eligibleClosers.find((closer) => closer.id === requestedCloserId) ?? null;
 
-    // Mantém o closer anterior quando ele continua elegível; caso contrário usa o closer do slot.
-    const previousCloser = typeof old.closer_id === "string"
+    // Mantém o closer anterior quando ele continua elegível e sem bloqueio.
+    const previousCloser = typeof old.closer_id === "string" && !info.blockedCloserIds.has(old.closer_id)
       ? info.eligibleClosers.find((closer) => closer.id === old.closer_id)
       : null;
-    const assignedCloser = previousCloser ?? requestedCloser ?? suggestCloser(availability, timeStr);
+    const assignedCloser = previousCloser ?? requestedCloser
+      ?? suggestFreeCloser(availability, timeStr) ?? suggestCloser(availability, timeStr);
     if (!assignedCloser) return json({ erro: "slot_indisponivel" }, 409);
+    if (info.blockedCloserIds.has(assignedCloser.id)) return json({ erro: "slot_bloqueado" }, 409);
 
     const { meetLink, googleEventId } = await createMeet(expected, assignedCloser.id, old, dateStr, timeStr);
     const noteParts = [old.observation].filter(Boolean);

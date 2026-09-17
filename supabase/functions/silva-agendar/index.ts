@@ -6,7 +6,7 @@ import { z } from "npm:zod@3";
 import {
   BOOKING_MIN_LEAD_MINUTES, isWithinTurmaBWindow, loadDayAvailability, sdrIaOverbookingPosition,
   TURMA_A_MAX_PER_HOUR, TURMA_B_MAX_PER_HOUR, TURMA_B_WINDOW_END_HOUR, TURMA_B_WINDOW_START_HOUR,
-  spParts, suggestCloser, toSpIso,
+  spParts, suggestCloser, suggestFreeCloser, toSpIso,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag, fetchMetaLeadId } from "../_shared/datacrazyLead.ts";
@@ -177,16 +177,24 @@ Deno.serve(async (req) => {
     let assignedCloserName: string | null = null;
     let fallbackSuggestedName: string | null = null;
     if (requestedCloserId) {
+      // TRAVA DE SEGURANÇA: compromisso/bloqueio nunca é removido nem sobrescrito.
+      if (info.blockedCloserIds.has(requestedCloserId)) {
+        const { data: blocked } = await supabase.from("closers").select("name").eq("id", requestedCloserId).maybeSingle();
+        return json({
+          erro: "slot_bloqueado",
+          detalhe: `${blocked?.name ?? "O closer do slot"} tem compromisso/bloqueio às ${timeStr} de ${dateStr}. Consulte /silva-disponibilidade novamente.`,
+        }, 409);
+      }
       assignedCloserName = info.eligibleClosers.find((c) => c.id === requestedCloserId)?.name ?? null;
       if (!assignedCloserName) {
-        // Closer do slot_id ficou indisponível (ocupado, bloqueado, inativo ou Turma B):
+        // Closer do slot_id ficou indisponível (ocupado, inativo ou Turma B):
         // cai para a fila de atribuição em vez de falhar.
         console.warn("closer do slot_id indisponível, caindo para a fila", requestedCloserId, dateStr, timeStr);
         requestedCloserId = null;
       }
     }
     if (!requestedCloserId) {
-      const alt = suggestCloser(avail, timeStr);
+      const alt = suggestFreeCloser(avail, timeStr) ?? suggestCloser(avail, timeStr);
       fallbackSuggestedName = alt?.name ?? null;
     }
 

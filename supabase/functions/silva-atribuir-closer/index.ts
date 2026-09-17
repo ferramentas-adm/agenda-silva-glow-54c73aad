@@ -2,7 +2,7 @@
 // Não cancela, não cria linha nova: só grava closer_id (+ Meet, se ainda não houver).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { loadDayAvailability, spDateTime, suggestCloser, toSpIso } from "../_shared/disponibilidade.ts";
+import { loadDayAvailability, spDateTime, suggestCloser, suggestFreeCloser, toSpIso } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
@@ -76,9 +76,16 @@ Deno.serve(async (req) => {
     const availability = await loadDayAvailability(supabase, dateStr, undefined, turma);
     const info = availability.hours.get(timeStr);
     if (!info || info.eligibleClosers.length === 0) return json({ erro: "sem_closer_disponivel" }, 409);
+    // TRAVA DE SEGURANÇA: compromisso/bloqueio nunca é removido para caber reunião.
+    if (b.closer_id && info.blockedCloserIds.has(b.closer_id)) {
+      return json({
+        erro: "slot_bloqueado",
+        detalhe: `esse closer tem compromisso/bloqueio às ${timeStr} de ${dateStr}`,
+      }, 409);
+    }
     const chosen = b.closer_id
       ? info.eligibleClosers.find((c) => c.id === b.closer_id) ?? null
-      : suggestCloser(availability, timeStr);
+      : suggestFreeCloser(availability, timeStr) ?? suggestCloser(availability, timeStr);
     if (!chosen) {
       return json({
         erro: b.closer_id ? "closer_indisponivel" : "sem_closer_disponivel",

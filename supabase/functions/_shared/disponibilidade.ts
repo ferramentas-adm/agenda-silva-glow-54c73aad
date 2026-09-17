@@ -52,6 +52,8 @@ export interface HourInfo {
   freeClosers: Closer[];
   /** Closers ativos elegíveis nessa hora; podem já ter reunião no overbooking. */
   eligibleClosers: Closer[];
+  /** Closers com compromisso/bloqueio cobrindo a hora — NUNCA podem receber reunião. */
+  blockedCloserIds: Set<string>;
   /** Quantidade de reuniões ativas por closer nesta hora. */
   perCloserHour: Map<string, number>;
 }
@@ -247,7 +249,7 @@ export async function loadDayAvailability(
     const full = isSdrIaHourFull(count, capacity, eligibleClosers.length, turma)
       || (isB && (count >= TURMA_B_MAX_PER_HOUR || !isWithinTurmaBWindow(slot)));
     const freeClosers = closers.filter((c) => !blocked.has(c.id) && !acc.closerIds.has(c.id));
-    hours.set(slot, { count, capacity, full, freeClosers, eligibleClosers, perCloserHour: acc.perCloser });
+    hours.set(slot, { count, capacity, full, freeClosers, eligibleClosers, blockedCloserIds: blocked, perCloserHour: acc.perCloser });
   }
   return { dateStr, slots, hours, perCloserDay, closers };
 }
@@ -259,6 +261,21 @@ export function suggestCloser(day: DayAvailability, slot: string): Closer | null
   return [...info.eligibleClosers].sort((a, b) => {
     const hourDiff = (info.perCloserHour.get(a.id) ?? 0) - (info.perCloserHour.get(b.id) ?? 0);
     if (hourDiff !== 0) return hourDiff;
+    const dayDiff = (day.perCloserDay.get(a.id) ?? 0) - (day.perCloserDay.get(b.id) ?? 0);
+    return dayDiff !== 0 ? dayDiff : a.name.localeCompare(b.name, "pt-BR");
+  })[0];
+}
+
+/** true quando o closer tem compromisso/bloqueio cobrindo a hora — nunca agendar nem liberar. */
+export function isCloserBlocked(day: DayAvailability, slot: string, closerId: string): boolean {
+  return Boolean(day.hours.get(slot)?.blockedCloserIds.has(closerId));
+}
+
+/** Closer sem bloqueio E sem reunião na hora (menor carga no dia). Null se não houver. */
+export function suggestFreeCloser(day: DayAvailability, slot: string): Closer | null {
+  const info = day.hours.get(slot);
+  if (!info || info.freeClosers.length === 0) return null;
+  return [...info.freeClosers].sort((a, b) => {
     const dayDiff = (day.perCloserDay.get(a.id) ?? 0) - (day.perCloserDay.get(b.id) ?? 0);
     return dayDiff !== 0 ? dayDiff : a.name.localeCompare(b.name, "pt-BR");
   })[0];
