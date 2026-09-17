@@ -344,6 +344,21 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
             ))}
           </select>
 
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={handleDownloadNuncaCompareceram}
+            disabled={exporting || isLoading}
+          >
+            {exporting ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5 mr-1" />
+            )}
+            Baixar CSV — nunca compareceram
+          </Button>
+
           {updatedAgo && (
             <span className="text-[11px] text-muted-foreground">Atualizado {updatedAgo}</span>
           )}
