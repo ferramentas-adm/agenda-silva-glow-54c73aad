@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
   BOOKING_MIN_LEAD_MINUTES, loadDayAvailability, sdrIaOverbookingPosition,
-  spDateTime, spParts, suggestCloser, suggestFreeCloser, toSpIso, TURMA_A_MAX_PER_HOUR,
+  spDateTime, spParts, suggestFreeCloser, toSpIso, TURMA_A_MAX_PER_HOUR,
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag } from "../_shared/datacrazyLead.ts";
