@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { spDateTime, toSpIso } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
+import { loadOfficialReasons, matchOfficialReason } from "../_shared/motivos.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
 const SDR_IA_NAME = "João Amorim";
@@ -17,7 +18,10 @@ const json = (body: unknown, status = 200) =>
 
 const Body = z.object({
   agendamento_id: z.string().uuid(),
+  // Motivo precisa ser um item da lista oficial (Admin > Motivos de não comparecimento).
   motivo: z.string().trim().min(1).max(500),
+  // Justificativa livre obrigatória, para enriquecimento de dados.
+  justificativa: z.string().trim().min(1).max(1000),
   cancelado_por: z.literal("João Amorim (IA)"),
 });
 
@@ -62,6 +66,16 @@ Deno.serve(async (req) => {
     const sdrProfile = await loadSdrProfile(supabase);
     if (!sdrProfile) return json({ erro: "sdr_ia_nao_configurado", detalhe: "execute /sdr-ia-setup" }, 500);
 
+    const officialReasons = await loadOfficialReasons(supabase);
+    const motivoOficial = matchOfficialReason(parsed.data.motivo, officialReasons);
+    if (!motivoOficial) {
+      return json({
+        erro: "motivo_invalido",
+        detalhe: "Use exatamente um dos motivos da lista e detalhe o resto em justificativa.",
+        motivos_validos: officialReasons,
+      }, 400);
+    }
+
     // Aceita reuniões de qualquer origem (SDR IA ou criadas pela tela).
     const { data: appointment, error: loadError } = await supabase.from("agendamentos").select("*")
       .eq("id", parsed.data.agendamento_id).is("deleted_at", null).maybeSingle();
@@ -76,7 +90,8 @@ Deno.serve(async (req) => {
 
     const { data: cancelled, error: updateError } = await supabase.from("agendamentos").update({
       status: "cancelada",
-      cancellation_reason: parsed.data.motivo,
+      cancellation_reason: motivoOficial,
+      cancellation_note: parsed.data.justificativa,
     }).eq("id", appointment.id).neq("status", "realizada").select("*").maybeSingle();
     if (updateError) throw updateError;
     if (!cancelled) {
@@ -93,7 +108,8 @@ Deno.serve(async (req) => {
       entity_type: "agendamento",
       entity_id: cancelled.id,
       details: {
-        motivo: parsed.data.motivo,
+        motivo: motivoOficial,
+        justificativa: parsed.data.justificativa,
         cancelado_por: parsed.data.cancelado_por,
         scheduled_date: cancelled.scheduled_date,
         scheduled_time: cancelled.scheduled_time,

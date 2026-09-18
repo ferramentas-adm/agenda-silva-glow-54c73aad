@@ -15,6 +15,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { brTodayYMD } from "@/lib/timezone";
+import { matchOfficialReason } from "@/lib/noShowReasons";
+import { DEFAULT_NO_SHOW_REASONS } from "@/components/NaoCompareceuDialog";
 
 /** Janela de busca da reunião anterior (em dias). */
 export const PRIOR_MEETING_WINDOW_DAYS = 7;
@@ -174,8 +176,13 @@ export async function closePriorMeeting(
 ): Promise<void> {
   const payload: Record<string, unknown> = { status: outcome };
   if (outcome === "cancelada") {
-    payload.cancellation_reason =
-      cancellationReason?.trim() || "Lead reagendou para outro dia";
+    // Motivo aceita só a lista oficial; texto livre vai para a justificativa.
+    const raw = cancellationReason?.trim() || "";
+    const official = matchOfficialReason(raw, DEFAULT_NO_SHOW_REASONS);
+    payload.cancellation_reason = official ?? "Cancelou por imprevisto pessoal";
+    if (!official) {
+      payload.cancellation_note = raw || "Lead reagendou para outro dia";
+    }
   }
   const { error } = await supabase
     .from("agendamentos")

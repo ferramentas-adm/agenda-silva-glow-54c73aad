@@ -58,11 +58,17 @@ export default function PendingMeetingsBanner() {
     return `Você tem ${count} reuni${count === 1 ? "ão" : "ões"} de dias passados ainda em aberto`;
   }, [count, isManager]);
 
-  const handleResolve = async (m: PendingWithMeta, newStatus: ResolveStatus, cancellationReason?: string) => {
+  const handleResolve = async (
+    m: PendingWithMeta,
+    newStatus: ResolveStatus,
+    cancellationReason?: string,
+    cancellationNote?: string,
+  ) => {
     setUpdatingId(m.id);
     try {
       const patch: any = { status: newStatus };
       if (cancellationReason) patch.cancellation_reason = cancellationReason;
+      if (cancellationNote) patch.cancellation_note = cancellationNote;
       const { data, error } = await supabase
         .from("agendamentos")
         .update(patch)
@@ -236,10 +242,10 @@ export default function PendingMeetingsBanner() {
         onOpenChange={(o) => { if (!o) setNoShowTarget(null); }}
         leadName={noShowTarget?.lead_name}
         loading={updatingId === noShowTarget?.id}
-        onConfirm={async (reason) => {
+        onConfirm={async (reason, note) => {
           const target = noShowTarget;
           if (!target) return;
-          await handleResolve(target, "no_show", reason);
+          await handleResolve(target, "no_show", reason, note);
           setNoShowTarget(null);
           setOpen(false);
           setNovoAgendamentoLead({

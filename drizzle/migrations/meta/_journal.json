@@ -113,6 +113,13 @@
       "when": 1789616066857,
       "tag": "0015_promover_pendente_ao_atribuir_closer",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789768970574,
+      "tag": "0016_add_cancellation_note",
+      "breakpoints": true
     }
   ]
 }

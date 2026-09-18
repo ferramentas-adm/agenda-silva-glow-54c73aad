@@ -112,11 +112,12 @@ export default function OverdueMeetingsLockOverlay() {
     refetch();
   };
 
-  const handleDirect = async (m: OverdueMeeting, reason?: string): Promise<boolean> => {
+  const handleDirect = async (m: OverdueMeeting, reason?: string, note?: string): Promise<boolean> => {
     setUpdatingId(m.id);
     try {
       const patch: any = { status: "no_show" };
       if (reason) patch.cancellation_reason = reason;
+      if (note) patch.cancellation_note = note;
       const { data, error } = await supabase
         .from("agendamentos")
         .update(patch)
@@ -513,10 +514,10 @@ export default function OverdueMeetingsLockOverlay() {
         onOpenChange={(o) => { if (!o) setNoShowFor(null); }}
         leadName={noShowFor?.lead_name}
         loading={updatingId === noShowFor?.id}
-        onConfirm={async (reason) => {
+        onConfirm={async (reason, note) => {
           const target = noShowFor;
           if (!target) return;
-          const ok = await handleDirect(target, reason);
+          const ok = await handleDirect(target, reason, note);
           setNoShowFor(null);
           if (!ok) return;
           setNovoAgendamentoLead({

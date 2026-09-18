@@ -16,7 +16,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { classifyNaoCompareceu, splitNaoCompareceu } from "@/lib/noShowReasons";
+import { classifyNaoCompareceu, splitNaoCompareceu, matchOfficialReason } from "@/lib/noShowReasons";
+import { DEFAULT_NO_SHOW_REASONS } from "@/components/NaoCompareceuDialog";
+import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { countsAsSdr } from "@/lib/sdrOverrides";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +37,7 @@ interface Row {
   created_at: string;
   status: string;
   cancellation_reason: string | null;
+  cancellation_note: string | null;
   closer_id: string | null;
   created_by: string | null;
   sdr_responsavel_id: string | null;
@@ -72,7 +75,7 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
       let q = supabase
         .from("agendamentos")
         .select(
-          "id, lead_name, lead_phone, scheduled_date, scheduled_time, created_at, status, cancellation_reason, closer_id, created_by, sdr_responsavel_id, closers ( name )",
+          "id, lead_name, lead_phone, scheduled_date, scheduled_time, created_at, status, cancellation_reason, cancellation_note, closer_id, created_by, sdr_responsavel_id, closers ( name )",
         )
         .in("status", ["no_show", "cancelada"])
         .is("deleted_at", null);
@@ -127,15 +130,37 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
 
   const sdrIdOf = (r: Row) => r.sdr_responsavel_id || r.created_by || null;
 
+  const { items: reasonList } = useAppSettingList(
+    APP_SETTING_KEYS.no_show_reasons,
+    DEFAULT_NO_SHOW_REASONS,
+  );
+  const officialReasons = useMemo(
+    () => (reasonList.length ? reasonList : DEFAULT_NO_SHOW_REASONS),
+    [reasonList],
+  );
+
   const filtered = useMemo(
     () => (sdrFilter === "all" ? rows : rows.filter((r) => sdrIdOf(r) === sdrFilter)),
     [rows, sdrFilter],
   );
 
+  /** Motivo da lista oficial; texto livre não cria fatia (vai para a justificativa). */
+  const motivoOf = (r: Row) =>
+    matchOfficialReason(r.cancellation_reason, officialReasons) ?? NO_REASON_LABEL;
+
+  /** Justificativa: campo próprio ou, no histórico, o texto livre gravado no motivo. */
+  const justificativaOf = (r: Row) => {
+    const note = (r.cancellation_note || "").trim();
+    if (note) return note;
+    const raw = (r.cancellation_reason || "").trim();
+    if (!raw) return "";
+    return matchOfficialReason(raw, officialReasons) ? "" : raw;
+  };
+
   const slices = useMemo(() => {
     const map = new Map<string, Row[]>();
     filtered.forEach((r) => {
-      const label = (r.cancellation_reason || "").trim() || NO_REASON_LABEL;
+      const label = motivoOf(r);
       const list = map.get(label);
       if (list) list.push(r);
       else map.set(label, [r]);
@@ -143,7 +168,7 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
     return Array.from(map.entries())
       .map(([label, list]) => ({ label, value: list.length, rows: list }))
       .sort((a, b) => b.value - a.value);
-  }, [filtered]);
+  }, [filtered, officialReasons]);
 
   const total = filtered.length;
 
@@ -259,7 +284,8 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
         "Data da reunião",
         "Hora",
         "Situação",
-        "Justificativa do não comparecimento",
+        "Motivo",
+        "Justificativa",
         "Qtd. de não comparecimentos",
         "SDR responsável",
         "Closer",
@@ -275,7 +301,8 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
             esc(format(new Date(`${latest.scheduled_date}T12:00:00`), "dd/MM/yyyy")),
             esc(latest.scheduled_time ?? ""),
             esc(latest.status === "cancelada" ? "Cancelada" : "Não compareceu"),
-            esc((latest.cancellation_reason || "").trim() || NO_REASON_LABEL),
+            esc(motivoOf(latest)),
+            esc(justificativaOf(latest)),
             esc(String(count)),
             esc(sdrNameById.get(sdrIdOf(latest) ?? "") ?? ""),
             esc(latest.closers?.name ?? ""),
@@ -484,6 +511,12 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
                       {r.scheduled_time ? ` às ${r.scheduled_time}` : ""}
                       {` · ${sdrNameById.get(sdrIdOf(r) ?? "") ?? "SDR"}`}
                     </p>
+                    {justificativaOf(r) && (
+                      <p className="text-xs mt-1">
+                        <span className="text-muted-foreground">Justificativa: </span>
+                        {justificativaOf(r)}
+                      </p>
+                    )}
                   </div>
                 ))}
             </div>
