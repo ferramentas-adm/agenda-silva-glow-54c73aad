@@ -34,6 +34,28 @@ const normalizePhone = (phone?: string | null) => (phone || "").replace(/\D/g, "
 
 const norm = (s?: string | null) => (s || "").trim().toLowerCase();
 
+/** Normaliza para comparação: sem acento, sem caixa, sem espaços extras. */
+export const normalizeReasonKey = (s?: string | null) =>
+  (s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+/**
+ * Casa um texto com um motivo da lista oficial.
+ * Retorna o motivo oficial (com a grafia da lista) ou null quando é texto livre.
+ */
+export function matchOfficialReason(
+  raw: string | null | undefined,
+  officialReasons: readonly string[],
+): string | null {
+  const key = normalizeReasonKey(raw);
+  if (!key) return null;
+  return officialReasons.find((r) => normalizeReasonKey(r) === key) ?? null;
+}
+
 const CANCEL_SET = new Set(CANCEL_REASONS.map((r) => norm(r)));
 
 /**

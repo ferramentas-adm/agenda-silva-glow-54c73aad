@@ -7,6 +7,7 @@ import {
 } from "../_shared/disponibilidade.ts";
 import { errorDetail } from "../_shared/erro.ts";
 import { ensureLeadTag } from "../_shared/datacrazyLead.ts";
+import { loadOfficialReasons, matchOfficialReason } from "../_shared/motivos.ts";
 
 const SDR_IA_EMAIL = "joao.amorim.ia@ogruposilva.com.br";
 const SDR_IA_NAME = "João Amorim";
@@ -22,7 +23,10 @@ const json = (body: unknown, status = 200) =>
 const Body = z.object({
   agendamento_id: z.string().uuid(),
   slot_id: z.string().min(1),
+  // Motivo precisa ser um item da lista oficial de motivos de não comparecimento.
   motivo: z.string().trim().min(1).max(500),
+  // Justificativa livre obrigatória, para enriquecimento de dados.
+  justificativa: z.string().trim().min(1).max(1000),
   reagendado_por: z.literal("João Amorim (IA)"),
   nome: z.string().trim().min(1).max(200).optional(),
 });
@@ -94,6 +98,16 @@ Deno.serve(async (req) => {
       .eq("email", SDR_IA_EMAIL).maybeSingle();
     if (!sdrProfile) return json({ erro: "sdr_ia_nao_configurado", detalhe: "execute /sdr-ia-setup" }, 500);
 
+    const officialReasons = await loadOfficialReasons(supabase);
+    const motivoOficial = matchOfficialReason(b.motivo, officialReasons);
+    if (!motivoOficial) {
+      return json({
+        erro: "motivo_invalido",
+        detalhe: "Use exatamente um dos motivos da lista e detalhe o resto em justificativa.",
+        motivos_validos: officialReasons,
+      }, 400);
+    }
+
     const { data: old, error: oldError } = await supabase.from("agendamentos").select("*")
       .eq("id", b.agendamento_id).is("deleted_at", null).maybeSingle();
     if (oldError) throw oldError;
@@ -145,7 +159,7 @@ Deno.serve(async (req) => {
     const { meetLink, googleEventId } = await createMeet(expected, assignedCloser.id, old, dateStr, timeStr);
     const noteParts = [old.observation].filter(Boolean);
     noteParts.push(`Reagendado pelo SDR IA (${b.reagendado_por})`);
-    noteParts.push(`Motivo do reagendamento: ${b.motivo}`);
+    noteParts.push(`Motivo do reagendamento: ${motivoOficial} — ${b.justificativa}`);
     if (motivoRealocacao) noteParts.push(`Closer realocado (${motivoRealocacao})`);
     const overbookingNumber = sdrIaOverbookingPosition(info.count, info.capacity);
     if (overbookingNumber > 0) noteParts.push(`Overbooking: extra ${overbookingNumber}/3`);
@@ -185,7 +199,8 @@ Deno.serve(async (req) => {
 
     const { data: closedOld, error: closeError } = await supabase.from("agendamentos").update({
       status: "cancelada",
-      cancellation_reason: b.motivo,
+      cancellation_reason: motivoOficial,
+      cancellation_note: b.justificativa,
     }).eq("id", old.id).eq("status", old.status).select("id").maybeSingle();
     if (closeError || !closedOld) {
       await supabase.from("agendamentos").update({
@@ -206,7 +221,8 @@ Deno.serve(async (req) => {
       entity_id: created.id,
       details: {
         antigo_id: old.id,
-        motivo: b.motivo,
+        motivo: motivoOficial,
+        justificativa: b.justificativa,
         reagendado_por: b.reagendado_por,
         scheduled_date: dateStr,
         scheduled_time: timeStr,

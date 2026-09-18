@@ -864,7 +864,7 @@ export function CalendarContent() {
   };
 
   // Status update handler
-  const handleStatusChange = async (newStatus: string, cancellationReason?: string) => {
+  const handleStatusChange = async (newStatus: string, cancellationReason?: string, cancellationNote?: string) => {
     if (!detailAg) return;
     // Realizada → abre pop-up de Vendeu? apenas para closer/SDR.
     // Gestor/moderador/supervisor/apresentador marcam direto: o lançamento
@@ -883,6 +883,7 @@ export function CalendarContent() {
       const patch: any = { status: newStatus };
       if (cancellationReason && (newStatus === "no_show" || newStatus === "cancelada")) {
         patch.cancellation_reason = cancellationReason;
+        if (cancellationNote) patch.cancellation_note = cancellationNote;
       }
       const { data, error } = await supabase
         .from("agendamentos")
@@ -2233,9 +2234,9 @@ export function CalendarContent() {
         onOpenChange={setNoShowReasonOpen}
         leadName={detailAg?.lead_name}
         loading={updatingStatus}
-        onConfirm={async (reason) => {
+        onConfirm={async (reason, note) => {
           setNoShowReasonOpen(false);
-          await handleStatusChange("no_show", reason);
+          await handleStatusChange("no_show", reason, note);
         }}
       />
 

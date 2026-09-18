@@ -20,6 +20,7 @@ export type Database = {
           briefing: string | null
           briefing_read_at: string | null
           briefing_read_by: string | null
+          cancellation_note: string | null
           cancellation_reason: string | null
           channel_type: string | null
           client_ip_address: string | null
@@ -72,6 +73,7 @@ export type Database = {
           briefing?: string | null
           briefing_read_at?: string | null
           briefing_read_by?: string | null
+          cancellation_note?: string | null
           cancellation_reason?: string | null
           channel_type?: string | null
           client_ip_address?: string | null
@@ -124,6 +126,7 @@ export type Database = {
           briefing?: string | null
           briefing_read_at?: string | null
           briefing_read_by?: string | null
+          cancellation_note?: string | null
           cancellation_reason?: string | null
           channel_type?: string | null
           client_ip_address?: string | null

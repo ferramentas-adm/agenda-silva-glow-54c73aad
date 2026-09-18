@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { Textarea } from "@/components/ui/textarea";
 
 /** Motivos padrão de não comparecimento (editáveis em Admin > + Listas). */
 export const DEFAULT_NO_SHOW_REASONS = [
   "No-show",
   "Cancelou por imprevisto pessoal",
   "Cancelou por desistência",
+  "Não acompanhado pelo SDR",
   "Sem closer disponível",
   "Alterou horário para o mesmo dia",
 ];
@@ -18,7 +20,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leadName?: string;
-  onConfirm: (reason: string) => Promise<void> | void;
+  onConfirm: (reason: string, note?: string) => Promise<void> | void;
   loading?: boolean;
 }
 
@@ -30,11 +32,13 @@ interface Props {
 export default function NaoCompareceuDialog({ open, onOpenChange, leadName, onConfirm, loading }: Props) {
   const { items, isLoading } = useAppSettingList(APP_SETTING_KEYS.no_show_reasons, DEFAULT_NO_SHOW_REASONS);
   const [option, setOption] = useState("");
+  const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setOption("");
+      setNote("");
       setError(null);
     }
   }, [open]);
@@ -44,7 +48,7 @@ export default function NaoCompareceuDialog({ open, onOpenChange, leadName, onCo
       setError("Selecione o motivo do não comparecimento.");
       return;
     }
-    await onConfirm(option);
+    await onConfirm(option, note.trim() || undefined);
   };
 
   const canSubmit = !!option;
@@ -72,6 +76,16 @@ export default function NaoCompareceuDialog({ open, onOpenChange, leadName, onCo
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="no-show-note">Justificativa (opcional)</Label>
+            <Textarea
+              id="no-show-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Detalhe o que o lead informou (enriquecimento de dados)"
+              rows={3}
+            />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
