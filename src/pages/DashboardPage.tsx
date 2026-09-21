@@ -2220,7 +2220,45 @@ export function CalendarContent() {
           setSavingBriefing(false);
         }}
         saving={savingBriefing}
+        // SDR só edita/remove o briefing original da reunião que ele mesmo criou;
+        // nas reuniões de outros SDRs ele acrescenta comentários.
+        canEditOriginal={
+          role !== "sdr" ||
+          detailAg?.created_by === user?.id ||
+          (detailAg as any)?.sdr_responsavel_id === user?.id
+        }
+        comments={briefingThread.comments}
+        authorNameById={profilesMap}
+        currentUserId={user?.id ?? null}
+        canManageAllComments={isAdminLike}
+        canAddComment={!!detailAg}
+        onAddComment={async (textoComentario) => {
+          if (!detailAg) return;
+          try {
+            await briefingThread.add.mutateAsync(textoComentario);
+            toast.success("Comentário adicionado!");
+          } catch (err: any) {
+            toast.error(err.message || "Erro ao adicionar comentário");
+          }
+        }}
+        onEditComment={async (id, textoComentario) => {
+          try {
+            await briefingThread.edit.mutateAsync({ id, content: textoComentario });
+            toast.success("Comentário atualizado!");
+          } catch (err: any) {
+            toast.error(err.message || "Erro ao editar comentário");
+          }
+        }}
+        onRemoveComment={async (id) => {
+          try {
+            await briefingThread.remove.mutateAsync(id);
+            toast.success("Comentário removido!");
+          } catch (err: any) {
+            toast.error(err.message || "Erro ao remover comentário");
+          }
+        }}
       />
+
 
       {vendaDialogAg && (
         <VendaDialog
