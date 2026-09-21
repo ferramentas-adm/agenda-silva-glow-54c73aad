@@ -150,7 +150,10 @@ export default function GestorVendaDialog({
   const bumpsTotal = orderBumpsTotal(orderBumps);
   const valorTotalProjeto = valorValido ? valorNum + bumpsTotal : 0;
   const canSubmit =
-    valorValido && !!vendaOrigem && (produtosList.length === 0 || !!produto);
+    valorValido &&
+    !!vendaOrigem &&
+    (produtosList.length === 0 || !!produto) &&
+    (!closerTrocado || closerJust.trim().length >= CLOSER_JUST_MIN);
 
   const fetchWebhookMeta = async () => {
     const { data: agData } = await supabase
