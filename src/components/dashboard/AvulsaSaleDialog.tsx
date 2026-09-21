@@ -471,7 +471,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
             </div>
 
             <div className="grid gap-2">
-              <Label>Closer *</Label>
+              <Label>Closer que fechou a venda *</Label>
               <Select value={closerId} onValueChange={setCloserId}>
                 <SelectTrigger><SelectValue placeholder="Selecione o closer" /></SelectTrigger>
                 <SelectContent>
@@ -480,6 +480,9 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Pode ser diferente do closer da reunião — troque se outro closer fechou.
+              </p>
             </div>
           </div>
 

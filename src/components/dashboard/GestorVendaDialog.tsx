@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, DollarSign, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,6 +68,30 @@ export default function GestorVendaDialog({
   const [removing, setRemoving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [existing, setExisting] = useState<any | null>(null);
+  // Closer creditado pela venda — pode ser diferente do closer da reunião
+  // (ex.: outro closer ligou depois e fechou na ligação).
+  const [closerOriginalId, setCloserOriginalId] = useState<string | null>(null);
+  const [closerId, setCloserId] = useState("");
+  const [closerJust, setCloserJust] = useState("");
+
+  const { data: closers = [] } = useQuery({
+    queryKey: ["gestor-venda-closers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("closers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+  const closerNameById = useMemo(
+    () => new Map(closers.map((c) => [c.id, c.name])),
+    [closers],
+  );
+  const closerTrocado = !!closerId && closerId !== closerOriginalId;
+  const CLOSER_JUST_MIN = 20;
 
   const hasVenda = existing?.vendeu === true;
 
@@ -75,6 +101,9 @@ export default function GestorVendaDialog({
     setVendaOrigem(null);
     setOrderBumps([]);
     setExisting(null);
+    setCloserOriginalId(null);
+    setCloserId("");
+    setCloserJust("");
   };
 
   useEffect(() => {
@@ -86,6 +115,13 @@ export default function GestorVendaDialog({
     reset();
     (async () => {
       setLoadingExisting(true);
+      const { data: agRow } = await supabase
+        .from("agendamentos")
+        .select("closer_id")
+        .eq("id", agendamentoId)
+        .maybeSingle();
+      setCloserOriginalId(agRow?.closer_id ?? null);
+      setCloserId(agRow?.closer_id ?? "");
       const { data } = await supabase
         .from("vendas")
         .select("*")
@@ -114,7 +150,10 @@ export default function GestorVendaDialog({
   const bumpsTotal = orderBumpsTotal(orderBumps);
   const valorTotalProjeto = valorValido ? valorNum + bumpsTotal : 0;
   const canSubmit =
-    valorValido && !!vendaOrigem && (produtosList.length === 0 || !!produto);
+    valorValido &&
+    !!vendaOrigem &&
+    (produtosList.length === 0 || !!produto) &&
+    (!closerTrocado || closerJust.trim().length >= CLOSER_JUST_MIN);
 
   const fetchWebhookMeta = async () => {
     const { data: agData } = await supabase
@@ -144,6 +183,32 @@ export default function GestorVendaDialog({
       const statusAntes =
         (existing as any)?.status_antes_venda ??
         (currentStatus && currentStatus !== "realizada" ? currentStatus : null);
+
+      // Troca do closer creditado antes de gravar a venda.
+      if (closerTrocado) {
+        const { data: reassigned, error: reassignError } = await supabase.rpc(
+          "reassign_agendamento_closer_for_result" as any,
+          { _agendamento_id: agendamentoId, _new_closer_id: closerId } as any,
+        );
+        if (reassignError) throw reassignError;
+        if (reassigned === false) {
+          throw new Error(
+            "Não foi possível transferir o crédito da venda para o closer escolhido.",
+          );
+        }
+        await logAudit("venda_closer_trocado", "venda", agendamentoId, {
+          lead_name: leadName,
+          closer_anterior: closerOriginalId
+            ? closerNameById.get(closerOriginalId) ?? closerOriginalId
+            : null,
+          closer_novo: closerNameById.get(closerId) ?? closerId,
+          closer_anterior_id: closerOriginalId,
+          closer_novo_id: closerId,
+          justificativa: closerJust.trim(),
+        });
+        setCloserOriginalId(closerId);
+      }
+
 
       if (existing) {
         const { error: vendaError } = await supabase
@@ -218,6 +283,8 @@ export default function GestorVendaDialog({
         venda_origem: vendaOrigem,
         status_antes_venda: statusAntes,
         order_bumps: orderBumps,
+        closer_id: closerId || null,
+        closer_nome: closerId ? closerNameById.get(closerId) ?? null : null,
       });
 
       toast.success("Venda lançada!");
@@ -303,6 +370,55 @@ export default function GestorVendaDialog({
           {existing?.vendeu_closer === true && !hasVenda && (
             <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-muted-foreground">
               O closer indicou que houve venda nesta reunião.
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Closer que fechou a venda *</Label>
+            <Select value={closerId} onValueChange={setCloserId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o closer" />
+              </SelectTrigger>
+              <SelectContent>
+                {closers.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Pode ser diferente do closer da reunião — ex.: outro closer ligou depois e fechou.
+            </p>
+          </div>
+
+          {closerTrocado && (
+            <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                O crédito desta venda passa para{" "}
+                <strong>{closerNameById.get(closerId) ?? "—"}</strong>. A reunião continua
+                registrada com{" "}
+                <strong>
+                  {closerOriginalId ? closerNameById.get(closerOriginalId) ?? "—" : "sem closer"}
+                </strong>
+                .
+              </p>
+              <Label className="text-xs">
+                Justifique a troca (mínimo {CLOSER_JUST_MIN} caracteres) *
+              </Label>
+              <Textarea
+                value={closerJust}
+                onChange={(e) => setCloserJust(e.target.value)}
+                placeholder="Ex.: fechou por ligação depois da reunião."
+                rows={2}
+              />
+              <p
+                className={`text-xs ${
+                  closerJust.trim().length >= CLOSER_JUST_MIN
+                    ? "text-emerald-500"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {closerJust.trim().length}/{CLOSER_JUST_MIN} caracteres
+              </p>
             </div>
           )}
 
