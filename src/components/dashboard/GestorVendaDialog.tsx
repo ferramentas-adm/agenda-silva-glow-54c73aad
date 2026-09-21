@@ -184,6 +184,32 @@ export default function GestorVendaDialog({
         (existing as any)?.status_antes_venda ??
         (currentStatus && currentStatus !== "realizada" ? currentStatus : null);
 
+      // Troca do closer creditado antes de gravar a venda.
+      if (closerTrocado) {
+        const { data: reassigned, error: reassignError } = await supabase.rpc(
+          "reassign_agendamento_closer_for_result" as any,
+          { _agendamento_id: agendamentoId, _new_closer_id: closerId } as any,
+        );
+        if (reassignError) throw reassignError;
+        if (reassigned === false) {
+          throw new Error(
+            "Não foi possível transferir o crédito da venda para o closer escolhido.",
+          );
+        }
+        await logAudit("venda_closer_trocado", "venda", agendamentoId, {
+          lead_name: leadName,
+          closer_anterior: closerOriginalId
+            ? closerNameById.get(closerOriginalId) ?? closerOriginalId
+            : null,
+          closer_novo: closerNameById.get(closerId) ?? closerId,
+          closer_anterior_id: closerOriginalId,
+          closer_novo_id: closerId,
+          justificativa: closerJust.trim(),
+        });
+        setCloserOriginalId(closerId);
+      }
+
+
       if (existing) {
         const { error: vendaError } = await supabase
           .from("vendas")
