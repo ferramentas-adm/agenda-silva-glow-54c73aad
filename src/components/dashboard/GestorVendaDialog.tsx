@@ -373,6 +373,55 @@ export default function GestorVendaDialog({
             </div>
           )}
 
+          <div className="space-y-1.5">
+            <Label>Closer que fechou a venda *</Label>
+            <Select value={closerId} onValueChange={setCloserId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o closer" />
+              </SelectTrigger>
+              <SelectContent>
+                {closers.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Pode ser diferente do closer da reunião — ex.: outro closer ligou depois e fechou.
+            </p>
+          </div>
+
+          {closerTrocado && (
+            <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                O crédito desta venda passa para{" "}
+                <strong>{closerNameById.get(closerId) ?? "—"}</strong>. A reunião continua
+                registrada com{" "}
+                <strong>
+                  {closerOriginalId ? closerNameById.get(closerOriginalId) ?? "—" : "sem closer"}
+                </strong>
+                .
+              </p>
+              <Label className="text-xs">
+                Justifique a troca (mínimo {CLOSER_JUST_MIN} caracteres) *
+              </Label>
+              <Textarea
+                value={closerJust}
+                onChange={(e) => setCloserJust(e.target.value)}
+                placeholder="Ex.: fechou por ligação depois da reunião."
+                rows={2}
+              />
+              <p
+                className={`text-xs ${
+                  closerJust.trim().length >= CLOSER_JUST_MIN
+                    ? "text-emerald-500"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {closerJust.trim().length}/{CLOSER_JUST_MIN} caracteres
+              </p>
+            </div>
+          )}
+
           {produtosList.length > 0 && (
             <div className="space-y-1.5">
               <Label>Produto *</Label>
