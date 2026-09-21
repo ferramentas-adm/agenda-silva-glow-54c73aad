@@ -118,14 +118,21 @@ Deno.serve(async (req) => {
     };
   });
 
+  // sem_link=1 devolve só reuniões ativas com closer e sem link do Meet (auditoria).
+  const somenteSemLink = ["1", "true", "sim"].includes((url.searchParams.get("sem_link") ?? "").toLowerCase());
+  const lista = somenteSemLink
+    ? reunioes.filter((r) => r.closer && !r.link_reuniao && !["cancelada", "reagendada"].includes(String(r.status)))
+    : reunioes;
+
   return new Response(
     JSON.stringify({
-      count: reunioes.length,
+      count: lista.length,
       since_used: since,
       canceladas_automaticas_ocultadas: ocultadas,
       mostrar_tudo: mostrarTudo,
+      sem_link: somenteSemLink,
       sincronizado_em: new Date().toISOString(),
-      reunioes,
+      reunioes: lista,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
