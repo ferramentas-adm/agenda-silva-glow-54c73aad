@@ -1855,7 +1855,24 @@ export function CalendarContent() {
                           </Button>
                         )}
 
-                        {role !== "sdr" && detailAg.status !== "realizada" && (
+                        {/* Em call — sinaliza que o lead realmente entrou na reunião.
+                            Não dispara nenhuma mensagem ao lead. Visível para SDR e gestores. */}
+                        {role !== "closer" &&
+                          ["agendada", "confirmada", "nao_confirmada", "pendente"].includes(detailAg.status) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 text-xs border-violet-500/30 text-violet-500 hover:bg-violet-500/10"
+                            disabled={updatingStatus}
+                            onClick={() => handleStatusChange("em_call" as any)}
+                          >
+                            <Video className="h-3.5 w-3.5" />Em call
+                          </Button>
+                        )}
+
+                        {/* Realizada — closers e gestores sempre; SDR só quando a reunião está "Em call". */}
+                        {detailAg.status !== "realizada" &&
+                          (role !== "sdr" || detailAg.status === "em_call") && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10" disabled={updatingStatus} onClick={() => handleStatusChange("realizada")}>
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
@@ -1863,22 +1880,20 @@ export function CalendarContent() {
                         {/* Não compareceu — substitui Cancelar / No-show / Reagendar.
                             Alterações de horário passam por aqui (motivo
                             "Alterou horário para o mesmo dia") + novo agendamento.
-                            - SDR: vê quando é o criador do agendamento
+                            - SDR: sempre (inclusive em reunião de outro SDR), exceto quando já está "Em call"
                             - Closer: vê apenas se for o criador
                             - Gestor / Moderador / Supervisor: sempre veem */}
                         {(() => {
-                          const isOwnerSDR =
-                            role === "sdr" &&
-                            (detailAg.sdr_responsavel_id === user?.id ||
-                              detailAg.created_by === user?.id);
                           const canSeeNoShow =
                             role === "gestor" ||
                             (role === "moderador" || role === "apresentador") ||
                             role === "supervisor" ||
-                            isOwnerSDR ||
+                            role === "sdr" ||
                             (role === "closer" && detailAg.created_by === user?.id);
                           if (!canSeeNoShow) return null;
                           if (detailAg.status === "no_show") return null;
+                          // Reunião em call: o único desfecho do SDR é "Realizada".
+                          if (role === "sdr" && detailAg.status === "em_call") return null;
                           return (
                             <Button
                               variant="outline"
@@ -1893,6 +1908,7 @@ export function CalendarContent() {
                         })()}
 
                       </div>
+
                   </>
                 </div>
               )}
