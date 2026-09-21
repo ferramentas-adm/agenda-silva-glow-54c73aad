@@ -20,11 +20,13 @@ export const AGENDA_TOTAL_STATUSES = [
   "agendada",
   "pendente",
   "confirmada",
+  "em_call",
   "realizada",
   "cancelada",
   "no_show",
   "reagendada",
 ] as const;
+
 
 export interface AgendaMetricInput {
   id: string;
