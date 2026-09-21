@@ -141,6 +141,13 @@
       "when": 1790029867805,
       "tag": "0019_create_agendamento_briefings",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790029922203,
+      "tag": "0020_managers_update_briefing_comments",
+      "breakpoints": true
     }
   ]
 }
