@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-api-key, x-client-info, apikey, content-type',
 };
 
+// Guarda o erro real do Google no refresh para virar rastro na auditoria.
+let lastRefreshError: string | null = null;
+
 async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -17,11 +20,13 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
       grant_type: 'refresh_token',
     }),
   });
-  const data = await res.json();
-  if (!res.ok || !data.access_token) {
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.access_token) {
+    lastRefreshError = `refresh_token [${res.status}]: ${JSON.stringify(data)}`;
     console.error('Token refresh failed:', data);
     return null;
   }
+  lastRefreshError = null;
   return { access_token: data.access_token, expires_in: data.expires_in };
 }
 
