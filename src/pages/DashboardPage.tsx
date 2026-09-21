@@ -139,6 +139,7 @@ function getCloserColor(closerId: string, closerIndex: number) {
 const STATUS_BADGE_COLORS: Record<string, string> = {
   agendada: "bg-blue-500/20 text-blue-400",
   confirmada: "bg-primary/20 text-primary",
+  em_call: "bg-violet-500/20 text-violet-400",
   realizada: "bg-emerald-500/20 text-emerald-400",
   cancelada: "bg-destructive/20 text-destructive",
   no_show: "bg-orange-500/20 text-orange-400",
@@ -150,11 +151,13 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   agendada: "Agendado",
   confirmada: "Confirmada",
+  em_call: "Em call",
   realizada: "Realizada",
   cancelada: "Cancelada",
   no_show: "Não compareceu",
   reagendada: "Reagendada",
 };
+
 
 
 const CANCELLED_STATUSES = ["cancelada", "no_show"];
