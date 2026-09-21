@@ -246,9 +246,12 @@ Deno.serve(async (req) => {
     const overbookingNumber = sdrIaOverbookingPosition(info.count, info.capacity);
     if (overbookingNumber > 0) obsParts.push(`Overbooking: extra ${overbookingNumber}/3`);
 
-    // 7) Com closer, cria Calendar/Meet pelo mesmo fluxo do painel (best effort).
+    // 7) Com closer, cria Calendar/Meet pelo mesmo fluxo do painel.
+    // Falha nunca é silenciosa: o motivo real do Google vai para agendamentos.meet_error,
+    // para o audit log e para a resposta desta rota.
     let meetLink: string | null = null;
     let googleEventId: string | null = null;
+    let meetErro: string | null = null;
     if (requestedCloserId) {
       try {
         const functionUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-create-event`;
@@ -272,13 +275,23 @@ Deno.serve(async (req) => {
         if (meetRes.ok && meetBody?.success) {
           meetLink = meetBody.meet_link ?? null;
           googleEventId = meetBody.event_id ?? null;
-        } else {
-          console.error("google-create-event failed", meetRes.status, meetBody);
+        }
+        if (!meetLink) {
+          const partes = [
+            meetBody?.error ? `erro=${meetBody.error}` : `http=${meetRes.status}`,
+            meetBody?.motivo ?? null,
+            meetBody?.closer_email ? `closer=${meetBody.closer_email}` : null,
+            meetBody?.details ? `google=${String(meetBody.details).slice(0, 800)}` : null,
+          ].filter(Boolean);
+          meetErro = partes.join(" | ");
+          console.error("google-create-event sem link", meetRes.status, meetErro);
         }
       } catch (meetError) {
+        meetErro = `erro=chamada_falhou | ${errorDetail(meetError)}`;
         console.error("google-create-event unexpected error", meetError);
       }
     }
+
 
     // 8) INSERT (mesmos campos da tela; triggers de CRM/CAPI/fila disparam sozinhos)
     const insert = {
