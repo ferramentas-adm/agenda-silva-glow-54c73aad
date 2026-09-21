@@ -45,6 +45,7 @@ const ACTION_LABELS: Record<string, string> = {
 
   // Vendas / Follow-ups
   venda_registrada: "Registrou venda",
+  venda_closer_trocado: "Trocou o closer creditado pela venda",
   follow_up_atualizado: "Atualizou follow-up",
   follow_up_editado: "Editou follow-up",
   follow_up_removido: "Removeu follow-up",
