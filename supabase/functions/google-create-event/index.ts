@@ -346,10 +346,11 @@ serve(async (req) => {
 
     if (!calRes.ok) {
       const errBody = await calRes.text();
-      console.error('Google Calendar create event error:', calRes.status, errBody);
-      return new Response(JSON.stringify({ success: false, error: 'calendar_api_error', details: errBody }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return await failure(
+        'calendar_api_error',
+        `[${calRes.status}] ${errBody}`,
+        `Google recusou criar o evento na agenda de ${closerName ?? 'closer'} (${closerEmail ?? 'sem e-mail'})`,
+      );
     }
 
     const calData = await calRes.json();
@@ -359,6 +360,14 @@ serve(async (req) => {
       )?.uri
       || calData.hangoutLink
       || null;
+
+    // Evento criado, mas sem link: também é falha e precisa de rastro.
+    if (!meetLink) {
+      await logMeetFailure(
+        'sem_link_no_evento',
+        `evento ${calData.id ?? '?'} criado sem conferenceData/hangoutLink`,
+      );
+    }
 
     // Auditoria do piloto: registra se o agendamento saiu no modo automático
     // ou caiu no fallback, para medir a taxa de sucesso.
