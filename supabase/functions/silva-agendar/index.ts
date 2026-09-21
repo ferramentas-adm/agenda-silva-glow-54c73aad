@@ -346,8 +346,31 @@ Deno.serve(async (req) => {
          closer_sugerido: fallbackSuggestedName, crm_lead_id: b.crm_lead_id ?? null,
         crm_conversation_id: b.crm_conversation_id ?? null,
          overbooking_extra: overbookingNumber || null,
+        meet_link: meetLink,
+        meet_erro: meetErro,
       },
     });
+
+    // 9b) Reunião com closer mas sem link: linha própria no histórico, com o erro do Google.
+    if (requestedCloserId && !meetLink) {
+      await supabase.from("audit_logs").insert({
+        user_id: sdrProfile.user_id,
+        user_name: sdrProfile.full_name,
+        user_email: SDR_IA_EMAIL,
+        action: "agendamento_sem_link_meet",
+        entity_type: "agendamento",
+        entity_id: created.id,
+        details: {
+          lead_name: created.lead_name,
+          closer_id: requestedCloserId,
+          closer_name: assignedCloserName ?? "",
+          scheduled_date: dateStr,
+          scheduled_time: timeStr,
+          erro_google: meetErro,
+          via: "silva-agendar",
+        },
+      });
+    }
 
     // 10) Tag "agendamento" no CRM (best effort) + vínculo da conversa
     let tag: string = "skipped";
