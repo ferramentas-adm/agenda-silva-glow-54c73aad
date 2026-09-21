@@ -45,6 +45,7 @@
                 "confirmada",
                 "agendada",
                 "nao_confirmada",
+                "em_call",
                 "realizada",
                 "cancelada",
                 "no_show"
