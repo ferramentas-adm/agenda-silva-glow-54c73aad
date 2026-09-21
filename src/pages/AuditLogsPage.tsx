@@ -599,6 +599,10 @@ function formatDetails(log: AuditLog): string {
     parts.push(`Status: ${STATUS_LABELS_DETAIL[String(d.status)] || d.status}`);
   }
   if (d.reason) parts.push(`Motivo: ${d.reason}`);
+  if (d.comentario) parts.push(`Comentário: ${d.comentario}`);
+  if (d.closer_email) parts.push(`E-mail do closer: ${d.closer_email}`);
+  if (d.erro_google) parts.push(`Erro do Google: ${d.erro_google}`);
+
   if (d.description) parts.push(`Descrição: ${d.description}`);
   if (d.name) parts.push(`Nome: ${d.name}`);
   if (d.role) parts.push(`Função: ${d.role}`);
