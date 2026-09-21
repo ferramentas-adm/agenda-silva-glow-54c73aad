@@ -286,12 +286,6 @@ serve(async (req) => {
     let autoSpace: { uri: string; transcription: boolean } | null = null;
     let autoRecordingMode: 'auto' | 'fallback' | 'off' = 'off';
 
-    const { data: closerRow } = await supabaseAdmin
-      .from('closers')
-      .select('auto_recording_enabled')
-      .eq('id', closer_id)
-      .maybeSingle();
-
     if (closerRow?.auto_recording_enabled === true) {
       const scopes = (tokenData.granted_scopes ?? '') as string;
       if (scopes.includes(MEET_SPACE_SCOPE)) {
