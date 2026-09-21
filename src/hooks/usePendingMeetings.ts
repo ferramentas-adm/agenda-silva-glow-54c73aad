@@ -55,7 +55,7 @@ export function usePendingMeetings() {
         .is("deleted_at", null)
         .lt("scheduled_date", today)
         // "pendente" (Aguardando atribuição) é responsabilidade de gestores — fora daqui.
-        .in("status", ["agendada", "confirmada", "nao_confirmada"])
+        .in("status", ["agendada", "confirmada", "nao_confirmada", "em_call"])
         .order("scheduled_date", { ascending: false })
         .order("scheduled_time", { ascending: true });
 

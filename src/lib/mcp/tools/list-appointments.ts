@@ -12,7 +12,7 @@ export default defineTool({
     from_date: z.string().optional().describe("Data inicial (YYYY-MM-DD). Padrão: hoje."),
     to_date: z.string().optional().describe("Data final (YYYY-MM-DD, inclusiva). Padrão: 30 dias após from_date."),
     status: z
-      .enum(["pendente", "confirmada", "agendada", "nao_confirmada", "realizada", "cancelada", "no_show"])
+      .enum(["pendente", "confirmada", "agendada", "nao_confirmada", "em_call", "realizada", "cancelada", "no_show"])
       .optional()
       .describe("Filtrar por status."),
     closer_name: z.string().optional().describe("Filtrar por nome do closer (match parcial)."),
