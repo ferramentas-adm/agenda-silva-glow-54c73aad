@@ -115,6 +115,13 @@ export default function GestorVendaDialog({
     reset();
     (async () => {
       setLoadingExisting(true);
+      const { data: agRow } = await supabase
+        .from("agendamentos")
+        .select("closer_id")
+        .eq("id", agendamentoId)
+        .maybeSingle();
+      setCloserOriginalId(agRow?.closer_id ?? null);
+      setCloserId(agRow?.closer_id ?? "");
       const { data } = await supabase
         .from("vendas")
         .select("*")
