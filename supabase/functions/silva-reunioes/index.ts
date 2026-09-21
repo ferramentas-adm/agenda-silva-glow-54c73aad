@@ -108,7 +108,12 @@ Deno.serve(async (req) => {
       channel_type: a.channel_type ?? null,
       lembrete_video_enviado: a.lembrete_video_enviado ?? null,
       motivo_cancelamento: a.cancellation_reason ?? null,
+      justificativa_cancelamento: a.cancellation_note ?? null,
       cancelamento_automatico: isRuido(a),
+      // Auditoria do Meet: link e, quando faltar, o motivo real da falha.
+      link_reuniao: a.meet_link ?? null,
+      link_erro: a.meet_link ? null : (a.meet_error ?? null),
+      google_event_id: a.google_event_id ?? null,
       agendamento_id: a.id,
     };
   });
