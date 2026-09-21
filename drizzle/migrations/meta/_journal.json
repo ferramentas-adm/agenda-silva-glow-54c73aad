@@ -134,6 +134,13 @@
       "when": 1790029826972,
       "tag": "0018_add_em_call_status",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790029867805,
+      "tag": "0019_create_agendamento_briefings",
+      "breakpoints": true
     }
   ]
 }
