@@ -677,6 +677,11 @@ export function CalendarContent() {
     return false;
   }, [detailAg, role, user?.id]);
 
+  // Comentários/briefings adicionais da reunião aberta.
+  const briefingThread = useBriefingComments(detailAg?.id ?? null);
+
+
+
   // Quem pode TRANSFERIR o lead para outro closer:
   // - gestor / supervisor: sempre
   // - moderador: qualquer tipo
