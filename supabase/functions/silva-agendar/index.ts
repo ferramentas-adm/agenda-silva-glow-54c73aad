@@ -72,6 +72,11 @@ async function toResponse(supabase: ReturnType<typeof createClient>, a: Record<s
     status: a.status,
     closer: closerName,
     link_reuniao: a.meet_link ?? null,
+    // Quando a reunião nasce sem link, o motivo real do Google vem aqui.
+    link_erro: a.meet_link ? null : ((a.meet_error as string | null) ?? null),
+    aviso: a.closer_id && !a.meet_link
+      ? "Reunião criada SEM link do Meet. Trate manualmente ou remarque com outro closer."
+      : null,
     fila_atribuicao: !a.closer_id,
     lead: { nome: a.lead_name, whatsapp: a.lead_phone },
     canal_agendamento: a.booking_channel,
