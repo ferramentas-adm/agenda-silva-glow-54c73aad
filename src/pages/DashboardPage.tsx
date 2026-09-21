@@ -16,6 +16,8 @@ import { FunilFilter } from "@/components/calendar/FunilFilter";
 import { isDiretor, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
 import { linkifyText } from "@/lib/linkify";
 import BriefingDrawer from "@/components/BriefingDrawer";
+import { useBriefingComments } from "@/hooks/useBriefingComments";
+
 import { useCloserFilter } from "@/hooks/useCloserFilter";
 import { GoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Skeleton } from "@/components/ui/skeleton";
