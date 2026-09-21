@@ -60,7 +60,8 @@ Deno.serve(async (req) => {
     .select(`
       id, lead_name, lead_phone, scheduled_date, scheduled_time, status,
       is_venda_avulsa, is_5k, meeting_reason, channel_type,
-      lembrete_video_enviado, cancellation_reason, observation,
+      lembrete_video_enviado, cancellation_reason, cancellation_note, observation,
+      meet_link, google_event_id, meet_error,
       closers ( id, name, email )
     `)
     .gte("scheduled_date", since)
