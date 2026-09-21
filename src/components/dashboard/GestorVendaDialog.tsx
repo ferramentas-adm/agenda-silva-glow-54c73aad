@@ -283,6 +283,8 @@ export default function GestorVendaDialog({
         venda_origem: vendaOrigem,
         status_antes_venda: statusAntes,
         order_bumps: orderBumps,
+        closer_id: closerId || null,
+        closer_nome: closerId ? closerNameById.get(closerId) ?? null : null,
       });
 
       toast.success("Venda lançada!");
