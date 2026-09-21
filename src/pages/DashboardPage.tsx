@@ -635,10 +635,12 @@ export function CalendarContent() {
   const canChangeStatus = useMemo(() => {
     if (!detailAg) return false;
     if (role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor") return true;
-    if (role === "sdr") return detailAg.created_by === user?.id || (detailAg as any).sdr_responsavel_id === user?.id;
+    // SDR pode atualizar o status de qualquer reunião (inclusive de outro SDR).
+    if (role === "sdr") return true;
     if (role === "closer") return myCloserId !== null && detailAg.closer_id === myCloserId;
     return false;
   }, [detailAg, role, user?.id, myCloserId]);
+
 
   // Tipo do moderador (sdr | closer | null) — somente "Moderador de SDR" pode transferir agendas.
   const { data: moderadorTipo = null } = useQuery({
