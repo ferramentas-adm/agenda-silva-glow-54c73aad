@@ -36,6 +36,13 @@ const ACTION_LABELS: Record<string, string> = {
   read_briefing: "Leu briefing",
   edit_briefing: "Adicionou/editou briefing",
   remove_briefing: "Removeu briefing",
+  add_briefing_comment: "Adicionou comentário no briefing",
+  edit_briefing_comment: "Editou comentário do briefing",
+  remove_briefing_comment: "Removeu comentário do briefing",
+  assign_closer: "Atribuiu closer",
+  meet_link_falhou: "Falha ao criar link do Meet",
+  agendamento_sem_link_meet: "Agendamento sem link do Meet",
+
   // Vendas / Follow-ups
   venda_registrada: "Registrou venda",
   follow_up_atualizado: "Atualizou follow-up",
@@ -515,6 +522,7 @@ export default function AuditLogsPage() {
 
 const STATUS_LABELS_AG: Record<string, string> = {
   confirmada: "Confirmada",
+  em_call: "Em call",
   realizada: "Realizada",
   cancelada: "Cancelada",
   no_show: "Não compareceu",
@@ -524,12 +532,15 @@ const STATUS_LABELS_AG: Record<string, string> = {
 const STATUS_LABELS_DETAIL: Record<string, string> = {
   pendente: "Pendente",
   confirmada: "Confirmada",
+  agendada: "Agendado",
+  em_call: "Em call",
   realizada: "Realizada",
   cancelada: "Cancelada",
   no_show: "Não compareceu",
   reagendada: "Reagendada",
   nao_confirmada: "Não confirmada",
 };
+
 
 const FIELD_LABELS: Record<string, string> = {
   closer_id: "Closer",
@@ -588,6 +599,10 @@ function formatDetails(log: AuditLog): string {
     parts.push(`Status: ${STATUS_LABELS_DETAIL[String(d.status)] || d.status}`);
   }
   if (d.reason) parts.push(`Motivo: ${d.reason}`);
+  if (d.comentario) parts.push(`Comentário: ${d.comentario}`);
+  if (d.closer_email) parts.push(`E-mail do closer: ${d.closer_email}`);
+  if (d.erro_google) parts.push(`Erro do Google: ${d.erro_google}`);
+
   if (d.description) parts.push(`Descrição: ${d.description}`);
   if (d.name) parts.push(`Nome: ${d.name}`);
   if (d.role) parts.push(`Função: ${d.role}`);

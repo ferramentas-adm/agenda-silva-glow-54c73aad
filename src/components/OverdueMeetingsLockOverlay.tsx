@@ -41,6 +41,7 @@ const STATUS_LABEL: Record<string, string> = {
   agendada: "Sem confirmar",
   confirmada: "Confirmada",
   nao_confirmada: "Não confirmada",
+  em_call: "Em call",
   realizada: "Realizada",
 };
 

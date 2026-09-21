@@ -92,7 +92,7 @@ export function useOverdueMeetings() {
         // exclusiva de gestores/moderadores atribuir o closer.
         // "realizada" entra apenas para o Closer, quando o resultado da venda
         // ainda não foi lançado (ver filtro abaixo).
-        .in("status", ["agendada", "confirmada", "nao_confirmada", "realizada"])
+        .in("status", ["agendada", "confirmada", "nao_confirmada", "em_call", "realizada"])
         .lte("scheduled_date", today)
         .order("scheduled_date", { ascending: true })
         .order("scheduled_time", { ascending: true });

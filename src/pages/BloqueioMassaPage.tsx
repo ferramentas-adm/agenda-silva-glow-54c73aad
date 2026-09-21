@@ -266,7 +266,7 @@ export default function BloqueioMassaPage() {
           .select("scheduled_date, scheduled_time, duration_minutes")
           .in("closer_id", selected)
           .is("deleted_at", null)
-          .in("status", ["pendente", "confirmada", "nao_confirmada", "agendada", "realizada"]);
+          .in("status", ["pendente", "confirmada", "nao_confirmada", "em_call", "agendada", "realizada"]);
         if (mode === "pontual") {
           mq = mq.eq("scheduled_date", pickedDateToYMD(date!));
         } else if (mode === "periodo") {

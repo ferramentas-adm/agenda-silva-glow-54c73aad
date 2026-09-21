@@ -42,6 +42,8 @@ import { Label } from "@/components/ui/label";
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   agendada: { label: "Agendado", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   confirmada: { label: "Confirmada", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+  em_call: { label: "Em call", color: "bg-violet-500/20 text-violet-400 border-violet-500/30" },
+
   realizada: { label: "Realizada", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   cancelada: { label: "Cancelada", color: "bg-red-500/20 text-red-400 border-red-500/30" },
   reagendada: { label: "Reagendada", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
