@@ -515,6 +515,7 @@ export default function AuditLogsPage() {
 
 const STATUS_LABELS_AG: Record<string, string> = {
   confirmada: "Confirmada",
+  em_call: "Em call",
   realizada: "Realizada",
   cancelada: "Cancelada",
   no_show: "Não compareceu",
@@ -524,12 +525,15 @@ const STATUS_LABELS_AG: Record<string, string> = {
 const STATUS_LABELS_DETAIL: Record<string, string> = {
   pendente: "Pendente",
   confirmada: "Confirmada",
+  agendada: "Agendado",
+  em_call: "Em call",
   realizada: "Realizada",
   cancelada: "Cancelada",
   no_show: "Não compareceu",
   reagendada: "Reagendada",
   nao_confirmada: "Não confirmada",
 };
+
 
 const FIELD_LABELS: Record<string, string> = {
   closer_id: "Closer",
