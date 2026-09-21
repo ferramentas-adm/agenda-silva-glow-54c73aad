@@ -168,6 +168,65 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    // Dados do closer (e-mail entra no rastro de erro) + flag do piloto de gravação.
+    const { data: closerRow } = await supabaseAdmin
+      .from('closers')
+      .select('name, email, auto_recording_enabled')
+      .eq('id', closer_id)
+      .maybeSingle();
+    const closerEmail: string | null = closerRow?.email ?? null;
+    const closerName: string | null = closerRow?.name ?? null;
+
+    // Nunca falhar em silêncio: toda falha do Calendar/Meet vira linha no audit log.
+    async function logMeetFailure(motivo: string, erroGoogle: string | null) {
+      console.error('[meet] falha ao criar evento/link', { motivo, closer_id, closerEmail, erroGoogle });
+      try {
+        let userId = callerClaims?.sub as string | undefined;
+        let email = callerClaims?.email as string | undefined;
+        if (isInternalSdrRequest) {
+          const { data: sdrProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('user_id, email')
+            .eq('email', 'joao.amorim.ia@ogruposilva.com.br')
+            .maybeSingle();
+          userId = sdrProfile?.user_id ?? userId;
+          email = sdrProfile?.email ?? email;
+        }
+        await supabaseAdmin.from('audit_logs').insert({
+          user_id: userId ?? '00000000-0000-0000-0000-000000000000',
+          user_name: email ?? (isInternalSdrRequest ? 'João Amorim' : 'Sistema'),
+          user_email: email ?? null,
+          action: 'meet_link_falhou',
+          entity_type: 'agendamento',
+          entity_id: null,
+          details: {
+            lead_name,
+            closer_id,
+            closer_name: closerName,
+            closer_email: closerEmail,
+            scheduled_date,
+            scheduled_time,
+            motivo,
+            erro_google: erroGoogle,
+          },
+        });
+      } catch (logErr) {
+        console.error('[meet] falha ao registrar auditoria da falha:', logErr);
+      }
+    }
+
+    const failure = async (error: string, details: string | null, motivoLegivel: string) => {
+      await logMeetFailure(error, details);
+      return new Response(JSON.stringify({
+        success: false,
+        error,
+        details,
+        motivo: motivoLegivel,
+        closer_email: closerEmail,
+        closer_name: closerName,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    };
+
     // Get token for closer
     const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('closer_google_tokens')
@@ -176,9 +235,11 @@ serve(async (req) => {
       .single();
 
     if (tokenError || !tokenData) {
-      return new Response(JSON.stringify({ success: false, error: 'google_not_connected' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return await failure(
+        'google_not_connected',
+        tokenError?.message ?? 'nenhum token do Google salvo para este closer',
+        `Agenda Google de ${closerName ?? 'closer'} (${closerEmail ?? 'sem e-mail'}) nunca foi conectada`,
+      );
     }
 
     let accessToken = tokenData.access_token;
@@ -188,9 +249,11 @@ serve(async (req) => {
     if (expiryDate.getTime() - Date.now() < 5 * 60 * 1000) {
       const refreshed = await refreshAccessToken(tokenData.refresh_token);
       if (!refreshed) {
-        return new Response(JSON.stringify({ success: false, error: 'token_expired' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return await failure(
+          'token_expired',
+          lastRefreshError,
+          `Acesso Google de ${closerName ?? 'closer'} (${closerEmail ?? 'sem e-mail'}) expirou e precisa ser reconectado`,
+        );
       }
       accessToken = refreshed.access_token;
       await supabaseAdmin
