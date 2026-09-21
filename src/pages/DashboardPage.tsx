@@ -657,13 +657,15 @@ export function CalendarContent() {
     },
   });
 
-  // Quem pode editar/transferir o Closer da reunião: gestor, supervisor e moderador (qualquer tipo).
+  // Quem pode editar/transferir o Closer da reunião: gestor, supervisor, moderador (qualquer tipo) e SDR.
   const canEditCloser = useMemo(() => {
     if (!detailAg) return false;
     if (role === "gestor" || role === "supervisor") return true;
     if (role === "moderador" || role === "apresentador") return true;
+    if (role === "sdr") return true;
     return false;
   }, [detailAg, role]);
+
 
   // Quem pode editar o SDR responsável: gestor/moderador/supervisor ou SDR APENAS no agendamento que ele próprio criou.
   const canEditSdr = useMemo(() => {
