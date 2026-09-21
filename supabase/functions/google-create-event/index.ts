@@ -407,6 +407,10 @@ serve(async (req) => {
       success: true,
       meet_link: meetLink,
       event_id: calData.id,
+      closer_email: closerEmail,
+      closer_name: closerName,
+      error: meetLink ? null : 'sem_link_no_evento',
+      motivo: meetLink ? null : `Evento criado na agenda de ${closerName ?? 'closer'}, mas o Google não devolveu link do Meet`,
       auto_recording: autoRecordingMode === 'auto',
       auto_transcription: autoSpace?.transcription ?? false,
     }), {
