@@ -36,6 +36,13 @@ const ACTION_LABELS: Record<string, string> = {
   read_briefing: "Leu briefing",
   edit_briefing: "Adicionou/editou briefing",
   remove_briefing: "Removeu briefing",
+  add_briefing_comment: "Adicionou comentário no briefing",
+  edit_briefing_comment: "Editou comentário do briefing",
+  remove_briefing_comment: "Removeu comentário do briefing",
+  assign_closer: "Atribuiu closer",
+  meet_link_falhou: "Falha ao criar link do Meet",
+  agendamento_sem_link_meet: "Agendamento sem link do Meet",
+
   // Vendas / Follow-ups
   venda_registrada: "Registrou venda",
   follow_up_atualizado: "Atualizou follow-up",
