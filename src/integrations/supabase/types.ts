@@ -1902,6 +1902,7 @@ export type Database = {
         | "no_show"
         | "nao_confirmada"
         | "agendada"
+        | "em_call"
       sdr_team: "trafego" | "social_selling"
     }
     CompositeTypes: {
@@ -2047,6 +2048,7 @@ export const Constants = {
         "no_show",
         "nao_confirmada",
         "agendada",
+        "em_call",
       ],
       sdr_team: ["trafego", "social_selling"],
     },
