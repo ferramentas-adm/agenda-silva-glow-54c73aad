@@ -68,6 +68,30 @@ export default function GestorVendaDialog({
   const [removing, setRemoving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [existing, setExisting] = useState<any | null>(null);
+  // Closer creditado pela venda — pode ser diferente do closer da reunião
+  // (ex.: outro closer ligou depois e fechou na ligação).
+  const [closerOriginalId, setCloserOriginalId] = useState<string | null>(null);
+  const [closerId, setCloserId] = useState("");
+  const [closerJust, setCloserJust] = useState("");
+
+  const { data: closers = [] } = useQuery({
+    queryKey: ["gestor-venda-closers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("closers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+  const closerNameById = useMemo(
+    () => new Map(closers.map((c) => [c.id, c.name])),
+    [closers],
+  );
+  const closerTrocado = !!closerId && closerId !== closerOriginalId;
+  const CLOSER_JUST_MIN = 20;
 
   const hasVenda = existing?.vendeu === true;
 
@@ -77,6 +101,9 @@ export default function GestorVendaDialog({
     setVendaOrigem(null);
     setOrderBumps([]);
     setExisting(null);
+    setCloserOriginalId(null);
+    setCloserId("");
+    setCloserJust("");
   };
 
   useEffect(() => {
