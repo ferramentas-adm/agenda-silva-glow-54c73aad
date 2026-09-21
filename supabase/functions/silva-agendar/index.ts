@@ -316,6 +316,7 @@ Deno.serve(async (req) => {
       idempotency_key: b.idempotency_key ?? null,
       meet_link: meetLink,
       google_event_id: googleEventId,
+      meet_error: meetErro,
       lead_desqualificado: b.lead_desqualificado ?? false,
     };
     const { data: created, error } = await supabase.from("agendamentos").insert(insert).select("*").single();
