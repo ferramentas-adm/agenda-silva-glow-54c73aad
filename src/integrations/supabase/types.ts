@@ -49,6 +49,7 @@ export type Database = {
           lead_phone: string
           lead_state: string | null
           lembrete_video_enviado: string | null
+          meet_error: string | null
           meet_link: string | null
           meeting_reason: string | null
           meta_lead_id: string | null
@@ -102,6 +103,7 @@ export type Database = {
           lead_phone: string
           lead_state?: string | null
           lembrete_video_enviado?: string | null
+          meet_error?: string | null
           meet_link?: string | null
           meeting_reason?: string | null
           meta_lead_id?: string | null
@@ -155,6 +157,7 @@ export type Database = {
           lead_phone?: string
           lead_state?: string | null
           lembrete_video_enviado?: string | null
+          meet_error?: string | null
           meet_link?: string | null
           meeting_reason?: string | null
           meta_lead_id?: string | null

@@ -69,3 +69,7 @@ verify_jwt = false
 [functions.silva-bloqueios]
 verify_jwt = false
 
+[functions.silva-agendamento]
+verify_jwt = false
+
+

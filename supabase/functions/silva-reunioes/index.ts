@@ -60,7 +60,8 @@ Deno.serve(async (req) => {
     .select(`
       id, lead_name, lead_phone, scheduled_date, scheduled_time, status,
       is_venda_avulsa, is_5k, meeting_reason, channel_type,
-      lembrete_video_enviado, cancellation_reason, observation,
+      lembrete_video_enviado, cancellation_reason, cancellation_note, observation,
+      meet_link, google_event_id, meet_error,
       closers ( id, name, email )
     `)
     .gte("scheduled_date", since)
@@ -107,19 +108,31 @@ Deno.serve(async (req) => {
       channel_type: a.channel_type ?? null,
       lembrete_video_enviado: a.lembrete_video_enviado ?? null,
       motivo_cancelamento: a.cancellation_reason ?? null,
+      justificativa_cancelamento: a.cancellation_note ?? null,
       cancelamento_automatico: isRuido(a),
+      // Auditoria do Meet: link e, quando faltar, o motivo real da falha.
+      link_reuniao: a.meet_link ?? null,
+      link_erro: a.meet_link ? null : (a.meet_error ?? null),
+      google_event_id: a.google_event_id ?? null,
       agendamento_id: a.id,
     };
   });
 
+  // sem_link=1 devolve só reuniões ativas com closer e sem link do Meet (auditoria).
+  const somenteSemLink = ["1", "true", "sim"].includes((url.searchParams.get("sem_link") ?? "").toLowerCase());
+  const lista = somenteSemLink
+    ? reunioes.filter((r) => r.closer && !r.link_reuniao && !["cancelada", "reagendada"].includes(String(r.status)))
+    : reunioes;
+
   return new Response(
     JSON.stringify({
-      count: reunioes.length,
+      count: lista.length,
       since_used: since,
       canceladas_automaticas_ocultadas: ocultadas,
       mostrar_tudo: mostrarTudo,
+      sem_link: somenteSemLink,
       sincronizado_em: new Date().toISOString(),
-      reunioes,
+      reunioes: lista,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );

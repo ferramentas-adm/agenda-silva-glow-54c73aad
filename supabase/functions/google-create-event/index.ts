@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-api-key, x-client-info, apikey, content-type',
 };
 
+// Guarda o erro real do Google no refresh para virar rastro na auditoria.
+let lastRefreshError: string | null = null;
+
 async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -17,11 +20,13 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
       grant_type: 'refresh_token',
     }),
   });
-  const data = await res.json();
-  if (!res.ok || !data.access_token) {
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.access_token) {
+    lastRefreshError = `refresh_token [${res.status}]: ${JSON.stringify(data)}`;
     console.error('Token refresh failed:', data);
     return null;
   }
+  lastRefreshError = null;
   return { access_token: data.access_token, expires_in: data.expires_in };
 }
 
@@ -163,6 +168,65 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    // Dados do closer (e-mail entra no rastro de erro) + flag do piloto de gravação.
+    const { data: closerRow } = await supabaseAdmin
+      .from('closers')
+      .select('name, email, auto_recording_enabled')
+      .eq('id', closer_id)
+      .maybeSingle();
+    const closerEmail: string | null = closerRow?.email ?? null;
+    const closerName: string | null = closerRow?.name ?? null;
+
+    // Nunca falhar em silêncio: toda falha do Calendar/Meet vira linha no audit log.
+    async function logMeetFailure(motivo: string, erroGoogle: string | null) {
+      console.error('[meet] falha ao criar evento/link', { motivo, closer_id, closerEmail, erroGoogle });
+      try {
+        let userId = callerClaims?.sub as string | undefined;
+        let email = callerClaims?.email as string | undefined;
+        if (isInternalSdrRequest) {
+          const { data: sdrProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('user_id, email')
+            .eq('email', 'joao.amorim.ia@ogruposilva.com.br')
+            .maybeSingle();
+          userId = sdrProfile?.user_id ?? userId;
+          email = sdrProfile?.email ?? email;
+        }
+        await supabaseAdmin.from('audit_logs').insert({
+          user_id: userId ?? '00000000-0000-0000-0000-000000000000',
+          user_name: email ?? (isInternalSdrRequest ? 'João Amorim' : 'Sistema'),
+          user_email: email ?? null,
+          action: 'meet_link_falhou',
+          entity_type: 'agendamento',
+          entity_id: null,
+          details: {
+            lead_name,
+            closer_id,
+            closer_name: closerName,
+            closer_email: closerEmail,
+            scheduled_date,
+            scheduled_time,
+            motivo,
+            erro_google: erroGoogle,
+          },
+        });
+      } catch (logErr) {
+        console.error('[meet] falha ao registrar auditoria da falha:', logErr);
+      }
+    }
+
+    const failure = async (error: string, details: string | null, motivoLegivel: string) => {
+      await logMeetFailure(error, details);
+      return new Response(JSON.stringify({
+        success: false,
+        error,
+        details,
+        motivo: motivoLegivel,
+        closer_email: closerEmail,
+        closer_name: closerName,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    };
+
     // Get token for closer
     const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('closer_google_tokens')
@@ -171,9 +235,11 @@ serve(async (req) => {
       .single();
 
     if (tokenError || !tokenData) {
-      return new Response(JSON.stringify({ success: false, error: 'google_not_connected' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return await failure(
+        'google_not_connected',
+        tokenError?.message ?? 'nenhum token do Google salvo para este closer',
+        `Agenda Google de ${closerName ?? 'closer'} (${closerEmail ?? 'sem e-mail'}) nunca foi conectada`,
+      );
     }
 
     let accessToken = tokenData.access_token;
@@ -183,9 +249,11 @@ serve(async (req) => {
     if (expiryDate.getTime() - Date.now() < 5 * 60 * 1000) {
       const refreshed = await refreshAccessToken(tokenData.refresh_token);
       if (!refreshed) {
-        return new Response(JSON.stringify({ success: false, error: 'token_expired' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return await failure(
+          'token_expired',
+          lastRefreshError,
+          `Acesso Google de ${closerName ?? 'closer'} (${closerEmail ?? 'sem e-mail'}) expirou e precisa ser reconectado`,
+        );
       }
       accessToken = refreshed.access_token;
       await supabaseAdmin
@@ -217,12 +285,6 @@ serve(async (req) => {
     // contém o escopo do Meet. Qualquer falha cai no fluxo padrão do Calendar.
     let autoSpace: { uri: string; transcription: boolean } | null = null;
     let autoRecordingMode: 'auto' | 'fallback' | 'off' = 'off';
-
-    const { data: closerRow } = await supabaseAdmin
-      .from('closers')
-      .select('auto_recording_enabled')
-      .eq('id', closer_id)
-      .maybeSingle();
 
     if (closerRow?.auto_recording_enabled === true) {
       const scopes = (tokenData.granted_scopes ?? '') as string;
@@ -284,10 +346,11 @@ serve(async (req) => {
 
     if (!calRes.ok) {
       const errBody = await calRes.text();
-      console.error('Google Calendar create event error:', calRes.status, errBody);
-      return new Response(JSON.stringify({ success: false, error: 'calendar_api_error', details: errBody }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return await failure(
+        'calendar_api_error',
+        `[${calRes.status}] ${errBody}`,
+        `Google recusou criar o evento na agenda de ${closerName ?? 'closer'} (${closerEmail ?? 'sem e-mail'})`,
+      );
     }
 
     const calData = await calRes.json();
@@ -297,6 +360,14 @@ serve(async (req) => {
       )?.uri
       || calData.hangoutLink
       || null;
+
+    // Evento criado, mas sem link: também é falha e precisa de rastro.
+    if (!meetLink) {
+      await logMeetFailure(
+        'sem_link_no_evento',
+        `evento ${calData.id ?? '?'} criado sem conferenceData/hangoutLink`,
+      );
+    }
 
     // Auditoria do piloto: registra se o agendamento saiu no modo automático
     // ou caiu no fallback, para medir a taxa de sucesso.
@@ -336,6 +407,10 @@ serve(async (req) => {
       success: true,
       meet_link: meetLink,
       event_id: calData.id,
+      closer_email: closerEmail,
+      closer_name: closerName,
+      error: meetLink ? null : 'sem_link_no_evento',
+      motivo: meetLink ? null : `Evento criado na agenda de ${closerName ?? 'closer'}, mas o Google não devolveu link do Meet`,
       auto_recording: autoRecordingMode === 'auto',
       auto_transcription: autoSpace?.transcription ?? false,
     }), {

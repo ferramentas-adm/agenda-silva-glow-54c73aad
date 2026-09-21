@@ -72,6 +72,11 @@ async function toResponse(supabase: ReturnType<typeof createClient>, a: Record<s
     status: a.status,
     closer: closerName,
     link_reuniao: a.meet_link ?? null,
+    // Quando a reunião nasce sem link, o motivo real do Google vem aqui.
+    link_erro: a.meet_link ? null : ((a.meet_error as string | null) ?? null),
+    aviso: a.closer_id && !a.meet_link
+      ? "Reunião criada SEM link do Meet. Trate manualmente ou remarque com outro closer."
+      : null,
     fila_atribuicao: !a.closer_id,
     lead: { nome: a.lead_name, whatsapp: a.lead_phone },
     canal_agendamento: a.booking_channel,
@@ -241,9 +246,12 @@ Deno.serve(async (req) => {
     const overbookingNumber = sdrIaOverbookingPosition(info.count, info.capacity);
     if (overbookingNumber > 0) obsParts.push(`Overbooking: extra ${overbookingNumber}/3`);
 
-    // 7) Com closer, cria Calendar/Meet pelo mesmo fluxo do painel (best effort).
+    // 7) Com closer, cria Calendar/Meet pelo mesmo fluxo do painel.
+    // Falha nunca é silenciosa: o motivo real do Google vai para agendamentos.meet_error,
+    // para o audit log e para a resposta desta rota.
     let meetLink: string | null = null;
     let googleEventId: string | null = null;
+    let meetErro: string | null = null;
     if (requestedCloserId) {
       try {
         const functionUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-create-event`;
@@ -267,13 +275,23 @@ Deno.serve(async (req) => {
         if (meetRes.ok && meetBody?.success) {
           meetLink = meetBody.meet_link ?? null;
           googleEventId = meetBody.event_id ?? null;
-        } else {
-          console.error("google-create-event failed", meetRes.status, meetBody);
+        }
+        if (!meetLink) {
+          const partes = [
+            meetBody?.error ? `erro=${meetBody.error}` : `http=${meetRes.status}`,
+            meetBody?.motivo ?? null,
+            meetBody?.closer_email ? `closer=${meetBody.closer_email}` : null,
+            meetBody?.details ? `google=${String(meetBody.details).slice(0, 800)}` : null,
+          ].filter(Boolean);
+          meetErro = partes.join(" | ");
+          console.error("google-create-event sem link", meetRes.status, meetErro);
         }
       } catch (meetError) {
+        meetErro = `erro=chamada_falhou | ${errorDetail(meetError)}`;
         console.error("google-create-event unexpected error", meetError);
       }
     }
+
 
     // 8) INSERT (mesmos campos da tela; triggers de CRM/CAPI/fila disparam sozinhos)
     const insert = {
@@ -298,6 +316,7 @@ Deno.serve(async (req) => {
       idempotency_key: b.idempotency_key ?? null,
       meet_link: meetLink,
       google_event_id: googleEventId,
+      meet_error: meetErro,
       lead_desqualificado: b.lead_desqualificado ?? false,
     };
     const { data: created, error } = await supabase.from("agendamentos").insert(insert).select("*").single();
@@ -327,8 +346,31 @@ Deno.serve(async (req) => {
          closer_sugerido: fallbackSuggestedName, crm_lead_id: b.crm_lead_id ?? null,
         crm_conversation_id: b.crm_conversation_id ?? null,
          overbooking_extra: overbookingNumber || null,
+        meet_link: meetLink,
+        meet_erro: meetErro,
       },
     });
+
+    // 9b) Reunião com closer mas sem link: linha própria no histórico, com o erro do Google.
+    if (requestedCloserId && !meetLink) {
+      await supabase.from("audit_logs").insert({
+        user_id: sdrProfile.user_id,
+        user_name: sdrProfile.full_name,
+        user_email: SDR_IA_EMAIL,
+        action: "agendamento_sem_link_meet",
+        entity_type: "agendamento",
+        entity_id: created.id,
+        details: {
+          lead_name: created.lead_name,
+          closer_id: requestedCloserId,
+          closer_name: assignedCloserName ?? "",
+          scheduled_date: dateStr,
+          scheduled_time: timeStr,
+          erro_google: meetErro,
+          via: "silva-agendar",
+        },
+      });
+    }
 
     // 10) Tag "agendamento" no CRM (best effort) + vínculo da conversa
     let tag: string = "skipped";
