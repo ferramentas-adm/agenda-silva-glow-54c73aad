@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PhoneForwarded, Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
+import { matchesLeadQualification, type LeadQualificationFilter } from "@/lib/leadQualification";
 
 interface Props {
   /** Período efetivo (yyyy-MM-dd) já resolvido pela aba Produtividade SDR. */
   range: { from: string; to: string } | null;
+  qualificationFilter: LeadQualificationFilter;
+  agendamentos: { id: string; lead_desqualificado: boolean }[];
 }
 
 interface Row {
@@ -29,7 +32,7 @@ interface Row {
  * `booking_channel` preenchido — ou seja, criados a partir da ativação do
  * campo obrigatório na tela de agendamento.
  */
-export default function BookingChannelPanel({ range }: Props) {
+export default function BookingChannelPanel({ range, qualificationFilter, agendamentos }: Props) {
   const [drill, setDrill] = useState<{ open: boolean; title: string; ids: string[] }>({
     open: false,
     title: "",
@@ -60,7 +63,29 @@ export default function BookingChannelPanel({ range }: Props) {
     refetchInterval: 5 * 60_000,
   });
 
-  const totals = rows.reduce(
+  const qualificationById = useMemo(
+    () => new Map(agendamentos.map((a) => [a.id, a.lead_desqualificado])),
+    [agendamentos],
+  );
+  const visibleRows = useMemo(() => rows.map((row) => {
+    const filterIds = (ids: string[]) => ids.filter((id) =>
+      matchesLeadQualification(qualificationById.get(id), qualificationFilter),
+    );
+    const idsCreated = filterIds(row.ids_created);
+    const idsRealizada = filterIds(row.ids_realizada);
+    const idsVendas = filterIds(row.ids_vendas);
+    return {
+      ...row,
+      qtd_created: idsCreated.length,
+      qtd_realizada: idsRealizada.length,
+      qtd_vendas: idsVendas.length,
+      ids_created: idsCreated,
+      ids_realizada: idsRealizada,
+      ids_vendas: idsVendas,
+    };
+  }), [qualificationById, qualificationFilter, rows]);
+
+  const totals = visibleRows.reduce(
     (acc, r) => {
       acc.qtd_created += r.qtd_created;
       acc.qtd_realizada += r.qtd_realizada;
@@ -102,14 +127,14 @@ export default function BookingChannelPanel({ range }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {rows.length === 0 && (
+                {visibleRows.length === 0 && (
                   <tr>
                     <td colSpan={5} className="text-center text-muted-foreground py-4 text-xs">
                       Nenhum agendamento com canal informado no período
                     </td>
                   </tr>
                 )}
-                {rows.map((row) => (
+                {visibleRows.map((row) => (
                   <tr key={row.channel} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                     <td className="py-2 px-2 font-medium">{row.channel}</td>
                     <td
@@ -135,7 +160,7 @@ export default function BookingChannelPanel({ range }: Props) {
                     </td>
                   </tr>
                 ))}
-                {rows.length > 0 && (
+                {visibleRows.length > 0 && (
                   <tr className="border-t border-primary/20 bg-muted/20 font-semibold">
                     <td className="py-2 px-2 text-xs uppercase text-muted-foreground">Total</td>
                     <td className="py-2 px-2 text-right tabular-nums">{totals.qtd_created}</td>

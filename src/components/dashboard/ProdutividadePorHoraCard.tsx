@@ -16,6 +16,7 @@ import { Clock, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { BR_TZ, brPartsOf, pickedDateToYMD } from "@/lib/timezone";
+import { matchesLeadQualification, type LeadQualificationFilter } from "@/lib/leadQualification";
 
 export interface HourAgendamento {
   id: string;
@@ -23,6 +24,7 @@ export interface HourAgendamento {
   created_by: string | null;
   sdr_responsavel_id: string | null;
   original_agendamento_id?: string | null;
+  lead_desqualificado: boolean;
 }
 
 interface Props {
@@ -32,6 +34,7 @@ interface Props {
   sdrIds: Set<string>;
   /** Período selecionado no filtro único da página (yyyy-MM-dd). */
   range: { from: string; to: string };
+  qualificationFilter: LeadQualificationFilter;
 }
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 7); // 07h — 23h
@@ -68,7 +71,7 @@ const brDateFmt = new Intl.DateTimeFormat("en-CA", {
  * Produtividade por hora dos SDRs (agendas criadas) no período selecionado no
  * filtro único da página, comparado com o período anterior de mesmo tamanho.
  */
-export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: Props) {
+export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range, qualificationFilter }: Props) {
   const [cumulative, setCumulative] = useState(false);
   const [cmpModeState, setCmpModeState] = useState<CmpMode>("prev");
 
@@ -119,6 +122,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
     const cmpByHour = new Map<number, number>();
 
     createdAgs.forEach((a) => {
+      if (!matchesLeadQualification(a.lead_desqualificado, qualificationFilter)) return;
       const sdr = a.sdr_responsavel_id || a.created_by;
       if (!sdr || !sdrIds.has(sdr)) return;
       if (a.original_agendamento_id) return;
@@ -147,7 +151,7 @@ export default function ProdutividadePorHoraCard({ createdAgs, sdrIds, range }: 
     });
 
     return { data: rows, totals: { base: accBase, cmp: accCmp } };
-  }, [createdAgs, sdrIds, baseDays, cmpDays, cmpDivisor, cumulative]);
+  }, [createdAgs, sdrIds, baseDays, cmpDays, cmpDivisor, cumulative, qualificationFilter]);
 
 
   const delta = totals.cmp > 0 ? ((totals.base - totals.cmp) / totals.cmp) * 100 : totals.base > 0 ? 100 : 0;

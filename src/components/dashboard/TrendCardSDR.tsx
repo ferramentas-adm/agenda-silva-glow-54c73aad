@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { CalendarDays } from "lucide-react";
-import { differenceInCalendarDays, format, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 
-import { supabase } from "@/integrations/supabase/client";
 import TrendChart, { type TrendDatum } from "./TrendChart";
+import { matchesLeadQualification, type LeadQualificationFilter } from "@/lib/leadQualification";
+import { BR_TZ } from "@/lib/timezone";
 
 /**
  * Painel de tendência de agendamentos (criados x realizados) do período
@@ -37,45 +37,68 @@ const SDR_METRICS: Record<SDRMetric, { label: string; color: string; format: (v:
 interface Props {
   /** Período selecionado no filtro único da página (yyyy-MM-dd). */
   range: { from: string; to: string };
+  agendamentos: TrendAgendamento[];
+  createdAgs: TrendAgendamento[];
+  sdrIds: Set<string>;
+  qualificationFilter: LeadQualificationFilter;
 }
 
-export default function TrendCardSDR({ range }: Props) {
+interface TrendAgendamento {
+  id: string;
+  created_at: string;
+  scheduled_date: string;
+  status: string;
+  created_by: string | null;
+  sdr_responsavel_id: string | null;
+  original_agendamento_id?: string | null;
+  lead_desqualificado: boolean;
+}
+
+const brDateFmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: BR_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export default function TrendCardSDR({ range, agendamentos, createdAgs, sdrIds, qualificationFilter }: Props) {
   const [metric, setMetric] = useState<SDRMetric>("criadas");
 
-  // Janela necessária no RPC: do início do período até hoje.
-  const windowDays = useMemo(() => {
-    const diff = differenceInCalendarDays(new Date(), parseISO(range.from)) + 1;
-    return Math.min(365, Math.max(1, diff));
-  }, [range.from]);
-
-  const { data: rows = [] } = useQuery<{ day: string; criadas: number; realizadas: number }[]>({
-    queryKey: ["trend-sdr-rpc", windowDays],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("dashboard_trend_sdr", { _window_days: windowDays });
-      if (error) throw error;
-      return (data ?? []).map((r: any) => ({
-        day: r.day as string,
-        criadas: Number(r.criadas) || 0,
-        realizadas: Number(r.realizadas) || 0,
-      }));
-    },
-    refetchInterval: 5 * 60_000,
-    staleTime: 60_000,
-  });
-
   const data = useMemo<TrendDatum[]>(() => {
-    return rows
-      .filter((r) => r.day >= range.from && r.day <= range.to)
-      .map((r) => {
-        const showup = r.criadas > 0 ? (r.realizadas / r.criadas) * 100 : 0;
+    const rows = new Map<string, { criadas: number; realizadas: number }>();
+    const belongsToSdr = (a: TrendAgendamento) => {
+      const sdrId = a.sdr_responsavel_id || a.created_by;
+      return Boolean(sdrId && sdrIds.has(sdrId));
+    };
+    createdAgs.forEach((a) => {
+      if (!belongsToSdr(a) || a.original_agendamento_id) return;
+      if (!matchesLeadQualification(a.lead_desqualificado, qualificationFilter)) return;
+      const day = brDateFmt.format(new Date(a.created_at));
+      if (day < range.from || day > range.to) return;
+      const row = rows.get(day) ?? { criadas: 0, realizadas: 0 };
+      row.criadas += 1;
+      rows.set(day, row);
+    });
+    agendamentos.forEach((a) => {
+      if (!belongsToSdr(a) || a.status !== "realizada") return;
+      if (!matchesLeadQualification(a.lead_desqualificado, qualificationFilter)) return;
+      if (a.scheduled_date < range.from || a.scheduled_date > range.to) return;
+      const row = rows.get(a.scheduled_date) ?? { criadas: 0, realizadas: 0 };
+      row.realizadas += 1;
+      rows.set(a.scheduled_date, row);
+    });
+    return Array.from(rows.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, row]) => {
+        const showup = row.criadas > 0 ? (row.realizadas / row.criadas) * 100 : 0;
         return {
-          date: r.day,
-          criadas: r.criadas,
-          realizadas: r.realizadas,
+          date: day,
+          criadas: row.criadas,
+          realizadas: row.realizadas,
           showup: Number(showup.toFixed(1)),
         };
       });
-  }, [rows, range.from, range.to]);
+  }, [agendamentos, createdAgs, qualificationFilter, range.from, range.to, sdrIds]);
 
   const m = SDR_METRICS[metric];
   const periodLabel =
