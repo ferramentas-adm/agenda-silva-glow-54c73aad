@@ -47,6 +47,11 @@ import CriadasPorDiaDialog, { type CriadasDayGroup } from "@/components/dashboar
 import MetricDrilldownDialog from "@/components/dashboard/MetricDrilldownDialog";
 import { SdrTeamBadge, type SdrTeam } from "@/components/sdr/SdrTeamBadge";
 import { SdrTeamFilter, type SdrTeamFilterValue } from "@/components/sdr/SdrTeamFilter";
+import {
+  LEAD_QUALIFICATION_OPTIONS,
+  matchesLeadQualification,
+  type LeadQualificationFilter,
+} from "@/lib/leadQualification";
 
 interface AgendamentoMetric {
   id: string;
@@ -58,6 +63,7 @@ interface AgendamentoMetric {
   created_by: string | null;
   sdr_responsavel_id: string | null;
   original_agendamento_id?: string | null;
+  lead_desqualificado: boolean;
 }
 
 /**
@@ -147,6 +153,7 @@ export default function ProdutividadeSDRTab({
   const isManager = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
   const [filter, setFilter] = useState<FilterType>("criadas");
   const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
+  const [qualificationFilter, setQualificationFilter] = useState<LeadQualificationFilter>("all");
   const [criadasDiasOpen, setCriadasDiasOpen] = useState(false);
   const [drill, setDrill] = useState<{ title: string; ids: string[] } | null>(null);
   const [selectedSdr, setSelectedSdr] = useState<string>("all");
@@ -193,6 +200,8 @@ export default function ProdutividadeSDRTab({
     const id = a.sdr_responsavel_id || a.created_by;
     return id && sdrIds.has(id) ? id : null;
   };
+  const matchesQualification = (a: AgendamentoMetric) =>
+    matchesLeadQualification(a.lead_desqualificado, qualificationFilter);
   const pool = useMemo(() => {
     if (!range) return [];
     if (filter === "criadas") {
@@ -202,6 +211,7 @@ export default function ProdutividadeSDRTab({
       // gerada no dia.
       return createdAgs.filter((a) => {
         if (!effectiveSdrId(a)) return false;
+        if (!matchesQualification(a)) return false;
         if (a.original_agendamento_id) return false;
         const localDay = localDateOf(a.created_at);
         return localDay >= range.from && localDay <= range.to;
@@ -211,6 +221,7 @@ export default function ProdutividadeSDRTab({
     const byDate = agendamentos.filter(
       (a) =>
         effectiveSdrId(a) &&
+        matchesQualification(a) &&
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to,
     );
@@ -228,7 +239,7 @@ export default function ProdutividadeSDRTab({
       const eff = getEffectiveStatus(a);
       return eff === "no_show" || eff === "cancelada" || eff === "reagendada";
     });
-  }, [agendamentos, createdAgs, sdrIds, range, filter]);
+  }, [agendamentos, createdAgs, sdrIds, range, filter, qualificationFilter]);
 
   // ─── Modo taxa (Compareceu / Não compareceu) ─────────────────
   // Nesses filtros exibimos, além do volume, a taxa sobre o total de reuniões
@@ -242,10 +253,11 @@ export default function ProdutividadeSDRTab({
     return agendamentos.filter(
       (a) =>
         effectiveSdrId(a) &&
+        matchesQualification(a) &&
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to,
     );
-  }, [agendamentos, sdrIds, range, isRateMode]);
+  }, [agendamentos, sdrIds, range, isRateMode, qualificationFilter]);
 
   const pct = (value: number, base: number) => (base > 0 ? (value / base) * 100 : 0);
 
@@ -372,12 +384,13 @@ export default function ProdutividadeSDRTab({
     if (!range) return { criadas: 0, para: 0, compareceu: 0, naoCompareceu: 0, foraSdr: 0 };
     const criadas = createdAgs.filter((a) => {
       if (!effectiveSdrId(a)) return false;
+      if (!matchesQualification(a)) return false;
       if (a.original_agendamento_id) return false; // reagendamentos não contam como nova
       const localDay = localDateOf(a.created_at);
       return localDay >= range.from && localDay <= range.to;
     }).length;
     const noPeriodo = agendamentos.filter(
-      (a) => a.scheduled_date >= range.from && a.scheduled_date <= range.to,
+      (a) => matchesQualification(a) && a.scheduled_date >= range.from && a.scheduled_date <= range.to,
     );
     const dia = noPeriodo.filter((a) => effectiveSdrId(a));
     // Realizadas do período que NÃO são atribuíveis a um SDR ativo
@@ -392,7 +405,7 @@ export default function ProdutividadeSDRTab({
       return eff === "no_show" || eff === "cancelada" || eff === "reagendada";
     }).length;
     return { criadas, para, compareceu, naoCompareceu, foraSdr };
-  }, [agendamentos, createdAgs, sdrIds, range]);
+  }, [agendamentos, createdAgs, sdrIds, range, qualificationFilter]);
 
   // ─── "Criadas" agrupadas pelo dia AGENDADO (para o modal) ─────
   const criadasPorDia = useMemo<CriadasDayGroup[]>(() => {
@@ -400,6 +413,7 @@ export default function ProdutividadeSDRTab({
     const map = new Map<string, string[]>();
     createdAgs.forEach((a) => {
       if (!effectiveSdrId(a)) return;
+      if (!matchesQualification(a)) return;
       if (a.original_agendamento_id) return;
       const localDay = localDateOf(a.created_at);
       if (localDay < range.from || localDay > range.to) return;
@@ -410,7 +424,7 @@ export default function ProdutividadeSDRTab({
     return Array.from(map.entries())
       .map(([date, ids]) => ({ date, ids }))
       .sort((x, y) => x.date.localeCompare(y.date));
-  }, [createdAgs, sdrIds, range]);
+  }, [createdAgs, sdrIds, range, qualificationFilter]);
 
 
 
@@ -519,6 +533,21 @@ export default function ProdutividadeSDRTab({
 
       </div>
 
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Leads:</span>
+        {LEAD_QUALIFICATION_OPTIONS.map((option) => (
+          <Button
+            key={option.value}
+            variant={qualificationFilter === option.value ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setQualificationFilter(option.value)}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+
       {/* Filtro por time (Tráfego / Social Selling) */}
       <SdrTeamFilter value={teamFilter} onChange={setTeamFilter} />
 
@@ -562,23 +591,37 @@ export default function ProdutividadeSDRTab({
       </div>
 
       {/* Por canal do agendamento (WhatsApp (CRM) vs Ligação API4COM) */}
-      <BookingChannelPanel range={range} />
+      <BookingChannelPanel
+        range={range}
+        qualificationFilter={qualificationFilter}
+        agendamentos={[...agendamentos, ...createdAgs]}
+      />
 
       {/* Produtividade por hora — orientada pelo filtro único da página */}
       <ProdutividadePorHoraCard
         createdAgs={createdAgs}
         sdrIds={sdrIds}
         range={range}
+        qualificationFilter={qualificationFilter}
       />
 
       {/* Tendência preditiva — apenas para gestores/moderadores */}
-      {isManager && <TrendCardSDR range={range} />}
+      {isManager && (
+        <TrendCardSDR
+          range={range}
+          agendamentos={agendamentos}
+          createdAgs={createdAgs}
+          sdrIds={sdrIds}
+          qualificationFilter={qualificationFilter}
+        />
+      )}
 
       {/* Comparação de períodos — somente na visão individual de um SDR */}
       {selectedSdr !== "all" && (
         <SdrPeriodComparisonCard
           sdrId={selectedSdr}
           sdrName={sdrNameById.get(selectedSdr) ?? "SDR"}
+          qualificationFilter={qualificationFilter}
         />
       )}
 

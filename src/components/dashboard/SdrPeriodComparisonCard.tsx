@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { brTodayYMD } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
+import { matchesLeadQualification, type LeadQualificationFilter } from "@/lib/leadQualification";
 
 /**
  * Comparação de produtividade de um SDR entre dois intervalos equivalentes.
@@ -24,6 +25,7 @@ interface Row {
   created_by: string | null;
   sdr_responsavel_id: string | null;
   original_agendamento_id: string | null;
+  lead_desqualificado: boolean;
 }
 
 const BR_TZ = "America/Sao_Paulo";
@@ -58,8 +60,10 @@ interface Metrics {
   mediaDia: number;
 }
 
-function computeMetrics(rows: Row[], sdrId: string, from: string, to: string, days: number): Metrics {
-  const mine = rows.filter((r) => (r.sdr_responsavel_id || r.created_by) === sdrId);
+function computeMetrics(rows: Row[], sdrId: string, from: string, to: string, days: number, qualificationFilter: LeadQualificationFilter): Metrics {
+  const mine = rows.filter(
+    (r) => (r.sdr_responsavel_id || r.created_by) === sdrId && matchesLeadQualification(r.lead_desqualificado, qualificationFilter),
+  );
   const criadas = mine.filter(
     (r) => !r.original_agendamento_id && localDateOf(r.created_at) >= from && localDateOf(r.created_at) <= to,
   ).length;
@@ -81,9 +85,10 @@ function computeMetrics(rows: Row[], sdrId: string, from: string, to: string, da
 interface Props {
   sdrId: string;
   sdrName: string;
+  qualificationFilter: LeadQualificationFilter;
 }
 
-export default function SdrPeriodComparisonCard({ sdrId, sdrName }: Props) {
+export default function SdrPeriodComparisonCard({ sdrId, sdrName, qualificationFilter }: Props) {
   const [win, setWin] = useState<WindowDays | null>(null);
 
   const p = useMemo(() => (win ? periods(win) : null), [win]);
@@ -96,7 +101,7 @@ export default function SdrPeriodComparisonCard({ sdrId, sdrName }: Props) {
       const start = p!.previous.from;
       const end = p!.current.to;
       const select =
-        "id, created_at, scheduled_date, status, created_by, sdr_responsavel_id, original_agendamento_id";
+        "id, created_at, scheduled_date, status, created_by, sdr_responsavel_id, original_agendamento_id, lead_desqualificado";
       const mineFilter = `sdr_responsavel_id.eq.${sdrId},and(sdr_responsavel_id.is.null,created_by.eq.${sdrId})`;
       const [byDate, byCreated] = await Promise.all([
         supabase
@@ -125,8 +130,8 @@ export default function SdrPeriodComparisonCard({ sdrId, sdrName }: Props) {
 
   });
 
-  const cur = p ? computeMetrics(rows, sdrId, p.current.from, p.current.to, p.days) : null;
-  const prev = p ? computeMetrics(rows, sdrId, p.previous.from, p.previous.to, p.days) : null;
+  const cur = p ? computeMetrics(rows, sdrId, p.current.from, p.current.to, p.days, qualificationFilter) : null;
+  const prev = p ? computeMetrics(rows, sdrId, p.previous.from, p.previous.to, p.days, qualificationFilter) : null;
 
   const label = (iso: string) => format(parseISO(iso), "dd/MM");
 

@@ -37,6 +37,11 @@ import { useSlotCounts } from "@/hooks/useSlotCounts";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { brTodayYMD } from "@/lib/timezone";
 import { countsAsSdr } from "@/lib/sdrOverrides";
+import {
+  LEAD_QUALIFICATION_OPTIONS,
+  matchesLeadQualification,
+  type LeadQualificationFilter,
+} from "@/lib/leadQualification";
 import FacebookDateRangePicker, { type FBComparison } from "@/components/FacebookDateRangePicker";
 import NaoComparecimentoTab from "@/components/dashboard/NaoComparecimentoTab";
 import { SdrTeamBadge } from "@/components/sdr/SdrTeamBadge";
@@ -745,8 +750,8 @@ export default function DashboardComercialPage() {
           <RankingSDRsTab
             sdrProfiles={sdrProfiles}
             updatedAgo={updatedAgo}
-            createdAgs={createdAgsContam}
-            agendamentos={agendamentosContam}
+            createdAgs={createdAgs}
+            agendamentos={agendamentos}
             currentDate={currentDate}
             dateRange={dateRange}
           />
@@ -756,8 +761,8 @@ export default function DashboardComercialPage() {
         {activeTabKey === "produtividade" && (
 
           <ProdutividadeSDRTab
-            agendamentos={agendamentosContam}
-            createdAgs={createdAgsContam}
+            agendamentos={agendamentos}
+            createdAgs={createdAgs}
             sdrProfiles={sdrProfiles}
             currentDate={currentDate}
             dateRange={dateRange}
@@ -1311,6 +1316,7 @@ function RankingSDRsTab({
   const [metricType, setMetricType] = useState<RankingMetricType>("criadas");
   const [showComparecimento, setShowComparecimento] = useState(false);
   const [teamFilter, setTeamFilter] = useState<SdrTeamFilterValue>("all");
+  const [qualificationFilter, setQualificationFilter] = useState<LeadQualificationFilter>("all");
 
   // Range único derivado do seletor global de datas; fallback = currentDate.
   const activeRange = useMemo(() => {
@@ -1339,11 +1345,14 @@ function RankingSDRsTab({
     [],
   );
   const localDateOf = (iso: string): string => brDateFmt.format(new Date(iso));
+  const matchesQualification = (a: AgendamentoMetric) =>
+    matchesLeadQualification(a.lead_desqualificado, qualificationFilter);
 
   const countFor = (sdrId: string, range: { from: string; to: string }) => {
     if (metricType === "criadas") {
       return createdAgs.filter(a => {
         if (sdrOf(a) !== sdrId) return false;
+        if (!matchesQualification(a)) return false;
         if (a.original_agendamento_id) return false;
         const d = localDateOf(a.created_at);
         return d >= range.from && d <= range.to;
@@ -1352,12 +1361,14 @@ function RankingSDRsTab({
     if (metricType === "para") {
       return agendamentos.filter(a =>
         sdrOf(a) === sdrId &&
+        matchesQualification(a) &&
         a.scheduled_date >= range.from &&
         a.scheduled_date <= range.to
       ).length;
     }
     return agendamentos.filter(a =>
       sdrOf(a) === sdrId &&
+      matchesQualification(a) &&
       a.status === "realizada" &&
       a.scheduled_date >= range.from &&
       a.scheduled_date <= range.to
@@ -1369,6 +1380,7 @@ function RankingSDRsTab({
     let realizadas = 0;
     agendamentos.forEach(a => {
       if (sdrOf(a) !== sdrId) return;
+      if (!matchesQualification(a)) return;
       if (a.scheduled_date < activeRange.from || a.scheduled_date > activeRange.to) return;
       para += 1;
       if (a.status === "realizada") realizadas += 1;
@@ -1387,7 +1399,7 @@ function RankingSDRsTab({
       })
       .sort((a, b) => b.total - a.total);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdrProfiles, createdAgs, agendamentos, metricType, activeRange, showComparecimento, teamFilter]);
+  }, [sdrProfiles, createdAgs, agendamentos, metricType, activeRange, showComparecimento, teamFilter, qualificationFilter]);
 
   const getPosition = (index: number, total: number) => {
     if (total === 0) {
@@ -1436,6 +1448,21 @@ function RankingSDRsTab({
             title={opt.description}
           >
             {opt.label}
+          </Button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Leads:</span>
+        {LEAD_QUALIFICATION_OPTIONS.map((option) => (
+          <Button
+            key={option.value}
+            variant={qualificationFilter === option.value ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setQualificationFilter(option.value)}
+          >
+            {option.label}
           </Button>
         ))}
       </div>
