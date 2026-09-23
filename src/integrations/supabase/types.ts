@@ -861,6 +861,73 @@ export type Database = {
         }
         Relationships: []
       }
+      follow_up_tentativas: {
+        Row: {
+          agendamento_id: string | null
+          canal: string | null
+          closer_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          justificativa: string
+          nova_data: string | null
+          nova_hora: string | null
+          numero: number
+          temperatura: string | null
+          venda_id: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          canal?: string | null
+          closer_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          justificativa: string
+          nova_data?: string | null
+          nova_hora?: string | null
+          numero: number
+          temperatura?: string | null
+          venda_id: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          canal?: string | null
+          closer_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          justificativa?: string
+          nova_data?: string | null
+          nova_hora?: string | null
+          numero?: number
+          temperatura?: string | null
+          venda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_up_tentativas_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_tentativas_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_tentativas_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_ai_analysis: {
         Row: {
           agendamento_id: string
@@ -1576,8 +1643,19 @@ export type Database = {
           created_by: string
           explicacao_nao_fechamento: string | null
           follow_up: boolean
+          follow_up_balde_em: string | null
+          follow_up_canal: string | null
+          follow_up_condicoes: string | null
           follow_up_date: string | null
+          follow_up_lixeira_em: string | null
+          follow_up_owner_closer_id: string | null
+          follow_up_produto: string | null
+          follow_up_status: string
+          follow_up_temperatura: string | null
+          follow_up_tentativas: number
           follow_up_time: string | null
+          follow_up_ultima_tentativa_em: string | null
+          follow_up_valor: number | null
           id: string
           lead_revenue: string | null
           motivo_nao_fechamento: string | null
@@ -1607,8 +1685,19 @@ export type Database = {
           created_by: string
           explicacao_nao_fechamento?: string | null
           follow_up?: boolean
+          follow_up_balde_em?: string | null
+          follow_up_canal?: string | null
+          follow_up_condicoes?: string | null
           follow_up_date?: string | null
+          follow_up_lixeira_em?: string | null
+          follow_up_owner_closer_id?: string | null
+          follow_up_produto?: string | null
+          follow_up_status?: string
+          follow_up_temperatura?: string | null
+          follow_up_tentativas?: number
           follow_up_time?: string | null
+          follow_up_ultima_tentativa_em?: string | null
+          follow_up_valor?: number | null
           id?: string
           lead_revenue?: string | null
           motivo_nao_fechamento?: string | null
@@ -1638,8 +1727,19 @@ export type Database = {
           created_by?: string
           explicacao_nao_fechamento?: string | null
           follow_up?: boolean
+          follow_up_balde_em?: string | null
+          follow_up_canal?: string | null
+          follow_up_condicoes?: string | null
           follow_up_date?: string | null
+          follow_up_lixeira_em?: string | null
+          follow_up_owner_closer_id?: string | null
+          follow_up_produto?: string | null
+          follow_up_status?: string
+          follow_up_temperatura?: string | null
+          follow_up_tentativas?: number
           follow_up_time?: string | null
+          follow_up_ultima_tentativa_em?: string | null
+          follow_up_valor?: number | null
           id?: string
           lead_revenue?: string | null
           motivo_nao_fechamento?: string | null
@@ -1668,6 +1768,13 @@ export type Database = {
             columns: ["agendamento_id"]
             isOneToOne: true
             referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_follow_up_owner_closer_id_fkey"
+            columns: ["follow_up_owner_closer_id"]
+            isOneToOne: false
+            referencedRelation: "closers"
             referencedColumns: ["id"]
           },
         ]
@@ -1861,6 +1968,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: number
       }
+      expirar_follow_ups_para_balde: { Args: never; Returns: number }
       get_public_profiles: {
         Args: never
         Returns: {
