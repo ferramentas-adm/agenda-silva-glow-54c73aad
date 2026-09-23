@@ -452,6 +452,17 @@ export default function FollowUpsPage() {
           />
         )}
 
+        <TentativaDialog
+          row={(tentativaTarget as unknown as FollowUpRecord) ?? null}
+          onClose={() => setTentativaTarget(null)}
+          onDone={() => {
+            refetch();
+            queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+            queryClient.invalidateQueries({ queryKey: ["follow-up-calendar"] });
+          }}
+        />
+
+
         <FollowUpEditDialog
           target={editTarget}
           onClose={() => setEditTarget(null)}
