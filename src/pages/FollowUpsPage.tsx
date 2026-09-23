@@ -639,7 +639,7 @@ function FollowUpItem({
           </p>
         )}
       </div>
-      <div className="flex gap-1.5 shrink-0">
+      <div className="flex flex-wrap gap-1.5 shrink-0">
         <Button
           size="icon"
           variant="ghost"
@@ -668,6 +668,11 @@ function FollowUpItem({
         >
           <Trash2 className="h-4 w-4" />
         </Button>
+        {onTentativa && tentativas < MAX_TENTATIVAS && (
+          <Button size="sm" onClick={() => onTentativa(row)}>
+            Registrar contato
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={() => onAction(row)}>
           Próximo passo
         </Button>
