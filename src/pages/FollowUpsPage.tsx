@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, createContext, useContext } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, isBefore, isToday, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -38,6 +38,14 @@ import TasksSection from "@/components/tasks/TasksSection";
 import { useCan } from "@/hooks/usePermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NaoAcompanhadosPanel from "@/components/NaoAcompanhadosPanel";
+import BaldeLeadsPanel from "@/components/followup/BaldeLeadsPanel";
+import LixeiraPanel from "@/components/followup/LixeiraPanel";
+import FollowUpCalendarPanel from "@/components/followup/FollowUpCalendarPanel";
+import TentativaDialog from "@/components/followup/TentativaDialog";
+import type { FollowUpRecord } from "@/components/followup/types";
+import {
+  MAX_TENTATIVAS, canalLabel, temperaturaBadgeClass, temperaturaLabel,
+} from "@/lib/followUp";
 
 interface FollowUpRow {
   id: string;
@@ -91,7 +99,9 @@ export default function FollowUpsPage() {
   const isCloser = role === "closer";
   const isManager = role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor";
   const isGestor = role === "gestor";
-  const [activeTab, setActiveTab] = useState<"em-acompanhamento" | "nao-acompanhados">("em-acompanhamento");
+  const [activeTab, setActiveTab] = useState<
+    "em-acompanhamento" | "calendario" | "balde" | "nao-acompanhados" | "lixeira"
+  >("em-acompanhamento");
 
   // Descobre o closer_id do usuário (se for closer)
   const { data: myCloserId } = useQuery({
@@ -225,6 +235,7 @@ export default function FollowUpsPage() {
   const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FollowUpRow | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [tentativaTarget, setTentativaTarget] = useState<FollowUpRow | null>(null);
 
   const handleConfirmRemove = async () => {
     if (!removeTarget) return;
