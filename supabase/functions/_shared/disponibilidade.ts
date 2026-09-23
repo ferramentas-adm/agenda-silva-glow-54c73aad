@@ -15,8 +15,8 @@ export const AVAILABILITY_MIN_LEAD_MINUTES = 10;
 export const OVERBOOKING_EXTRA = 3;
 /** Teto de reuniões por horário na Turma A. */
 export const TURMA_A_MAX_PER_HOUR = 30;
-/** Teto de reuniões por horário na Turma B (10 closers em treinamento). */
-export const TURMA_B_MAX_PER_HOUR = 13;
+/** Teto de reuniões por horário na Turma B. */
+export const TURMA_B_MAX_PER_HOUR = 20;
 /** Janela de atendimento da Turma B (horas cheias, inclusive). */
 export const TURMA_B_WINDOW_START_HOUR = 10;
 export const TURMA_B_WINDOW_END_HOUR = 21;
