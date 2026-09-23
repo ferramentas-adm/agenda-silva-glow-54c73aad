@@ -84,6 +84,7 @@ export default defineTool({
         .select(SELECT)
         .eq("vendeu", false)
         .eq("follow_up", true)
+        .eq("follow_up_status", "ativo")
         .not("follow_up_date", "is", null)
         .order("follow_up_date", { ascending: true })
         .limit(max);

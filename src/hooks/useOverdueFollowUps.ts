@@ -42,6 +42,7 @@ export function useOverdueFollowUps() {
         `)
         .eq("follow_up", true)
         .eq("vendeu", false)
+        .eq("follow_up_status", "ativo")
         .lt("follow_up_date", today)
         .eq("agendamentos.closer_id", myCloserId);
       if (error) throw error;

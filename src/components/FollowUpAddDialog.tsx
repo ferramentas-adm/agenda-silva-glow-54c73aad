@@ -128,11 +128,12 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
         const { error: upErr } = await supabase
           .from("vendas")
           .update({
+            follow_up_status: "ativo",
             follow_up_date: format(followUpDate, "yyyy-MM-dd"),
             follow_up_time: followUpTime || null,
             motivo_nao_fechamento: motivo === "none" ? null : motivo,
             observacoes: observacoes.trim() || null,
-          })
+          } as any)
           .eq("id", existing.id);
         if (upErr) throw upErr;
         await logAudit("follow_up_atualizado", "venda", existing.id, {
@@ -146,12 +147,13 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
             agendamento_id: selected.id,
             vendeu: false,
             follow_up: true,
+            follow_up_status: "ativo",
             follow_up_date: format(followUpDate, "yyyy-MM-dd"),
             follow_up_time: followUpTime || null,
             motivo_nao_fechamento: motivo === "none" ? null : motivo,
             observacoes: observacoes.trim() || null,
             created_by: user.id,
-          })
+          } as any)
           .select("id")
           .single();
         if (error) throw error;
