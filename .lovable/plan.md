@@ -4,9 +4,9 @@
 A lista de Produtos do Admin só é usada no lançamento de venda (venda avulsa, venda pela reunião e follow-up). A tela Agendar não tem campo de produto, e a reunião não guarda produto nenhum.
 
 ## O que muda
-1. **Tela Agendar** — novo campo obrigatório "Produto de interesse", com a lista de Produtos do Admin. Sem escolher, o botão de agendar fica bloqueado.
-2. **Detalhes da reunião** — o produto aparece para o closer e para o SDR.
-3. **Lançamento da venda** — ao lançar a venda da reunião, o produto já vem preenchido com o produto de interesse (pode trocar).
+1. **Tela Agendar** — novo campo obrigatório "Produto sugerido pelo SDR", com a lista de Produtos do Admin. Sem escolher, o botão de agendar fica bloqueado. É só uma indicação da qualificação, não define o que será vendido.
+2. **Detalhes da reunião** — o produto sugerido aparece para o closer e para o SDR, identificado como sugestão.
+3. **Lançamento da venda** — o produto sugerido vem pré-selecionado apenas como ponto de partida; o closer ou o gestor escolhe livremente qualquer outro produto, sem justificativa. O produto vendido é o que vale para vendas e métricas; a sugestão do SDR fica guardada separada e nunca é sobrescrita.
 4. **Auditoria** — o produto entra no registro de criação do agendamento.
 
 ## O que NÃO muda
