@@ -191,6 +191,7 @@ function UsersSection() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterTurma, setFilterTurma] = useState<"all" | "a" | "b">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [fullName, setFullName] = useState("");
@@ -389,6 +390,7 @@ function UsersSection() {
     return (allUsers as any[])
       .filter((u) => {
         if (filterRole !== "all" && u.role !== filterRole) return false;
+        if (filterRole === "closer" && filterTurma !== "all" && !!u.emTreinamento !== (filterTurma === "b")) return false;
         if (filterStatus === "active" && !u.active) return false;
         if (filterStatus === "inactive" && u.active) return false;
         if (!q) return true;
