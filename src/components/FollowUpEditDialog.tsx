@@ -67,11 +67,12 @@ export default function FollowUpEditDialog({ target, onClose, onDone }: Props) {
         .from("vendas")
         .update({
           follow_up: true,
+          follow_up_status: "ativo",
           follow_up_date: format(data!, "yyyy-MM-dd"),
           follow_up_time: horario,
           motivo_nao_fechamento: motivo || null,
           observacoes: observacoes.trim() || null,
-        })
+        } as any)
         .eq("id", target.id)
         .select("id")
         .single();
@@ -193,7 +194,8 @@ export async function removeFollowUp(
         follow_up: false,
         follow_up_date: null,
         follow_up_time: null,
-      })
+        follow_up_status: "concluido",
+      } as any)
       .eq("id", vendaId)
       .select("id")
       .single();

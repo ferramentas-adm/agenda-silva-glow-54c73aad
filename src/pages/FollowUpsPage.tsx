@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, createContext, useContext } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, isBefore, isToday, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -38,12 +38,30 @@ import TasksSection from "@/components/tasks/TasksSection";
 import { useCan } from "@/hooks/usePermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NaoAcompanhadosPanel from "@/components/NaoAcompanhadosPanel";
+import BaldeLeadsPanel from "@/components/followup/BaldeLeadsPanel";
+import LixeiraPanel from "@/components/followup/LixeiraPanel";
+import FollowUpCalendarPanel from "@/components/followup/FollowUpCalendarPanel";
+import TentativaDialog from "@/components/followup/TentativaDialog";
+import type { FollowUpRecord } from "@/components/followup/types";
+import {
+  MAX_TENTATIVAS, canalLabel, temperaturaBadgeClass, temperaturaLabel,
+} from "@/lib/followUp";
 
 interface FollowUpRow {
   id: string;
   agendamento_id: string;
   follow_up_date: string;
   follow_up_time: string | null;
+  follow_up_status?: string | null;
+  follow_up_canal?: string | null;
+  follow_up_temperatura?: string | null;
+  follow_up_produto?: string | null;
+  follow_up_valor?: number | null;
+  follow_up_condicoes?: string | null;
+  follow_up_tentativas?: number | null;
+  follow_up_event_id?: string | null;
+  follow_up_ultima_tentativa_em?: string | null;
+  follow_up_balde_em?: string | null;
   motivo_nao_fechamento: string | null;
   explicacao_nao_fechamento: string | null;
   observacoes: string | null;
@@ -52,9 +70,13 @@ interface FollowUpRow {
     lead_name: string;
     lead_phone: string;
     closer_id: string | null;
+    lead_desqualificado?: boolean | null;
     closers: { name: string } | null;
   } | null;
 }
+
+/** Permite ao item da lista abrir o registro de tentativa sem repassar props por toda a árvore. */
+const TentativaCtx = createContext<((r: FollowUpRow) => void) | null>(null);
 
 const formatBRL = (digits: string) => {
   const cleaned = digits.replace(/\D/g, "");
@@ -77,7 +99,9 @@ export default function FollowUpsPage() {
   const isCloser = role === "closer";
   const isManager = role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor";
   const isGestor = role === "gestor";
-  const [activeTab, setActiveTab] = useState<"em-acompanhamento" | "nao-acompanhados">("em-acompanhamento");
+  const [activeTab, setActiveTab] = useState<
+    "em-acompanhamento" | "calendario" | "balde" | "nao-acompanhados" | "lixeira"
+  >("em-acompanhamento");
 
   // Descobre o closer_id do usuário (se for closer)
   const { data: myCloserId } = useQuery({
@@ -97,11 +121,15 @@ export default function FollowUpsPage() {
         .from("vendas")
         .select(`
           id, agendamento_id, follow_up_date, follow_up_time,
+          follow_up_status, follow_up_canal, follow_up_temperatura, follow_up_produto,
+          follow_up_valor, follow_up_condicoes, follow_up_tentativas, follow_up_event_id,
+          follow_up_ultima_tentativa_em, follow_up_balde_em,
           motivo_nao_fechamento, explicacao_nao_fechamento, observacoes, valor,
-          agendamentos!inner ( lead_name, lead_phone, closer_id, closers ( name ) )
+          agendamentos!inner ( lead_name, lead_phone, closer_id, lead_desqualificado, closers ( name ) )
         `)
         .eq("follow_up", true)
         .eq("vendeu", false)
+        .eq("follow_up_status", "ativo")
         .order("follow_up_date", { ascending: true })
         .order("follow_up_time", { ascending: true, nullsFirst: false });
 
@@ -207,6 +235,7 @@ export default function FollowUpsPage() {
   const [editTarget, setEditTarget] = useState<FollowUpEditTarget | null>(null);
   const [removeTarget, setRemoveTarget] = useState<FollowUpRow | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [tentativaTarget, setTentativaTarget] = useState<FollowUpRow | null>(null);
 
   const handleConfirmRemove = async () => {
     if (!removeTarget) return;
@@ -242,20 +271,34 @@ export default function FollowUpsPage() {
           </div>
         </header>
 
-        {isManager && (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-            <TabsList>
-              <TabsTrigger value="em-acompanhamento">Em acompanhamento</TabsTrigger>
-              <TabsTrigger value="nao-acompanhados">Não acompanhados</TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="em-acompanhamento">Em acompanhamento</TabsTrigger>
+            <TabsTrigger value="calendario">Calendário</TabsTrigger>
+            <TabsTrigger value="balde">Balde de reativação</TabsTrigger>
+            {isManager && <TabsTrigger value="nao-acompanhados">Não acompanhados</TabsTrigger>}
+            {isManager && <TabsTrigger value="lixeira">Lixeira</TabsTrigger>}
+          </TabsList>
+          <TabsContent value="calendario" className="mt-4">
+            <FollowUpCalendarPanel />
+          </TabsContent>
+          <TabsContent value="balde" className="mt-4">
+            <BaldeLeadsPanel />
+          </TabsContent>
+          {isManager && (
             <TabsContent value="nao-acompanhados" className="mt-4">
               <NaoAcompanhadosPanel />
             </TabsContent>
-          </Tabs>
-        )}
+          )}
+          {isManager && (
+            <TabsContent value="lixeira" className="mt-4">
+              <LixeiraPanel />
+            </TabsContent>
+          )}
+        </Tabs>
 
-        {(!isManager || activeTab === "em-acompanhamento") && (
-          <>
+        {activeTab === "em-acompanhamento" && (
+          <TentativaCtx.Provider value={setTentativaTarget}>
         {/* Tarefas avulsas */}
         <TasksSection />
 
@@ -409,6 +452,17 @@ export default function FollowUpsPage() {
           />
         )}
 
+        <TentativaDialog
+          row={(tentativaTarget as unknown as FollowUpRecord) ?? null}
+          onClose={() => setTentativaTarget(null)}
+          onDone={() => {
+            refetch();
+            queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+            queryClient.invalidateQueries({ queryKey: ["follow-up-calendar"] });
+          }}
+        />
+
+
         <FollowUpEditDialog
           target={editTarget}
           onClose={() => setEditTarget(null)}
@@ -441,7 +495,7 @@ export default function FollowUpsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-          </>
+          </TentativaCtx.Provider>
         )}
       </div>
     </AppLayout>
@@ -512,8 +566,16 @@ function FollowUpItem({
   showCloser?: boolean;
 }) {
   const date = parseISO(row.follow_up_date);
+  const onTentativa = useContext(TentativaCtx);
+  const tentativas = row.follow_up_tentativas ?? 0;
+  const quente = row.follow_up_temperatura === "quente";
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+    <div
+      className={cn(
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border bg-card p-3",
+        quente ? "border-destructive/50 bg-destructive/5 shadow-sm" : "border-border",
+      )}
+    >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium truncate">{row.agendamentos?.lead_name ?? "Lead"}</span>
@@ -526,6 +588,19 @@ function FollowUpItem({
               {row.agendamentos.lead_phone}
             </a>
           )}
+          {row.follow_up_temperatura && (
+            <Badge variant="outline" className={cn("text-[10px]", temperaturaBadgeClass(row.follow_up_temperatura))}>
+              {temperaturaLabel(row.follow_up_temperatura)}
+            </Badge>
+          )}
+          {row.follow_up_canal && (
+            <Badge variant="secondary" className="text-[10px]">
+              {canalLabel(row.follow_up_canal)}
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-[10px]">
+            Tentativa {tentativas}/{MAX_TENTATIVAS}
+          </Badge>
           {showCloser && row.agendamentos?.closers?.name && (
             <Badge variant="secondary" className="text-[10px]">
               {row.agendamentos.closers.name}
@@ -535,7 +610,16 @@ function FollowUpItem({
         <div className="text-xs text-muted-foreground mt-0.5">
           {format(date, "EEEE, dd/MM/yyyy", { locale: ptBR })}
           {row.follow_up_time && ` · ${row.follow_up_time}`}
+          {row.follow_up_produto && ` · ${row.follow_up_produto}`}
+          {row.follow_up_valor != null &&
+            ` · R$ ${Number(row.follow_up_valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
         </div>
+        {row.follow_up_condicoes && (
+          <p className="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">
+            <span className="font-semibold text-muted-foreground">Negociação: </span>
+            {row.follow_up_condicoes}
+          </p>
+        )}
         {row.motivo_nao_fechamento && (
           <p className="text-xs text-foreground/80 mt-1.5 whitespace-pre-wrap">
             <span className="font-semibold text-muted-foreground">Motivo: </span>
@@ -555,7 +639,7 @@ function FollowUpItem({
           </p>
         )}
       </div>
-      <div className="flex gap-1.5 shrink-0">
+      <div className="flex flex-wrap gap-1.5 shrink-0">
         <Button
           size="icon"
           variant="ghost"
@@ -584,6 +668,11 @@ function FollowUpItem({
         >
           <Trash2 className="h-4 w-4" />
         </Button>
+        {onTentativa && tentativas < MAX_TENTATIVAS && (
+          <Button size="sm" onClick={() => onTentativa(row)}>
+            Registrar contato
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={() => onAction(row)}>
           Próximo passo
         </Button>
@@ -670,6 +759,7 @@ function FollowUpActionDialog({
           follow_up: false,
           follow_up_date: null,
           follow_up_time: null,
+          follow_up_status: "concluido",
           motivo_nao_fechamento: null,
           observacoes: observacoes.trim() || null,
           closed_at: dataVenda ? format(dataVenda, "yyyy-MM-dd") : null,
@@ -683,6 +773,7 @@ function FollowUpActionDialog({
           follow_up: false,
           follow_up_date: null,
           follow_up_time: null,
+          follow_up_status: "concluido",
           motivo_nao_fechamento: motivo,
           observacoes: observacoes.trim() || null,
         };
@@ -691,6 +782,7 @@ function FollowUpActionDialog({
         updatePayload = {
           vendeu: false,
           follow_up: true,
+          follow_up_status: "ativo",
           follow_up_date: format(novaData!, "yyyy-MM-dd"),
           follow_up_time: novoHorario,
           motivo_nao_fechamento: motivo || row.motivo_nao_fechamento,

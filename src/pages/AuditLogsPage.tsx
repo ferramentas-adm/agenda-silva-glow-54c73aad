@@ -49,6 +49,12 @@ const ACTION_LABELS: Record<string, string> = {
   produto_ativado: "Ativou produto",
   produto_desativado: "Desativou produto",
   follow_up_atualizado: "Atualizou follow-up",
+  call_realizada_registrada: "Registrou resultado da reunião",
+  call_realizada_bloqueada: "Tentativa bloqueada de registrar resultado da reunião",
+  follow_up_tentativa_registrada: "Registrou tentativa de follow-up",
+  follow_up_lead_puxado_do_balde: "Puxou lead do balde de reativação",
+  follow_up_lead_para_balde: "Lead liberado para o balde de reativação",
+  followup_alertas_configurados: "Configurou os avisos de follow-up",
   follow_up_editado: "Editou follow-up",
   follow_up_removido: "Removeu follow-up",
   // Pagamentos
