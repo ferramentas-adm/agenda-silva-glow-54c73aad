@@ -44,6 +44,16 @@ interface FollowUpRow {
   agendamento_id: string;
   follow_up_date: string;
   follow_up_time: string | null;
+  follow_up_status?: string | null;
+  follow_up_canal?: string | null;
+  follow_up_temperatura?: string | null;
+  follow_up_produto?: string | null;
+  follow_up_valor?: number | null;
+  follow_up_condicoes?: string | null;
+  follow_up_tentativas?: number | null;
+  follow_up_event_id?: string | null;
+  follow_up_ultima_tentativa_em?: string | null;
+  follow_up_balde_em?: string | null;
   motivo_nao_fechamento: string | null;
   explicacao_nao_fechamento: string | null;
   observacoes: string | null;
@@ -52,9 +62,13 @@ interface FollowUpRow {
     lead_name: string;
     lead_phone: string;
     closer_id: string | null;
+    lead_desqualificado?: boolean | null;
     closers: { name: string } | null;
   } | null;
 }
+
+/** Permite ao item da lista abrir o registro de tentativa sem repassar props por toda a árvore. */
+const TentativaCtx = createContext<((r: FollowUpRow) => void) | null>(null);
 
 const formatBRL = (digits: string) => {
   const cleaned = digits.replace(/\D/g, "");
@@ -97,11 +111,15 @@ export default function FollowUpsPage() {
         .from("vendas")
         .select(`
           id, agendamento_id, follow_up_date, follow_up_time,
+          follow_up_status, follow_up_canal, follow_up_temperatura, follow_up_produto,
+          follow_up_valor, follow_up_condicoes, follow_up_tentativas, follow_up_event_id,
+          follow_up_ultima_tentativa_em, follow_up_balde_em,
           motivo_nao_fechamento, explicacao_nao_fechamento, observacoes, valor,
-          agendamentos!inner ( lead_name, lead_phone, closer_id, closers ( name ) )
+          agendamentos!inner ( lead_name, lead_phone, closer_id, lead_desqualificado, closers ( name ) )
         `)
         .eq("follow_up", true)
         .eq("vendeu", false)
+        .eq("follow_up_status", "ativo")
         .order("follow_up_date", { ascending: true })
         .order("follow_up_time", { ascending: true, nullsFirst: false });
 
@@ -242,20 +260,34 @@ export default function FollowUpsPage() {
           </div>
         </header>
 
-        {isManager && (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-            <TabsList>
-              <TabsTrigger value="em-acompanhamento">Em acompanhamento</TabsTrigger>
-              <TabsTrigger value="nao-acompanhados">Não acompanhados</TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="em-acompanhamento">Em acompanhamento</TabsTrigger>
+            <TabsTrigger value="calendario">Calendário</TabsTrigger>
+            <TabsTrigger value="balde">Balde de reativação</TabsTrigger>
+            {isManager && <TabsTrigger value="nao-acompanhados">Não acompanhados</TabsTrigger>}
+            {isManager && <TabsTrigger value="lixeira">Lixeira</TabsTrigger>}
+          </TabsList>
+          <TabsContent value="calendario" className="mt-4">
+            <FollowUpCalendarPanel />
+          </TabsContent>
+          <TabsContent value="balde" className="mt-4">
+            <BaldeLeadsPanel />
+          </TabsContent>
+          {isManager && (
             <TabsContent value="nao-acompanhados" className="mt-4">
               <NaoAcompanhadosPanel />
             </TabsContent>
-          </Tabs>
-        )}
+          )}
+          {isManager && (
+            <TabsContent value="lixeira" className="mt-4">
+              <LixeiraPanel />
+            </TabsContent>
+          )}
+        </Tabs>
 
-        {(!isManager || activeTab === "em-acompanhamento") && (
-          <>
+        {activeTab === "em-acompanhamento" && (
+          <TentativaCtx.Provider value={setTentativaTarget}>
         {/* Tarefas avulsas */}
         <TasksSection />
 
@@ -441,7 +473,7 @@ export default function FollowUpsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-          </>
+          </TentativaCtx.Provider>
         )}
       </div>
     </AppLayout>
