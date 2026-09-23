@@ -1647,6 +1647,7 @@ export type Database = {
           follow_up_canal: string | null
           follow_up_condicoes: string | null
           follow_up_date: string | null
+          follow_up_event_id: string | null
           follow_up_lixeira_em: string | null
           follow_up_owner_closer_id: string | null
           follow_up_produto: string | null
@@ -1689,6 +1690,7 @@ export type Database = {
           follow_up_canal?: string | null
           follow_up_condicoes?: string | null
           follow_up_date?: string | null
+          follow_up_event_id?: string | null
           follow_up_lixeira_em?: string | null
           follow_up_owner_closer_id?: string | null
           follow_up_produto?: string | null
@@ -1731,6 +1733,7 @@ export type Database = {
           follow_up_canal?: string | null
           follow_up_condicoes?: string | null
           follow_up_date?: string | null
+          follow_up_event_id?: string | null
           follow_up_lixeira_em?: string | null
           follow_up_owner_closer_id?: string | null
           follow_up_produto?: string | null
