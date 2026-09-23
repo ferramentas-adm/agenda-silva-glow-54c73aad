@@ -90,6 +90,14 @@ export function useAppSettingList(key: string, defaults: string[] = []) {
   return { items: query.data ?? [], isLoading: query.isLoading, add, remove, update, isSaving: save.isPending };
 }
 
+/** Produtos ativos (exclui os marcados como inativos no Admin). Usar em telas operacionais. */
+export function useProdutosAtivos() {
+  const { items: all, isLoading } = useAppSettingList("produtos", []);
+  const { items: inativos, isLoading: l2 } = useAppSettingList("produtos_inativos", []);
+  const set = new Set(inativos);
+  return { items: all.filter((p) => !set.has(p)), inativos, isLoading: isLoading || l2 };
+}
+
 // Constantes de chaves para evitar typos
 export const APP_SETTING_KEYS = {
   motivos_nao_fechamento: "motivos_nao_fechamento",
@@ -97,6 +105,7 @@ export const APP_SETTING_KEYS = {
   channel_types: "channel_types",
   block_reasons: "block_reasons",
   produtos: "produtos",
+  produtos_inativos: "produtos_inativos",
   closer_error_categories: "closer_error_categories",
   cancellation_reasons: "cancellation_reasons",
   no_show_reasons: "no_show_reasons",
