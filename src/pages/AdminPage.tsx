@@ -191,6 +191,7 @@ function UsersSection() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterTurma, setFilterTurma] = useState<"all" | "a" | "b">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [fullName, setFullName] = useState("");
@@ -389,6 +390,7 @@ function UsersSection() {
     return (allUsers as any[])
       .filter((u) => {
         if (filterRole !== "all" && u.role !== filterRole) return false;
+        if (filterRole === "closer" && filterTurma !== "all" && !!u.emTreinamento !== (filterTurma === "b")) return false;
         if (filterStatus === "active" && !u.active) return false;
         if (filterStatus === "inactive" && u.active) return false;
         if (!q) return true;
@@ -398,9 +400,9 @@ function UsersSection() {
         const cmp = (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" });
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [allUsers, filterRole, filterStatus, searchQuery, sortDir]);
+  }, [allUsers, filterRole, filterTurma, filterStatus, searchQuery, sortDir]);
 
-  const isFiltered = filterRole !== "all" || filterStatus !== "all" || searchQuery.trim().length > 0;
+  const isFiltered = filterRole !== "all" || filterTurma !== "all" || filterStatus !== "all" || searchQuery.trim().length > 0;
 
   const validatePassword = (pw: string): string[] => {
     const errs: string[] = [];
@@ -799,7 +801,13 @@ function UsersSection() {
                 <SelectItem value="desc">Nome: Z → A</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterRole} onValueChange={setFilterRole}>
+            <Select
+              value={filterRole}
+              onValueChange={(v) => {
+                setFilterRole(v);
+                if (v !== "closer") setFilterTurma("all");
+              }}
+            >
               <SelectTrigger className="w-[160px] h-8 text-xs">
                 <SelectValue placeholder="Filtrar por função" />
               </SelectTrigger>
@@ -813,6 +821,18 @@ function UsersSection() {
                 <SelectItem value="apresentador">Apresentador</SelectItem>
               </SelectContent>
             </Select>
+            {filterRole === "closer" && (
+              <Select value={filterTurma} onValueChange={(v) => setFilterTurma(v as typeof filterTurma)}>
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue placeholder="Turma" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as turmas</SelectItem>
+                  <SelectItem value="a">Turma A</SelectItem>
+                  <SelectItem value="b">Turma B</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 
