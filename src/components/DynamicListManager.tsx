@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Pencil, Trash2, Check, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { logAudit } from "@/services/auditLog";
 import { formatOrderBump, formatOrderBumpLabel, parseOrderBump } from "@/lib/orderBumps";
 
 interface DynamicListManagerProps {
@@ -24,6 +27,14 @@ export default function DynamicListManager({ settingKey, title, description, def
 
   /** Lista de itens com nome + valor (order bumps). */
   const isPricedList = settingKey === APP_SETTING_KEYS.order_bumps;
+  const isProdutos = settingKey === APP_SETTING_KEYS.produtos;
+  const inativosList = useAppSettingList(APP_SETTING_KEYS.produtos_inativos, []);
+  const inativos = new Set(inativosList.items);
+  const toggleAtivo = (item: string, ativo: boolean) => {
+    if (ativo) inativosList.remove(item);
+    else inativosList.add(item);
+    logAudit(ativo ? "produto_ativado" : "produto_desativado", "settings", null as any, { produto: item });
+  };
 
   const labelFor = (item: string) =>
     isPricedList ? formatOrderBumpLabel(parseOrderBump(item)) : item;
@@ -169,7 +180,18 @@ export default function DynamicListManager({ settingKey, title, description, def
                 </>
               ) : (
                 <>
-                  <span className="flex-1 text-sm">{labelFor(item)}</span>
+                  <span className={`flex-1 text-sm ${isProdutos && inativos.has(item) ? "text-muted-foreground line-through" : ""}`}>{labelFor(item)}</span>
+                  {isProdutos && (
+                    <>
+                      {inativos.has(item) && <Badge variant="outline" className="text-[10px]">Inativo</Badge>}
+                      <Switch
+                        checked={!inativos.has(item)}
+                        onCheckedChange={(v) => toggleAtivo(item, v)}
+                        disabled={inativosList.isSaving}
+                        aria-label={inativos.has(item) ? "Ativar produto" : "Desativar produto"}
+                      />
+                    </>
+                  )}
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleStartEdit(item)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>

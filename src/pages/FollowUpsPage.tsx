@@ -29,7 +29,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { useAppSettingList, APP_SETTING_KEYS , useProdutosAtivos } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS, isPendingStageReason } from "@/lib/vendaConstants";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { logAudit } from "@/services/auditLog";
@@ -607,7 +607,7 @@ function FollowUpActionDialog({
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
-  const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+  const { items: produtosList } = useProdutosAtivos();
 
 
   // IMPORTANTE: todos os campos começam SEMPRE em branco para evitar

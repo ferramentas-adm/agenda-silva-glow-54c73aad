@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { useAppSettingList, APP_SETTING_KEYS , useProdutosAtivos } from "@/hooks/useAppSettingList";
 import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { brTodayYMD } from "@/lib/timezone";
@@ -58,7 +58,7 @@ export default function GestorVendaDialog({
   open, onOpenChange, agendamentoId, leadName, currentStatus, prefill, onSuccess,
 }: GestorVendaDialogProps) {
   const { user } = useAuth();
-  const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+  const { items: produtosList } = useProdutosAtivos();
 
   const [produto, setProduto] = useState("");
   const [valor, setValor] = useState("");
@@ -117,7 +117,7 @@ export default function GestorVendaDialog({
       setLoadingExisting(true);
       const { data: agRow } = await supabase
         .from("agendamentos")
-        .select("closer_id")
+        .select("closer_id, produto_interesse")
         .eq("id", agendamentoId)
         .maybeSingle();
       setCloserOriginalId(agRow?.closer_id ?? null);
@@ -139,6 +139,9 @@ export default function GestorVendaDialog({
       if (prefill) {
         if (prefill.produto && !(data as any)?.produto) setProduto(prefill.produto);
         if (prefill.valorDigits && data?.valor == null) setValor(prefill.valorDigits);
+      }
+      if (!data?.produto && !prefill?.produto && (agRow as any)?.produto_interesse) {
+        setProduto((agRow as any).produto_interesse);
       }
       setLoadingExisting(false);
     })();
