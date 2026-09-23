@@ -566,8 +566,16 @@ function FollowUpItem({
   showCloser?: boolean;
 }) {
   const date = parseISO(row.follow_up_date);
+  const onTentativa = useContext(TentativaCtx);
+  const tentativas = row.follow_up_tentativas ?? 0;
+  const quente = row.follow_up_temperatura === "quente";
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+    <div
+      className={cn(
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border bg-card p-3",
+        quente ? "border-destructive/50 bg-destructive/5 shadow-sm" : "border-border",
+      )}
+    >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium truncate">{row.agendamentos?.lead_name ?? "Lead"}</span>
@@ -580,6 +588,19 @@ function FollowUpItem({
               {row.agendamentos.lead_phone}
             </a>
           )}
+          {row.follow_up_temperatura && (
+            <Badge variant="outline" className={cn("text-[10px]", temperaturaBadgeClass(row.follow_up_temperatura))}>
+              {temperaturaLabel(row.follow_up_temperatura)}
+            </Badge>
+          )}
+          {row.follow_up_canal && (
+            <Badge variant="secondary" className="text-[10px]">
+              {canalLabel(row.follow_up_canal)}
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-[10px]">
+            Tentativa {tentativas}/{MAX_TENTATIVAS}
+          </Badge>
           {showCloser && row.agendamentos?.closers?.name && (
             <Badge variant="secondary" className="text-[10px]">
               {row.agendamentos.closers.name}
@@ -589,7 +610,16 @@ function FollowUpItem({
         <div className="text-xs text-muted-foreground mt-0.5">
           {format(date, "EEEE, dd/MM/yyyy", { locale: ptBR })}
           {row.follow_up_time && ` · ${row.follow_up_time}`}
+          {row.follow_up_produto && ` · ${row.follow_up_produto}`}
+          {row.follow_up_valor != null &&
+            ` · R$ ${Number(row.follow_up_valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
         </div>
+        {row.follow_up_condicoes && (
+          <p className="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">
+            <span className="font-semibold text-muted-foreground">Negociação: </span>
+            {row.follow_up_condicoes}
+          </p>
+        )}
         {row.motivo_nao_fechamento && (
           <p className="text-xs text-foreground/80 mt-1.5 whitespace-pre-wrap">
             <span className="font-semibold text-muted-foreground">Motivo: </span>
