@@ -47,6 +47,7 @@ const Body = z.object({
     return n === "true" || n === "1" || n === "sim";
   }),
   email: z.string().email().optional(),
+  produto: z.string().max(200).optional(),
   // Roda todas as validações e devolve o desfecho sem gravar nada.
   dry_run: z.boolean().optional().default(false),
 });
@@ -318,6 +319,7 @@ Deno.serve(async (req) => {
       google_event_id: googleEventId,
       meet_error: meetErro,
       lead_desqualificado: b.lead_desqualificado ?? false,
+      produto_interesse: await resolveProduto(supabase, b.produto),
     };
     const { data: created, error } = await supabase.from("agendamentos").insert(insert).select("*").single();
     if (error) {
@@ -400,3 +402,16 @@ Deno.serve(async (req) => {
     return json({ erro: "internal_error", detalhe: errorDetail(e) }, 500);
   }
 });
+
+
+async function resolveProduto(supabase: any, produto?: string): Promise<string | null> {
+  const p = produto?.trim();
+  if (!p) return null;
+  try {
+    const { data } = await supabase.from("app_settings").select("key, value").in("key", ["produtos", "produtos_inativos"]);
+    const get = (k: string) => { try { return JSON.parse(data?.find((r: any) => r.key === k)?.value ?? "[]") as string[]; } catch { return []; } };
+    const inativos = new Set(get("produtos_inativos").map((x) => x.toLowerCase()));
+    const hit = get("produtos").find((x) => x.toLowerCase() === p.toLowerCase() && !inativos.has(x.toLowerCase()));
+    return hit ?? null;
+  } catch { return null; }
+}
