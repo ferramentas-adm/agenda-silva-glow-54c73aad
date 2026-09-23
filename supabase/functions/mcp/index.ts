@@ -452,7 +452,7 @@ var list_followups_default = defineTool7({
     let emAcompanhamento = [];
     let naoAcompanhados = [];
     if (which !== "nao_acompanhados") {
-      let q = sb.from("vendas").select(SELECT2).eq("vendeu", false).eq("follow_up", true).not("follow_up_date", "is", null).order("follow_up_date", { ascending: true }).limit(max);
+      let q = sb.from("vendas").select(SELECT2).eq("vendeu", false).eq("follow_up", true).eq("follow_up_status", "ativo").not("follow_up_date", "is", null).order("follow_up_date", { ascending: true }).limit(max);
       if (from) q = q.gte("follow_up_date", from);
       if (to) q = q.lte("follow_up_date", to);
       const { data, error } = await q;
