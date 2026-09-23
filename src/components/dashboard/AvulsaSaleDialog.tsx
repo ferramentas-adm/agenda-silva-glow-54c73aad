@@ -20,7 +20,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { useAppSettingList, APP_SETTING_KEYS , useProdutosAtivos } from "@/hooks/useAppSettingList";
 import { logAudit } from "@/services/auditLog";
 import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 
@@ -50,7 +50,7 @@ export default function AvulsaSaleDialog({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
 
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
-  const { items: produtosList } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+  const { items: produtosList } = useProdutosAtivos();
 
   const { data: closers = [] } = useQuery({
     queryKey: ["avulsa-closers"],

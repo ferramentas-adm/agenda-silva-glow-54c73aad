@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamento";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import { useSdrGlobalVisibility } from "@/hooks/useSdrGlobalVisibility";
-import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { useAppSettingList, APP_SETTING_KEYS , useProdutosAtivos } from "@/hooks/useAppSettingList";
 import { DEFAULT_NO_SHOW_REASONS } from "@/components/NaoCompareceuDialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -265,7 +265,7 @@ export default function ReunioesListPage() {
   }, [vendaOfertaMap]);
 
   // Lista canônica de produtos (app_settings) + fallback dos produtos já ofertados
-  const { items: produtosCadastrados } = useAppSettingList(APP_SETTING_KEYS.produtos, []);
+  const { items: produtosCadastrados, inativos: produtosInativos } = useProdutosAtivos();
   const { items: noShowReasonsCadastrados } = useAppSettingList(
     APP_SETTING_KEYS.no_show_reasons,
     DEFAULT_NO_SHOW_REASONS,
@@ -276,8 +276,9 @@ export default function ReunioesListPage() {
       const hasOffer = v.vendeu || (typeof v.valor === "number" && (v.valor || 0) > 0);
       if (hasOffer && v.produto && v.produto.trim()) s.add(v.produto.trim());
     });
+    produtosInativos.forEach((p) => s.delete(p.trim()));
     return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [vendaOfertaMap, produtosCadastrados]);
+  }, [vendaOfertaMap, produtosCadastrados, produtosInativos]);
 
 
   const closerMap = useMemo(() => {

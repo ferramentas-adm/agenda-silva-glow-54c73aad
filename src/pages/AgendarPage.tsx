@@ -85,7 +85,7 @@ const LEGACY_BOOKING_CHANNEL_VALUES: Record<string, string> = {
 };
 const bookingChannelValue = (label: string) => LEGACY_BOOKING_CHANNEL_VALUES[label] ?? label;
 
-import { useAppSettingList, APP_SETTING_KEYS, DEFAULT_BOOKING_CHANNELS } from "@/hooks/useAppSettingList";
+import { useAppSettingList, APP_SETTING_KEYS, DEFAULT_BOOKING_CHANNELS , useProdutosAtivos } from "@/hooks/useAppSettingList";
 import { useSlotLimit } from "@/hooks/useSlotLimit";
 import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExceptions";
 
@@ -189,6 +189,9 @@ function AgendarPageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [briefingText, setBriefingText] = useState("");
   const [bookingChannel, setBookingChannel] = useState<string | null>(null);
+  const [produtoInteresse, setProdutoInteresse] = useState<string>("");
+  const { items: produtosAtivos } = useProdutosAtivos();
+  const produtoObrigatorio = produtosAtivos.length > 0;
   const { items: channelTypes } = useAppSettingList(APP_SETTING_KEYS.channel_types, DEFAULT_CHANNEL_TYPES);
   const { items: bookingChannels } = useAppSettingList(
     APP_SETTING_KEYS.booking_channels,
@@ -405,6 +408,10 @@ function AgendarPageInner() {
       toast.error("Selecione o Canal do agendamento.");
       return;
     }
+    if (produtoObrigatorio && !produtoInteresse) {
+      toast.error("Selecione o Produto sugerido pelo SDR.");
+      return;
+    }
     setSubmitting(true);
 
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -565,6 +572,7 @@ function AgendarPageInner() {
             is_5k: false,
             lead_desqualificado: leadDesqualificado,
             booking_channel: bookingChannel,
+            produto_interesse: produtoInteresse || null,
             ...metaFields,
           } as any)
           .eq("id", sameDayTargetId!)
@@ -603,6 +611,7 @@ function AgendarPageInner() {
         is_5k: false,
         lead_desqualificado: leadDesqualificado,
         booking_channel: bookingChannel,
+        produto_interesse: produtoInteresse || null,
         ...metaFields,
       } as any).select("id").single();
 
@@ -703,6 +712,7 @@ function AgendarPageInner() {
     setSelectedSdrId(null);
     setBriefingText("");
     setBookingChannel(null);
+    setProdutoInteresse("");
     setSuccess(null);
     setStep("lead");
   };
@@ -984,6 +994,20 @@ function AgendarPageInner() {
                   )}
                 </div>
               )}
+              {produtoObrigatorio && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Produto sugerido pelo SDR <span className="text-destructive">*</span>
+                  </label>
+                  <Select value={produtoInteresse} onValueChange={setProdutoInteresse}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o produto de interesse" /></SelectTrigger>
+                    <SelectContent>
+                      {produtosAtivos.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Sugestão da qualificação — o closer pode vender outro produto.</p>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">
                   Canal do agendamento <span className="text-destructive">*</span>
@@ -1055,7 +1079,8 @@ function AgendarPageInner() {
                 incompativel ||
                 (isCloser && !meetingReasonCustom.trim()) ||
                 (channelTypeRequired && !channelType) ||
-                !bookingChannel
+                !bookingChannel ||
+                (produtoObrigatorio && !produtoInteresse)
               }
               className="gap-2"
             >

@@ -20,6 +20,7 @@ interface Agendamento {
   status: string;
   meet_link: string | null;
   briefing: string | null;
+  produto_interesse?: string | null;
   closer_id: string | null;
   closer_name?: string | null;
   sdr_name?: string | null;
@@ -63,7 +64,7 @@ export default function LeadDetalhesPage() {
       if (id) {
         const { data } = await supabase
           .from("agendamentos")
-          .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, meet_link, briefing, closer_id, sdr_responsavel_id, created_by")
+          .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, meet_link, briefing, produto_interesse, closer_id, sdr_responsavel_id, created_by")
           .eq("id", id)
           .is("deleted_at", null)
           .maybeSingle();
@@ -86,7 +87,7 @@ export default function LeadDetalhesPage() {
         const today = format(new Date(), "yyyy-MM-dd");
         let q = supabase
           .from("agendamentos")
-          .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, meet_link, briefing, closer_id")
+          .select("id, lead_name, lead_phone, scheduled_date, scheduled_time, status, meet_link, briefing, produto_interesse, closer_id")
           .is("deleted_at", null)
           .eq("scheduled_date", today)
           .order("scheduled_time");
@@ -215,6 +216,9 @@ export default function LeadDetalhesPage() {
 
             <LeadChamadasHistorico agendamentoId={detail.id} refreshKey={callsKey} />
 
+            {detail.produto_interesse && (
+              <p className="text-sm"><span className="text-muted-foreground">Produto sugerido pelo SDR:</span> <strong>{detail.produto_interesse}</strong></p>
+            )}
             {detail.briefing && (
               <div className="pt-2 border-t">
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">

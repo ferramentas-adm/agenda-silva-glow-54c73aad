@@ -93,6 +93,7 @@ export type Database = {
           meta_lead_id: string | null
           observation: string | null
           original_agendamento_id: string | null
+          produto_interesse: string | null
           scheduled_date: string
           scheduled_time: string
           sdr_error: boolean
@@ -147,6 +148,7 @@ export type Database = {
           meta_lead_id?: string | null
           observation?: string | null
           original_agendamento_id?: string | null
+          produto_interesse?: string | null
           scheduled_date: string
           scheduled_time: string
           sdr_error?: boolean
@@ -201,6 +203,7 @@ export type Database = {
           meta_lead_id?: string | null
           observation?: string | null
           original_agendamento_id?: string | null
+          produto_interesse?: string | null
           scheduled_date?: string
           scheduled_time?: string
           sdr_error?: boolean
