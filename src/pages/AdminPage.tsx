@@ -400,9 +400,9 @@ function UsersSection() {
         const cmp = (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" });
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [allUsers, filterRole, filterStatus, searchQuery, sortDir]);
+  }, [allUsers, filterRole, filterTurma, filterStatus, searchQuery, sortDir]);
 
-  const isFiltered = filterRole !== "all" || filterStatus !== "all" || searchQuery.trim().length > 0;
+  const isFiltered = filterRole !== "all" || filterTurma !== "all" || filterStatus !== "all" || searchQuery.trim().length > 0;
 
   const validatePassword = (pw: string): string[] => {
     const errs: string[] = [];
@@ -801,7 +801,13 @@ function UsersSection() {
                 <SelectItem value="desc">Nome: Z → A</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterRole} onValueChange={setFilterRole}>
+            <Select
+              value={filterRole}
+              onValueChange={(v) => {
+                setFilterRole(v);
+                if (v !== "closer") setFilterTurma("all");
+              }}
+            >
               <SelectTrigger className="w-[160px] h-8 text-xs">
                 <SelectValue placeholder="Filtrar por função" />
               </SelectTrigger>
