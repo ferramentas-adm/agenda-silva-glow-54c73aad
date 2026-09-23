@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { Loader2, DollarSign } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Loader2, DollarSign, CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -9,15 +11,22 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
-import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
+import { upsertFollowUpCalendarEvent } from "@/services/followUpCalendar";
+import { useAppSettingList, APP_SETTING_KEYS, useProdutosAtivos } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
 import OrderBumpsField from "@/components/OrderBumpsField";
 import { OrderBump, parseOrderBumpsColumn } from "@/lib/orderBumps";
+import { CANAL_OPTIONS, TEMPERATURA_OPTIONS } from "@/lib/followUp";
+import { pickedDateToYMD, brTodayYMD } from "@/lib/timezone";
 
 interface VendaDialogProps {
   open: boolean;
@@ -37,13 +46,31 @@ const LEAD_REVENUE_OPTIONS = [
   "Não tenho essa informação",
 ] as const;
 
+const CONDICOES_MIN = 30;
+
+const formatBRL = (digits: string) => {
+  const cleaned = digits.replace(/\D/g, "");
+  if (!cleaned) return "";
+  const padded = cleaned.padStart(3, "0");
+  const reais = padded.slice(0, -2).replace(/^0+(?=\d)/, "");
+  const cents = padded.slice(-2);
+  const reaisFmt = reais.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${reaisFmt},${cents}`;
+};
+const digitsToNumber = (digits: string) => {
+  const cleaned = digits.replace(/\D/g, "");
+  if (!cleaned) return NaN;
+  return parseInt(cleaned, 10) / 100;
+};
+
 /**
  * Modal do CLOSER — registra apenas que a call foi realizada:
- * faixa de faturamento do lead + declaração "vendeu?" (informativa).
+ * faixa de faturamento do lead + declaração "vendeu?" (informativa) e,
+ * quando não vendeu, o combinado do follow-up (canal, temperatura, produto,
+ * valor ofertado, condições e data/hora).
  *
  * A venda oficial (produto, valor coletado, origem) é lançada por
- * gestor/moderador/supervisor no GestorVendaDialog. Esta declaração NÃO entra
- * em nenhuma métrica de venda.
+ * gestor/moderador/supervisor no GestorVendaDialog.
  */
 export default function VendaDialog({ open, onOpenChange, agendamentoId, leadName, onSuccess, contentClassName }: VendaDialogProps) {
   const { user } = useAuth();
@@ -59,10 +86,21 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   // Venda já lançada pelo gestor — preservada integralmente ao salvar.
   const [existing, setExisting] = useState<any | null>(null);
 
+  // Follow-up combinado
+  const [temFollowUp, setTemFollowUp] = useState<"sim" | "nao" | null>(null);
+  const [fuCanal, setFuCanal] = useState<string>("");
+  const [fuTemperatura, setFuTemperatura] = useState<string>("");
+  const [fuProduto, setFuProduto] = useState<string>("");
+  const [fuValor, setFuValor] = useState<string>("");
+  const [fuCondicoes, setFuCondicoes] = useState<string>("");
+  const [fuData, setFuData] = useState<Date | undefined>(undefined);
+  const [fuHora, setFuHora] = useState<string>("");
+
   const { items: motivosNaoFechamento } = useAppSettingList(
     APP_SETTING_KEYS.motivos_nao_fechamento,
     DEFAULT_REASONS,
   );
+  const { items: produtosList } = useProdutosAtivos();
 
   const resetAllFields = () => {
     setVendeuCloser(null);
@@ -72,6 +110,14 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setOrderBumps([]);
     setIsEditing(false);
     setExisting(null);
+    setTemFollowUp(null);
+    setFuCanal("");
+    setFuTemperatura("");
+    setFuProduto("");
+    setFuValor("");
+    setFuCondicoes("");
+    setFuData(undefined);
+    setFuHora("");
   };
 
   useEffect(() => {
@@ -107,19 +153,47 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const JUSTIFICATION_MIN = 100;
   const justificationLength = observacoes.trim().length;
   const justificationOk = vendeuCloser !== "nao" || justificationLength >= JUSTIFICATION_MIN;
+
+  const fuValorNum = digitsToNumber(fuValor);
+  const fuValorOk = !isNaN(fuValorNum) && fuValorNum > 0;
+  const condicoesLength = fuCondicoes.trim().length;
+  const followUpOk =
+    vendeuCloser !== "nao"
+      ? true
+      : temFollowUp === "nao"
+        ? true
+        : temFollowUp === "sim"
+          ? !!fuCanal && !!fuTemperatura && (produtosList.length === 0 || !!fuProduto) &&
+            fuValorOk && condicoesLength >= CONDICOES_MIN && !!fuData && !!fuHora
+          : false;
+
   const canSubmit =
-    !!vendeuCloser && !!leadRevenue && (vendeuCloser === "sim" || !!motivo) && justificationOk;
+    !!vendeuCloser && !!leadRevenue && (vendeuCloser === "sim" || !!motivo) &&
+    justificationOk && followUpOk;
 
   const handleSubmit = async () => {
     if (!canSubmit || !user) return;
     setSubmitting(true);
     try {
+      const comFollowUp = vendeuCloser === "nao" && temFollowUp === "sim";
+      const fuDataStr = comFollowUp && fuData ? pickedDateToYMD(fuData) : null;
+
       const payload = {
         vendeu_closer: vendeuCloser === "sim",
         lead_revenue: leadRevenue || null,
         motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
         observacoes: observacoes.trim() || null,
         order_bumps: vendeuCloser === "sim" && orderBumps.length ? orderBumps : null,
+        follow_up: comFollowUp,
+        follow_up_status: comFollowUp ? "ativo" : "concluido",
+        follow_up_date: fuDataStr,
+        follow_up_time: comFollowUp ? fuHora : null,
+        follow_up_canal: comFollowUp ? fuCanal : null,
+        follow_up_temperatura: comFollowUp ? fuTemperatura : null,
+        follow_up_produto: comFollowUp ? (fuProduto || null) : null,
+        follow_up_valor: comFollowUp ? fuValorNum : null,
+        follow_up_condicoes: comFollowUp ? fuCondicoes.trim() : null,
+        follow_up_tentativas: 0,
       };
 
       const denyMessage =
@@ -133,6 +207,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         });
       };
 
+      let vendaId: string | null = existing?.id ?? null;
+
       if (existing) {
         const { data: updated, error: vendaError } = await supabase
           .from("vendas")
@@ -144,16 +220,20 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           await logBlocked("update_venda");
           throw new Error(denyMessage);
         }
+        vendaId = updated[0].id;
       } else {
-        const { error: vendaError } = await supabase.from("vendas").insert({
-          agendamento_id: agendamentoId,
-          vendeu: false,
-          ...payload,
-          created_by: user.id,
-        } as any);
+        const { data: inserted, error: vendaError } = await supabase
+          .from("vendas")
+          .insert({
+            agendamento_id: agendamentoId,
+            vendeu: false,
+            ...payload,
+            created_by: user.id,
+          } as any)
+          .select("id");
         if (vendaError) throw vendaError;
+        vendaId = inserted?.[0]?.id ?? null;
       }
-
 
       const { data: agUpdated, error: agError } = await supabase
         .from("agendamentos")
@@ -165,7 +245,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         await logBlocked("update_status");
         throw new Error(denyMessage);
       }
-
 
       // Webhook informativo de call realizada (sem alterar etapa de venda no CRM)
       const { data: agData } = await supabase
@@ -186,6 +265,28 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         sdrName = p?.full_name ?? null;
       }
 
+      // Compromisso do follow-up na agenda corporativa do closer (best-effort)
+      if (comFollowUp && agData?.closer_id && fuDataStr && vendaId) {
+        const eventId = await upsertFollowUpCalendarEvent({
+          closer_id: agData.closer_id,
+          lead_name: agData.lead_name ?? leadName,
+          lead_phone: agData.lead_phone,
+          canal: fuCanal,
+          data: fuDataStr,
+          hora: fuHora,
+          produto: fuProduto || null,
+          valor: formatBRL(fuValor),
+          condicoes: fuCondicoes.trim(),
+          temperatura: fuTemperatura,
+          tentativa: 0,
+        });
+        if (eventId) {
+          await supabase.from("vendas").update({ follow_up_event_id: eventId } as any).eq("id", vendaId);
+        } else {
+          toast.warning("Follow-up salvo, mas não foi possível criar o lembrete na agenda Google.");
+        }
+      }
+
       sendVendaToDataCrazy({
         agendamento_id: agendamentoId,
         lead_name: agData?.lead_name ?? leadName,
@@ -196,9 +297,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         resumo_venda: null,
         valor: null,
         motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
-        follow_up: false,
-        follow_up_date: null,
-        follow_up_time: null,
+        follow_up: comFollowUp,
+        follow_up_date: fuDataStr,
+        follow_up_time: comFollowUp ? fuHora : null,
         observacoes: observacoes.trim() || null,
         outcome: "em_andamento",
         status: null,
@@ -210,6 +311,13 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         lead_name: leadName,
         vendeu_closer: vendeuCloser === "sim",
         lead_revenue: leadRevenue || null,
+        tera_follow_up: comFollowUp,
+        follow_up_canal: comFollowUp ? fuCanal : null,
+        follow_up_temperatura: comFollowUp ? fuTemperatura : null,
+        follow_up_produto: comFollowUp ? fuProduto || null : null,
+        follow_up_valor: comFollowUp ? fuValorNum : null,
+        follow_up_date: fuDataStr,
+        follow_up_time: comFollowUp ? fuHora : null,
       });
 
       toast.success("Reunião registrada como realizada!");
@@ -297,6 +405,160 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             </div>
           )}
 
+          {vendeuCloser === "nao" && (
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="space-y-2">
+                <Label>Vai ter follow-up com este lead? *</Label>
+                <RadioGroup
+                  value={temFollowUp ?? ""}
+                  onValueChange={(v) => setTemFollowUp(v as "sim" | "nao")}
+                >
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="sim" id="fu-sim" />
+                      <Label htmlFor="fu-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="nao" id="fu-nao" />
+                      <Label htmlFor="fu-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {temFollowUp === "sim" && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label>Como será o contato? *</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {CANAL_OPTIONS.map((c) => (
+                        <Button
+                          key={c.value}
+                          type="button"
+                          size="sm"
+                          variant={fuCanal === c.value ? "default" : "outline"}
+                          onClick={() => setFuCanal(c.value)}
+                        >
+                          {c.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Chance de fechar *</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {TEMPERATURA_OPTIONS.map((t) => (
+                        <Button
+                          key={t.value}
+                          type="button"
+                          size="sm"
+                          variant={fuTemperatura === t.value ? "default" : "outline"}
+                          onClick={() => setFuTemperatura(t.value)}
+                        >
+                          {t.label}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Quanto mais quente, maior o destaque do lead na tela de follow-ups.
+                    </p>
+                  </div>
+
+                  {produtosList.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label>Produto que será fechado *</Label>
+                      <Select value={fuProduto} onValueChange={setFuProduto}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o produto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {produtosList.map((p) => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fu-valor">Valor ofertado e combinado *</Label>
+                    <Input
+                      id="fu-valor"
+                      inputMode="numeric"
+                      value={formatBRL(fuValor)}
+                      onChange={(e) => setFuValor(e.target.value.replace(/\D/g, ""))}
+                      placeholder="0,00"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fu-cond">Condições da negociação *</Label>
+                    <Textarea
+                      id="fu-cond"
+                      value={fuCondicoes}
+                      onChange={(e) => setFuCondicoes(e.target.value)}
+                      rows={4}
+                      placeholder="Parcelamento, desconto autorizado, prazo, objeções pendentes e o que ficou combinado."
+                    />
+                    <p
+                      className={cn(
+                        "text-xs font-medium",
+                        condicoesLength >= CONDICOES_MIN ? "text-emerald-500" : "text-destructive",
+                      )}
+                    >
+                      {condicoesLength}/{CONDICOES_MIN} caracteres
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <Label>Data combinada *</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !fuData && "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {fuData ? format(fuData, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={fuData}
+                            onSelect={setFuData}
+                            disabled={(d) => pickedDateToYMD(d) < brTodayYMD()}
+                            locale={ptBR}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="fu-hora">Horário *</Label>
+                      <Input
+                        id="fu-hora"
+                        type="time"
+                        value={fuHora}
+                        onChange={(e) => setFuHora(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    O compromisso entra na sua agenda Google e você receberá avisos na tela no dia.
+                    Se o contato não for registrado, o lead vai para o Balde de Reativação à 00:01.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>
               Justificativa {vendeuCloser === "nao" && <span className="text-destructive">*</span>}
@@ -329,8 +591,6 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             )}
           </div>
         </div>
-
-
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
