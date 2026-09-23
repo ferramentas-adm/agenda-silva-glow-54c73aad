@@ -8,6 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FollowUpAlertSettingsCard from "@/components/admin/FollowUpAlertSettingsCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -2017,7 +2018,10 @@ export default function AdminPage() {
               <PermissionsMatrix />
             </TabsContent>
             <TabsContent value="settings">
-              <SettingsSection />
+              <div className="space-y-4">
+                <SettingsSection />
+                <FollowUpAlertSettingsCard />
+              </div>
             </TabsContent>
             <TabsContent value="lists">
               <DynamicListsSection />
