@@ -821,6 +821,18 @@ function UsersSection() {
                 <SelectItem value="apresentador">Apresentador</SelectItem>
               </SelectContent>
             </Select>
+            {filterRole === "closer" && (
+              <Select value={filterTurma} onValueChange={(v) => setFilterTurma(v as typeof filterTurma)}>
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue placeholder="Turma" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as turmas</SelectItem>
+                  <SelectItem value="a">Turma A</SelectItem>
+                  <SelectItem value="b">Turma B</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 
