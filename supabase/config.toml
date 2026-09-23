@@ -39,6 +39,10 @@ verify_jwt = false
 [functions.google-create-event]
 verify_jwt = false
 
+[functions.followup-calendar-event]
+verify_jwt = false
+
+
 [functions.sdr-ia-setup]
 verify_jwt = false
 
