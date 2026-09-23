@@ -8,7 +8,7 @@ A lista de Produtos do Admin só é usada no lançamento de venda (venda avulsa,
 2. **Detalhes da reunião** — o produto sugerido aparece para o closer e para o SDR, identificado como sugestão.
 3. **Lançamento da venda** — o produto sugerido vem pré-selecionado apenas como ponto de partida; o closer ou o gestor escolhe livremente qualquer outro produto, sem justificativa. O produto vendido é o que vale para vendas e métricas; a sugestão do SDR fica guardada separada e nunca é sobrescrita.
 4. **Auditoria** — o produto entra no registro de criação do agendamento.
-5. **Ativar/desativar produto em "+ Listas"** — cada produto ganha um interruptor Ativo/Inativo. Produto inativo fica na lista com o selo "Inativo", some das opções de escolha (Agendar, lançamento de venda, venda avulsa, follow-up) e continua aparecendo normalmente no histórico, nas vendas já lançadas, nos filtros e nos relatórios. Ao editar uma venda antiga com produto inativo, ele continua selecionado. Ativar e desativar fica registrado nos logs.
+5. **Ativar/desativar produto em "+ Listas"** — cada produto ganha um interruptor Ativo/Inativo. O produto inativo só aparece no Admin (com o selo "Inativo"); em nenhuma tela operacional ele é oferecido: Agendar, lançamento de venda, venda avulsa, follow-up e filtros de produto. Nada é apagado: vendas e reuniões antigas continuam guardando o nome do produto, e as métricas históricas não mudam. Ativar e desativar fica registrado nos logs.
 
 ## O que NÃO muda
 - Reuniões antigas ficam sem produto (nada retroativo).
@@ -21,4 +21,4 @@ A lista de Produtos do Admin só é usada no lançamento de venda (venda avulsa,
 - `src/pages/LeadDetalhesPage.tsx`: exibir o campo.
 - `GestorVendaDialog.tsx`: pré-preencher `produto` com `produto_interesse` quando não houver venda.
 - `silva-agendar`: aceitar `produto` opcional, validar contra a lista de produtos ativos em `app_settings`.
-- Inativos: nova chave `produtos_inativos` em `app_settings` (JSON de nomes), sem migração. `DynamicListManager` ganha `Switch` por item quando `settingKey === produtos`. Seletores de escolha usam só ativos (+ o valor atual, se inativo); filtros e relatórios usam a lista completa.
+- Inativos: nova chave `produtos_inativos` em `app_settings` (JSON de nomes), sem migração. `DynamicListManager` ganha `Switch` por item quando `settingKey === produtos`. Hook `useProdutosAtivos` usado em todos os seletores e filtros operacionais (AgendarPage, GestorVendaDialog, AvulsaSaleDialog, FollowUpsPage, ReunioesListPage). Dados gravados não são alterados.
