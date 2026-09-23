@@ -759,6 +759,7 @@ function FollowUpActionDialog({
           follow_up: false,
           follow_up_date: null,
           follow_up_time: null,
+          follow_up_status: "concluido",
           motivo_nao_fechamento: null,
           observacoes: observacoes.trim() || null,
           closed_at: dataVenda ? format(dataVenda, "yyyy-MM-dd") : null,
@@ -772,6 +773,7 @@ function FollowUpActionDialog({
           follow_up: false,
           follow_up_date: null,
           follow_up_time: null,
+          follow_up_status: "concluido",
           motivo_nao_fechamento: motivo,
           observacoes: observacoes.trim() || null,
         };
@@ -780,6 +782,7 @@ function FollowUpActionDialog({
         updatePayload = {
           vendeu: false,
           follow_up: true,
+          follow_up_status: "ativo",
           follow_up_date: format(novaData!, "yyyy-MM-dd"),
           follow_up_time: novoHorario,
           motivo_nao_fechamento: motivo || row.motivo_nao_fechamento,
