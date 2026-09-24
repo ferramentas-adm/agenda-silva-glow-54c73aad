@@ -531,9 +531,10 @@ export default function ReunioesListPage() {
   const handleTransferCloser = async (ag: any, newCloserId: string) => {
     if (!newCloserId || newCloserId === ag.closer_id) return;
     // A turma é do LEAD: transferência só para closers da mesma turma (o banco também bloqueia).
+    // Gestor/moderador tem controle livre entre as turmas (encaixe operacional).
     const targetCloser = closers.find((c: any) => c.id === newCloserId);
     const isDesqLead = !!ag.lead_desqualificado;
-    if (targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead) {
+    if (!turmaLivre && targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead) {
       toast.error(isDesqLead ? "Lead desqualificado: só closers da Turma B" : "Lead qualificado: só closers da Turma A");
       return;
     }
