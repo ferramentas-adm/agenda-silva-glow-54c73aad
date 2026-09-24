@@ -197,6 +197,8 @@ export function CalendarContent() {
   const navigate = useNavigate();
   const { data: deletionReasons = [] } = useDeletionReasons();
   const isAdminLike = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
+  // Gestor/moderador aloca closers de qualquer turma sem mexer na qualificação do lead.
+  const turmaLivre = role === "gestor" || role === "moderador";
   const visibleReasons = useMemo(
     () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
     [deletionReasons, isAdminLike]
