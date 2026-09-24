@@ -344,7 +344,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id, cancellation_reason")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, produto_interesse, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id, cancellation_reason")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -1669,6 +1669,14 @@ export function CalendarContent() {
                   )}
                 </div>
               </div>
+
+              <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 space-y-0.5">
+                <p className="text-[11px] uppercase tracking-wide text-primary/80 font-semibold">Produto sugerido pelo SDR</p>
+                <p className="text-sm font-semibold text-primary">
+                  {((detailAg as any)?.produto_interesse || "").trim() || <span className="font-normal italic text-muted-foreground">Não informado pelo SDR.</span>}
+                </p>
+              </div>
+
 
               {canTransfer && detailAg.closer_id && (
                 <Button
