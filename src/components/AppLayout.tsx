@@ -111,7 +111,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <OverdueMeetingsLockOverlay />
+      <FollowUpLockOverlay />
       <FollowUpAlerts />
+
       {/* Desktop Sidebar — hover-expand */}
       <aside
         onMouseEnter={handleMouseEnter}
