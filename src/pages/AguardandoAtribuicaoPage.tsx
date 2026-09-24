@@ -21,6 +21,8 @@ import { logAudit } from "@/services/auditLog";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Navigate } from "react-router-dom";
 
+const REQUALIFICAR_MSG = "Só Antônio da Silva, Pedro Vieira e Letícia Castro podem mover lead para a Turma A";
+
 
 interface Agendamento {
   id: string;
@@ -58,6 +60,18 @@ export default function AguardandoAtribuicaoPage() {
   // id do agendamento → lead_desqualificado efetivo.
   const [turmaOverride, setTurmaOverride] = useState<Record<string, boolean>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const { data: canRequalificar = false } = useQuery({
+    queryKey: ["can-requalificar", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("requalificacao_autorizados" as any)
+        .select("user_id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return !!data;
+    },
+  });
   const [errorDialog, setErrorDialog] = useState<{ agendamento: Agendamento; alsoDelete: boolean } | null>(null);
   const [errorDescription, setErrorDescription] = useState("");
   const [submittingError, setSubmittingError] = useState(false);
@@ -292,6 +306,10 @@ export default function AguardandoAtribuicaoPage() {
 
     // Requalificar (desqualificado → qualificado) só gestor, com motivo, via banco.
     if (Boolean(a.lead_desqualificado) && !desqEfetivo) {
+      if (!canRequalificar) {
+        toast.error(REQUALIFICAR_MSG);
+        return;
+      }
       const motivo = window.prompt("Motivo para requalificar o lead (mínimo 10 caracteres):")?.trim();
       if (!motivo || motivo.length < 10) {
         toast.error("Requalificação cancelada: informe um motivo com pelo menos 10 caracteres.");
@@ -541,8 +559,9 @@ export default function AguardandoAtribuicaoPage() {
                           <ToggleGroupItem
                             value="turma_a"
                             size="sm"
+                            disabled={desqOriginal && !canRequalificar}
                             className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                            title="Lead qualificado — closers da Turma A"
+                            title={desqOriginal && !canRequalificar ? REQUALIFICAR_MSG : "Lead qualificado — closers da Turma A"}
                           >
                             Turma A
                           </ToggleGroupItem>
@@ -555,6 +574,9 @@ export default function AguardandoAtribuicaoPage() {
                             Turma B
                           </ToggleGroupItem>
                         </ToggleGroup>
+                        {desqOriginal && !canRequalificar && (
+                          <span className="block max-w-[260px] text-[10px] text-muted-foreground">{REQUALIFICAR_MSG}</span>
+                        )}
                       </div>
                       <div className="min-w-[200px]">
                         <Select
