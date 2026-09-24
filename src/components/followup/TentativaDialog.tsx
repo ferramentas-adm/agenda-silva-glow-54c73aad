@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/services/auditLog";
-import { upsertFollowUpCalendarEvent } from "@/services/followUpCalendar";
 import { pickedDateToYMD, brTodayYMD } from "@/lib/timezone";
 import {
   CANAL_OPTIONS, TEMPERATURA_OPTIONS, MAX_TENTATIVAS, TENTATIVA_JUSTIFICATIVA_MIN,

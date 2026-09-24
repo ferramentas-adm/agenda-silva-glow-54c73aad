@@ -19,7 +19,6 @@ import {
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/services/auditLog";
 import { useMyCloserId } from "@/hooks/useMyCloserId";
-import { upsertFollowUpCalendarEvent } from "@/services/followUpCalendar";
 import { pickedDateToYMD, brTodayYMD, formatBRDate } from "@/lib/timezone";
 import { CANAL_OPTIONS, TEMPERATURA_OPTIONS, temperaturaBadgeClass, temperaturaLabel } from "@/lib/followUp";
 import { FOLLOWUP_SELECT, type FollowUpRecord } from "@/components/followup/types";
