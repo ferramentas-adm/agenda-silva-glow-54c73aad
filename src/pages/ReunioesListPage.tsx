@@ -200,7 +200,7 @@ export default function ReunioesListPage() {
       while (true) {
         const { data, error } = await supabase
           .from("agendamentos")
-          .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, cancellation_reason, channel_type, original_agendamento_id, duration_minutes, is_5k, is_venda_avulsa")
+          .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, produto_interesse, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, cancellation_reason, channel_type, original_agendamento_id, duration_minutes, is_5k, is_venda_avulsa")
           .is("deleted_at", null)
           .gte("scheduled_date", meetingWindowStart)
           .order("scheduled_date", { ascending: false })
