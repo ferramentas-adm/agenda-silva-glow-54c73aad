@@ -77,6 +77,8 @@ export default function ReunioesListPage() {
   // Exclusão de reuniões: somente Gestor / Moderador / Supervisor (SDR não exclui mais).
   const canDelete = isGestor || isModerador || isSupervisor;
   const canEditChannel = isGestor || isModerador || isSupervisor || isSDR;
+  // Gestor/moderador pode alocar qualquer closer, de qualquer turma, sem alterar a qualificação do lead.
+  const turmaLivre = isGestor || isModerador;
 
   const canSeeAllPeers = isGestor || isModerador || isSupervisor;
   const canTransferCloser = isGestor || isModerador || isSupervisor;
