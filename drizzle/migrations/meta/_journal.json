@@ -183,6 +183,13 @@
       "when": 1790209940252,
       "tag": "0025_followup_balde_dias_uteis",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790261753563,
+      "tag": "0026_turma_do_lead_por_telefone",
+      "breakpoints": true
     }
   ]
 }

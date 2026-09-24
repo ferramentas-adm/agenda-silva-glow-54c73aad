@@ -1023,6 +1023,30 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_qualificacao: {
+        Row: {
+          desqualificado: boolean
+          motivo: string | null
+          phone_norm: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          desqualificado?: boolean
+          motivo?: string | null
+          phone_norm: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          desqualificado?: boolean
+          motivo?: string | null
+          phone_norm?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       meta_capi_events: {
         Row: {
           agendamento_id: string | null
@@ -2002,6 +2026,7 @@ export type Database = {
           notificacoes_removidas: number
         }[]
       }
+      normalize_lead_phone: { Args: { _phone: string }; Returns: string }
       notify_meta_capi: {
         Args: {
           _agendamento_id: string
@@ -2023,6 +2048,10 @@ export type Database = {
           _utm_content?: string
         }
         Returns: undefined
+      }
+      requalificar_lead: {
+        Args: { _agendamento_id: string; _motivo: string }
+        Returns: boolean
       }
       transfer_agendamento_closer: {
         Args: { _agendamento_id: string; _new_closer_id: string }
