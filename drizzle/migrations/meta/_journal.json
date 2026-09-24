@@ -204,6 +204,13 @@
       "when": 1790264886633,
       "tag": "0028_auto_marcar_desq_ao_mover_para_turma_b",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790278315558,
+      "tag": "0029_gestor_turma_livre",
+      "breakpoints": true
     }
   ]
 }
