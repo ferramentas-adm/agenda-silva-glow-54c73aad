@@ -290,6 +290,20 @@ export default function AguardandoAtribuicaoPage() {
       return;
     }
 
+    // Requalificar (desqualificado → qualificado) só gestor, com motivo, via banco.
+    if (Boolean(a.lead_desqualificado) && !desqEfetivo) {
+      const motivo = window.prompt("Motivo para requalificar o lead (mínimo 10 caracteres):")?.trim();
+      if (!motivo || motivo.length < 10) {
+        toast.error("Requalificação cancelada: informe um motivo com pelo menos 10 caracteres.");
+        return;
+      }
+      const { error: rqErr } = await supabase.rpc("requalificar_lead" as any, { _agendamento_id: a.id, _motivo: motivo });
+      if (rqErr) {
+        toast.error(rqErr.message);
+        return;
+      }
+    }
+
     setSavingId(a.id);
     try {
       // Cria evento no Google Calendar do closer escolhido (Meet)
