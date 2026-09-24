@@ -98,25 +98,7 @@ export default function TentativaDialog({
       if (error) throw error;
       if (!updated?.length) throw new Error("A tentativa não foi salva. Tente novamente.");
 
-      if (row.agendamentos?.closer_id) {
-        const eventId = await upsertFollowUpCalendarEvent({
-          closer_id: row.agendamentos.closer_id,
-          lead_name: row.agendamentos.lead_name,
-          lead_phone: row.agendamentos.lead_phone,
-          canal,
-          data: dataStr,
-          hora: novaHora,
-          produto: row.follow_up_produto,
-          valor: row.follow_up_valor != null ? String(row.follow_up_valor) : null,
-          condicoes: row.follow_up_condicoes,
-          temperatura,
-          tentativa: proxima,
-          existing_event_id: row.follow_up_event_id,
-        });
-        if (eventId && eventId !== row.follow_up_event_id) {
-          await supabase.from("vendas").update({ follow_up_event_id: eventId } as any).eq("id", row.id);
-        }
-      }
+      // Follow-up fica apenas no sistema: nenhum evento é criado na agenda Google.
 
       await logAudit("follow_up_tentativa_registrada", "venda", row.agendamento_id, {
         lead_name: row.agendamentos?.lead_name,
