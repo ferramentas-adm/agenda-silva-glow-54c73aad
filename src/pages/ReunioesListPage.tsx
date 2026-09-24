@@ -563,13 +563,6 @@ export default function ReunioesListPage() {
       } else {
         toast.success(`Lead transferido para ${newName}`);
       }
-      if (trocaTurma) {
-        toast.info(
-          isDesqLead
-            ? "A reunião passou para a Turma A, então a marca de lead desqualificado foi retirada."
-            : "A reunião passou para a Turma B, então o lead ficou marcado como desqualificado."
-        );
-      }
       queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao transferir lead");

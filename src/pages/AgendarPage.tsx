@@ -288,6 +288,24 @@ function AgendarPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editData, role]);
 
+  // Condição do LEAD (pelo telefone): desqualificado é herdado e travado.
+  const [leadDesqTravado, setLeadDesqTravado] = useState(false);
+  useEffect(() => {
+    const phone = lead?.phone || editData?.lead_phone;
+    if (!phone) { setLeadDesqTravado(false); return; }
+    let d = phone.replace(/\D/g, "");
+    if (d.length >= 12 && d.startsWith("55")) d = d.slice(2);
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("lead_qualificacao" as any).select("desqualificado").eq("phone_norm", d).maybeSingle();
+      if (cancelled) return;
+      const desq = Boolean((data as any)?.desqualificado);
+      setLeadDesqTravado(desq);
+      if (desq) setLeadDesqualificado(true);
+    })();
+    return () => { cancelled = true; };
+  }, [lead?.phone, editData?.lead_phone]);
+
   // Autopreenchimento: ao selecionar um lead (fluxo novo, sem editId),
   // buscar a agenda mais recente do mesmo telefone (normalizado) e
   // preencher automaticamente briefing, observação, canal e flag 5k.
@@ -939,10 +957,16 @@ function AgendarPageInner() {
                     <p className="text-xs text-muted-foreground">
                       Só pode ser alocado com closer em treinamento.
                     </p>
+                    {leadDesqTravado && (
+                      <p className="text-xs text-amber-500">
+                        Lead já marcado como desqualificado (herdado pelo telefone). Requalificação só por gestor, com motivo.
+                      </p>
+                    )}
                   </div>
                   <Switch
                     checked={leadDesqualificado}
                     onCheckedChange={setLeadDesqualificado}
+                    disabled={leadDesqTravado}
                   />
                 </div>
               )}
