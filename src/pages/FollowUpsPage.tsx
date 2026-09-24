@@ -4,8 +4,9 @@ import { format, parseISO, isBefore, isToday, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CalendarClock, CheckCircle2, XCircle, RotateCw, Phone, Loader2, CalendarIcon,
-  Pencil, Trash2, Filter, X,
+  Pencil, Trash2, Filter, X, Plus,
 } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -34,7 +35,7 @@ import { DEFAULT_REASONS, isPendingStageReason } from "@/lib/vendaConstants";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { logAudit } from "@/services/auditLog";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
-import TasksSection from "@/components/tasks/TasksSection";
+import FollowUpAddDialog from "@/components/FollowUpAddDialog";
 import { useCan } from "@/hooks/usePermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NaoAcompanhadosPanel from "@/components/NaoAcompanhadosPanel";
@@ -236,6 +237,8 @@ export default function FollowUpsPage() {
   const [removeTarget, setRemoveTarget] = useState<FollowUpRow | null>(null);
   const [removing, setRemoving] = useState(false);
   const [tentativaTarget, setTentativaTarget] = useState<FollowUpRow | null>(null);
+  const [openAddFollowUp, setOpenAddFollowUp] = useState(false);
+
 
   const handleConfirmRemove = async () => {
     if (!removeTarget) return;
@@ -269,7 +272,22 @@ export default function FollowUpsPage() {
                 : "Organize seus retornos com leads que ainda não fecharam."}
             </p>
           </div>
+          <Button onClick={() => setOpenAddFollowUp(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Adicionar Follow-Up
+          </Button>
         </header>
+
+        <FollowUpAddDialog
+          open={openAddFollowUp}
+          onOpenChange={setOpenAddFollowUp}
+          onCreated={() => {
+            refetch();
+            queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+          }}
+        />
+
+
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <TabsList className="flex-wrap h-auto">
@@ -299,10 +317,8 @@ export default function FollowUpsPage() {
 
         {activeTab === "em-acompanhamento" && (
           <TentativaCtx.Provider value={setTentativaTarget}>
-        {/* Tarefas avulsas */}
-        <TasksSection />
-
         {/* Filtros */}
+
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex flex-wrap items-end gap-2">
