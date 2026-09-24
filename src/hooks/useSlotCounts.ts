@@ -43,7 +43,7 @@ export function useSlotCounts(dateStr: string | null | undefined, treinamento: b
         supabase.from("closers").select("id, em_treinamento").eq("active", true),
         supabase
           .from("closer_blocks")
-          .select("start_time, end_time, is_recurring, recurrence_weekday, block_date, closer_id")
+          .select("id, start_time, end_time, is_recurring, recurrence_weekday, block_date, closer_id")
           .or(
             `and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`,
           ),

@@ -147,8 +147,16 @@ export async function fetchBusinessSlots(supabase: any): Promise<string[]> {
   return buildHourSlots(map.get("business_hours_start") || "09:00", map.get("business_hours_end") || "23:00");
 }
 
-type Block = { closer_id: string | null; start_time: string; end_time: string };
-type Exc = { closer_id: string; start_time: string; end_time: string };
+type Block = { id?: string | null; is_recurring?: boolean | null; closer_id: string | null; start_time: string; end_time: string };
+type Exc = { block_id?: string | null; closer_id: string; start_time: string; end_time: string };
+
+/** Exceção só anula o bloqueio recorrente de onde nasceu; pontual nunca é anulado. */
+function excApplies(b: Block, ex: Exc): boolean {
+  if (b.closer_id && ex.closer_id && b.closer_id !== ex.closer_id) return false;
+  if (b.is_recurring === false) return false;
+  if (ex.block_id && b.id) return ex.block_id === b.id;
+  return b.is_recurring === true;
+}
 
 /** Idêntico a src/lib/closerBlockExceptions.applyBlockExceptions. */
 export function applyBlockExceptions<T extends Block>(blocks: T[], exceptions: Exc[]): T[] {
@@ -157,7 +165,7 @@ export function applyBlockExceptions<T extends Block>(blocks: T[], exceptions: E
   for (const b of blocks) {
     let segments = [{ start: toMin(b.start_time), end: toMin(b.end_time) }];
     for (const ex of exceptions) {
-      if (b.closer_id && ex.closer_id && b.closer_id !== ex.closer_id) continue;
+      if (!excApplies(b, ex)) continue;
       const cs = toMin(ex.start_time), ce = toMin(ex.end_time);
       segments = segments.flatMap((s) => {
         if (ce <= s.start || cs >= s.end) return [s];
@@ -193,9 +201,9 @@ export async function loadDayAvailability(
       .eq("scheduled_date", dateStr).is("deleted_at", null).neq("status", "cancelada"),
     // Turma A (padrão) atende lead qualificado; Turma B (em treinamento) só lead desqualificado.
     supabase.from("closers").select("id, name, em_treinamento").eq("active", true).order("name"),
-    supabase.from("closer_blocks").select("start_time, end_time, closer_id")
+    supabase.from("closer_blocks").select("id, is_recurring, start_time, end_time, closer_id")
       .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`),
-    supabase.from("closer_block_exceptions").select("closer_id, start_time, end_time").eq("exception_date", dateStr),
+    supabase.from("closer_block_exceptions").select("block_id, closer_id, start_time, end_time").eq("exception_date", dateStr),
   ]);
   for (const r of [agRes, closersRes, blocksRes, excRes]) if (r.error) throw r.error;
 

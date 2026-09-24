@@ -180,7 +180,7 @@ export default function TimeSlotPicker({ closerId, date, selectedTime, onSelect,
     queryFn: async () => {
       const { data } = await supabase
         .from("closer_blocks")
-        .select("start_time, end_time, block_type, is_recurring, recurrence_weekday, block_date, closer_id")
+        .select("id, start_time, end_time, block_type, is_recurring, recurrence_weekday, block_date, closer_id")
         .eq("closer_id", closerId!)
         .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`);
       const exceptions = await fetchBlockExceptions(dateStr, [closerId!]);
