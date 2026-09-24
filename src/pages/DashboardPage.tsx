@@ -1670,6 +1670,14 @@ export function CalendarContent() {
                 </div>
               </div>
 
+              <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 space-y-0.5">
+                <p className="text-[11px] uppercase tracking-wide text-primary/80 font-semibold">Produto sugerido pelo SDR</p>
+                <p className="text-sm font-semibold text-primary">
+                  {((detailAg as any)?.produto_interesse || "").trim() || <span className="font-normal italic text-muted-foreground">Não informado pelo SDR.</span>}
+                </p>
+              </div>
+
+
               {canTransfer && detailAg.closer_id && (
                 <Button
                   variant="outline"
