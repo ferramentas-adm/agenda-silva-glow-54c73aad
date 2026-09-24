@@ -73,7 +73,7 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
       const weekday = dateObj.getDay();
       const { data: rawBlocks } = await supabase
         .from("closer_blocks")
-        .select("closer_id, start_time, end_time, is_recurring, recurrence_weekday, block_date")
+        .select("id, closer_id, start_time, end_time, is_recurring, recurrence_weekday, block_date")
         .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`);
       const blockExceptions = await fetchBlockExceptions(dateStr);
       const blocks = applyBlockExceptions((rawBlocks ?? []) as any[], blockExceptions);

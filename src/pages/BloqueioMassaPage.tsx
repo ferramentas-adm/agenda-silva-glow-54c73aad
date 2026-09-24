@@ -254,6 +254,46 @@ export default function BloqueioMassaPage() {
       const { error } = await supabase.from("closer_blocks").insert(rows);
       if (error) throw error;
 
+      // Liberações antigas ("Liberar horário") que cobririam os novos bloqueios
+      // são removidas — senão o bloqueio recém-criado é anulado no calendário.
+      try {
+        const toMinEx = (t: string) => {
+          const [h, m] = String(t || "00:00").split(":").map(Number);
+          return (h || 0) * 60 + (m || 0);
+        };
+        let exq = supabase
+          .from("closer_block_exceptions")
+          .select("id, closer_id, exception_date, start_time, end_time")
+          .in("closer_id", selected);
+        if (mode === "pontual") {
+          exq = exq.eq("exception_date", pickedDateToYMD(date!));
+        } else if (mode === "periodo") {
+          exq = exq
+            .gte("exception_date", periodDates![0])
+            .lte("exception_date", periodDates![periodDates!.length - 1]);
+        } else {
+          exq = exq.gte("exception_date", todayStr);
+        }
+        const { data: exs } = await exq;
+        const conflicting = (exs ?? [])
+          .filter((e) => {
+            if (mode === "recorrente") {
+              const wd = new Date(`${e.exception_date}T12:00:00`).getDay();
+              if (!weekdays.includes(wd)) return false;
+            }
+            const s = toMinEx(e.start_time);
+            const en = toMinEx(e.end_time);
+            return ranges.some((r) => s < toMinEx(r.end) && en > toMinEx(r.start));
+          })
+          .map((e) => e.id);
+        if (conflicting.length > 0) {
+          await supabase.from("closer_block_exceptions").delete().in("id", conflicting);
+        }
+      } catch {
+        // limpeza best-effort
+      }
+
+
       // Aviso: reuniões ativas que ficam dentro dos intervalos bloqueados
       let meetingsInside = 0;
       try {
@@ -312,6 +352,8 @@ export default function BloqueioMassaPage() {
       queryClient.invalidateQueries({ queryKey: ["closer-blocks-day"] });
       queryClient.invalidateQueries({ queryKey: ["closer-blocks-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
+      queryClient.invalidateQueries({ queryKey: ["slot-counts-v2"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-block-exceptions"] });
     } catch (err: unknown) {
       toast.error((err as Error)?.message || "Erro ao criar bloqueios");
     }
@@ -327,6 +369,8 @@ export default function BloqueioMassaPage() {
       queryClient.invalidateQueries({ queryKey: ["closer-blocks-day"] });
       queryClient.invalidateQueries({ queryKey: ["closer-blocks-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
+      queryClient.invalidateQueries({ queryKey: ["slot-counts-v2"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-block-exceptions"] });
     } catch (err: unknown) {
       toast.error((err as Error)?.message || "Erro ao remover");
     }

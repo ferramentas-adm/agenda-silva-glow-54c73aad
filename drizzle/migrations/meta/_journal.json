@@ -211,6 +211,13 @@
       "when": 1790278315558,
       "tag": "0029_gestor_turma_livre",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790283750504,
+      "tag": "0030_realtime_closer_blocks",
+      "breakpoints": true
     }
   ]
 }

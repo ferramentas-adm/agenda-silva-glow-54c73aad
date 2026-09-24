@@ -420,6 +420,32 @@ export function CalendarContent() {
     };
   }, [queryClient, user?.id, dateStr]);
 
+  // Realtime: bloqueios de closers (criados na tela de Bloqueio em Massa ou
+  // liberados) precisam refletir no calendário imediatamente.
+  useEffect(() => {
+    if (!user?.id) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        queryClient.invalidateQueries({ queryKey: ["closer-blocks-day"] });
+        queryClient.invalidateQueries({ queryKey: ["closer-blocks-slots"] });
+        queryClient.invalidateQueries({ queryKey: ["slot-counts-v2"] });
+      }, 1200);
+    };
+    const channel = supabase
+      .channel(`closer-blocks-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "closer_blocks" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "closer_block_exceptions" }, refresh)
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, user?.id]);
+
+
   // Fetch Google Calendar events for all selected closers
   const closerIds = useMemo(() => Array.from(effectiveSelectedIds).sort(), [effectiveSelectedIds]);
   const closerIdsKey = closerIds.join(",");

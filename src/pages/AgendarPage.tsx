@@ -458,7 +458,7 @@ function AgendarPageInner() {
           supabase.from("closers").select("id").eq("active", true),
           supabase
             .from("closer_blocks")
-            .select("start_time, end_time, closer_id")
+            .select("id, start_time, end_time, is_recurring, closer_id")
             .or(`and(is_recurring.eq.false,block_date.eq.${dateStr}),and(is_recurring.eq.true,recurrence_weekday.eq.${weekday})`),
         ]);
         if (agSlotRes.error) throw agSlotRes.error;
