@@ -27,7 +27,14 @@ export function useGoogleCalendarEvents(
       const { data, error } = await supabase.functions.invoke("google-calendar-events", {
         body: { closer_id: closerId, date_start: dateStart, date_end: dateEnd },
       });
-      if (error) throw error;
+      if (error) {
+        // Sessão expirada/sem login: não derruba a tela, só não mostra eventos.
+        const status = (error as any)?.context?.status ?? (error as any)?.status;
+        if (status === 401 || status === 403) {
+          return { events: [], error: "unauthorized" } as unknown as CalendarEventsResponse;
+        }
+        throw error;
+      }
       return data as CalendarEventsResponse;
     },
     refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes

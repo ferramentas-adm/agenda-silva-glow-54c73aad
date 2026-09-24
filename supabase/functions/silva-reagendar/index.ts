@@ -121,6 +121,12 @@ Deno.serve(async (req) => {
     }
 
     // Valida a vaga antes de alterar a reunião antiga.
+    // Condição do LEAD (telefone) prevalece sobre a marca da reunião antiga.
+    const phoneDigits = String(old.lead_phone ?? "").replace(/\D/g, "");
+    const phoneNorm = phoneDigits.length >= 12 && phoneDigits.startsWith("55") ? phoneDigits.slice(2) : phoneDigits;
+    const { data: leadQual } = await supabase.from("lead_qualificacao").select("desqualificado")
+      .eq("phone_norm", phoneNorm).maybeSingle();
+    if (leadQual?.desqualificado) old.lead_desqualificado = true;
     const turma: "A" | "B" = old.lead_desqualificado ? "B" : "A";
     const availability = await loadDayAvailability(supabase, dateStr, undefined, turma);
     if (!availability.slots.includes(timeStr)) return json({ erro: "slot_indisponivel" }, 409);
@@ -143,12 +149,13 @@ Deno.serve(async (req) => {
       if (!requestedCloser) motivoRealocacao = `O closer do slot ficou indisponível às ${timeStr} de ${dateStr}`;
     }
 
-    // Mantém o closer anterior quando ele continua elegível e sem bloqueio.
+    // Prioridade: closer do slot_id → closer anterior (se elegível e da mesma turma) → closer livre.
+    // eligibleClosers já vem filtrado pela turma do lead.
     const previousCloser = typeof old.closer_id === "string" && !info.blockedCloserIds.has(old.closer_id)
       ? info.eligibleClosers.find((closer) => closer.id === old.closer_id)
       : null;
     // Nunca sobrescreve compromisso: realoca para closer livre ou recusa com 409.
-    const assignedCloser = previousCloser ?? requestedCloser ?? suggestFreeCloser(availability, timeStr);
+    const assignedCloser = requestedCloser ?? previousCloser ?? suggestFreeCloser(availability, timeStr);
     if (!assignedCloser || info.blockedCloserIds.has(assignedCloser.id)) {
       return json({
         erro: "slot_bloqueado",
