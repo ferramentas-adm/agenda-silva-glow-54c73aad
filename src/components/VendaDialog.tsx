@@ -20,7 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
-import { upsertFollowUpCalendarEvent } from "@/services/followUpCalendar";
 import { useAppSettingList, APP_SETTING_KEYS, useProdutosAtivos } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
 import OrderBumpsField from "@/components/OrderBumpsField";
@@ -265,27 +264,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         sdrName = p?.full_name ?? null;
       }
 
-      // Compromisso do follow-up na agenda corporativa do closer (best-effort)
-      if (comFollowUp && agData?.closer_id && fuDataStr && vendaId) {
-        const eventId = await upsertFollowUpCalendarEvent({
-          closer_id: agData.closer_id,
-          lead_name: agData.lead_name ?? leadName,
-          lead_phone: agData.lead_phone,
-          canal: fuCanal,
-          data: fuDataStr,
-          hora: fuHora,
-          produto: fuProduto || null,
-          valor: formatBRL(fuValor),
-          condicoes: fuCondicoes.trim(),
-          temperatura: fuTemperatura,
-          tentativa: 0,
-        });
-        if (eventId) {
-          await supabase.from("vendas").update({ follow_up_event_id: eventId } as any).eq("id", vendaId);
-        } else {
-          toast.warning("Follow-up salvo, mas não foi possível criar o lembrete na agenda Google.");
-        }
-      }
+      // Follow-up fica apenas no sistema: nenhum evento é criado na agenda Google.
+
 
       sendVendaToDataCrazy({
         agendamento_id: agendamentoId,
