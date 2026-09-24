@@ -702,7 +702,7 @@ export function CalendarContent() {
     // acompanhar a turma do closer de destino (ajuste feito pelo banco).
     const targetCloser = transferableClosers.find((c) => c.id === transferTarget);
     const isDesqLead = !!(detailAg as any).lead_desqualificado;
-    const trocaTurma = !!targetCloser && !!targetCloser.em_treinamento !== isDesqLead;
+    const trocaTurma = !turmaLivre && !!targetCloser && !!targetCloser.em_treinamento !== isDesqLead;
     setTransferring(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-transfer-event", {
