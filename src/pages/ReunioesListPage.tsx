@@ -1266,11 +1266,18 @@ export default function ReunioesListPage() {
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Produto sugerido pelo SDR</h4>
+              <p className="text-sm rounded-md border border-primary/40 bg-primary/10 p-3 font-semibold text-primary">
+                {(detailTarget as any)?.produto_interesse?.trim() || <span className="font-normal italic text-muted-foreground">Não informado pelo SDR.</span>}
+              </p>
+            </section>
+            <section>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Briefing (SDR)</h4>
               <p className="text-sm whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 min-h-[60px]">
                 {detailTarget?.briefing?.trim() || <span className="text-muted-foreground italic">Sem briefing registrado.</span>}
               </p>
             </section>
+
             <section>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                 {detailVenda?.vendeu === true ? "Valor da venda (Closer)" : "Preço ofertado (Closer)"}
