@@ -253,22 +253,8 @@ function PuxarLeadDialog({
       if (error) throw error;
       if (!updated?.length) throw new Error("O lead não foi puxado. Tente novamente.");
 
-      const eventId = await upsertFollowUpCalendarEvent({
-        closer_id: closerId,
-        lead_name: row.agendamentos?.lead_name ?? "Lead",
-        lead_phone: row.agendamentos?.lead_phone,
-        canal,
-        data: dataStr,
-        hora,
-        produto: row.follow_up_produto,
-        valor: row.follow_up_valor != null ? String(row.follow_up_valor) : null,
-        condicoes: row.follow_up_condicoes,
-        temperatura,
-        tentativa: 0,
-      });
-      if (eventId) {
-        await supabase.from("vendas").update({ follow_up_event_id: eventId } as any).eq("id", row.id);
-      }
+      // Follow-up fica apenas no sistema: nenhum evento é criado na agenda Google.
+
 
       await logAudit("follow_up_lead_puxado_do_balde", "venda", row.agendamento_id, {
         lead_name: row.agendamentos?.lead_name,
