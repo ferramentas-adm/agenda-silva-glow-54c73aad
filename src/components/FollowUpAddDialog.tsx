@@ -115,19 +115,24 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
     if (!selected || !followUpDate || !user) return;
     setSubmitting(true);
     try {
-      // Evita duplicar: se já existe venda com follow_up=true ativo para este agendamento, não cria novo
+      // Cada agendamento só pode ter um registro de resultado: se já existe
+      // (ex.: closer marcou "não vendeu" sem follow-up), reaproveita esse registro.
       const { data: existing } = await supabase
         .from("vendas")
-        .select("id")
+        .select("id, vendeu")
         .eq("agendamento_id", selected.id)
-        .eq("follow_up", true)
-        .eq("vendeu", false)
         .maybeSingle();
+
+      if (existing?.vendeu) {
+        toast.error("Esta reunião já tem venda registrada — não é possível abrir follow-up.");
+        return;
+      }
 
       if (existing) {
         const { error: upErr } = await supabase
           .from("vendas")
           .update({
+            follow_up: true,
             follow_up_status: "ativo",
             follow_up_date: format(followUpDate, "yyyy-MM-dd"),
             follow_up_time: followUpTime || null,
@@ -168,7 +173,7 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
       onCreated?.();
       onOpenChange(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro ao criar follow-up.";
+      const msg = (err as any)?.message ? `Erro ao criar follow-up: ${(err as any).message}` : "Erro ao criar follow-up.";
       toast.error(msg);
     } finally {
       setSubmitting(false);
