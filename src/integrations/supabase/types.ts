@@ -1831,6 +1831,7 @@ export type Database = {
         Args: { _target_user_id: string }
         Returns: boolean
       }
+      can_turma_livre: { Args: { _user_id: string }; Returns: boolean }
       consume_sdr_downsell_rate_limit: {
         Args: { _ip_hash: string }
         Returns: boolean
@@ -2071,6 +2072,16 @@ export type Database = {
       }
       transfer_agendamento_closer: {
         Args: { _agendamento_id: string; _new_closer_id: string }
+        Returns: boolean
+      }
+      transfer_closer_turma_livre: {
+        Args: {
+          _agendamento_id: string
+          _google_event_id?: string
+          _meet_link?: string
+          _new_closer_id: string
+          _update_google?: boolean
+        }
         Returns: boolean
       }
       unassign_agendamentos_from_closer: {

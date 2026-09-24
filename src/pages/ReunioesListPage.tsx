@@ -77,6 +77,8 @@ export default function ReunioesListPage() {
   // Exclusão de reuniões: somente Gestor / Moderador / Supervisor (SDR não exclui mais).
   const canDelete = isGestor || isModerador || isSupervisor;
   const canEditChannel = isGestor || isModerador || isSupervisor || isSDR;
+  // Gestor/moderador pode alocar qualquer closer, de qualquer turma, sem alterar a qualificação do lead.
+  const turmaLivre = isGestor || isModerador;
 
   const canSeeAllPeers = isGestor || isModerador || isSupervisor;
   const canTransferCloser = isGestor || isModerador || isSupervisor;
@@ -531,9 +533,10 @@ export default function ReunioesListPage() {
   const handleTransferCloser = async (ag: any, newCloserId: string) => {
     if (!newCloserId || newCloserId === ag.closer_id) return;
     // A turma é do LEAD: transferência só para closers da mesma turma (o banco também bloqueia).
+    // Gestor/moderador tem controle livre entre as turmas (encaixe operacional).
     const targetCloser = closers.find((c: any) => c.id === newCloserId);
     const isDesqLead = !!ag.lead_desqualificado;
-    if (targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead) {
+    if (!turmaLivre && targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead) {
       toast.error(isDesqLead ? "Lead desqualificado: só closers da Turma B" : "Lead qualificado: só closers da Turma A");
       return;
     }
@@ -1041,7 +1044,7 @@ export default function ReunioesListPage() {
                                 <SelectValue placeholder="—" />
                               </SelectTrigger>
                               <SelectContent>
-                                 {closers.filter((c: any) => !!c.em_treinamento === !!ag.lead_desqualificado || c.id === ag.closer_id).map((c: any) => (
+                                 {closers.filter((c: any) => turmaLivre || !!c.em_treinamento === !!ag.lead_desqualificado || c.id === ag.closer_id).map((c: any) => (
                                    <SelectItem key={c.id} value={c.id}>
                                      <span className="flex items-center gap-2">
                                        {c.name}

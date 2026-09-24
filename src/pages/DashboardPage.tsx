@@ -197,6 +197,8 @@ export function CalendarContent() {
   const navigate = useNavigate();
   const { data: deletionReasons = [] } = useDeletionReasons();
   const isAdminLike = role === "gestor" || (role === "moderador" || role === "apresentador") || role === "supervisor";
+  // Gestor/moderador aloca closers de qualquer turma sem mexer na qualificação do lead.
+  const turmaLivre = role === "gestor" || role === "moderador";
   const visibleReasons = useMemo(
     () => deletionReasons.filter((r) => !r.restricted || isAdminLike),
     [deletionReasons, isAdminLike]
@@ -700,7 +702,7 @@ export function CalendarContent() {
     // acompanhar a turma do closer de destino (ajuste feito pelo banco).
     const targetCloser = transferableClosers.find((c) => c.id === transferTarget);
     const isDesqLead = !!(detailAg as any).lead_desqualificado;
-    const trocaTurma = !!targetCloser && !!targetCloser.em_treinamento !== isDesqLead;
+    const trocaTurma = !turmaLivre && !!targetCloser && !!targetCloser.em_treinamento !== isDesqLead;
     setTransferring(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-transfer-event", {
@@ -782,7 +784,7 @@ export function CalendarContent() {
     // do closer de destino (ajuste feito pelo banco).
     const target = allClosers.find((c) => c.id === newCloserId);
     const isDesq = !!(detailAg as any).lead_desqualificado;
-    const trocaTurma = !!target && !!target.em_treinamento !== isDesq;
+    const trocaTurma = !turmaLivre && !!target && !!target.em_treinamento !== isDesq;
     try {
       const { data, error } = await supabase
         .from("agendamentos")
