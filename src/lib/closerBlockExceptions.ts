@@ -9,13 +9,16 @@ import { supabase } from "@/integrations/supabase/client";
  * que deve ser subtraída do bloqueio ao calcular disponibilidade.
  */
 export type BlockLike = {
+  id?: string | null;
   closer_id?: string | null;
+  is_recurring?: boolean | null;
   start_time: string;
   end_time: string;
   [key: string]: unknown;
 };
 
 export type BlockException = {
+  block_id?: string | null;
   closer_id: string;
   start_time: string;
   end_time: string;
@@ -38,11 +41,29 @@ export async function fetchBlockExceptions(
 ): Promise<BlockException[]> {
   let query = supabase
     .from("closer_block_exceptions")
-    .select("closer_id, start_time, end_time")
+    .select("block_id, closer_id, start_time, end_time")
     .eq("exception_date", dateStr);
   if (closerIds && closerIds.length > 0) query = query.in("closer_id", closerIds);
   const { data } = await query;
   return (data ?? []) as BlockException[];
+}
+
+/**
+ * Decide se uma exceção ("liberar horário") pode anular parte de um bloqueio.
+ *
+ * Regras:
+ *  - a exceção só vale para o closer dela;
+ *  - a exceção só vale para o bloqueio de onde ela nasceu (`block_id`);
+ *  - bloqueios pontuais (não recorrentes) nunca são anulados por exceção —
+ *    ao liberar um bloqueio pontual o registro é removido, então qualquer
+ *    exceção antiga não deve apagar um bloqueio novo criado para a data.
+ */
+function exceptionApplies(b: BlockLike, ex: BlockException): boolean {
+  if (b.closer_id && ex.closer_id && b.closer_id !== ex.closer_id) return false;
+  if (b.is_recurring === false) return false;
+  if (ex.block_id && b.id) return ex.block_id === b.id;
+  // Sem vínculo conhecido: só aplica em bloqueio recorrente.
+  return b.is_recurring === true;
 }
 
 /**
@@ -58,7 +79,7 @@ export function applyBlockExceptions<T extends BlockLike>(
   for (const b of blocks) {
     let segments = [{ start: toMin(b.start_time), end: toMin(b.end_time) }];
     for (const ex of exceptions) {
-      if (b.closer_id && ex.closer_id && b.closer_id !== ex.closer_id) continue;
+      if (!exceptionApplies(b, ex)) continue;
       const cutStart = toMin(ex.start_time);
       const cutEnd = toMin(ex.end_time);
       segments = segments.flatMap((s) => {
@@ -76,3 +97,4 @@ export function applyBlockExceptions<T extends BlockLike>(
   }
   return result;
 }
+
