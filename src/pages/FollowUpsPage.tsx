@@ -4,8 +4,9 @@ import { format, parseISO, isBefore, isToday, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CalendarClock, CheckCircle2, XCircle, RotateCw, Phone, Loader2, CalendarIcon,
-  Pencil, Trash2, Filter, X,
+  Pencil, Trash2, Filter, X, Plus,
 } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -34,7 +35,7 @@ import { DEFAULT_REASONS, isPendingStageReason } from "@/lib/vendaConstants";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { logAudit } from "@/services/auditLog";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
-import TasksSection from "@/components/tasks/TasksSection";
+import FollowUpAddDialog from "@/components/FollowUpAddDialog";
 import { useCan } from "@/hooks/usePermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NaoAcompanhadosPanel from "@/components/NaoAcompanhadosPanel";
@@ -299,10 +300,8 @@ export default function FollowUpsPage() {
 
         {activeTab === "em-acompanhamento" && (
           <TentativaCtx.Provider value={setTentativaTarget}>
-        {/* Tarefas avulsas */}
-        <TasksSection />
-
         {/* Filtros */}
+
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex flex-wrap items-end gap-2">
