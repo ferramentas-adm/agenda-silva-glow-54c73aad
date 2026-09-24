@@ -352,6 +352,8 @@ export default function BloqueioMassaPage() {
       queryClient.invalidateQueries({ queryKey: ["closer-blocks-day"] });
       queryClient.invalidateQueries({ queryKey: ["closer-blocks-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
+      queryClient.invalidateQueries({ queryKey: ["slot-counts-v2"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-block-exceptions"] });
     } catch (err: unknown) {
       toast.error((err as Error)?.message || "Erro ao criar bloqueios");
     }
@@ -367,6 +369,8 @@ export default function BloqueioMassaPage() {
       queryClient.invalidateQueries({ queryKey: ["closer-blocks-day"] });
       queryClient.invalidateQueries({ queryKey: ["closer-blocks-slots"] });
       queryClient.invalidateQueries({ queryKey: ["closers-availability"] });
+      queryClient.invalidateQueries({ queryKey: ["slot-counts-v2"] });
+      queryClient.invalidateQueries({ queryKey: ["closer-block-exceptions"] });
     } catch (err: unknown) {
       toast.error((err as Error)?.message || "Erro ao remover");
     }
