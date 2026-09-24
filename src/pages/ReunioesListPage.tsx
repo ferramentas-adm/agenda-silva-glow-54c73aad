@@ -1044,7 +1044,7 @@ export default function ReunioesListPage() {
                                 <SelectValue placeholder="—" />
                               </SelectTrigger>
                               <SelectContent>
-                                 {closers.filter((c: any) => !!c.em_treinamento === !!ag.lead_desqualificado || c.id === ag.closer_id).map((c: any) => (
+                                 {closers.filter((c: any) => turmaLivre || !!c.em_treinamento === !!ag.lead_desqualificado || c.id === ag.closer_id).map((c: any) => (
                                    <SelectItem key={c.id} value={c.id}>
                                      <span className="flex items-center gap-2">
                                        {c.name}
