@@ -197,6 +197,13 @@
       "when": 1790263427364,
       "tag": "0027_requalificacao_autorizados",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790264886633,
+      "tag": "0028_auto_marcar_desq_ao_mover_para_turma_b",
+      "breakpoints": true
     }
   ]
 }
