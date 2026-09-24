@@ -530,11 +530,13 @@ export default function ReunioesListPage() {
 
   const handleTransferCloser = async (ag: any, newCloserId: string) => {
     if (!newCloserId || newCloserId === ag.closer_id) return;
-    // Transferência entre turmas é permitida: a marcação do lead acompanha a
-    // turma do closer de destino (ajuste feito pelo banco).
+    // A turma é do LEAD: transferência só para closers da mesma turma (o banco também bloqueia).
     const targetCloser = closers.find((c: any) => c.id === newCloserId);
     const isDesqLead = !!ag.lead_desqualificado;
-    const trocaTurma = !!targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead;
+    if (targetCloser && !!(targetCloser as any).em_treinamento !== isDesqLead) {
+      toast.error(isDesqLead ? "Lead desqualificado: só closers da Turma B" : "Lead qualificado: só closers da Turma A");
+      return;
+    }
     const oldName = closerMap[ag.closer_id] || "—";
     const newName = closerMap[newCloserId] || "—";
     try {
@@ -1040,7 +1042,7 @@ export default function ReunioesListPage() {
                                 <SelectValue placeholder="—" />
                               </SelectTrigger>
                               <SelectContent>
-                                 {closers.map((c: any) => (
+                                 {closers.filter((c: any) => !!c.em_treinamento === !!ag.lead_desqualificado || c.id === ag.closer_id).map((c: any) => (
                                    <SelectItem key={c.id} value={c.id}>
                                      <span className="flex items-center gap-2">
                                        {c.name}
