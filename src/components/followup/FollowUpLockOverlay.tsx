@@ -93,7 +93,7 @@ export default function FollowUpLockOverlay() {
 
   return (
     <>
-      {visivel && (
+      {visivel && !agora && (
         <div className="fixed inset-0 z-[70] bg-background/95 backdrop-blur-sm overflow-y-auto">
           <div className="mx-auto w-full max-w-3xl px-4 py-8">
             <div className="rounded-xl border border-amber-500/40 bg-card shadow-lg">
