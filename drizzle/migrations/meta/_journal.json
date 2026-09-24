@@ -176,6 +176,13 @@
       "when": 1790190208679,
       "tag": "0024_followup_event_id",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790209940252,
+      "tag": "0025_followup_balde_dias_uteis",
+      "breakpoints": true
     }
   ]
 }

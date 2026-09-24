@@ -1,14 +1,49 @@
 /**
  * Regras do módulo de Follow-ups.
  *
- * - O lead é da empresa: se o closer não registra a tentativa no dia combinado,
- *   à 00:01 (Brasília) o follow-up cai no Balde de Reativação.
- * - Cada closer tem até 3 tentativas; cada tentativa exige nova data/hora
- *   combinada e justificativa de no mínimo 100 caracteres.
+ * - O lead é da empresa: o closer tem até 2 dias ÚTEIS de tolerância depois da
+ *   data combinada para regularizar o follow-up. Enquanto estiver atrasado, a
+ *   trava de tela aparece; passando a tolerância, o lead cai no Balde.
+ * - Cada closer tem até 10 pontos de contato; cada tentativa exige nova
+ *   data/hora combinada e justificativa de no mínimo 100 caracteres.
+ * - Sábados e domingos não contam no atraso.
  */
 
-export const MAX_TENTATIVAS = 3;
+export const MAX_TENTATIVAS = 10;
 export const TENTATIVA_JUSTIFICATIVA_MIN = 100;
+
+/** Dias úteis de tolerância antes do lead ir para o Balde de Reativação. */
+export const TOLERANCIA_DIAS_UTEIS = 2;
+
+const ymdToUTC = (ymd: string) => {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return Date.UTC(y, (m ?? 1) - 1, d ?? 1);
+};
+
+/** true quando a data (YYYY-MM-DD) cai em sábado ou domingo. */
+export const isWeekendYMD = (ymd: string) => {
+  const dow = new Date(ymdToUTC(ymd)).getUTCDay();
+  return dow === 0 || dow === 6;
+};
+
+/**
+ * Quantos dias ÚTEIS se passaram depois de `dateYmd` até `todayYmd`
+ * (a própria data combinada não conta; sábados e domingos são ignorados).
+ */
+export const diasUteisDeAtraso = (dateYmd: string, todayYmd: string): number => {
+  if (!dateYmd || !todayYmd || dateYmd >= todayYmd) return 0;
+  let count = 0;
+  const end = ymdToUTC(todayYmd);
+  const cursor = new Date(ymdToUTC(dateYmd));
+  cursor.setUTCDate(cursor.getUTCDate() + 1);
+  while (cursor.getTime() <= end) {
+    const dow = cursor.getUTCDay();
+    if (dow !== 0 && dow !== 6) count += 1;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return count;
+};
+
 
 export type FollowUpStatus = "ativo" | "lixeira" | "balde" | "concluido";
 export type FollowUpCanal = "ligacao" | "whatsapp";

@@ -16,6 +16,8 @@ import PendingMeetingsBanner from "@/components/PendingMeetingsBanner";
 import OverdueFollowUpsBanner from "@/components/OverdueFollowUpsBanner";
 import OverdueMeetingsLockOverlay from "@/components/OverdueMeetingsLockOverlay";
 import FollowUpAlerts from "@/components/followup/FollowUpAlerts";
+import FollowUpLockOverlay from "@/components/followup/FollowUpLockOverlay";
+
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/useTheme";
@@ -109,7 +111,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <OverdueMeetingsLockOverlay />
+      <FollowUpLockOverlay />
       <FollowUpAlerts />
+
       {/* Desktop Sidebar — hover-expand */}
       <aside
         onMouseEnter={handleMouseEnter}
