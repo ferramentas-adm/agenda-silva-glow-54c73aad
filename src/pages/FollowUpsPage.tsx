@@ -272,7 +272,22 @@ export default function FollowUpsPage() {
                 : "Organize seus retornos com leads que ainda não fecharam."}
             </p>
           </div>
+          <Button onClick={() => setOpenAddFollowUp(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Adicionar Follow-Up
+          </Button>
         </header>
+
+        <FollowUpAddDialog
+          open={openAddFollowUp}
+          onOpenChange={setOpenAddFollowUp}
+          onCreated={() => {
+            refetch();
+            queryClient.invalidateQueries({ queryKey: ["follow-ups"] });
+          }}
+        />
+
+
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <TabsList className="flex-wrap h-auto">
