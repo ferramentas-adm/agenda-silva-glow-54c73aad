@@ -574,6 +574,9 @@ export default function AguardandoAtribuicaoPage() {
                             Turma B
                           </ToggleGroupItem>
                         </ToggleGroup>
+                        {desqOriginal && !canRequalificar && (
+                          <span className="block max-w-[260px] text-[10px] text-muted-foreground">{REQUALIFICAR_MSG}</span>
+                        )}
                       </div>
                       <div className="min-w-[200px]">
                         <Select
