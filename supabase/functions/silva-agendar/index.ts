@@ -156,7 +156,12 @@ Deno.serve(async (req) => {
       return json({ erro: "telefone_ja_agendado", agendamento: dup[0] }, 409);
     }
 
-    // 4) Revalidar slot com a capacidade exclusiva do SDR IA (+3 por hora).
+    // 4) A condição "desqualificado" pertence ao LEAD (telefone): herda do cadastro.
+    const phoneNorm = (() => { const d = String(phone).replace(/\D/g, ""); return d.length >= 12 && d.startsWith("55") ? d.slice(2) : d; })();
+    const { data: leadQual } = await supabase.from("lead_qualificacao").select("desqualificado")
+      .eq("phone_norm", phoneNorm).maybeSingle();
+    if (leadQual?.desqualificado) b.lead_desqualificado = true;
+    // Revalidar slot com a capacidade exclusiva do SDR IA (+3 por hora).
     const turma: "A" | "B" = b.lead_desqualificado ? "B" : "A";
     const avail = await loadDayAvailability(supabase, dateStr, undefined, turma);
     if (turma === "B" && !isWithinTurmaBWindow(timeStr)) {

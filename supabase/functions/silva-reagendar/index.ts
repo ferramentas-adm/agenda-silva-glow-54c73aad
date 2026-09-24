@@ -143,12 +143,13 @@ Deno.serve(async (req) => {
       if (!requestedCloser) motivoRealocacao = `O closer do slot ficou indisponível às ${timeStr} de ${dateStr}`;
     }
 
-    // Mantém o closer anterior quando ele continua elegível e sem bloqueio.
+    // Prioridade: closer do slot_id → closer anterior (se elegível e da mesma turma) → closer livre.
+    // eligibleClosers já vem filtrado pela turma do lead.
     const previousCloser = typeof old.closer_id === "string" && !info.blockedCloserIds.has(old.closer_id)
       ? info.eligibleClosers.find((closer) => closer.id === old.closer_id)
       : null;
     // Nunca sobrescreve compromisso: realoca para closer livre ou recusa com 409.
-    const assignedCloser = previousCloser ?? requestedCloser ?? suggestFreeCloser(availability, timeStr);
+    const assignedCloser = requestedCloser ?? previousCloser ?? suggestFreeCloser(availability, timeStr);
     if (!assignedCloser || info.blockedCloserIds.has(assignedCloser.id)) {
       return json({
         erro: "slot_bloqueado",
