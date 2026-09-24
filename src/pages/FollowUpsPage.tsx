@@ -237,6 +237,8 @@ export default function FollowUpsPage() {
   const [removeTarget, setRemoveTarget] = useState<FollowUpRow | null>(null);
   const [removing, setRemoving] = useState(false);
   const [tentativaTarget, setTentativaTarget] = useState<FollowUpRow | null>(null);
+  const [openAddFollowUp, setOpenAddFollowUp] = useState(false);
+
 
   const handleConfirmRemove = async () => {
     if (!removeTarget) return;
