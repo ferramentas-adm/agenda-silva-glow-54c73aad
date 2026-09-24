@@ -21,6 +21,8 @@ import { logAudit } from "@/services/auditLog";
 import { createGoogleCalendarEvent } from "@/hooks/useGoogleCalendar";
 import { Navigate } from "react-router-dom";
 
+const REQUALIFICAR_MSG = "Só Antônio da Silva, Pedro Vieira e Letícia Castro podem mover lead para a Turma A";
+
 
 interface Agendamento {
   id: string;
@@ -304,6 +306,10 @@ export default function AguardandoAtribuicaoPage() {
 
     // Requalificar (desqualificado → qualificado) só gestor, com motivo, via banco.
     if (Boolean(a.lead_desqualificado) && !desqEfetivo) {
+      if (!canRequalificar) {
+        toast.error(REQUALIFICAR_MSG);
+        return;
+      }
       const motivo = window.prompt("Motivo para requalificar o lead (mínimo 10 caracteres):")?.trim();
       if (!motivo || motivo.length < 10) {
         toast.error("Requalificação cancelada: informe um motivo com pelo menos 10 caracteres.");
