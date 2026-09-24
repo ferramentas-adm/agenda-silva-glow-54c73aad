@@ -1024,6 +1024,12 @@ export default function ReunioesListPage() {
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
                             <Phone className="h-3 w-3" />{ag.lead_phone}
                           </div>
+                          {((ag as any).produto_interesse || "").trim() && (
+                            <Badge className="mt-1 text-[10px] whitespace-normal bg-primary/15 text-primary border border-primary/30 hover:bg-primary/15">
+                              Sugerido: {(ag as any).produto_interesse}
+                            </Badge>
+                          )}
+
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {canTransferCloser ? (
