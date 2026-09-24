@@ -236,15 +236,31 @@ serve(async (req) => {
     }
 
     // 3) Update agendamento
-    const updatePayload: Record<string, unknown> = { closer_id: new_closer_id };
-    if (!skipGoogle) {
-      updatePayload.meet_link = newMeetLink;
-      updatePayload.google_event_id = newEventId;
+    // Gestor/moderador tem controle livre entre Turma A e Turma B: usamos a função
+    // que libera a regra de turma sem alterar a qualificação do lead.
+    const turmaLivre = roles.has("gestor") || roles.has("moderador");
+    let updErr: unknown = null;
+    if (turmaLivre) {
+      const { error } = await supabaseAdmin.rpc("transfer_closer_turma_livre", {
+        _agendamento_id: agendamento_id,
+        _new_closer_id: new_closer_id,
+        _meet_link: skipGoogle ? null : newMeetLink,
+        _google_event_id: skipGoogle ? null : newEventId,
+        _update_google: !skipGoogle,
+      });
+      updErr = error;
+    } else {
+      const updatePayload: Record<string, unknown> = { closer_id: new_closer_id };
+      if (!skipGoogle) {
+        updatePayload.meet_link = newMeetLink;
+        updatePayload.google_event_id = newEventId;
+      }
+      const { error } = await supabaseAdmin
+        .from("agendamentos")
+        .update(updatePayload)
+        .eq("id", agendamento_id);
+      updErr = error;
     }
-    const { error: updErr } = await supabaseAdmin
-      .from("agendamentos")
-      .update(updatePayload)
-      .eq("id", agendamento_id);
     if (updErr) {
       console.error("Failed to update agendamento:", updErr);
       return new Response(JSON.stringify({ success: false, error: "update_failed", warnings }), {
