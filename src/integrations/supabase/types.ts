@@ -1258,6 +1258,21 @@ export type Database = {
         }
         Relationships: []
       }
+      requalificacao_autorizados: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       role_permissions: {
         Row: {
           allowed: boolean
@@ -1811,6 +1826,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_requalificar: { Args: { _user_id: string }; Returns: boolean }
       can_toggle_user_active: {
         Args: { _target_user_id: string }
         Returns: boolean
