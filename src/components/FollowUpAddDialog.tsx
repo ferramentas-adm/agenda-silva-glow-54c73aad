@@ -173,7 +173,7 @@ export default function FollowUpAddDialog({ open, onOpenChange, onCreated }: Pro
       onCreated?.();
       onOpenChange(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro ao criar follow-up.";
+      const msg = (err as any)?.message ? `Erro ao criar follow-up: ${(err as any).message}` : "Erro ao criar follow-up.";
       toast.error(msg);
     } finally {
       setSubmitting(false);
