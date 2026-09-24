@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyCloserId } from "@/hooks/useMyCloserId";
 import { brTodayYMD } from "@/lib/timezone";
+import { diasUteisDeAtraso } from "@/lib/followUp";
+import { FOLLOWUP_SELECT, type FollowUpRecord } from "@/components/followup/types";
 
 export interface OverdueFollowUp {
   id: string;
@@ -14,6 +16,10 @@ export interface OverdueFollowUp {
   observacoes: string | null;
   lead_name: string;
   lead_phone: string;
+  /** Dias úteis passados desde a data combinada (sábado/domingo não contam). */
+  dias_uteis_atraso: number;
+  /** Registro completo, para reaproveitar os diálogos do módulo. */
+  record: FollowUpRecord;
 }
 
 export function useOverdueFollowUps() {
@@ -35,11 +41,7 @@ export function useOverdueFollowUps() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendas")
-        .select(`
-          id, agendamento_id, follow_up_date, follow_up_time,
-          motivo_nao_fechamento, observacoes,
-          agendamentos!inner ( lead_name, lead_phone, closer_id )
-        `)
+        .select(FOLLOWUP_SELECT)
         .eq("follow_up", true)
         .eq("vendeu", false)
         .eq("follow_up_status", "ativo")
@@ -55,6 +57,8 @@ export function useOverdueFollowUps() {
         observacoes: r.observacoes,
         lead_name: r.agendamentos?.lead_name ?? "",
         lead_phone: r.agendamentos?.lead_phone ?? "",
+        dias_uteis_atraso: diasUteisDeAtraso(r.follow_up_date ?? "", today),
+        record: r as FollowUpRecord,
       })) as OverdueFollowUp[];
     },
   });
