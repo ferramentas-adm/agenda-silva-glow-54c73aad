@@ -784,7 +784,7 @@ export function CalendarContent() {
     // do closer de destino (ajuste feito pelo banco).
     const target = allClosers.find((c) => c.id === newCloserId);
     const isDesq = !!(detailAg as any).lead_desqualificado;
-    const trocaTurma = !!target && !!target.em_treinamento !== isDesq;
+    const trocaTurma = !turmaLivre && !!target && !!target.em_treinamento !== isDesq;
     try {
       const { data, error } = await supabase
         .from("agendamentos")
