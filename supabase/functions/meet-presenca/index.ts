@@ -76,6 +76,17 @@ serve(async (req) => {
     return at;
   }
 
+  // Nomes de toda a equipe Grupo Silva (closers + usuários cadastrados).
+  const [{ data: cls }, { data: profs }] = await Promise.all([
+    admin.from("closers").select("name"),
+    admin.from("profiles").select("full_name, email"),
+  ]);
+  const equipe = new Set<string>();
+  (cls ?? []).forEach((c: any) => c.name && equipe.add(norm(c.name)));
+  (profs ?? []).forEach((p: any) => {
+    if (p.full_name && String(p.email ?? "").toLowerCase().endsWith("@ogruposilva.com.br")) equipe.add(norm(p.full_name));
+  });
+
   const items: Record<string, { presenca: Presenca; participantes: string[]; motivo?: string }> = {};
 
   await Promise.all((ags ?? []).map(async (a: any) => {
@@ -103,15 +114,14 @@ serve(async (req) => {
         return;
       }
       const parts = (await rp.json()).participants ?? [];
-      const closerName = norm(a.closers?.name ?? "");
-      const closerFirst = closerName.split(" ")[0];
       let closer = false, lead = false;
       const nomes: string[] = [];
       for (const p of parts) {
         const dn: string = p.signedinUser?.displayName ?? p.anonymousUser?.displayName ?? p.phoneUser?.displayName ?? "";
         nomes.push(dn || "Participante");
         const n = norm(dn);
-        const isCloser = !!p.signedinUser && closerFirst && (n === closerName || n.startsWith(closerFirst));
+        // Qualquer pessoa da equipe (closers ou usuários cadastrados) conta como closer/equipe.
+        const isCloser = !!p.signedinUser && n.length > 0 && equipe.has(n);
         if (isCloser) closer = true; else lead = true;
       }
       items[a.id] = {
