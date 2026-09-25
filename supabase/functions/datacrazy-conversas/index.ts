@@ -40,7 +40,6 @@ Deno.serve(async (req) => {
     if (hit && Date.now() - hit.at < 30_000 && !debug) { items[p] = hit.v; return; }
     try {
       const qs = new URLSearchParams({ search: tel, take: "10" });
-      qs.append("filter[instances]", INSTANCE);
       const r = await fetch(`${API}/conversations?${qs}`, {
         headers: { Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}` },
         signal: AbortSignal.timeout(8000),
