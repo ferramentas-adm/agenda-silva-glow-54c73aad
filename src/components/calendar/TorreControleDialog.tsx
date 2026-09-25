@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RadioTower, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
+import { RadioTower, RefreshCw, ExternalLink, Copy, Check, MessageCircle } from "lucide-react";
 import { brTodayYMD, brNowHour, brNowMinute } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +38,16 @@ function formatPhone(phone: string) {
   if (d.length === 11) return `+55 (${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   if (d.length === 10) return `+55 (${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `+55 ${d}`;
+}
+
+/** Instância do módulo de conversas do DataCrazy. */
+const DATACRAZY_INSTANCE = "6aaed957bfce5b063bb12a80";
+
+/** Link direto para a conversa do lead no DataCrazy (busca pelo telefone com DDI). */
+function crmConversaUrl(phone: string) {
+  const d = phone.replace(/\D/g, "");
+  const comDdi = d.startsWith("55") ? d : `55${d}`;
+  return `https://crm.datacrazy.io/multiservice?search=${comDdi}&instances=${DATACRAZY_INSTANCE}`;
 }
 
 export default function TorreControleDialog() {
@@ -168,6 +178,13 @@ export default function TorreControleDialog() {
                         )}
                         {formatPhone(phone)}
                       </button>
+                    )}
+                    {phone && (
+                      <Button asChild size="sm" variant="secondary" className="gap-1">
+                        <a href={crmConversaUrl(phone)} target="_blank" rel="noreferrer" title="Abrir a conversa do lead no DataCrazy">
+                          <MessageCircle className="h-4 w-4" /> Abrir no CRM
+                        </a>
+                      </Button>
                     )}
                     {l.meet_link && (
                       <Button asChild size="sm" variant="outline" className="gap-1">
