@@ -77,7 +77,7 @@ serve(async (req) => {
   // Só lê reuniões que o usuário pode ver (RLS).
   const { data: ags } = await userClient
     .from("agendamentos")
-    .select("id, meet_link, closer_id, closers(name)")
+    .select("id, meet_link, closer_id, lead_name, closers(name)")
     .in("id", ids.slice(0, 80));
 
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
