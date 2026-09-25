@@ -27,35 +27,32 @@ async function refresh(rt: string) {
 const slug = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+const PARTICULAS = new Set(["da", "de", "do", "dos", "das", "e"]);
 const palavras = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-    .split(/\s+/).map((w) => w.replace(/[^a-z0-9]/g, "")).filter((w) => w.length >= 2);
+    .split(/\s+/).map((w) => w.replace(/[^a-z0-9]/g, "")).filter((w) => w.length >= 2 && !PARTICULAS.has(w));
 
-/** Nome + sobrenome (ignora nomes do meio): "João Victor Pinheiro Pereira" -> "joao|pereira". */
-function chaveNomeSobrenome(nome: string): string | null {
-  const ws = palavras(nome);
-  if (ws.length < 2) return null;
-  return `${ws[0]}|${ws[ws.length - 1]}`;
+/**
+ * "Igor Occon" casa com "Igor Matheus Occon Manoel": mesmo primeiro nome e
+ * todos os demais nomes exibidos fazem parte do nome oficial. Exige ≥2 palavras.
+ */
+function casaNome(exibido: string[], oficial: string[]): boolean {
+  if (exibido.length < 2 || oficial.length < 2) return false;
+  if (exibido[0] !== oficial[0]) return false;
+  const resto = new Set(oficial.slice(1));
+  return exibido.slice(1).every((w) => resto.has(w));
 }
 
 type Classe = "equipe" | "lead" | "ambiguo";
 
-/**
- * Classifica um participante da sala.
- * - Equipe só quando o nome da conta Google casa por NOME + SOBRENOME com o
- *   nome oficial do Google Workspace de alguém do time (closers.google_name).
- * - Se o mesmo nome também casa com o lead do agendamento, é AMBÍGUO: não há
- *   como afirmar quem está na sala.
- * - Nomes com uma única palavra, anônimos e por telefone nunca contam como equipe.
- */
-function classificar(displayName: string, assinado: boolean, equipe: Set<string>, leadNome: string): Classe {
-  const chave = chaveNomeSobrenome(displayName);
-  const chaveLead = chaveNomeSobrenome(leadNome);
-  const ehLead = !!chave && !!chaveLead && chave === chaveLead;
-  if (!assinado || !chave) return "lead";
-  const ehEquipe = equipe.has(chave);
-  if (ehEquipe && ehLead) return "ambiguo";
-  return ehEquipe ? "equipe" : "lead";
+function classificar(displayName: string, assinado: boolean, equipe: string[][], leadNome: string): Classe {
+  const dn = palavras(displayName);
+  if (!assinado || dn.length < 2) return "lead";
+  const ehEquipe = equipe.some((of) => casaNome(dn, of));
+  if (!ehEquipe) return "lead";
+  const ld = palavras(leadNome);
+  const ehLead = casaNome(dn, ld) || casaNome(ld, dn);
+  return ehLead ? "ambiguo" : "equipe";
 }
 
 type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "ambiguo" | "desconhecido";
@@ -112,10 +109,10 @@ serve(async (req) => {
   // background (closers.google_name), vinculado por e-mail corporativo.
   // Os nomes comerciais exibidos no sistema são ignorados de propósito.
   const { data: cls } = await admin.from("closers").select("google_name");
-  const equipe = new Set<string>();
+  const equipe: string[][] = [];
   (cls ?? []).forEach((c: any) => {
-    const k = chaveNomeSobrenome(String(c.google_name ?? ""));
-    if (k) equipe.add(k);
+    const w = palavras(String(c.google_name ?? ""));
+    if (w.length >= 2) equipe.push(w);
   });
 
   const items: Record<string, { presenca: Presenca; participantes: string[]; motivo?: string }> = {};
