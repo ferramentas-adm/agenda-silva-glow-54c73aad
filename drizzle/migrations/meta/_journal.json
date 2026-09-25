@@ -225,6 +225,13 @@
       "when": 1790359965030,
       "tag": "0031_add_google_name_to_closers",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790373220063,
+      "tag": "0032_profiles_google_name",
+      "breakpoints": true
     }
   ]
 }
