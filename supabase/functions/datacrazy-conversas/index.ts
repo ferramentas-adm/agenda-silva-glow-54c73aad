@@ -39,20 +39,29 @@ Deno.serve(async (req) => {
     const hit = cache.get(tel);
     if (hit && Date.now() - hit.at < 30_000 && !debug) { items[p] = hit.v; return; }
     try {
-      const qs = new URLSearchParams({ search: tel, take: "10" });
-      const r = await fetch(`${API}/conversations?${qs}`, {
-        headers: { Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}` },
-        signal: AbortSignal.timeout(8000),
-      });
-      const txt = await r.text();
-      if (!r.ok) { items[p] = { conversationId: null, aguardando: false, ultimaMsgLead: null, debug: debug ? { status: r.status, txt: txt.slice(0, 500) } : undefined }; return; }
-      const d = JSON.parse(txt);
-      const list: any[] = Array.isArray(d) ? d : d?.data ?? [];
-      // Só a conversa da instância do time (SDR) cujo contato tem exatamente este telefone.
-      const match = list.find((c) => {
-        const cp = digits(c?.contact?.phoneNumber ?? c?.contact?.contactId ?? "");
-        return c?.instance?.id === INSTANCE && cp === tel;
-      }) ?? null;
+      // Celular pode estar salvo com ou sem o 9 extra: chave = DDD + últimos 8 dígitos.
+      const chave = (t: string) => { const x = t.startsWith("55") ? t.slice(2) : t; return x.slice(0, 2) + x.slice(-8); };
+      const local = tel.slice(2);
+      const variantes = [tel, local.length === 11 ? `55${local.slice(0, 2)}${local.slice(3)}` : `55${local.slice(0, 2)}9${local.slice(2)}`];
+      let list: any[] = [];
+      let match: any = null;
+      for (const q of variantes) {
+        const qs = new URLSearchParams({ search: q, take: "10" });
+        const r = await fetch(`${API}/conversations?${qs}`, {
+          headers: { Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}` },
+          signal: AbortSignal.timeout(8000),
+        });
+        const txt = await r.text();
+        if (!r.ok) { items[p] = { conversationId: null, aguardando: false, ultimaMsgLead: null, debug: debug ? { status: r.status, txt: txt.slice(0, 500) } : undefined }; return; }
+        const d = JSON.parse(txt);
+        list = Array.isArray(d) ? d : d?.data ?? [];
+        // Só a conversa da instância do time (SDR) com este mesmo telefone.
+        match = list.find((c) => {
+          const cp = digits(c?.contact?.phoneNumber ?? c?.contact?.contactId ?? "");
+          return c?.instance?.id === INSTANCE && cp && chave(cp) === chave(tel);
+        }) ?? null;
+        if (match) break;
+      }
       const rec = match?.lastReceivedMessageDate ? Date.parse(match.lastReceivedMessageDate) : 0;
       const sent = match?.lastSendedMessageDate ? Date.parse(match.lastSendedMessageDate) : 0;
       const v: Item = {
