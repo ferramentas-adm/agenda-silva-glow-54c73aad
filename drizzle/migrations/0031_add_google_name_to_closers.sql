@@ -1,0 +1,2 @@
+ALTER TABLE public.closers ADD COLUMN IF NOT EXISTS google_name text;
+COMMENT ON COLUMN public.closers.google_name IS 'Nome oficial da conta Google Workspace. Uso interno (identificacao de presenca no Meet). Nunca exibir no calendario nem na tela de agendamento.';

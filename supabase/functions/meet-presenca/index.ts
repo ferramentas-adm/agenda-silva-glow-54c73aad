@@ -27,30 +27,38 @@ async function refresh(rt: string) {
 const slug = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
-const EMPRESA_DOMINIO = "@ogruposilva.com.br";
+const palavras = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .split(/\s+/).map((w) => w.replace(/[^a-z0-9]/g, "")).filter((w) => w.length >= 2);
 
-// Casa o displayName da conta Google com o usuário do e-mail corporativo.
-// Referência é SEMPRE o e-mail (@ogruposilva.com.br), nunca o nome cadastrado no sistema.
-function ehEquipe(displayName: string, prefixos: Set<string>) {
-  const inteiro = slug(displayName);
-  if (!inteiro) return false;
-  if (prefixos.has(inteiro)) return true;
-  const palavras = displayName.split(/\s+/).map(slug).filter((w) => w.length >= 2);
-  if (palavras.length === 0) return false;
-  const primeiro = palavras[0];
-  const ultimo = palavras[palavras.length - 1];
-  for (const p of prefixos) {
-    if (p.length < 4) continue;
-    // "João Victor Pinheiro Pereira" -> joaovictorpereira
-    if (palavras.length >= 2 && p.startsWith(primeiro) && p.endsWith(ultimo)) return true;
-    // "Magda Brito Cunha" -> magdacunha ; "Bruna Angélica" -> bruna
-    if (p === primeiro + ultimo || p === primeiro) return true;
-    if (inteiro.startsWith(p) || p.startsWith(inteiro)) return true;
-  }
-  return false;
+/** Nome + sobrenome (ignora nomes do meio): "João Victor Pinheiro Pereira" -> "joao|pereira". */
+function chaveNomeSobrenome(nome: string): string | null {
+  const ws = palavras(nome);
+  if (ws.length < 2) return null;
+  return `${ws[0]}|${ws[ws.length - 1]}`;
 }
 
-type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "desconhecido";
+type Classe = "equipe" | "lead" | "ambiguo";
+
+/**
+ * Classifica um participante da sala.
+ * - Equipe só quando o nome da conta Google casa por NOME + SOBRENOME com o
+ *   nome oficial do Google Workspace de alguém do time (closers.google_name).
+ * - Se o mesmo nome também casa com o lead do agendamento, é AMBÍGUO: não há
+ *   como afirmar quem está na sala.
+ * - Nomes com uma única palavra, anônimos e por telefone nunca contam como equipe.
+ */
+function classificar(displayName: string, assinado: boolean, equipe: Set<string>, leadNome: string): Classe {
+  const chave = chaveNomeSobrenome(displayName);
+  const chaveLead = chaveNomeSobrenome(leadNome);
+  const ehLead = !!chave && !!chaveLead && chave === chaveLead;
+  if (!assinado || !chave) return "lead";
+  const ehEquipe = equipe.has(chave);
+  if (ehEquipe && ehLead) return "ambiguo";
+  return ehEquipe ? "equipe" : "lead";
+}
+
+type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "ambiguo" | "desconhecido";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -69,7 +77,7 @@ serve(async (req) => {
   // Só lê reuniões que o usuário pode ver (RLS).
   const { data: ags } = await userClient
     .from("agendamentos")
-    .select("id, meet_link, closer_id, closers(name)")
+    .select("id, meet_link, closer_id, lead_name, closers(name)")
     .in("id", ids.slice(0, 80));
 
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -100,21 +108,15 @@ serve(async (req) => {
     return at;
   }
 
-  // Referência de equipe = e-mails corporativos (@ogruposilva.com.br) de closers e usuários.
-  // Nomes cadastrados no sistema são ignorados de propósito (têm inconsistências).
-  const [{ data: cls }, { data: profs }] = await Promise.all([
-    admin.from("closers").select("email"),
-    admin.from("profiles").select("email"),
-  ]);
-  const prefixos = new Set<string>();
-  const addEmail = (e: unknown) => {
-    const em = String(e ?? "").toLowerCase().trim();
-    if (!em.endsWith(EMPRESA_DOMINIO)) return;
-    const user = slug(em.slice(0, em.length - EMPRESA_DOMINIO.length));
-    if (user.length >= 3) prefixos.add(user);
-  };
-  (cls ?? []).forEach((c: any) => addEmail(c.email));
-  (profs ?? []).forEach((p: any) => addEmail(p.email));
+  // Referência de equipe = nome oficial da conta Google Workspace guardado em
+  // background (closers.google_name), vinculado por e-mail corporativo.
+  // Os nomes comerciais exibidos no sistema são ignorados de propósito.
+  const { data: cls } = await admin.from("closers").select("google_name");
+  const equipe = new Set<string>();
+  (cls ?? []).forEach((c: any) => {
+    const k = chaveNomeSobrenome(String(c.google_name ?? ""));
+    if (k) equipe.add(k);
+  });
 
   const items: Record<string, { presenca: Presenca; participantes: string[]; motivo?: string }> = {};
 
@@ -143,18 +145,22 @@ serve(async (req) => {
         return;
       }
       const parts = (await rp.json()).participants ?? [];
-      let closer = false, lead = false;
+      let closer = false, lead = false, ambiguo = false;
       const nomes: string[] = [];
       for (const p of parts) {
         const dn: string = p.signedinUser?.displayName ?? p.anonymousUser?.displayName ?? p.phoneUser?.displayName ?? "";
         nomes.push(dn || "Participante");
-        // Equipe = conta Google que casa com um e-mail @ogruposilva.com.br.
-        const isCloser = !!p.signedinUser && ehEquipe(dn, prefixos);
-        if (isCloser) closer = true; else lead = true;
+        const classe = classificar(dn, !!p.signedinUser, equipe, String(a.lead_name ?? ""));
+        if (classe === "ambiguo") ambiguo = true;
+        else if (classe === "equipe") closer = true;
+        else lead = true;
       }
       items[a.id] = {
-        presenca: closer && lead ? "ambos" : closer ? "closer" : lead ? "lead" : "nenhum",
+        presenca: ambiguo
+          ? "ambiguo"
+          : closer && lead ? "ambos" : closer ? "closer" : lead ? "lead" : "nenhum",
         participantes: nomes,
+        ...(ambiguo ? { motivo: "homonimo" } : {}),
       };
     } catch (e) {
       items[a.id] = { presenca: "desconhecido", participantes: [], motivo: String(e).slice(0, 80) };

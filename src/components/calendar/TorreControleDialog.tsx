@@ -8,14 +8,15 @@ import { RadioTower, RefreshCw, ExternalLink, Copy, Check, MessageCircle } from 
 import { brTodayYMD, brNowHour, brNowMinute } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
-type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "desconhecido";
+type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "ambiguo" | "desconhecido";
 
 const PRESENCA: Record<Presenca, { label: string; dot: string; order: number }> = {
-  lead: { label: "Só o lead na sala", dot: "bg-amber-500", order: 0 },
-  nenhum: { label: "Ninguém na sala", dot: "bg-red-500", order: 1 },
-  closer: { label: "Só o closer na sala", dot: "bg-sky-500", order: 2 },
-  ambos: { label: "Lead e closer na sala", dot: "bg-emerald-500", order: 3 },
-  desconhecido: { label: "Sem leitura do Meet", dot: "bg-muted-foreground/40", order: 4 },
+  ambiguo: { label: "Não consigo identificar quem está na sala", dot: "bg-yellow-400", order: 0 },
+  lead: { label: "Só o lead na sala", dot: "bg-orange-500", order: 1 },
+  nenhum: { label: "Ninguém na sala", dot: "bg-red-500", order: 2 },
+  closer: { label: "Só o closer na sala", dot: "bg-sky-500", order: 3 },
+  ambos: { label: "Lead e closer na sala", dot: "bg-emerald-500", order: 4 },
+  desconhecido: { label: "Sem leitura do Meet", dot: "bg-muted-foreground/40", order: 5 },
 };
 
 const MOTIVO: Record<string, string> = {
@@ -24,6 +25,7 @@ const MOTIVO: Record<string, string> = {
   sem_google: "closer sem Google conectado",
   google_403: "Google não liberou a leitura desta sala",
   google_401: "conexão Google expirada",
+  homonimo: "o nome na sala é igual ao do lead e ao de alguém da equipe",
 };
 
 /** Hora-alvo: a partir de HH:55 mostra a próxima hora; senão, a hora corrente. */
@@ -95,7 +97,7 @@ export default function TorreControleDialog() {
   }, [reunioes, presenca]);
 
   const contagem = useMemo(() => {
-    const c: Record<Presenca, number> = { ambos: 0, lead: 0, closer: 0, nenhum: 0, desconhecido: 0 };
+    const c: Record<Presenca, number> = { ambos: 0, lead: 0, closer: 0, nenhum: 0, ambiguo: 0, desconhecido: 0 };
     linhas.forEach((l) => c[l.p.presenca]++);
     return c;
   }, [linhas]);

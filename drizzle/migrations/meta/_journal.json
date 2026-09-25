@@ -218,6 +218,13 @@
       "when": 1790283750504,
       "tag": "0030_realtime_closer_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790359965030,
+      "tag": "0031_add_google_name_to_closers",
+      "breakpoints": true
     }
   ]
 }
