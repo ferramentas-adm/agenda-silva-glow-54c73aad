@@ -97,7 +97,7 @@ export default function TorreControleDialog() {
   }, [reunioes, presenca]);
 
   const contagem = useMemo(() => {
-    const c: Record<Presenca, number> = { ambos: 0, lead: 0, closer: 0, nenhum: 0, desconhecido: 0 };
+    const c: Record<Presenca, number> = { ambos: 0, lead: 0, closer: 0, nenhum: 0, ambiguo: 0, desconhecido: 0 };
     linhas.forEach((l) => c[l.p.presenca]++);
     return c;
   }, [linhas]);
