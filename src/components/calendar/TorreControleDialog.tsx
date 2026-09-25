@@ -45,11 +45,12 @@ function formatPhone(phone: string) {
 /** Instância do módulo de conversas do DataCrazy. */
 const DATACRAZY_INSTANCE = "6aaed957bfce5b063bb12a80";
 
-/** Link direto para a conversa do lead no DataCrazy (busca pelo telefone com DDI). */
-function crmConversaUrl(phone: string) {
+/** Link direto para a conversa do lead no DataCrazy. Com conversationId abre a conversa exata; sem ele, cai na busca pelo telefone com DDI. */
+function crmConversaUrl(phone: string, conversationId?: string | null) {
   const d = phone.replace(/\D/g, "");
   const comDdi = d.startsWith("55") ? d : `55${d}`;
-  return `https://crm.datacrazy.io/multiservice?search=${comDdi}&instances=${DATACRAZY_INSTANCE}`;
+  const base = `https://crm.datacrazy.io/multiservice?search=${comDdi}&instances=${DATACRAZY_INSTANCE}`;
+  return conversationId ? `${base}&conversationId=${conversationId}` : base;
 }
 
 export default function TorreControleDialog() {
@@ -196,7 +197,7 @@ export default function TorreControleDialog() {
                     {phone && (
                       <Button asChild size="sm" variant="secondary" className="gap-1 relative">
                         <a
-                          href={crmConversaUrl(phone)}
+                          href={crmConversaUrl(phone, crm[phone]?.conversationId)}
                           target="_blank"
                           rel="noreferrer"
                           title={crm[phone]?.aguardando ? "O lead mandou mensagem e ainda não foi respondido" : "Abrir a conversa do lead no DataCrazy"}
