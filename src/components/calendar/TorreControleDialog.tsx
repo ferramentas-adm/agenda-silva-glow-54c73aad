@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RadioTower, RefreshCw, ExternalLink, MessageCircle } from "lucide-react";
+import { RadioTower, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
 import { brTodayYMD, brNowHour, brNowMinute } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,7 @@ function horaAlvo() {
 export default function TorreControleDialog() {
   const [open, setOpen] = useState(false);
   const [hora, setHora] = useState<number>(horaAlvo());
+  const [copiado, setCopiado] = useState<string | null>(null);
   const hoje = brTodayYMD();
   const hh = String(hora).padStart(2, "0");
 
@@ -138,11 +139,27 @@ export default function TorreControleDialog() {
                     </div>
                     {l.status === "em_call" && <Badge variant="outline">Em call</Badge>}
                     {phone && (
-                      <Button asChild size="sm" variant="ghost" className="gap-1">
-                        <a href={`https://wa.me/${phone.startsWith("55") ? phone : "55" + phone}`} target="_blank" rel="noreferrer">
-                          <MessageCircle className="h-4 w-4" /> WhatsApp
-                        </a>
-                      </Button>
+                      <button
+                        type="button"
+                        title="Clique para copiar o telefone do lead"
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-mono hover:bg-accent transition-colors"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(phone);
+                          } catch {
+                            /* fallback abaixo */
+                          }
+                          setCopiado(l.id);
+                          setTimeout(() => setCopiado((c) => (c === l.id ? null : c)), 1500);
+                        }}
+                      >
+                        {copiado === l.id ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                        {formatPhone(phone)}
+                      </button>
                     )}
                     {l.meet_link && (
                       <Button asChild size="sm" variant="outline" className="gap-1">
