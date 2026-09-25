@@ -1,39 +1,39 @@
 # Torre de Controle: ajustes
 
-## Answers to your two questions
+## Respostas às suas duas perguntas
 
-### Hidden costs of switching to a Grupo Silva link (item 1)
-- **Every link sent to leads changes.** The reminders (DataCrazy webhook), the AI SDR and the SDRs' manual messages would send our link, not the Meet link. Anything that still sends the raw Meet link won't be tracked.
-- **If our site goes down, the lead can't get in.** Today the lead goes straight to Google. With our link, there's one more step in the way.
-- **"Clicou" doesn't mean "is in the waiting room".** It only means the lead opened the link. The lead might give up before asking to join.
-- **Previews and bots.** WhatsApp opens the link to build a preview, which could count as a click. This needs a filter.
-- **Upside:** if the closer changes, the same link starts pointing to the new room. This fixes the "too many links in the chat" problem.
-- **Suggestion:** do this in a separate phase, after you confirm the reminders can send the new link.
+### Consequências ocultas de trocar para um link do Grupo Silva (item 1)
+- **Todo link enviado ao lead muda.** Os lembretes (webhook do DataCrazy), a IA SDR e as mensagens manuais dos SDRs passariam a enviar o nosso link, e não o do Meet. Quem continuar mandando o link cru do Meet não será rastreado.
+- **Se o nosso site cair, o lead não consegue entrar.** Hoje o lead vai direto para o Google. Com o nosso link, existe um passo a mais no caminho.
+- **"Clicou" não é o mesmo que "está na sala de espera".** Significa só que o lead abriu o link. Ele pode desistir antes de pedir para entrar.
+- **Pré-visualização e robôs.** O WhatsApp abre o link para montar a prévia, e isso poderia contar como clique. É preciso filtrar.
+- **Vantagem:** se o closer mudar, o mesmo link passa a apontar para a sala nova. Isso resolve o problema de "vários links na conversa".
+- **Sugestão:** fazer numa fase separada, depois que você confirmar que os lembretes conseguem enviar o novo link.
 
-### Load from the DataCrazy calls (items 2 and 3)
-- The calls only happen while the Torre is open. That's one query every 30 seconds for the meetings in that hour, about 20 to 40 leads, and only on the server.
-- The system and its database stay just as fast. The rest of the app isn't affected.
-- The only risk is DataCrazy's own request limits. To avoid it, results are saved for 30 seconds and shared between everyone with the panel open. Five managers with the panel open = the same number of calls as one.
+### Carga das chamadas ao DataCrazy (itens 2 e 3)
+- As chamadas só acontecem com a Torre aberta. É uma consulta a cada 30 segundos para as reuniões daquela hora (cerca de 20 a 40 leads), feita só no servidor.
+- O sistema e o banco de dados continuam tão rápidos quanto hoje. O resto do app não é afetado.
+- O único risco é o limite de requisições do próprio DataCrazy. Para evitar isso, os resultados ficam guardados por 30 segundos e são compartilhados entre todos que estão com o painel aberto. Cinco gestores com o painel aberto fazem o mesmo número de chamadas que um.
 
-## What gets built now
+## O que será feito agora
 
-### Item 4: everyone on the team counts as team (approved)
-- Besides closers, **any system user with an @ogruposilva.com.br email** counts as team: managers, moderators, SDRs.
-- The official Google name for these users is filled in in the background, from the spreadsheet you sent. Names shown in the system don't change.
-- A junior closer who joins someone else's meeting to learn **counts as team, not as the lead**. Confirmed: all 22 active closers already have their official name filled in.
-- The name-matching rule stays as it is today (first name + surnames that are part of the official name). The yellow dot for identical names stays too.
+### Item 4: toda a equipe conta como equipe (aprovado)
+- Além dos closers, **qualquer usuário do sistema com e-mail @ogruposilva.com.br** conta como equipe: gestores, moderadores e SDRs.
+- O nome oficial do Google desses usuários é preenchido nos bastidores, a partir da planilha que você enviou. Os nomes que aparecem no sistema não mudam.
+- Um closer menos experiente que entra na reunião de outro para aprender **conta como equipe, e não como lead**. Conferido: os 22 closers ativos já têm o nome oficial preenchido.
+- A regra de comparação de nomes continua como hoje (primeiro nome + sobrenomes que fazem parte do nome oficial). A bolinha amarela para nomes idênticos também continua.
 
-### Items 2 and 3: DataCrazy research (first step)
-1. Look up DataCrazy's conversations/messages API and test it with the key we already have.
-2. If there's a way to find the lead's conversation by phone number:
-   - **Item 3:** "Abrir no CRM" opens that exact conversation, not the search results page.
-   - **Item 2:** a red dot with a counter on the button when the lead has sent a message you haven't read.
-3. If the API doesn't provide this, I'll come back to you with what's possible before building anything.
+### Itens 2 e 3: pesquisa no DataCrazy (primeiro passo)
+1. Procurar a API de conversas/mensagens do DataCrazy e testar com a chave que já temos.
+2. Se der para encontrar a conversa do lead pelo telefone:
+   - **Item 3:** "Abrir no CRM" abre exatamente essa conversa, e não a página de resultados da busca.
+   - **Item 2:** uma bolinha vermelha com contador no botão quando o lead mandar uma mensagem que ainda não foi lida.
+3. Se a API não oferecer isso, eu volto com o que é possível antes de construir qualquer coisa.
 
-### Item 1: waiting room
-- Depends on your go-ahead after reading the hidden costs above. It's not part of this step.
+### Item 1: sala de espera
+- Depende da sua aprovação depois de ler as consequências acima. Não faz parte desta etapa.
 
-## Technical details
-- New `google_name` column (nullable) on `profiles`, filled in by matching emails against the CSV (`/mnt/user-uploads/...`). `meet-presenca` loads `closers.google_name` plus `profiles.google_name` where `active`.
-- `google-callback` also saves `profiles.google_name` when the user connects Google.
-- New `datacrazy-conversas` function (or an extra action in the proxy): receives phone numbers, returns `{conversationId, naoLidas}`. In-memory cache of 30s per phone. Called by the Torre every 30s only while it's open.
+## Detalhes técnicos
+- Nova coluna `google_name` (opcional) em `profiles`, preenchida cruzando os e-mails com o CSV (`/mnt/user-uploads/...`). `meet-presenca` carrega `closers.google_name` mais `profiles.google_name` dos usuários ativos.
+- `google-callback` também grava `profiles.google_name` quando o usuário conecta o Google.
+- Nova função `datacrazy-conversas` (ou uma ação a mais no proxy): recebe telefones e devolve `{conversationId, naoLidas}`. Cache em memória de 30s por telefone. Chamada pela Torre a cada 30s, só enquanto ela estiver aberta.
