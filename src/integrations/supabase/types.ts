@@ -669,6 +669,7 @@ export type Database = {
           datacrazy_id: string | null
           em_treinamento: boolean
           email: string | null
+          google_name: string | null
           id: string
           name: string
         }
@@ -682,6 +683,7 @@ export type Database = {
           datacrazy_id?: string | null
           em_treinamento?: boolean
           email?: string | null
+          google_name?: string | null
           id?: string
           name: string
         }
@@ -695,6 +697,7 @@ export type Database = {
           datacrazy_id?: string | null
           em_treinamento?: boolean
           email?: string | null
+          google_name?: string | null
           id?: string
           name?: string
         }
