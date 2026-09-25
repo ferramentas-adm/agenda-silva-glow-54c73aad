@@ -27,30 +27,38 @@ async function refresh(rt: string) {
 const slug = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
-const EMPRESA_DOMINIO = "@ogruposilva.com.br";
+const palavras = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .split(/\s+/).map((w) => w.replace(/[^a-z0-9]/g, "")).filter((w) => w.length >= 2);
 
-// Casa o displayName da conta Google com o usuário do e-mail corporativo.
-// Referência é SEMPRE o e-mail (@ogruposilva.com.br), nunca o nome cadastrado no sistema.
-function ehEquipe(displayName: string, prefixos: Set<string>) {
-  const inteiro = slug(displayName);
-  if (!inteiro) return false;
-  if (prefixos.has(inteiro)) return true;
-  const palavras = displayName.split(/\s+/).map(slug).filter((w) => w.length >= 2);
-  if (palavras.length === 0) return false;
-  const primeiro = palavras[0];
-  const ultimo = palavras[palavras.length - 1];
-  for (const p of prefixos) {
-    if (p.length < 4) continue;
-    // "João Victor Pinheiro Pereira" -> joaovictorpereira
-    if (palavras.length >= 2 && p.startsWith(primeiro) && p.endsWith(ultimo)) return true;
-    // "Magda Brito Cunha" -> magdacunha ; "Bruna Angélica" -> bruna
-    if (p === primeiro + ultimo || p === primeiro) return true;
-    if (inteiro.startsWith(p) || p.startsWith(inteiro)) return true;
-  }
-  return false;
+/** Nome + sobrenome (ignora nomes do meio): "João Victor Pinheiro Pereira" -> "joao|pereira". */
+function chaveNomeSobrenome(nome: string): string | null {
+  const ws = palavras(nome);
+  if (ws.length < 2) return null;
+  return `${ws[0]}|${ws[ws.length - 1]}`;
 }
 
-type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "desconhecido";
+type Classe = "equipe" | "lead" | "ambiguo";
+
+/**
+ * Classifica um participante da sala.
+ * - Equipe só quando o nome da conta Google casa por NOME + SOBRENOME com o
+ *   nome oficial do Google Workspace de alguém do time (closers.google_name).
+ * - Se o mesmo nome também casa com o lead do agendamento, é AMBÍGUO: não há
+ *   como afirmar quem está na sala.
+ * - Nomes com uma única palavra, anônimos e por telefone nunca contam como equipe.
+ */
+function classificar(displayName: string, assinado: boolean, equipe: Set<string>, leadNome: string): Classe {
+  const chave = chaveNomeSobrenome(displayName);
+  const chaveLead = chaveNomeSobrenome(leadNome);
+  const ehLead = !!chave && !!chaveLead && chave === chaveLead;
+  if (!assinado || !chave) return "lead";
+  const ehEquipe = equipe.has(chave);
+  if (ehEquipe && ehLead) return "ambiguo";
+  return ehEquipe ? "equipe" : "lead";
+}
+
+type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "ambiguo" | "desconhecido";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
