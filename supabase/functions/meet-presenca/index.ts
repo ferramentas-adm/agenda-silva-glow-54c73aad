@@ -145,18 +145,22 @@ serve(async (req) => {
         return;
       }
       const parts = (await rp.json()).participants ?? [];
-      let closer = false, lead = false;
+      let closer = false, lead = false, ambiguo = false;
       const nomes: string[] = [];
       for (const p of parts) {
         const dn: string = p.signedinUser?.displayName ?? p.anonymousUser?.displayName ?? p.phoneUser?.displayName ?? "";
         nomes.push(dn || "Participante");
-        // Equipe = conta Google que casa com um e-mail @ogruposilva.com.br.
-        const isCloser = !!p.signedinUser && ehEquipe(dn, prefixos);
-        if (isCloser) closer = true; else lead = true;
+        const classe = classificar(dn, !!p.signedinUser, equipe, String(a.lead_name ?? ""));
+        if (classe === "ambiguo") ambiguo = true;
+        else if (classe === "equipe") closer = true;
+        else lead = true;
       }
       items[a.id] = {
-        presenca: closer && lead ? "ambos" : closer ? "closer" : lead ? "lead" : "nenhum",
+        presenca: ambiguo
+          ? "ambiguo"
+          : closer && lead ? "ambos" : closer ? "closer" : lead ? "lead" : "nenhum",
         participantes: nomes,
+        ...(ambiguo ? { motivo: "homonimo" } : {}),
       };
     } catch (e) {
       items[a.id] = { presenca: "desconhecido", participantes: [], motivo: String(e).slice(0, 80) };
