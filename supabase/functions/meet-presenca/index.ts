@@ -23,8 +23,32 @@ async function refresh(rt: string) {
   return r.ok && d?.access_token ? { token: d.access_token as string, exp: d.expires_in as number } : null;
 }
 
-const norm = (s: string) =>
-  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+// Só letras/números, sem acentos: "André Sechi" -> "andresechi".
+const slug = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const EMPRESA_DOMINIO = "@ogruposilva.com.br";
+
+// Casa o displayName da conta Google com o usuário do e-mail corporativo.
+// Referência é SEMPRE o e-mail (@ogruposilva.com.br), nunca o nome cadastrado no sistema.
+function ehEquipe(displayName: string, prefixos: Set<string>) {
+  const inteiro = slug(displayName);
+  if (!inteiro) return false;
+  if (prefixos.has(inteiro)) return true;
+  const palavras = displayName.split(/\s+/).map(slug).filter((w) => w.length >= 2);
+  if (palavras.length === 0) return false;
+  const primeiro = palavras[0];
+  const ultimo = palavras[palavras.length - 1];
+  for (const p of prefixos) {
+    if (p.length < 4) continue;
+    // "João Victor Pinheiro Pereira" -> joaovictorpereira
+    if (palavras.length >= 2 && p.startsWith(primeiro) && p.endsWith(ultimo)) return true;
+    // "Magda Brito Cunha" -> magdacunha ; "Bruna Angélica" -> bruna
+    if (p === primeiro + ultimo || p === primeiro) return true;
+    if (inteiro.startsWith(p) || p.startsWith(inteiro)) return true;
+  }
+  return false;
+}
 
 type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "desconhecido";
 
