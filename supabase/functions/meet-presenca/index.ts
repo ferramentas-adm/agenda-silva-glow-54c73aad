@@ -108,21 +108,15 @@ serve(async (req) => {
     return at;
   }
 
-  // Referência de equipe = e-mails corporativos (@ogruposilva.com.br) de closers e usuários.
-  // Nomes cadastrados no sistema são ignorados de propósito (têm inconsistências).
-  const [{ data: cls }, { data: profs }] = await Promise.all([
-    admin.from("closers").select("email"),
-    admin.from("profiles").select("email"),
-  ]);
-  const prefixos = new Set<string>();
-  const addEmail = (e: unknown) => {
-    const em = String(e ?? "").toLowerCase().trim();
-    if (!em.endsWith(EMPRESA_DOMINIO)) return;
-    const user = slug(em.slice(0, em.length - EMPRESA_DOMINIO.length));
-    if (user.length >= 3) prefixos.add(user);
-  };
-  (cls ?? []).forEach((c: any) => addEmail(c.email));
-  (profs ?? []).forEach((p: any) => addEmail(p.email));
+  // Referência de equipe = nome oficial da conta Google Workspace guardado em
+  // background (closers.google_name), vinculado por e-mail corporativo.
+  // Os nomes comerciais exibidos no sistema são ignorados de propósito.
+  const { data: cls } = await admin.from("closers").select("google_name");
+  const equipe = new Set<string>();
+  (cls ?? []).forEach((c: any) => {
+    const k = chaveNomeSobrenome(String(c.google_name ?? ""));
+    if (k) equipe.add(k);
+  });
 
   const items: Record<string, { presenca: Presenca; participantes: string[]; motivo?: string }> = {};
 
