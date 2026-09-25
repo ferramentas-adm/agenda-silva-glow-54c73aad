@@ -14,10 +14,17 @@
 
 ## Pendências
 
-### Item 3: "Abrir no CRM" abrir a conversa exata — aguardando você
-- Hoje o botão abre a busca pelo telefone, que mostra várias conversas parecidas.
-- Para abrir a conversa certa direto, preciso do formato do deep link do DataCrazy.
-- Você vai abrir a conversa de um lead no DataCrazy (clicando na lista) e me mandar a URL completa da barra de endereço.
+### Item 3: "Abrir no CRM" abrir a conversa exata
+
+**Descoberto agora:** ao clicar numa conversa do DataCrazy, a URL não muda — o endereço continua sendo só `?search=<telefone>&instances=<instância>`. Ou seja, a tela do DataCrazy não expõe um deep link para a conversa.
+
+**Porém, temos uma pista:** a API do DataCrazy (que já usamos para a bolinha vermelha) devolve o `conversationId` de cada conversa — para a conversa do Gessica (559183567045) esse ID está disponível no servidor. Resta descobrir se a tela aceita esse ID na URL.
+
+**Próximo passo (teste com você):**
+1. Eu monto um link de teste no formato atual + `&conversationId=<id>` (ex.: `https://crm.datacrazy.io/multiservice?search=559183567045&instances=6aaed957bfce5b063bb12a80&conversationId=101173`) e te mando aqui no chat.
+2. Você abre esse link no navegador e me diz se abriu direto na conversa certa (sem precisar buscar).
+3. Se abrir: eu troco todos os botões "Abrir no CRM" da Torre para esse formato novo — conversa exata, zero busca visual.
+4. Se não abrir: sem deep link. O botão continua abrindo a busca pelo telefone, e a alternativa real seria pedir ao suporte do DataCrazy o formato de link direto.
 
 ### Item 1: sala de espera (link do Grupo Silva) — não fazer por enquanto
 - Decisão: nada será feito agora.
