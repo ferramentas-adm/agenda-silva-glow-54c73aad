@@ -40,6 +40,16 @@ function formatPhone(phone: string) {
   return `+55 ${d}`;
 }
 
+/** Instância do módulo de conversas do DataCrazy. */
+const DATACRAZY_INSTANCE = "6aaed957bfce5b063bb12a80";
+
+/** Link direto para a conversa do lead no DataCrazy (busca pelo telefone com DDI). */
+function crmConversaUrl(phone: string) {
+  const d = phone.replace(/\D/g, "");
+  const comDdi = d.startsWith("55") ? d : `55${d}`;
+  return `https://crm.datacrazy.io/multiservice?search=${comDdi}&instances=${DATACRAZY_INSTANCE}`;
+}
+
 export default function TorreControleDialog() {
   const [open, setOpen] = useState(false);
   const [hora, setHora] = useState<number>(horaAlvo());
