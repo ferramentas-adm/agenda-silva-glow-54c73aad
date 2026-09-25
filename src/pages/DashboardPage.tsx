@@ -16,6 +16,7 @@ import { FunilFilter } from "@/components/calendar/FunilFilter";
 import { isDiretor, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
 import { linkifyText } from "@/lib/linkify";
 import BriefingDrawer from "@/components/BriefingDrawer";
+import TorreControleDialog from "@/components/calendar/TorreControleDialog";
 import { useBriefingComments } from "@/hooks/useBriefingComments";
 
 import { useCloserFilter } from "@/hooks/useCloserFilter";
@@ -1383,6 +1384,7 @@ export function CalendarContent() {
                   countB={countTurmaB}
                 />
                 <FunilFilter value={funil} onChange={setFunil} />
+                {role !== "closer" && <TorreControleDialog />}
               </div>
               <div className="overflow-x-auto -mx-1 px-1">
                 <CloserFilterBar closers={closers} selectedIds={selectedIds} onToggle={toggle} />
