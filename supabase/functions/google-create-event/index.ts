@@ -320,8 +320,25 @@ serve(async (req) => {
     };
 
     if (autoSpace) {
-      // Reutiliza a sala já criada com gravação automática.
+      // Vincula a sala já criada (com gravação automática) ao bloco oficial de
+      // videoconferência do evento. Sem isso o Meet trata a sala como avulsa do
+      // closer e mostra o nome dele no saguão/aba em vez do título do evento.
+      const meetingCode = autoSpace.uri.split('/').filter(Boolean).pop() ?? '';
       event.location = autoSpace.uri;
+      event.conferenceData = {
+        conferenceId: meetingCode,
+        conferenceSolution: {
+          key: { type: 'hangoutsMeet' },
+          name: 'Google Meet',
+        },
+        entryPoints: [
+          {
+            entryPointType: 'video',
+            uri: autoSpace.uri,
+            label: autoSpace.uri.replace(/^https?:\/\//, ''),
+          },
+        ],
+      };
     } else {
       event.conferenceData = {
         createRequest: {
@@ -332,7 +349,7 @@ serve(async (req) => {
     }
 
     const calendarId = tokenData.calendar_id || 'primary';
-    const calRes = await fetch(
+    const insertEvent = (body: Record<string, unknown>) => fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`,
       {
         method: 'POST',
@@ -340,9 +357,21 @@ serve(async (req) => {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(event),
+        body: JSON.stringify(body),
       },
     );
+
+    let calRes = await insertEvent(event);
+
+    // Se o Google recusar o vínculo explícito da sala, cria o evento só com o
+    // link no local — o agendamento nunca deixa de ser criado.
+    if (!calRes.ok && autoSpace) {
+      const errBody = await calRes.text();
+      console.error('[auto-recording] insert com conferenceData falhou, tentando fallback:', errBody);
+      const { conferenceData: _drop, ...fallbackEvent } = event as Record<string, unknown>;
+      calRes = await insertEvent(fallbackEvent);
+    }
+
 
     if (!calRes.ok) {
       const errBody = await calRes.text();
