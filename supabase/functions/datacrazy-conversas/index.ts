@@ -48,10 +48,10 @@ Deno.serve(async (req) => {
       if (!r.ok) { items[p] = { conversationId: null, aguardando: false, ultimaMsgLead: null, debug: debug ? { status: r.status, txt: txt.slice(0, 500) } : undefined }; return; }
       const d = JSON.parse(txt);
       const list: any[] = Array.isArray(d) ? d : d?.data ?? [];
-      // Só a conversa cujo contato tem exatamente este telefone.
+      // Só a conversa da instância do time (SDR) cujo contato tem exatamente este telefone.
       const match = list.find((c) => {
-        const cp = digits(c?.contact?.phone ?? c?.contact?.number ?? c?.contact?.id ?? "");
-        return cp && (cp === tel || cp.endsWith(tel.slice(2)));
+        const cp = digits(c?.contact?.phoneNumber ?? c?.contact?.contactId ?? "");
+        return c?.instance?.id === INSTANCE && cp === tel;
       }) ?? null;
       const rec = match?.lastReceivedMessageDate ? Date.parse(match.lastReceivedMessageDate) : 0;
       const sent = match?.lastSendedMessageDate ? Date.parse(match.lastSendedMessageDate) : 0;
