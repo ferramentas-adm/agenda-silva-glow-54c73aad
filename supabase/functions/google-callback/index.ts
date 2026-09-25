@@ -79,6 +79,9 @@ serve(async (req) => {
         const googleName = typeof info?.name === 'string' ? info.name.trim() : '';
         if (googleName) {
           await supabaseAdmin.from('closers').update({ google_name: googleName }).eq('id', closerId);
+          if (typeof info?.email === 'string' && info.email) {
+            await supabaseAdmin.from('profiles').update({ google_name: googleName }).ilike('email', info.email);
+          }
         }
       }
     } catch (e) {

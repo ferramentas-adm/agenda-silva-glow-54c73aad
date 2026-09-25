@@ -1219,6 +1219,7 @@ export type Database = {
           datacrazy_id: string | null
           email: string
           full_name: string
+          google_name: string | null
           id: string
           is_sdr_override: boolean
           moderador_tipo: string | null
@@ -1235,6 +1236,7 @@ export type Database = {
           datacrazy_id?: string | null
           email: string
           full_name: string
+          google_name?: string | null
           id?: string
           is_sdr_override?: boolean
           moderador_tipo?: string | null
@@ -1251,6 +1253,7 @@ export type Database = {
           datacrazy_id?: string | null
           email?: string
           full_name?: string
+          google_name?: string | null
           id?: string
           is_sdr_override?: boolean
           moderador_tipo?: string | null

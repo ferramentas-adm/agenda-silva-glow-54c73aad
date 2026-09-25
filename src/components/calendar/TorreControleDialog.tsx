@@ -90,6 +90,18 @@ export default function TorreControleDialog() {
     },
   });
 
+  const phones = reunioes.map((r) => (r.lead_phone ?? "").replace(/\D/g, "")).filter(Boolean);
+  const { data: crm = {} } = useQuery({
+    queryKey: ["torre-crm", phones.join(",")],
+    enabled: open && phones.length > 0,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("datacrazy-conversas", { body: { phones } });
+      if (error) throw error;
+      return (data?.items ?? {}) as Record<string, { conversationId: string | null; aguardando: boolean; ultimaMsgLead: string | null }>;
+    },
+  });
+
   const linhas = useMemo(() => {
     return reunioes
       .map((r) => ({ ...r, p: presenca[r.id] ?? { presenca: "desconhecido" as Presenca, participantes: [] } }))
@@ -182,9 +194,20 @@ export default function TorreControleDialog() {
                       </button>
                     )}
                     {phone && (
-                      <Button asChild size="sm" variant="secondary" className="gap-1">
-                        <a href={crmConversaUrl(phone)} target="_blank" rel="noreferrer" title="Abrir a conversa do lead no DataCrazy">
+                      <Button asChild size="sm" variant="secondary" className="gap-1 relative">
+                        <a
+                          href={crmConversaUrl(phone)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={crm[phone]?.aguardando ? "O lead mandou mensagem e ainda não foi respondido" : "Abrir a conversa do lead no DataCrazy"}
+                        >
                           <MessageCircle className="h-4 w-4" /> Abrir no CRM
+                          {crm[phone]?.aguardando && (
+                            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                              <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">!</span>
+                            </span>
+                          )}
                         </a>
                       </Button>
                     )}

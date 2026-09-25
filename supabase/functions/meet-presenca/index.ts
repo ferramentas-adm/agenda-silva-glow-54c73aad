@@ -108,9 +108,14 @@ serve(async (req) => {
   // Referência de equipe = nome oficial da conta Google Workspace guardado em
   // background (closers.google_name), vinculado por e-mail corporativo.
   // Os nomes comerciais exibidos no sistema são ignorados de propósito.
-  const { data: cls } = await admin.from("closers").select("google_name");
+  // Closers + todos os usuários do sistema (gestores, SDRs, closers em
+  // treinamento acompanhando a call) contam como equipe.
+  const [{ data: cls }, { data: pfs }] = await Promise.all([
+    admin.from("closers").select("google_name"),
+    admin.from("profiles").select("google_name").eq("active", true),
+  ]);
   const equipe: string[][] = [];
-  (cls ?? []).forEach((c: any) => {
+  [...(cls ?? []), ...(pfs ?? [])].forEach((c: any) => {
     const w = palavras(String(c.google_name ?? ""));
     if (w.length >= 2) equipe.push(w);
   });
