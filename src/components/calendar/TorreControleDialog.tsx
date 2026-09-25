@@ -179,6 +179,13 @@ export default function TorreControleDialog() {
                         {formatPhone(phone)}
                       </button>
                     )}
+                    {phone && (
+                      <Button asChild size="sm" variant="secondary" className="gap-1">
+                        <a href={crmConversaUrl(phone)} target="_blank" rel="noreferrer" title="Abrir a conversa do lead no DataCrazy">
+                          <MessageCircle className="h-4 w-4" /> Abrir no CRM
+                        </a>
+                      </Button>
+                    )}
                     {l.meet_link && (
                       <Button asChild size="sm" variant="outline" className="gap-1">
                         <a href={l.meet_link} target="_blank" rel="noreferrer">
