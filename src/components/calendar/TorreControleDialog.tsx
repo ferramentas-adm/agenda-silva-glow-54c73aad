@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RadioTower, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
+import { RadioTower, RefreshCw, ExternalLink, Copy, Check, MessageCircle } from "lucide-react";
 import { brTodayYMD, brNowHour, brNowMinute } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
