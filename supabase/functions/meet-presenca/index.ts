@@ -148,9 +148,8 @@ serve(async (req) => {
       for (const p of parts) {
         const dn: string = p.signedinUser?.displayName ?? p.anonymousUser?.displayName ?? p.phoneUser?.displayName ?? "";
         nomes.push(dn || "Participante");
-        const n = norm(dn);
-        // Qualquer pessoa da equipe (closers ou usuários cadastrados) conta como closer/equipe.
-        const isCloser = !!p.signedinUser && n.length > 0 && equipe.has(n);
+        // Equipe = conta Google que casa com um e-mail @ogruposilva.com.br.
+        const isCloser = !!p.signedinUser && ehEquipe(dn, prefixos);
         if (isCloser) closer = true; else lead = true;
       }
       items[a.id] = {
