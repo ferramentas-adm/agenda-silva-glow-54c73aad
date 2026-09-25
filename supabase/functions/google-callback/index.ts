@@ -68,6 +68,23 @@ serve(async (req) => {
       }, { onConflict: 'closer_id' });
 
 
+    // Captura o nome oficial da conta Google Workspace e guarda em background
+    // (closers.google_name). Não toca no nome comercial exibido no sistema.
+    try {
+      const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      if (infoRes.ok) {
+        const info = await infoRes.json();
+        const googleName = typeof info?.name === 'string' ? info.name.trim() : '';
+        if (googleName) {
+          await supabaseAdmin.from('closers').update({ google_name: googleName }).eq('id', closerId);
+        }
+      }
+    } catch (e) {
+      console.error('Falha ao capturar nome do Google Workspace:', e);
+    }
+
     if (error) {
       console.error('Error saving token:', error);
       return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro ao salvar token</h2></body></html>', {
