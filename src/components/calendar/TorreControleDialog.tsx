@@ -32,6 +32,14 @@ function horaAlvo() {
   return brNowMinute() >= 55 ? (h + 1) % 24 : h;
 }
 
+/** Exibe o telefone como +55 (11) 91234-5678 quando possível. */
+function formatPhone(phone: string) {
+  const d = phone.startsWith("55") && phone.length >= 12 ? phone.slice(2) : phone;
+  if (d.length === 11) return `+55 (${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `+55 (${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `+55 ${d}`;
+}
+
 export default function TorreControleDialog() {
   const [open, setOpen] = useState(false);
   const [hora, setHora] = useState<number>(horaAlvo());
