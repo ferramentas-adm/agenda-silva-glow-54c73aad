@@ -100,16 +100,21 @@ serve(async (req) => {
     return at;
   }
 
-  // Nomes de toda a equipe Grupo Silva (closers + usuários cadastrados).
+  // Referência de equipe = e-mails corporativos (@ogruposilva.com.br) de closers e usuários.
+  // Nomes cadastrados no sistema são ignorados de propósito (têm inconsistências).
   const [{ data: cls }, { data: profs }] = await Promise.all([
-    admin.from("closers").select("name"),
-    admin.from("profiles").select("full_name, email"),
+    admin.from("closers").select("email"),
+    admin.from("profiles").select("email"),
   ]);
-  const equipe = new Set<string>();
-  (cls ?? []).forEach((c: any) => c.name && equipe.add(norm(c.name)));
-  (profs ?? []).forEach((p: any) => {
-    if (p.full_name && String(p.email ?? "").toLowerCase().endsWith("@ogruposilva.com.br")) equipe.add(norm(p.full_name));
-  });
+  const prefixos = new Set<string>();
+  const addEmail = (e: unknown) => {
+    const em = String(e ?? "").toLowerCase().trim();
+    if (!em.endsWith(EMPRESA_DOMINIO)) return;
+    const user = slug(em.slice(0, em.length - EMPRESA_DOMINIO.length));
+    if (user.length >= 3) prefixos.add(user);
+  };
+  (cls ?? []).forEach((c: any) => addEmail(c.email));
+  (profs ?? []).forEach((p: any) => addEmail(p.email));
 
   const items: Record<string, { presenca: Presenca; participantes: string[]; motivo?: string }> = {};
 
