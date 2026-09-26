@@ -193,10 +193,17 @@ export default function TorreControleDialog() {
     return c;
   }, [linhas]);
 
+  const voltarAoHorario = () => {
+    setHora(hora);
+    setBusca("");
+    setBuscaDia(false);
+  };
+
   const abrirHoraDaReuniao = (scheduledTime: string) => {
     const h = parseInt(scheduledTime.slice(0, 2), 10);
     if (!Number.isNaN(h)) setHora(h);
     setBusca("");
+    setBuscaDia(false);
   };
 
   const renderLinha = (l: (typeof linhas)[number], mostrarAcaoHora: boolean) => {
