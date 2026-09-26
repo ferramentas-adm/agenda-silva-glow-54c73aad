@@ -287,6 +287,26 @@ export default function TorreControleDialog() {
             <Button size="sm" variant="ghost" className="gap-1" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin")} /> Atualizar
             </Button>
+            <div className="flex items-center gap-1 rounded-md border p-0.5">
+              {([
+                ["todos", "Todos"],
+                ["a", "Turma A"],
+                ["b", "Turma B"],
+              ] as const).map(([v, label]) => (
+                <Button
+                  key={v}
+                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "h-7 px-2 text-xs",
+                    turma === v ? "bg-primary text-primary-foreground hover:bg-primary" : "text-muted-foreground"
+                  )}
+                  onClick={() => setTurma(v)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
             <div className="ml-auto flex flex-wrap gap-3 text-xs">
               {(Object.keys(PRESENCA) as Presenca[]).map((k) => (
                 <span key={k} className="flex items-center gap-1.5">
