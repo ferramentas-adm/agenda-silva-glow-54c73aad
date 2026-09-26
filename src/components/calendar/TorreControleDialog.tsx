@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RadioTower, RefreshCw, ExternalLink, Copy, Check, MessageCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { RadioTower, RefreshCw, ExternalLink, Copy, Check, MessageCircle, Search } from "lucide-react";
 import { brTodayYMD, brNowHour, brNowMinute } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,15 @@ function formatPhone(phone: string) {
   return `+55 ${d}`;
 }
 
+/** Minúsculas, sem acentos — para comparar nomes digitados com nomes salvos. */
+function normalize(s: string) {
+  return (s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 /** Instância do módulo de conversas do DataCrazy. */
 const DATACRAZY_INSTANCE = "6aaed957bfce5b063bb12a80";
 
@@ -53,21 +63,38 @@ function crmConversaUrl(phone: string, conversationId?: string | null) {
   return conversationId ? `${base}&conversationId=${conversationId}` : base;
 }
 
+type ReuniaoRow = {
+  id: string;
+  lead_name: string;
+  lead_phone: string | null;
+  scheduled_time: string;
+  status: string;
+  meet_link: string | null;
+  closer_id: string | null;
+  closers: { name: string } | null;
+};
+
+const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(name)";
+
 export default function TorreControleDialog() {
   const [open, setOpen] = useState(false);
   const [hora, setHora] = useState<number>(horaAlvo());
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
   const hoje = brTodayYMD();
   const hh = String(hora).padStart(2, "0");
 
-  const { data: reunioes = [], isLoading } = useQuery({
+  const termo = normalize(busca);
+  const buscando = termo.length >= 2;
+
+  const { data: reunioesHora = [], isLoading } = useQuery({
     queryKey: ["torre-controle", hoje, hora],
     enabled: open,
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(name)")
+        .select(TORRE_SELECT)
         .is("deleted_at", null)
         .eq("scheduled_date", hoje)
         .gte("scheduled_time", `${hh}:00`)
@@ -75,9 +102,40 @@ export default function TorreControleDialog() {
         .not("status", "in", "(cancelada,reagendada,no_show)")
         .order("scheduled_time");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as unknown as ReuniaoRow[];
     },
   });
+
+  /** Busca ativa: cobre o dia inteiro (o painel de hora só mostra 60 minutos). */
+  const { data: resultadoBusca = [], isLoading: isLoadingBusca } = useQuery({
+    queryKey: ["torre-busca", hoje, termo],
+    enabled: open && buscando,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agendamentos")
+        .select(TORRE_SELECT)
+        .is("deleted_at", null)
+        .eq("scheduled_date", hoje)
+        .not("status", "in", "(cancelada,reagendada,no_show)")
+        .order("scheduled_time");
+      if (error) throw error;
+      const qDigits = termo.replace(/\D/g, "");
+      return ((data ?? []) as unknown as ReuniaoRow[]).filter((r) => {
+        const nome = normalize(r.lead_name ?? "");
+        const closer = normalize(r.closers?.name ?? "");
+        const fone = (r.lead_phone ?? "").replace(/\D/g, "");
+        return (
+          nome.includes(termo) ||
+          closer.includes(termo) ||
+          (qDigits.length >= 3 && fone.includes(qDigits))
+        );
+      });
+    },
+  });
+
+  const reunioes = buscando ? resultadoBusca : reunioesHora;
+  const carregandoLista = buscando ? isLoadingBusca : isLoading;
 
   const ids = reunioes.map((r) => r.id);
   const { data: presenca = {}, isFetching, refetch } = useQuery({
@@ -115,6 +173,87 @@ export default function TorreControleDialog() {
     return c;
   }, [linhas]);
 
+  const abrirHoraDaReuniao = (scheduledTime: string) => {
+    const h = parseInt(scheduledTime.slice(0, 2), 10);
+    if (!Number.isNaN(h)) setHora(h);
+    setBusca("");
+  };
+
+  const renderLinha = (l: (typeof linhas)[number], mostrarAcaoHora: boolean) => {
+    const cfg = PRESENCA[l.p.presenca];
+    const phone = (l.lead_phone ?? "").replace(/\D/g, "");
+    return (
+      <div key={l.id} className="flex flex-wrap items-center gap-3 p-3">
+        <span className={cn("h-3.5 w-3.5 rounded-full shrink-0", cfg.dot)} title={cfg.label} />
+        <span className="font-mono text-sm w-12">{l.scheduled_time}</span>
+        <div className="flex-1 min-w-[180px]">
+          <p className="font-medium text-sm">{l.lead_name}</p>
+          <p className="text-xs text-muted-foreground">
+            Closer: {l.closers?.name ?? "—"} · {cfg.label}
+            {l.p.motivo ? ` (${MOTIVO[l.p.motivo] ?? l.p.motivo})` : ""}
+          </p>
+          {l.p.participantes.length > 0 && (
+            <p className="text-xs text-muted-foreground">Na sala: {l.p.participantes.join(", ")}</p>
+          )}
+        </div>
+        {l.status === "em_call" && <Badge variant="outline">Em call</Badge>}
+        {mostrarAcaoHora && (
+          <Button size="sm" variant="ghost" onClick={() => abrirHoraDaReuniao(l.scheduled_time)} title="Ver a hora desta reunião">
+            {l.scheduled_time.slice(0, 2)}h
+          </Button>
+        )}
+        {phone && (
+          <button
+            type="button"
+            title="Clique para copiar o telefone do lead"
+            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-mono hover:bg-accent transition-colors"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(phone);
+              } catch {
+                /* fallback abaixo */
+              }
+              setCopiado(l.id);
+              setTimeout(() => setCopiado((c) => (c === l.id ? null : c)), 1500);
+            }}
+          >
+            {copiado === l.id ? (
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+            {formatPhone(phone)}
+          </button>
+        )}
+        {phone && (
+          <Button asChild size="sm" variant="secondary" className="gap-1 relative">
+            <a
+              href={crmConversaUrl(phone, crm[phone]?.conversationId)}
+              target="_blank"
+              rel="noreferrer"
+              title={crm[phone]?.aguardando ? "O lead mandou mensagem e ainda não foi respondido" : "Abrir a conversa do lead no DataCrazy"}
+            >
+              <MessageCircle className="h-4 w-4" /> Abrir no CRM
+              {crm[phone]?.aguardando && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">!</span>
+                </span>
+              )}
+            </a>
+          </Button>
+        )}
+        {l.meet_link && (
+          <Button asChild size="sm" variant="outline" className="gap-1">
+            <a href={l.meet_link} target="_blank" rel="noreferrer">
+              <ExternalLink className="h-4 w-4" /> Abrir sala
+            </a>
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <Button variant="outline" size="sm" className="gap-2" onClick={() => { setHora(horaAlvo()); setOpen(true); }}>
@@ -147,81 +286,42 @@ export default function TorreControleDialog() {
             </div>
           </div>
 
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Carregando…</p>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por nome do lead, telefone ou closer — busca em todas as horas do dia"
+              className="h-9 pl-8 text-sm"
+            />
+            {buscando && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="absolute right-1 top-1/2 h-7 -translate-y-1/2 px-2 text-xs text-muted-foreground"
+                onClick={() => setBusca("")}
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
+          {buscando && (
+            <p className="text-xs text-muted-foreground">
+              Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}. Clique em "{`{hora}h`}" em um resultado para voltar àquele horário.
+            </p>
+          )}
+
+          {carregandoLista ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">{buscando ? "Buscando…" : "Carregando…"}</p>
           ) : linhas.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma reunião neste horário.</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              {buscando
+                ? `Nenhuma reunião encontrada hoje para “${busca.trim()}”.`
+                : "Nenhuma reunião neste horário."}
+            </p>
           ) : (
             <div className="divide-y rounded-lg border">
-              {linhas.map((l) => {
-                const cfg = PRESENCA[l.p.presenca];
-                const phone = (l.lead_phone ?? "").replace(/\D/g, "");
-                return (
-                  <div key={l.id} className="flex flex-wrap items-center gap-3 p-3">
-                    <span className={cn("h-3.5 w-3.5 rounded-full shrink-0", cfg.dot)} title={cfg.label} />
-                    <span className="font-mono text-sm w-12">{l.scheduled_time}</span>
-                    <div className="flex-1 min-w-[180px]">
-                      <p className="font-medium text-sm">{l.lead_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Closer: {(l as any).closers?.name ?? "—"} · {cfg.label}
-                        {l.p.motivo ? ` (${MOTIVO[l.p.motivo] ?? l.p.motivo})` : ""}
-                      </p>
-                      {l.p.participantes.length > 0 && (
-                        <p className="text-xs text-muted-foreground">Na sala: {l.p.participantes.join(", ")}</p>
-                      )}
-                    </div>
-                    {l.status === "em_call" && <Badge variant="outline">Em call</Badge>}
-                    {phone && (
-                      <button
-                        type="button"
-                        title="Clique para copiar o telefone do lead"
-                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-mono hover:bg-accent transition-colors"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(phone);
-                          } catch {
-                            /* fallback abaixo */
-                          }
-                          setCopiado(l.id);
-                          setTimeout(() => setCopiado((c) => (c === l.id ? null : c)), 1500);
-                        }}
-                      >
-                        {copiado === l.id ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-500" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
-                        {formatPhone(phone)}
-                      </button>
-                    )}
-                    {phone && (
-                      <Button asChild size="sm" variant="secondary" className="gap-1 relative">
-                        <a
-                          href={crmConversaUrl(phone, crm[phone]?.conversationId)}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={crm[phone]?.aguardando ? "O lead mandou mensagem e ainda não foi respondido" : "Abrir a conversa do lead no DataCrazy"}
-                        >
-                          <MessageCircle className="h-4 w-4" /> Abrir no CRM
-                          {crm[phone]?.aguardando && (
-                            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-                              <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">!</span>
-                            </span>
-                          )}
-                        </a>
-                      </Button>
-                    )}
-                    {l.meet_link && (
-                      <Button asChild size="sm" variant="outline" className="gap-1">
-                        <a href={l.meet_link} target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-4 w-4" /> Abrir sala
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
+              {linhas.map((l) => renderLinha(l, buscando))}
             </div>
           )}
         </DialogContent>
