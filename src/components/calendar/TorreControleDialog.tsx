@@ -160,7 +160,7 @@ export default function TorreControleDialog() {
     },
   });
 
-  const phones = reunioes.map((r) => (r.lead_phone ?? "").replace(/\D/g, "")).filter(Boolean);
+  const phones = reunioesFiltradas.map((r) => (r.lead_phone ?? "").replace(/\D/g, "")).filter(Boolean);
   const { data: crm = {} } = useQuery({
     queryKey: ["torre-crm", phones.join(",")],
     enabled: open && phones.length > 0,
