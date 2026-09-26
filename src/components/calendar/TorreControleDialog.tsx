@@ -194,7 +194,6 @@ export default function TorreControleDialog() {
   }, [linhas]);
 
   const voltarAoHorario = () => {
-    setHora(hora);
     setBusca("");
     setBuscaDia(false);
   };
