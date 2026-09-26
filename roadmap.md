@@ -33,3 +33,5 @@
 - [x] Corrigir o travamento do toggle "Lead desqualificado" na tela de agendar (aviso + bloqueio, sem limpar a escolha).
 - [x] Mostrar a Turma (A/B) de cada closer ao lado do nome no dropdown de "Aguardando Atribuição".
 - [x] Separar qualificados e desqualificados no Ranking SDRs e na Produtividade SDR.
+- [x] Taxa de Conversão conta só reuniões da Turma A (turma gravada por reunião no momento em que ela acontece).
+- [x] Ao mover closer de A para B, redistribuir reuniões futuras de leads qualificados para closers livres da Turma A (ou fila), com prévia e auditoria.
