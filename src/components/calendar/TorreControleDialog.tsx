@@ -337,8 +337,11 @@ export default function TorreControleDialog() {
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por nome do lead, telefone ou closer — busca em todas as horas do dia"
+              onChange={(e) => {
+                setBusca(e.target.value);
+                if (!e.target.value.trim()) setBuscaDia(false);
+              }}
+              placeholder="Buscar por nome do lead, telefone ou closer — busca neste horário"
               className="h-9 pl-8 text-sm"
             />
             {buscando && (
@@ -346,29 +349,52 @@ export default function TorreControleDialog() {
                 size="sm"
                 variant="ghost"
                 className="absolute right-1 top-1/2 h-7 -translate-y-1/2 px-2 text-xs text-muted-foreground"
-                onClick={() => setBusca("")}
+                onClick={() => {
+                  setBusca("");
+                  setBuscaDia(false);
+                }}
               >
                 Limpar
               </Button>
             )}
           </div>
           {buscando && (
-            <p className="text-xs text-muted-foreground">
-              Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}. Clique no horário (ex.: 14h) para voltar àquele horário.
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {buscaExpandida ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}.
+                  </p>
+                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={voltarAoHorario}>
+                    Voltar para {hh}h
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {linhas.length} resultado{linhas.length === 1 ? "" : "s"} nas reuniões de {hh}h de hoje ({hoje}).
+                  </p>
+                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setBuscaDia(true)}>
+                    <Search className="h-3.5 w-3.5" /> Ampliar para o dia inteiro
+                  </Button>
+                </>
+              )}
+            </div>
           )}
 
           {carregandoLista ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">{buscando ? "Buscando…" : "Carregando…"}</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">{buscaExpandida ? "Buscando…" : "Carregando…"}</p>
           ) : linhas.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              {buscando
+              {buscaExpandida
                 ? `Nenhuma reunião encontrada hoje para “${busca.trim()}”.`
-                : "Nenhuma reunião neste horário."}
+                : buscando
+                  ? `Nenhuma reunião neste horário corresponde a “${busca.trim()}”.`
+                  : "Nenhuma reunião neste horário."}
             </p>
           ) : (
             <div className="divide-y rounded-lg border">
-              {linhas.map((l) => renderLinha(l, buscando))}
+              {linhas.map((l) => renderLinha(l, buscaExpandida))}
             </div>
           )}
         </DialogContent>
