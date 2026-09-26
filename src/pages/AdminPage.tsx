@@ -637,9 +637,47 @@ function UsersSection() {
   const [togglingSdrOverrideId, setTogglingSdrOverrideId] = useState<string | null>(null);
   const [togglingTreinamentoId, setTogglingTreinamentoId] = useState<string | null>(null);
 
+  const [turmaBTarget, setTurmaBTarget] = useState<{ user: any; plano: any[] } | null>(null);
+  const [redistribuindo, setRedistribuindo] = useState(false);
+
+  const confirmarTurmaB = async () => {
+    if (!turmaBTarget) return;
+    const { user } = turmaBTarget;
+    setRedistribuindo(true);
+    try {
+      const r = await invokeEdgeFunction("redistribuir-turma", { closer_id: user.closerId });
+      await logAudit("toggle_closer_treinamento", "closer", user.closerId, {
+        closer_name: user.name, previous: false, current: true,
+        redistribuidas: r?.transferidas ?? 0, para_fila: r?.fila ?? 0,
+      });
+      toast.success(
+        `${user.name} foi para a Turma B. ${r?.transferidas ?? 0} reunião(ões) redistribuída(s)` +
+          (r?.fila ? `, ${r.fila} na fila Aguardando Atribuição` : "") +
+          (r?.erros ? `, ${r.erros} com erro` : "") + ".",
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin-all-users"] });
+      setTurmaBTarget(null);
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao mover closer para a Turma B");
+    } finally {
+      setRedistribuindo(false);
+    }
+  };
+
   const handleToggleTreinamento = async (user: any, nextValue: boolean) => {
     if (!user.closerId || user.emTreinamento === nextValue) return;
     setTogglingTreinamentoId(user.userId);
+    if (nextValue) {
+      try {
+        const r = await invokeEdgeFunction("redistribuir-turma", { closer_id: user.closerId, dry_run: true });
+        setTurmaBTarget({ user, plano: r?.plano ?? [] });
+      } catch (e: any) {
+        toast.error(e.message || "Erro ao calcular redistribuição");
+      } finally {
+        setTogglingTreinamentoId(null);
+      }
+      return;
+    }
     try {
       const { error } = await supabase
         .from("closers")
@@ -1443,6 +1481,46 @@ function UsersSection() {
       </AlertDialog>
 
       {/* Piloto: gravação automática do Meet */}
+
+      <AlertDialog open={!!turmaBTarget} onOpenChange={(open) => { if (!open && !redistribuindo) setTurmaBTarget(null); }}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mover {turmaBTarget?.user.name} para a Turma B?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                {turmaBTarget && turmaBTarget.plano.length === 0 ? (
+                  <p>Nenhuma reunião futura com lead qualificado para redistribuir.</p>
+                ) : (
+                  <>
+                    <p>
+                      {turmaBTarget?.plano.filter((p) => p.novo_closer_id).length ?? 0} reunião(ões) com lead qualificado
+                      vão para closers livres da Turma A;{" "}
+                      {turmaBTarget?.plano.filter((p) => !p.novo_closer_id).length ?? 0} vão para "Aguardando Atribuição".
+                    </p>
+                    <ul className="max-h-60 overflow-y-auto rounded-md border border-border p-2 space-y-1">
+                      {turmaBTarget?.plano.map((p) => (
+                        <li key={p.id} className="flex justify-between gap-2">
+                          <span className="truncate">{p.data.slice(8, 10)}/{p.data.slice(5, 7)} {p.hora} · {p.lead_name}</span>
+                          <span className={p.novo_closer ? "text-foreground" : "text-destructive"}>
+                            {p.novo_closer ?? "Fila"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                <p>Reuniões de leads desqualificados continuam com o closer.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={redistribuindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={redistribuindo} onClick={(e) => { e.preventDefault(); confirmarTurmaB(); }}>
+              {redistribuindo ? "Redistribuindo..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!autoRecTarget} onOpenChange={(open) => { if (!open) setAutoRecTarget(null); }}>
         <AlertDialogContent>

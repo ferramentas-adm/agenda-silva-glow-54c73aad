@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.meet-presenca]
 verify_jwt = false
+
+[functions.redistribuir-turma]
+verify_jwt = false

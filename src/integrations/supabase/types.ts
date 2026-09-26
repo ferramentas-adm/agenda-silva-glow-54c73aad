@@ -67,6 +67,7 @@ export type Database = {
           closer_id: string | null
           closer_return_reason: string | null
           closer_returned_at: string | null
+          closer_turma: string | null
           created_at: string
           created_by: string | null
           crm_lead_id: string | null
@@ -122,6 +123,7 @@ export type Database = {
           closer_id?: string | null
           closer_return_reason?: string | null
           closer_returned_at?: string | null
+          closer_turma?: string | null
           created_at?: string
           created_by?: string | null
           crm_lead_id?: string | null
@@ -177,6 +179,7 @@ export type Database = {
           closer_id?: string | null
           closer_return_reason?: string | null
           closer_returned_at?: string | null
+          closer_turma?: string | null
           created_at?: string
           created_by?: string | null
           crm_lead_id?: string | null
