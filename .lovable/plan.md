@@ -30,3 +30,22 @@ Não é um erro: é a regra de desqualificados combinada com status que ainda n�
 - Backfill: `update agendamentos a set closer_turma = case when c.em_treinamento then 'B' else 'A' end from closers c where c.id = a.closer_id`.
 - `dashboard_conversao_period`: adicionar `AND a.closer_turma = 'A'` no CTE `ags`, sem mudar a assinatura. Com isso, o card do VendasTab e a ferramenta MCP `sales-kpis` passam a seguir a mesma regra.
 - Verificação: rodar a RPC para 25/09 antes e depois da mudança. O total deve cair exatamente 3 reuniões (as 2 do Bruno e a 1 do Lucca).
+
+---
+
+## Ajuste 1 — Closer que vai do time A para o B passa os leads para outro closer da Turma A
+
+**Como funciona hoje:** quando o gestor coloca um closer na Turma B em Admin, só o time dele muda. As reuniões que ele já tinha continuam com ele.
+
+**O que vou mudar:**
+1. Quando o gestor mover um closer de A para B, o sistema procura as reuniões futuras dele com **lead qualificado**. Entram as reuniões de hoje com horário ainda por vir e as dos próximos dias, com status agendada, confirmada, pendente ou não confirmada.
+2. Cada uma dessas reuniões vai para um closer da **Turma A** que esteja livre naquele horário. O sistema usa as mesmas regras do agendamento: horário de trabalho, bloqueios, limite por hora e nenhum outro compromisso no mesmo horário. Quando houver mais de um closer livre, escolhe o que tem menos reuniões no dia.
+3. O convite do Google Agenda e o link do Meet passam para o novo closer, do mesmo jeito que acontece numa transferência manual.
+4. Se nenhum closer da Turma A estiver livre naquele horário, a reunião vai para a fila **"Aguardando Atribuição"** e os gestores recebem um aviso. Ela não fica com o closer da Turma B.
+5. Antes de confirmar a troca de time, o gestor vê um resumo: quantas reuniões serão redistribuídas e para quem, e quantas vão para a fila. No fim, aparece o resultado.
+6. Cada reunião movida fica na Auditoria como "Redistribuída por troca de turma".
+7. As reuniões com leads desqualificados continuam com o closer, porque combinam com a Turma B. As reuniões que já passaram também não mudam.
+
+**Detalhes técnicos:**
+- Nova função `redistribuir-turma` (JWT de gestor ou moderador): ela muda `closers.em_treinamento` e redistribui as reuniões. Para escolher o closer, usa `_shared/disponibilidade.ts`. Para trocar o dono da reunião, usa `transfer_agendamento_closer` e depois `google-transfer-event`. Quando não há closer livre, usa o fluxo de desatribuição, o mesmo do `unassign_agendamentos_from_closer`.
+- Modo `dry_run` para a prévia no diálogo de confirmação. O `handleToggleTreinamento` do AdminPage passa a chamar a função quando a troca for de A para B. A troca de B para A continua como está.
