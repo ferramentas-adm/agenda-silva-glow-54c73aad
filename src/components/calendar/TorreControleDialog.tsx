@@ -71,16 +71,19 @@ type ReuniaoRow = {
   status: string;
   meet_link: string | null;
   closer_id: string | null;
-  closers: { name: string } | null;
+  closers: { id: string; name: string; em_treinamento: boolean } | null;
 };
 
-const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(name)";
+const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(id, name, em_treinamento)";
+
+type TurmaFiltro = "todos" | "a" | "b";
 
 export default function TorreControleDialog() {
   const [open, setOpen] = useState(false);
   const [hora, setHora] = useState<number>(horaAlvo());
   const [copiado, setCopiado] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
+  const [turma, setTurma] = useState<TurmaFiltro>("todos");
   const hoje = brTodayYMD();
   const hh = String(hora).padStart(2, "0");
 
