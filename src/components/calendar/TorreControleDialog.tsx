@@ -307,7 +307,7 @@ export default function TorreControleDialog() {
           </div>
           {buscando && (
             <p className="text-xs text-muted-foreground">
-              Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}. Clique em "{`{hora}h`}" em um resultado para voltar àquele horário.
+              Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}. Clique no horário (ex.: 14h) para voltar àquele horário.
             </p>
           )}
 
