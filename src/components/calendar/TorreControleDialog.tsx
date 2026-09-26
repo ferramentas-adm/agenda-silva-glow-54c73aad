@@ -173,7 +173,7 @@ export default function TorreControleDialog() {
   });
 
   const linhas = useMemo(() => {
-    return reunioes
+    return reunioesFiltradas
       .map((r) => ({ ...r, p: presenca[r.id] ?? { presenca: "desconhecido" as Presenca, participantes: [] } }))
       .sort((a, b) => PRESENCA[a.p.presenca].order - PRESENCA[b.p.presenca].order || a.scheduled_time.localeCompare(b.scheduled_time));
   }, [reunioes, presenca]);
