@@ -124,10 +124,10 @@ export default function TorreControleDialog() {
     },
   });
 
-  /** Busca ativa: cobre o dia inteiro (o painel de hora só mostra 60 minutos). */
+  /** Busca ampliada (ativa no botão "Ampliar para o dia inteiro"): cobre todas as horas. */
   const { data: resultadoBusca = [], isLoading: isLoadingBusca } = useQuery({
     queryKey: ["torre-busca", hoje, termo],
-    enabled: open && buscando,
+    enabled: open && buscaExpandida,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -138,22 +138,16 @@ export default function TorreControleDialog() {
         .not("status", "in", "(cancelada,reagendada,no_show)")
         .order("scheduled_time");
       if (error) throw error;
-      const qDigits = termo.replace(/\D/g, "");
-      return ((data ?? []) as unknown as ReuniaoRow[]).filter((r) => {
-        const nome = normalize(r.lead_name ?? "");
-        const closer = normalize(r.closers?.name ?? "");
-        const fone = (r.lead_phone ?? "").replace(/\D/g, "");
-        return (
-          nome.includes(termo) ||
-          closer.includes(termo) ||
-          (qDigits.length >= 3 && fone.includes(qDigits))
-        );
-      });
+      return ((data ?? []) as unknown as ReuniaoRow[]).filter((r) => casaTermo(r, termo));
     },
   });
 
-  const reunioes = buscando ? resultadoBusca : reunioesHora;
-  const carregandoLista = buscando ? isLoadingBusca : isLoading;
+  const reunioes = useMemo(() => {
+    if (!buscando) return reunioesHora;
+    if (buscaExpandida) return resultadoBusca;
+    return reunioesHora.filter((r) => casaTermo(r, termo));
+  }, [buscando, buscaExpandida, reunioesHora, resultadoBusca, termo]);
+  const carregandoLista = buscaExpandida ? isLoadingBusca : isLoading;
 
   const reunioesFiltradas = useMemo(() => {
     if (turma === "todos") return reunioes;
