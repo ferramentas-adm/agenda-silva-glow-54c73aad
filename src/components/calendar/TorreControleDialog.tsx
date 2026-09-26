@@ -71,16 +71,19 @@ type ReuniaoRow = {
   status: string;
   meet_link: string | null;
   closer_id: string | null;
-  closers: { name: string } | null;
+  closers: { id: string; name: string; em_treinamento: boolean } | null;
 };
 
-const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(name)";
+const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(id, name, em_treinamento)";
+
+type TurmaFiltro = "todos" | "a" | "b";
 
 export default function TorreControleDialog() {
   const [open, setOpen] = useState(false);
   const [hora, setHora] = useState<number>(horaAlvo());
   const [copiado, setCopiado] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
+  const [turma, setTurma] = useState<TurmaFiltro>("todos");
   const hoje = brTodayYMD();
   const hh = String(hora).padStart(2, "0");
 
@@ -137,7 +140,15 @@ export default function TorreControleDialog() {
   const reunioes = buscando ? resultadoBusca : reunioesHora;
   const carregandoLista = buscando ? isLoadingBusca : isLoading;
 
-  const ids = reunioes.map((r) => r.id);
+  const reunioesFiltradas = useMemo(() => {
+    if (turma === "todos") return reunioes;
+    return reunioes.filter((r) => {
+      if (!r.closers) return false;
+      return turma === "b" ? r.closers.em_treinamento : !r.closers.em_treinamento;
+    });
+  }, [reunioes, turma]);
+
+  const ids = reunioesFiltradas.map((r) => r.id);
   const { data: presenca = {}, isFetching, refetch } = useQuery({
     queryKey: ["torre-presenca", ids.join(",")],
     enabled: open && ids.length > 0,
@@ -149,7 +160,7 @@ export default function TorreControleDialog() {
     },
   });
 
-  const phones = reunioes.map((r) => (r.lead_phone ?? "").replace(/\D/g, "")).filter(Boolean);
+  const phones = reunioesFiltradas.map((r) => (r.lead_phone ?? "").replace(/\D/g, "")).filter(Boolean);
   const { data: crm = {} } = useQuery({
     queryKey: ["torre-crm", phones.join(",")],
     enabled: open && phones.length > 0,
@@ -162,7 +173,7 @@ export default function TorreControleDialog() {
   });
 
   const linhas = useMemo(() => {
-    return reunioes
+    return reunioesFiltradas
       .map((r) => ({ ...r, p: presenca[r.id] ?? { presenca: "desconhecido" as Presenca, participantes: [] } }))
       .sort((a, b) => PRESENCA[a.p.presenca].order - PRESENCA[b.p.presenca].order || a.scheduled_time.localeCompare(b.scheduled_time));
   }, [reunioes, presenca]);
@@ -276,6 +287,26 @@ export default function TorreControleDialog() {
             <Button size="sm" variant="ghost" className="gap-1" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin")} /> Atualizar
             </Button>
+            <div className="flex items-center gap-1 rounded-md border p-0.5">
+              {([
+                ["todos", "Todos"],
+                ["a", "Turma A"],
+                ["b", "Turma B"],
+              ] as const).map(([v, label]) => (
+                <Button
+                  key={v}
+                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "h-7 px-2 text-xs",
+                    turma === v ? "bg-primary text-primary-foreground hover:bg-primary" : "text-muted-foreground"
+                  )}
+                  onClick={() => setTurma(v)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
             <div className="ml-auto flex flex-wrap gap-3 text-xs">
               {(Object.keys(PRESENCA) as Presenca[]).map((k) => (
                 <span key={k} className="flex items-center gap-1.5">
