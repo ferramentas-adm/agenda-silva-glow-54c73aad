@@ -140,7 +140,15 @@ export default function TorreControleDialog() {
   const reunioes = buscando ? resultadoBusca : reunioesHora;
   const carregandoLista = buscando ? isLoadingBusca : isLoading;
 
-  const ids = reunioes.map((r) => r.id);
+  const reunioesFiltradas = useMemo(() => {
+    if (turma === "todos") return reunioes;
+    return reunioes.filter((r) => {
+      if (!r.closers) return false;
+      return turma === "b" ? r.closers.em_treinamento : !r.closers.em_treinamento;
+    });
+  }, [reunioes, turma]);
+
+  const ids = reunioesFiltradas.map((r) => r.id);
   const { data: presenca = {}, isFetching, refetch } = useQuery({
     queryKey: ["torre-presenca", ids.join(",")],
     enabled: open && ids.length > 0,
