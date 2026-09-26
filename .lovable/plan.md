@@ -49,15 +49,3 @@ Não é um erro: é a regra de desqualificados combinada com status que ainda n�
 **Detalhes técnicos:**
 - Nova função `redistribuir-turma` (JWT de gestor ou moderador): ela muda `closers.em_treinamento` e redistribui as reuniões. Para escolher o closer, usa `_shared/disponibilidade.ts`. Para trocar o dono da reunião, usa `transfer_agendamento_closer` e depois `google-transfer-event`. Quando não há closer livre, usa o fluxo de desatribuição, o mesmo do `unassign_agendamentos_from_closer`.
 - Modo `dry_run` para a prévia no diálogo de confirmação. O `handleToggleTreinamento` do AdminPage passa a chamar a função quando a troca for de A para B. A troca de B para A continua como está.
-
----
-
-## Ajuste 2 — Lead desqualificado fica totalmente fora da Taxa de Conversão
-
-**Como funciona hoje:** a reunião com lead desqualificado só entra no card quando gera uma venda paga. Com isso, ela entra no número de reuniões e também no número de vendas, e a taxa sobe de forma artificial.
-
-**O que vou mudar:** a Taxa de Conversão passa a ignorar qualquer reunião com lead desqualificado, com ou sem venda. Ela sai do número de reuniões e do número de vendas. O card fica com: reuniões realizadas da Turma A com lead qualificado, e as vendas que saíram dessas reuniões.
-
-**Continua igual:** essas vendas ainda aparecem no faturamento, no card "Vendas Fechadas (desqualificados)", no envio ao CRM e na Performance por Closer.
-
-**Detalhes técnicos:** em `dashboard_conversao_period`, trocar a exceção "desqualificado com valor > 0" por `AND NOT COALESCE(a.lead_desqualificado,false)` no CTE `ags`. Isso vale também para as segundas reuniões ligadas a essas reuniões. Verificação: rodar a função para 25/09 e comparar o resultado antes e depois.
