@@ -507,6 +507,7 @@ export type Database = {
           block_type: string
           closer_id: string
           created_at: string
+          created_by: string | null
           description: string | null
           end_time: string
           id: string
@@ -519,6 +520,7 @@ export type Database = {
           block_type?: string
           closer_id: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           end_time: string
           id?: string
@@ -531,6 +533,7 @@ export type Database = {
           block_type?: string
           closer_id?: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           end_time?: string
           id?: string

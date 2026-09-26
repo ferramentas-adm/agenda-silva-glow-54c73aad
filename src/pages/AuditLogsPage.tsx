@@ -78,8 +78,11 @@ const ACTION_LABELS: Record<string, string> = {
   update_settings: "Atualizou configurações",
   role_permissions_updated: "Atualizou permissões de função",
   login: "Login",
+  create_closer_block: "Criou bloqueio",
   edit_closer_block: "Editou horário de bloqueio",
   delete_closer_block: "Removeu bloqueio",
+  release_closer_block: "Liberou horário",
+  undo_release_closer_block: "Desfez liberação",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -92,6 +95,7 @@ const ENTITY_LABELS: Record<string, string> = {
   closer: "Closer",
   settings: "Configurações",
   closer_block: "Bloqueio",
+  closer_block_release: "Liberação de horário",
 };
 
 const DEFAULT_PAGE_SIZE = 20;
