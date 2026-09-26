@@ -79,6 +79,7 @@ const ACTION_LABELS: Record<string, string> = {
   role_permissions_updated: "Atualizou permissões de função",
   login: "Login",
   create_closer_block: "Criou bloqueio",
+  redistribuir_troca_turma: "Redistribuída por troca de turma",
   edit_closer_block: "Editou horário de bloqueio",
   delete_closer_block: "Removeu bloqueio",
   release_closer_block: "Liberou horário",
