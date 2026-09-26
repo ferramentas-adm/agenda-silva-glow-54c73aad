@@ -78,17 +78,32 @@ const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_li
 
 type TurmaFiltro = "todos" | "a" | "b";
 
+/** O termo casa com o nome do lead, o nome do closer ou o telefone (3+ dígitos)? */
+function casaTermo(r: ReuniaoRow, termo: string) {
+  const nome = normalize(r.lead_name ?? "");
+  const closer = normalize(r.closers?.name ?? "");
+  const fone = (r.lead_phone ?? "").replace(/\D/g, "");
+  const qDigits = termo.replace(/\D/g, "");
+  return (
+    nome.includes(termo) ||
+    closer.includes(termo) ||
+    (qDigits.length >= 3 && fone.includes(qDigits))
+  );
+}
+
 export default function TorreControleDialog() {
   const [open, setOpen] = useState(false);
   const [hora, setHora] = useState<number>(horaAlvo());
   const [copiado, setCopiado] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
+  const [buscaDia, setBuscaDia] = useState(false);
   const [turma, setTurma] = useState<TurmaFiltro>("todos");
   const hoje = brTodayYMD();
   const hh = String(hora).padStart(2, "0");
 
   const termo = normalize(busca);
   const buscando = termo.length >= 2;
+  const buscaExpandida = buscando && buscaDia;
 
   const { data: reunioesHora = [], isLoading } = useQuery({
     queryKey: ["torre-controle", hoje, hora],
