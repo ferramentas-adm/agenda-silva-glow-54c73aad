@@ -76,18 +76,7 @@ export default function BloqueiosSection() {
       const ids = selectedRows.map((block) => block.id);
       const { error } = await supabase.from("closer_blocks").delete().in("id", ids);
       if (error) throw error;
-      await Promise.all(selectedRows.map((block) => logAudit("delete_closer_block", "closer_block", block.id, {
-        closer_id: block.closer_id,
-        closer_name: data?.names.get(block.closer_id) ?? "Closer removido",
-        date: date || block.block_date,
-        start_time: block.start_time,
-        end_time: block.end_time,
-        reason: block.block_type,
-        description: block.description,
-        is_recurring: block.is_recurring,
-        removed_at: new Date().toISOString(),
-        removal_mode: "bulk",
-      })));
+      // Auditoria gravada automaticamente pelo banco (trigger em closer_blocks).
       ["admin-closer-blocks", "closer-blocks", "closer-blocks-day", "closer-blocks-slots", "closers-availability", "slot-counts-v2"].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
       setSelected(new Set());
       setConfirmOpen(false);

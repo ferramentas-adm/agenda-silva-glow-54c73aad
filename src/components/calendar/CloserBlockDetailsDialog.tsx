@@ -81,13 +81,6 @@ export default function CloserBlockDetailsDialog({
     try {
       const { error } = await supabase.from("closer_blocks").update({ start_time: startTime, end_time: endTime }).eq("id", block.id);
       if (error) throw error;
-      await logAudit("edit_closer_block", "closer_block", block.id, {
-        ...details,
-        old_start_time: block.start_time,
-        old_end_time: block.end_time,
-        new_start_time: startTime,
-        new_end_time: endTime,
-      });
       invalidateBlocks(queryClient);
       toast.success("Horário do bloqueio atualizado");
       onClose();
@@ -103,10 +96,6 @@ export default function CloserBlockDetailsDialog({
     try {
       const { error } = await supabase.from("closer_blocks").delete().eq("id", block.id);
       if (error) throw error;
-      await logAudit("delete_closer_block", "closer_block", block.id, {
-        ...details,
-        removed_at: new Date().toISOString(),
-      });
       invalidateBlocks(queryClient);
       toast.success("Bloqueio removido");
       setConfirmDelete(false);
