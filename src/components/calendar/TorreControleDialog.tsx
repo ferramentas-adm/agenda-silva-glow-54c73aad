@@ -78,17 +78,32 @@ const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_li
 
 type TurmaFiltro = "todos" | "a" | "b";
 
+/** O termo casa com o nome do lead, o nome do closer ou o telefone (3+ dígitos)? */
+function casaTermo(r: ReuniaoRow, termo: string) {
+  const nome = normalize(r.lead_name ?? "");
+  const closer = normalize(r.closers?.name ?? "");
+  const fone = (r.lead_phone ?? "").replace(/\D/g, "");
+  const qDigits = termo.replace(/\D/g, "");
+  return (
+    nome.includes(termo) ||
+    closer.includes(termo) ||
+    (qDigits.length >= 3 && fone.includes(qDigits))
+  );
+}
+
 export default function TorreControleDialog() {
   const [open, setOpen] = useState(false);
   const [hora, setHora] = useState<number>(horaAlvo());
   const [copiado, setCopiado] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
+  const [buscaDia, setBuscaDia] = useState(false);
   const [turma, setTurma] = useState<TurmaFiltro>("todos");
   const hoje = brTodayYMD();
   const hh = String(hora).padStart(2, "0");
 
   const termo = normalize(busca);
   const buscando = termo.length >= 2;
+  const buscaExpandida = buscando && buscaDia;
 
   const { data: reunioesHora = [], isLoading } = useQuery({
     queryKey: ["torre-controle", hoje, hora],
@@ -109,10 +124,10 @@ export default function TorreControleDialog() {
     },
   });
 
-  /** Busca ativa: cobre o dia inteiro (o painel de hora só mostra 60 minutos). */
+  /** Busca ampliada (ativa no botão "Ampliar para o dia inteiro"): cobre todas as horas. */
   const { data: resultadoBusca = [], isLoading: isLoadingBusca } = useQuery({
     queryKey: ["torre-busca", hoje, termo],
-    enabled: open && buscando,
+    enabled: open && buscaExpandida,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -123,22 +138,16 @@ export default function TorreControleDialog() {
         .not("status", "in", "(cancelada,reagendada,no_show)")
         .order("scheduled_time");
       if (error) throw error;
-      const qDigits = termo.replace(/\D/g, "");
-      return ((data ?? []) as unknown as ReuniaoRow[]).filter((r) => {
-        const nome = normalize(r.lead_name ?? "");
-        const closer = normalize(r.closers?.name ?? "");
-        const fone = (r.lead_phone ?? "").replace(/\D/g, "");
-        return (
-          nome.includes(termo) ||
-          closer.includes(termo) ||
-          (qDigits.length >= 3 && fone.includes(qDigits))
-        );
-      });
+      return ((data ?? []) as unknown as ReuniaoRow[]).filter((r) => casaTermo(r, termo));
     },
   });
 
-  const reunioes = buscando ? resultadoBusca : reunioesHora;
-  const carregandoLista = buscando ? isLoadingBusca : isLoading;
+  const reunioes = useMemo(() => {
+    if (!buscando) return reunioesHora;
+    if (buscaExpandida) return resultadoBusca;
+    return reunioesHora.filter((r) => casaTermo(r, termo));
+  }, [buscando, buscaExpandida, reunioesHora, resultadoBusca, termo]);
+  const carregandoLista = buscaExpandida ? isLoadingBusca : isLoading;
 
   const reunioesFiltradas = useMemo(() => {
     if (turma === "todos") return reunioes;
@@ -184,10 +193,16 @@ export default function TorreControleDialog() {
     return c;
   }, [linhas]);
 
+  const voltarAoHorario = () => {
+    setBusca("");
+    setBuscaDia(false);
+  };
+
   const abrirHoraDaReuniao = (scheduledTime: string) => {
     const h = parseInt(scheduledTime.slice(0, 2), 10);
     if (!Number.isNaN(h)) setHora(h);
     setBusca("");
+    setBuscaDia(false);
   };
 
   const renderLinha = (l: (typeof linhas)[number], mostrarAcaoHora: boolean) => {
@@ -267,7 +282,7 @@ export default function TorreControleDialog() {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => { setHora(horaAlvo()); setOpen(true); }}>
+      <Button variant="outline" size="sm" className="gap-2" onClick={() => { setHora(horaAlvo()); setBusca(""); setBuscaDia(false); setOpen(true); }}>
         <RadioTower className="h-4 w-4" /> Torre de Controle
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -321,8 +336,11 @@ export default function TorreControleDialog() {
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por nome do lead, telefone ou closer — busca em todas as horas do dia"
+              onChange={(e) => {
+                setBusca(e.target.value);
+                if (!e.target.value.trim()) setBuscaDia(false);
+              }}
+              placeholder="Buscar por nome do lead, telefone ou closer — busca neste horário"
               className="h-9 pl-8 text-sm"
             />
             {buscando && (
@@ -330,29 +348,52 @@ export default function TorreControleDialog() {
                 size="sm"
                 variant="ghost"
                 className="absolute right-1 top-1/2 h-7 -translate-y-1/2 px-2 text-xs text-muted-foreground"
-                onClick={() => setBusca("")}
+                onClick={() => {
+                  setBusca("");
+                  setBuscaDia(false);
+                }}
               >
                 Limpar
               </Button>
             )}
           </div>
           {buscando && (
-            <p className="text-xs text-muted-foreground">
-              Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}. Clique no horário (ex.: 14h) para voltar àquele horário.
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {buscaExpandida ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}.
+                  </p>
+                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={voltarAoHorario}>
+                    Voltar para {hh}h
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {linhas.length} resultado{linhas.length === 1 ? "" : "s"} nas reuniões de {hh}h de hoje ({hoje}).
+                  </p>
+                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setBuscaDia(true)}>
+                    <Search className="h-3.5 w-3.5" /> Ampliar para o dia inteiro
+                  </Button>
+                </>
+              )}
+            </div>
           )}
 
           {carregandoLista ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">{buscando ? "Buscando…" : "Carregando…"}</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">{buscaExpandida ? "Buscando…" : "Carregando…"}</p>
           ) : linhas.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              {buscando
+              {buscaExpandida
                 ? `Nenhuma reunião encontrada hoje para “${busca.trim()}”.`
-                : "Nenhuma reunião neste horário."}
+                : buscando
+                  ? `Nenhuma reunião neste horário corresponde a “${busca.trim()}”.`
+                  : "Nenhuma reunião neste horário."}
             </p>
           ) : (
             <div className="divide-y rounded-lg border">
-              {linhas.map((l) => renderLinha(l, buscando))}
+              {linhas.map((l) => renderLinha(l, buscaExpandida))}
             </div>
           )}
         </DialogContent>
