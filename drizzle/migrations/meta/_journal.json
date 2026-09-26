@@ -246,6 +246,20 @@
       "when": 1790385533130,
       "tag": "0034_agendamento_closer_turma_conversao",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790385899160,
+      "tag": "0035_conversao_sem_filtro_turma",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790385914287,
+      "tag": "0036_grant_dashboard_conversao_period",
+      "breakpoints": true
     }
   ]
 }
