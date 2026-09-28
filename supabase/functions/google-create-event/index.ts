@@ -31,6 +31,7 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
 }
 
 const MEET_SPACE_SCOPE = 'https://www.googleapis.com/auth/meetings.space.created';
+const MEET_SETTINGS_SCOPE = 'https://www.googleapis.com/auth/meetings.space.settings';
 
 /**
  * Cria um espaço do Google Meet já configurado para iniciar gravação
