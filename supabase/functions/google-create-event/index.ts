@@ -484,6 +484,22 @@ serve(async (req) => {
       );
     }
 
+    // Piloto do título: o evento já nasceu com a sala do próprio Calendar
+    // (nome do lead preservado). Agora liga gravação/transcrição na sala.
+    let tituloPilotoResultado: { recording: boolean; transcription: boolean; error: string | null } | null = null;
+    if (tituloPiloto && meetLink) {
+      const meetingCode = String(meetLink).split('/').filter(Boolean).pop() ?? '';
+      tituloPilotoResultado = await enableAutoArtifactsOnSpace(accessToken, meetingCode);
+      autoRecordingMode = tituloPilotoResultado.recording ? 'auto' : 'fallback';
+      if (!tituloPilotoResultado.recording) {
+        await logMeetFailure(
+          'auto_gravacao_patch_falhou',
+          tituloPilotoResultado.error ?? 'PATCH do espaço do Meet não retornou sucesso',
+        );
+      }
+    }
+
+
     // Auditoria do piloto: registra se o agendamento saiu no modo automático
     // ou caiu no fallback, para medir a taxa de sucesso.
     if (autoRecordingMode !== 'off') {
