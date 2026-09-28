@@ -526,8 +526,11 @@ serve(async (req) => {
             lead_name,
             closer_id,
             mode: autoRecordingMode,
-            transcription: autoSpace?.transcription ?? false,
+            transcription: tituloPilotoResultado?.transcription ?? autoSpace?.transcription ?? false,
+            fluxo: tituloPiloto ? 'calendar_nativo_patch_meet' : 'meet_space_avulso',
+            patch_erro: tituloPilotoResultado?.error ?? null,
           },
+
         });
       } catch (logErr) {
         console.error('[auto-recording] falha ao registrar auditoria:', logErr);
