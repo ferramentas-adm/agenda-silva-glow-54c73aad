@@ -365,10 +365,15 @@ serve(async (req) => {
     // contém o escopo do Meet. Qualquer falha cai no fluxo padrão do Calendar.
     let autoSpace: { uri: string; transcription: boolean } | null = null;
     let autoRecordingMode: 'auto' | 'fallback' | 'off' = 'off';
+    const temEscopoMeet = ((tokenData.granted_scopes ?? '') as string).includes(MEET_SPACE_SCOPE);
+    // Piloto do título: cria a sala pelo próprio Calendar (nome do lead) e liga
+    // gravação depois, sem usar sala avulsa do Meet.
+    const tituloPiloto = closerRow?.auto_recording_enabled === true
+      && temEscopoMeet
+      && TITULO_PILOTO_CLOSER_IDS.has(String(closer_id));
 
-    if (closerRow?.auto_recording_enabled === true) {
-      const scopes = (tokenData.granted_scopes ?? '') as string;
-      if (scopes.includes(MEET_SPACE_SCOPE)) {
+    if (closerRow?.auto_recording_enabled === true && !tituloPiloto) {
+      if (temEscopoMeet) {
         autoSpace = await createAutoRecordingSpace(accessToken);
         autoRecordingMode = autoSpace ? 'auto' : 'fallback';
       } else {
@@ -376,6 +381,7 @@ serve(async (req) => {
         autoRecordingMode = 'fallback';
       }
     }
+
 
     const description = [
       `Lead: ${lead_name}`,
