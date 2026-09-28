@@ -365,12 +365,16 @@ serve(async (req) => {
     // contém o escopo do Meet. Qualquer falha cai no fluxo padrão do Calendar.
     let autoSpace: { uri: string; transcription: boolean } | null = null;
     let autoRecordingMode: 'auto' | 'fallback' | 'off' = 'off';
-    const temEscopoMeet = ((tokenData.granted_scopes ?? '') as string).includes(MEET_SPACE_SCOPE);
+    const grantedScopes = (tokenData.granted_scopes ?? '') as string;
+    const temEscopoMeet = grantedScopes.includes(MEET_SPACE_SCOPE);
+    const temEscopoSettings = grantedScopes.includes(MEET_SETTINGS_SCOPE);
     // Piloto do título: cria a sala pelo próprio Calendar (nome do lead) e liga
-    // gravação depois, sem usar sala avulsa do Meet.
+    // gravação depois. Só vale quando o closer já autorizou o escopo de settings,
+    // senão mantém o fluxo atual (gravação garantida).
     const tituloPiloto = closerRow?.auto_recording_enabled === true
-      && temEscopoMeet
+      && temEscopoSettings
       && TITULO_PILOTO_CLOSER_IDS.has(String(closer_id));
+
 
     if (closerRow?.auto_recording_enabled === true && !tituloPiloto) {
       if (temEscopoMeet) {
