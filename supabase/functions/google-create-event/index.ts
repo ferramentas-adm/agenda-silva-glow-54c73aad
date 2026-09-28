@@ -546,7 +546,7 @@ serve(async (req) => {
       error: meetLink ? null : 'sem_link_no_evento',
       motivo: meetLink ? null : `Evento criado na agenda de ${closerName ?? 'closer'}, mas o Google não devolveu link do Meet`,
       auto_recording: autoRecordingMode === 'auto',
-      auto_transcription: autoSpace?.transcription ?? false,
+      auto_transcription: tituloPilotoResultado?.transcription ?? autoSpace?.transcription ?? false,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
