@@ -57,7 +57,11 @@ serve(async (req) => {
       // (piloto de gravação automática). Escopo adicional é inofensivo para
       // closers que não participam do piloto.
       'https://www.googleapis.com/auth/meetings.space.created',
+      // Permite ligar gravação/transcrição em salas criadas pelo Google Calendar
+      // (é o que preserva o nome do lead no título da reunião).
+      'https://www.googleapis.com/auth/meetings.space.settings',
     ];
+
 
 
     const params = new URLSearchParams({

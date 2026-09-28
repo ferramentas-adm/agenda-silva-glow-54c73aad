@@ -31,6 +31,7 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
 }
 
 const MEET_SPACE_SCOPE = 'https://www.googleapis.com/auth/meetings.space.created';
+const MEET_SETTINGS_SCOPE = 'https://www.googleapis.com/auth/meetings.space.settings';
 
 /**
  * Cria um espaço do Google Meet já configurado para iniciar gravação
@@ -109,6 +110,86 @@ async function createAutoRecordingSpace(
 
   return null;
 }
+
+// ── Piloto "nome do lead no Meet" ──────────────────────────────────────────
+// Closers nesta lista criam a reunião pelo fluxo nativo do Google Calendar
+// (garante o título "Grupo Silva & <lead>" no Meet) e depois recebem a
+// gravação/transcrição automática via PATCH no espaço do Meet.
+// Qualquer falha no PATCH mantém o evento e o link intactos.
+const TITULO_PILOTO_CLOSER_IDS = new Set<string>([
+  '1d5aeff3-87d8-46c3-bdfd-8f815f8f25ef', // Vitor Lima
+]);
+
+/**
+ * Liga gravação e transcrição automáticas em um espaço do Meet já existente
+ * (criado pelo Google Calendar). Retorna o que conseguiu ligar.
+ */
+async function enableAutoArtifactsOnSpace(
+  accessToken: string,
+  meetingCode: string,
+): Promise<{ recording: boolean; transcription: boolean; error: string | null }> {
+  const attempts: Array<{ transcription: boolean; mask: string; body: Record<string, unknown> }> = [
+    {
+      transcription: true,
+      mask: 'config.artifactConfig',
+      body: {
+        config: {
+          artifactConfig: {
+            recordingConfig: { autoRecordingGeneration: 'ON' },
+            transcriptionConfig: { autoTranscriptionGeneration: 'ON' },
+          },
+        },
+      },
+    },
+    {
+      transcription: false,
+      mask: 'config.artifactConfig.recordingConfig',
+      body: {
+        config: {
+          artifactConfig: {
+            recordingConfig: { autoRecordingGeneration: 'ON' },
+          },
+        },
+      },
+    },
+  ];
+
+  let lastError: string | null = null;
+
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(
+        `https://meet.googleapis.com/v2/spaces/${encodeURIComponent(meetingCode)}?updateMask=${encodeURIComponent(attempt.mask)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(attempt.body),
+        },
+      );
+
+      if (!res.ok) {
+        lastError = `[${res.status}] ${await res.text()}`;
+        console.error(
+          `[titulo-piloto] PATCH do espaço falhou (transcription=${attempt.transcription}):`,
+          lastError,
+        );
+        continue;
+      }
+
+      return { recording: true, transcription: attempt.transcription, error: null };
+    } catch (err) {
+      lastError = String(err);
+      console.error('[titulo-piloto] Erro no PATCH do espaço do Meet:', err);
+    }
+  }
+
+  return { recording: false, transcription: false, error: lastError };
+}
+
+
 
 
 serve(async (req) => {
@@ -285,10 +366,19 @@ serve(async (req) => {
     // contém o escopo do Meet. Qualquer falha cai no fluxo padrão do Calendar.
     let autoSpace: { uri: string; transcription: boolean } | null = null;
     let autoRecordingMode: 'auto' | 'fallback' | 'off' = 'off';
+    const grantedScopes = (tokenData.granted_scopes ?? '') as string;
+    const temEscopoMeet = grantedScopes.includes(MEET_SPACE_SCOPE);
+    const temEscopoSettings = grantedScopes.includes(MEET_SETTINGS_SCOPE);
+    // Piloto do título: cria a sala pelo próprio Calendar (nome do lead) e liga
+    // gravação depois. Só vale quando o closer já autorizou o escopo de settings,
+    // senão mantém o fluxo atual (gravação garantida).
+    const tituloPiloto = closerRow?.auto_recording_enabled === true
+      && temEscopoSettings
+      && TITULO_PILOTO_CLOSER_IDS.has(String(closer_id));
 
-    if (closerRow?.auto_recording_enabled === true) {
-      const scopes = (tokenData.granted_scopes ?? '') as string;
-      if (scopes.includes(MEET_SPACE_SCOPE)) {
+
+    if (closerRow?.auto_recording_enabled === true && !tituloPiloto) {
+      if (temEscopoMeet) {
         autoSpace = await createAutoRecordingSpace(accessToken);
         autoRecordingMode = autoSpace ? 'auto' : 'fallback';
       } else {
@@ -296,6 +386,7 @@ serve(async (req) => {
         autoRecordingMode = 'fallback';
       }
     }
+
 
     const description = [
       `Lead: ${lead_name}`,
@@ -398,6 +489,22 @@ serve(async (req) => {
       );
     }
 
+    // Piloto do título: o evento já nasceu com a sala do próprio Calendar
+    // (nome do lead preservado). Agora liga gravação/transcrição na sala.
+    let tituloPilotoResultado: { recording: boolean; transcription: boolean; error: string | null } | null = null;
+    if (tituloPiloto && meetLink) {
+      const meetingCode = String(meetLink).split('/').filter(Boolean).pop() ?? '';
+      tituloPilotoResultado = await enableAutoArtifactsOnSpace(accessToken, meetingCode);
+      autoRecordingMode = tituloPilotoResultado.recording ? 'auto' : 'fallback';
+      if (!tituloPilotoResultado.recording) {
+        await logMeetFailure(
+          'auto_gravacao_patch_falhou',
+          tituloPilotoResultado.error ?? 'PATCH do espaço do Meet não retornou sucesso',
+        );
+      }
+    }
+
+
     // Auditoria do piloto: registra se o agendamento saiu no modo automático
     // ou caiu no fallback, para medir a taxa de sucesso.
     if (autoRecordingMode !== 'off') {
@@ -424,8 +531,11 @@ serve(async (req) => {
             lead_name,
             closer_id,
             mode: autoRecordingMode,
-            transcription: autoSpace?.transcription ?? false,
+            transcription: tituloPilotoResultado?.transcription ?? autoSpace?.transcription ?? false,
+            fluxo: tituloPiloto ? 'calendar_nativo_patch_meet' : 'meet_space_avulso',
+            patch_erro: tituloPilotoResultado?.error ?? null,
           },
+
         });
       } catch (logErr) {
         console.error('[auto-recording] falha ao registrar auditoria:', logErr);
@@ -441,7 +551,7 @@ serve(async (req) => {
       error: meetLink ? null : 'sem_link_no_evento',
       motivo: meetLink ? null : `Evento criado na agenda de ${closerName ?? 'closer'}, mas o Google não devolveu link do Meet`,
       auto_recording: autoRecordingMode === 'auto',
-      auto_transcription: autoSpace?.transcription ?? false,
+      auto_transcription: tituloPilotoResultado?.transcription ?? autoSpace?.transcription ?? false,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
