@@ -110,6 +110,86 @@ async function createAutoRecordingSpace(
   return null;
 }
 
+// ── Piloto "nome do lead no Meet" ──────────────────────────────────────────
+// Closers nesta lista criam a reunião pelo fluxo nativo do Google Calendar
+// (garante o título "Grupo Silva & <lead>" no Meet) e depois recebem a
+// gravação/transcrição automática via PATCH no espaço do Meet.
+// Qualquer falha no PATCH mantém o evento e o link intactos.
+const TITULO_PILOTO_CLOSER_IDS = new Set<string>([
+  '1d5aeff3-87d8-46c3-bdfd-8f815f8f25ef', // Vitor Lima
+]);
+
+/**
+ * Liga gravação e transcrição automáticas em um espaço do Meet já existente
+ * (criado pelo Google Calendar). Retorna o que conseguiu ligar.
+ */
+async function enableAutoArtifactsOnSpace(
+  accessToken: string,
+  meetingCode: string,
+): Promise<{ recording: boolean; transcription: boolean; error: string | null }> {
+  const attempts: Array<{ transcription: boolean; mask: string; body: Record<string, unknown> }> = [
+    {
+      transcription: true,
+      mask: 'config.artifactConfig',
+      body: {
+        config: {
+          artifactConfig: {
+            recordingConfig: { autoRecordingGeneration: 'ON' },
+            transcriptionConfig: { autoTranscriptionGeneration: 'ON' },
+          },
+        },
+      },
+    },
+    {
+      transcription: false,
+      mask: 'config.artifactConfig.recordingConfig',
+      body: {
+        config: {
+          artifactConfig: {
+            recordingConfig: { autoRecordingGeneration: 'ON' },
+          },
+        },
+      },
+    },
+  ];
+
+  let lastError: string | null = null;
+
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(
+        `https://meet.googleapis.com/v2/spaces/${encodeURIComponent(meetingCode)}?updateMask=${encodeURIComponent(attempt.mask)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(attempt.body),
+        },
+      );
+
+      if (!res.ok) {
+        lastError = `[${res.status}] ${await res.text()}`;
+        console.error(
+          `[titulo-piloto] PATCH do espaço falhou (transcription=${attempt.transcription}):`,
+          lastError,
+        );
+        continue;
+      }
+
+      return { recording: true, transcription: attempt.transcription, error: null };
+    } catch (err) {
+      lastError = String(err);
+      console.error('[titulo-piloto] Erro no PATCH do espaço do Meet:', err);
+    }
+  }
+
+  return { recording: false, transcription: false, error: lastError };
+}
+
+
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
