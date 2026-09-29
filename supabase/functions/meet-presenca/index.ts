@@ -122,7 +122,24 @@ serve(async (req) => {
     if (w.length >= 2) equipe.push(w);
   });
 
-  const items: Record<string, { presenca: Presenca; participantes: string[]; motivo?: string }> = {};
+  type Item = {
+    presenca: Presenca;
+    participantes: string[];
+    motivo?: string;
+    /** Minutos em que lead e closer estiveram juntos na sala (auditoria da Torre). */
+    tempoJuntosMinutos?: number;
+    /** Primeira vez que a Torre viu lead e closer juntos nesta reunião. */
+    primeiraDeteccaoAt?: string;
+    presencaAuditada?: boolean;
+  };
+  const items: Record<string, Item> = {};
+
+  // Nome de quem está com a Torre aberta — vai para o registro de auditoria.
+  const { data: quem } = await admin
+    .from("profiles")
+    .select("full_name, email")
+    .eq("user_id", u.user.id)
+    .maybeSingle();
 
   await Promise.all((ags ?? []).map(async (a: any) => {
     const code = (a.meet_link ?? "").match(/meet\.google\.com\/([a-z0-9-]+)/i)?.[1];
@@ -141,7 +158,16 @@ serve(async (req) => {
         return;
       }
       const recs = (await rc.json()).conferenceRecords ?? [];
-      if (recs.length === 0) { items[a.id] = { presenca: "nenhum", participantes: [] }; return; }
+      if (recs.length === 0) {
+        items[a.id] = {
+          presenca: "nenhum",
+          participantes: [],
+          presencaAuditada: !!a.torre_presenca_confirmada,
+          tempoJuntosMinutos: a.torre_tempo_juntos_minutos ?? undefined,
+          primeiraDeteccaoAt: a.torre_primeira_deteccao_at ?? undefined,
+        };
+        return;
+      }
       const pf = encodeURIComponent("latest_end_time IS NULL");
       const rp = await fetch(`https://meet.googleapis.com/v2/${recs[0].name}/participants?filter=${pf}&pageSize=50`, { headers: h });
       if (!rp.ok) {
@@ -151,21 +177,78 @@ serve(async (req) => {
       const parts = (await rp.json()).participants ?? [];
       let closer = false, lead = false, ambiguo = false;
       const nomes: string[] = [];
+      // Entrada mais antiga de cada lado — o cruzamento dos dois intervalos é o
+      // tempo real em que as duas pessoas ficaram juntas na sala.
+      let entradaEquipe: number | null = null;
+      let entradaLead: number | null = null;
       for (const p of parts) {
         const dn: string = p.signedinUser?.displayName ?? p.anonymousUser?.displayName ?? p.phoneUser?.displayName ?? "";
         nomes.push(dn || "Participante");
         const classe = classificar(dn, !!p.signedinUser, equipe, String(a.lead_name ?? ""));
+        const inicio = p.earliestStartTime ? new Date(p.earliestStartTime).getTime() : NaN;
+        const marca = (atual: number | null) =>
+          Number.isFinite(inicio) ? (atual === null ? inicio : Math.min(atual, inicio)) : atual;
         if (classe === "ambiguo") ambiguo = true;
-        else if (classe === "equipe") closer = true;
-        else lead = true;
+        else if (classe === "equipe") { closer = true; entradaEquipe = marca(entradaEquipe); }
+        else { lead = true; entradaLead = marca(entradaLead); }
       }
-      items[a.id] = {
-        presenca: ambiguo
-          ? "ambiguo"
-          : closer && lead ? "ambos" : closer ? "closer" : lead ? "lead" : "nenhum",
+      const presenca: Presenca = ambiguo
+        ? "ambiguo"
+        : closer && lead ? "ambos" : closer ? "closer" : lead ? "lead" : "nenhum";
+
+      const item: Item = {
+        presenca,
         participantes: nomes,
         ...(ambiguo ? { motivo: "homonimo" } : {}),
+        presencaAuditada: !!a.torre_presenca_confirmada,
+        tempoJuntosMinutos: a.torre_tempo_juntos_minutos ?? undefined,
+        primeiraDeteccaoAt: a.torre_primeira_deteccao_at ?? undefined,
       };
+
+      if (presenca === "ambos") {
+        const agora = Date.now();
+        // Momento em que o segundo dos dois entrou na sala.
+        const juntosDesde = entradaEquipe !== null && entradaLead !== null
+          ? Math.max(entradaEquipe, entradaLead)
+          : null;
+        const primeira = a.torre_primeira_deteccao_at
+          ? new Date(a.torre_primeira_deteccao_at).toISOString()
+          : new Date(juntosDesde ?? agora).toISOString();
+        const decorrido = Math.max(0, Math.floor((agora - new Date(primeira).getTime()) / 60000));
+        const minutos = Math.max(Number(a.torre_tempo_juntos_minutos ?? 0), decorrido);
+
+        item.presencaAuditada = true;
+        item.primeiraDeteccaoAt = primeira;
+        item.tempoJuntosMinutos = minutos;
+
+        await admin.from("agendamentos").update({
+          torre_presenca_confirmada: true,
+          torre_primeira_deteccao_at: primeira,
+          torre_ultima_deteccao_at: new Date(agora).toISOString(),
+          torre_tempo_juntos_minutos: minutos,
+          torre_participantes: nomes,
+        }).eq("id", a.id);
+
+        // Registro único de auditoria: só na primeira vez que a Torre valida a reunião.
+        if (!a.torre_presenca_confirmada) {
+          await admin.from("audit_logs").insert({
+            user_id: u.user.id,
+            user_name: quem?.full_name ?? "Torre de Controle",
+            user_email: quem?.email ?? null,
+            action: "torre_presenca_detectada",
+            entity_type: "agendamento",
+            entity_id: a.id,
+            details: {
+              lead_name: a.lead_name,
+              closer_nome: a.closers?.name ?? null,
+              participantes: nomes,
+              detectado_em: primeira,
+            },
+          });
+        }
+      }
+
+      items[a.id] = item;
     } catch (e) {
       items[a.id] = { presenca: "desconhecido", participantes: [], motivo: String(e).slice(0, 80) };
     }
