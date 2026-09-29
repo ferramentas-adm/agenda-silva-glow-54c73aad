@@ -255,10 +255,24 @@ export default function TorreControleDialog() {
           <p className="font-medium text-sm">{l.lead_name}</p>
           <p className="text-xs text-muted-foreground">
             Closer: {l.closers?.name ?? "—"} · {cfg.label}
+            {l.p.presenca === "ambos" && typeof l.p.tempoJuntosMinutos === "number"
+              ? ` (juntos há ${formatDuracao(l.p.tempoJuntosMinutos)})`
+              : ""}
             {l.p.motivo ? ` (${MOTIVO[l.p.motivo] ?? l.p.motivo})` : ""}
           </p>
           {l.p.participantes.length > 0 && (
             <p className="text-xs text-muted-foreground">Na sala: {l.p.participantes.join(", ")}</p>
+          )}
+          {l.p.presencaAuditada && (
+            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              ✓ Validado pela Torre: a reunião aconteceu
+              {l.p.primeiraDeteccaoAt ? ` (desde ${horaBR(l.p.primeiraDeteccaoAt)}` : ""}
+              {l.p.primeiraDeteccaoAt && typeof l.p.tempoJuntosMinutos === "number"
+                ? `, ${formatDuracao(l.p.tempoJuntosMinutos)} juntos)`
+                : l.p.primeiraDeteccaoAt
+                  ? ")"
+                  : ""}
+            </p>
           )}
         </div>
         {l.status === "em_call" && <Badge variant="outline">Em call</Badge>}
