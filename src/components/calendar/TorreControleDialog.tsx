@@ -488,7 +488,7 @@ export default function TorreControleDialog() {
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    {linhas.length} resultado{linhas.length === 1 ? "" : "s"} nas reuniões de {hh}h de hoje ({hoje}).
+                    {linhas.length} resultado{linhas.length === 1 ? "" : "s"} nas reuniões de {hh}h de {ymdBR(dia)}.
                   </p>
                   <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setBuscaDia(true)}>
                     <Search className="h-3.5 w-3.5" /> Ampliar para o dia inteiro
