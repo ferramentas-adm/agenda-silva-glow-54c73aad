@@ -365,15 +365,57 @@ export default function TorreControleDialog() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RadioTower className="h-5 w-5 text-primary" /> Torre de Controle — {hh}h às {hh}h59
+              {!ehHoje && <span className="text-sm font-normal text-muted-foreground">· {ymdBR(dia)}</span>}
             </DialogTitle>
             <DialogDescription>
-              Quem já está em cada sala do Meet. Atualiza sozinho a cada 30 segundos.
+              {ehHoje
+                ? "Quem já está em cada sala do Meet. Atualiza sozinho a cada 30 segundos."
+                : `Reuniões do dia ${ymdBR(dia)}. Use o calendário para voltar para hoje.`}
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="ghost" onClick={() => setHora((h) => (h + 23) % 24)}>‹ {String((hora + 23) % 24).padStart(2, "0")}h</Button>
             <Button size="sm" variant="ghost" onClick={() => setHora((h) => (h + 1) % 24)}>{String((hora + 1) % 24).padStart(2, "0")}h ›</Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant={ehHoje ? "ghost" : "secondary"} className="gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {ehHoje ? "Hoje" : ymdBR(dia)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={ymdParaDate(dia)}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    setDia(dateParaYmd(d));
+                    setBusca("");
+                    setBuscaDia(false);
+                  }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+                {!ehHoje && (
+                  <div className="border-t p-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full text-xs"
+                      onClick={() => {
+                        setDia(hojeYMD);
+                        setHora(horaAlvo());
+                        setBusca("");
+                        setBuscaDia(false);
+                      }}
+                    >
+                      Voltar para hoje
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             <Button size="sm" variant="ghost" className="gap-1" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin")} /> Atualizar
             </Button>
