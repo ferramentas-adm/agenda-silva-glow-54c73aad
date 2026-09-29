@@ -11,6 +11,32 @@ import { cn } from "@/lib/utils";
 
 type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "ambiguo" | "desconhecido";
 
+/** Leitura da sala + auditoria já gravada no histórico da reunião. */
+type PresencaItem = {
+  presenca: Presenca;
+  participantes: string[];
+  motivo?: string;
+  tempoJuntosMinutos?: number;
+  primeiraDeteccaoAt?: string;
+  presencaAuditada?: boolean;
+};
+
+/** "18 min" / "1h 05min" — tempo em que lead e closer ficaram juntos na sala. */
+function formatDuracao(min: number) {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  return `${h}h ${String(min % 60).padStart(2, "0")}min`;
+}
+
+/** Hora local (São Paulo) de um instante gravado pela Torre. */
+function horaBR(iso: string) {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
 const PRESENCA: Record<Presenca, { label: string; dot: string; order: number }> = {
   ambiguo: { label: "Não consigo identificar quem está na sala", dot: "bg-yellow-400", order: 0 },
   lead: { label: "Só o lead na sala", dot: "bg-orange-500", order: 1 },
