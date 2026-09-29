@@ -399,6 +399,17 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                   ))}
                 </SelectContent>
               </Select>
+              {torre.auditada && typeof torre.minutos === "number" && (
+                <p className="text-xs text-muted-foreground">
+                  Tempo em sala registrado pela Torre de Controle: <strong>{torre.minutos} min</strong> com o lead.
+                </p>
+              )}
+              {motivo === "Cliente precisou sair" && (torre.minutos ?? 0) > 15 && (
+                <p className="text-xs font-medium text-destructive">
+                  Atenção: a Torre registrou {torre.minutos} min de reunião com o lead. Esse tempo não caracteriza uma
+                  saída no início da call, então este caso ficará sinalizado para a gestão auditar.
+                </p>
+              )}
             </div>
           )}
 
