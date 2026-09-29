@@ -260,6 +260,13 @@
       "when": 1790385914287,
       "tag": "0036_grant_dashboard_conversao_period",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790716923293,
+      "tag": "0037_torre_presenca_auditoria_e_conversao",
+      "breakpoints": true
     }
   ]
 }
