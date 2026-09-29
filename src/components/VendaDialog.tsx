@@ -101,6 +101,23 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   );
   const { items: produtosList } = useProdutosAtivos();
 
+  // Auditoria da Torre de Controle: tempo real em que lead e closer ficaram juntos.
+  const [torre, setTorre] = useState<{ minutos: number | null; auditada: boolean }>({ minutos: null, auditada: false });
+  useEffect(() => {
+    if (!open) { setTorre({ minutos: null, auditada: false }); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("agendamentos")
+        .select("torre_presenca_confirmada, torre_tempo_juntos_minutos")
+        .eq("id", agendamentoId)
+        .maybeSingle();
+      setTorre({
+        minutos: data?.torre_tempo_juntos_minutos ?? null,
+        auditada: !!data?.torre_presenca_confirmada,
+      });
+    })();
+  }, [open, agendamentoId]);
+
   const resetAllFields = () => {
     setVendeuCloser(null);
     setLeadRevenue("");
