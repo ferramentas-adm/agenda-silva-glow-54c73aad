@@ -5,7 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { RadioTower, RefreshCw, ExternalLink, Copy, Check, MessageCircle, Search } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RadioTower, RefreshCw, ExternalLink, Copy, Check, MessageCircle, Search, CalendarIcon } from "lucide-react";
 import { brTodayYMD, brNowHour, brNowMinute } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +80,23 @@ function normalize(s: string) {
     .trim();
 }
 
+/** "2026-09-29" -> Date local (sem deslocamento de fuso). */
+function ymdParaDate(ymd: string) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/** Date -> "2026-09-29". */
+function dateParaYmd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** "29/09/2026" para exibição. */
+function ymdBR(ymd: string) {
+  const [y, m, d] = ymd.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 /** Instância do módulo de conversas do DataCrazy. */
 const DATACRAZY_INSTANCE = "6aaed957bfce5b063bb12a80";
 
@@ -128,7 +147,10 @@ export default function TorreControleDialog() {
   const [busca, setBusca] = useState("");
   const [buscaDia, setBuscaDia] = useState(false);
   const [turma, setTurma] = useState<TurmaFiltro>("todos");
-  const hoje = brTodayYMD();
+  const hojeYMD = brTodayYMD();
+  const [dia, setDia] = useState<string>(hojeYMD);
+  const hoje = dia;
+  const ehHoje = dia === hojeYMD;
   const hh = String(hora).padStart(2, "0");
 
   const termo = normalize(busca);
@@ -335,7 +357,7 @@ export default function TorreControleDialog() {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => { setHora(horaAlvo()); setBusca(""); setBuscaDia(false); setOpen(true); }}>
+      <Button variant="outline" size="sm" className="gap-2" onClick={() => { setHora(horaAlvo()); setDia(hojeYMD); setBusca(""); setBuscaDia(false); setOpen(true); }}>
         <RadioTower className="h-4 w-4" /> Torre de Controle
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -343,15 +365,57 @@ export default function TorreControleDialog() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RadioTower className="h-5 w-5 text-primary" /> Torre de Controle — {hh}h às {hh}h59
+              {!ehHoje && <span className="text-sm font-normal text-muted-foreground">· {ymdBR(dia)}</span>}
             </DialogTitle>
             <DialogDescription>
-              Quem já está em cada sala do Meet. Atualiza sozinho a cada 30 segundos.
+              {ehHoje
+                ? "Quem já está em cada sala do Meet. Atualiza sozinho a cada 30 segundos."
+                : `Reuniões do dia ${ymdBR(dia)}. Use o calendário para voltar para hoje.`}
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="ghost" onClick={() => setHora((h) => (h + 23) % 24)}>‹ {String((hora + 23) % 24).padStart(2, "0")}h</Button>
             <Button size="sm" variant="ghost" onClick={() => setHora((h) => (h + 1) % 24)}>{String((hora + 1) % 24).padStart(2, "0")}h ›</Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant={ehHoje ? "ghost" : "secondary"} className="gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {ehHoje ? "Hoje" : ymdBR(dia)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={ymdParaDate(dia)}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    setDia(dateParaYmd(d));
+                    setBusca("");
+                    setBuscaDia(false);
+                  }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+                {!ehHoje && (
+                  <div className="border-t p-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full text-xs"
+                      onClick={() => {
+                        setDia(hojeYMD);
+                        setHora(horaAlvo());
+                        setBusca("");
+                        setBuscaDia(false);
+                      }}
+                    >
+                      Voltar para hoje
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             <Button size="sm" variant="ghost" className="gap-1" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin")} /> Atualizar
             </Button>
@@ -415,7 +479,7 @@ export default function TorreControleDialog() {
               {buscaExpandida ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}.
+                    Buscando em todas as reuniões de {ehHoje ? "hoje" : "dia"} ({ymdBR(dia)}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}.
                   </p>
                   <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={voltarAoHorario}>
                     Voltar para {hh}h
@@ -424,7 +488,7 @@ export default function TorreControleDialog() {
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    {linhas.length} resultado{linhas.length === 1 ? "" : "s"} nas reuniões de {hh}h de hoje ({hoje}).
+                    {linhas.length} resultado{linhas.length === 1 ? "" : "s"} nas reuniões de {hh}h de {ymdBR(dia)}.
                   </p>
                   <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setBuscaDia(true)}>
                     <Search className="h-3.5 w-3.5" /> Ampliar para o dia inteiro
