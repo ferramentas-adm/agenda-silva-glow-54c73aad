@@ -128,7 +128,10 @@ export default function TorreControleDialog() {
   const [busca, setBusca] = useState("");
   const [buscaDia, setBuscaDia] = useState(false);
   const [turma, setTurma] = useState<TurmaFiltro>("todos");
-  const hoje = brTodayYMD();
+  const hojeYMD = brTodayYMD();
+  const [dia, setDia] = useState<string>(hojeYMD);
+  const hoje = dia;
+  const ehHoje = dia === hojeYMD;
   const hh = String(hora).padStart(2, "0");
 
   const termo = normalize(busca);
