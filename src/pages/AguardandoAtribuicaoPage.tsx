@@ -625,6 +625,11 @@ export default function AguardandoAtribuicaoPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {turmaVazia && (
+                          <span className="mt-1 block max-w-[240px] text-[10px] text-amber-600 dark:text-amber-400">
+                            Sem closer ativo na {desqEfetivo ? "Turma B" : "Turma A"} — mostrando todos os closers ativos.
+                          </span>
+                        )}
                       </div>
                       <Button
                         onClick={() => handleAssign(a, desqEfetivo)}
