@@ -78,6 +78,23 @@ function normalize(s: string) {
     .trim();
 }
 
+/** "2026-09-29" -> Date local (sem deslocamento de fuso). */
+function ymdParaDate(ymd: string) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/** Date -> "2026-09-29". */
+function dateParaYmd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** "29/09/2026" para exibição. */
+function ymdBR(ymd: string) {
+  const [y, m, d] = ymd.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 /** Instância do módulo de conversas do DataCrazy. */
 const DATACRAZY_INSTANCE = "6aaed957bfce5b063bb12a80";
 
