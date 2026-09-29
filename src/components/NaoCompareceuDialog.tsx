@@ -92,6 +92,25 @@ export default function NaoCompareceuDialog({ open, onOpenChange, leadName, agen
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          {torre?.torre_presenca_confirmada && (
+            <div className="flex gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-semibold">
+                  A Torre de Controle registrou o lead e o closer juntos na sala
+                  {torre.torre_primeira_deteccao_at ? ` às ${horaBR(torre.torre_primeira_deteccao_at)}` : ""}
+                  {typeof torre.torre_tempo_juntos_minutos === "number"
+                    ? `, por ${formatDuracao(torre.torre_tempo_juntos_minutos)}`
+                    : ""}
+                  .
+                </p>
+                <p>
+                  Se o lead entrou e precisou sair, o correto é marcar a reunião como <strong>Realizada</strong> e
+                  informar o motivo <strong>"Cliente precisou sair"</strong>.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="no-show-reason">Motivo *</Label>
             <Select value={option} onValueChange={(v) => { setOption(v); setError(null); }} disabled={isLoading}>
