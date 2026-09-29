@@ -98,9 +98,13 @@ type ReuniaoRow = {
   meet_link: string | null;
   closer_id: string | null;
   closers: { id: string; name: string; em_treinamento: boolean } | null;
+  torre_presenca_confirmada: boolean | null;
+  torre_primeira_deteccao_at: string | null;
+  torre_tempo_juntos_minutos: number | null;
 };
 
-const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(id, name, em_treinamento)";
+const TORRE_SELECT =
+  "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(id, name, em_treinamento), torre_presenca_confirmada, torre_primeira_deteccao_at, torre_tempo_juntos_minutos";
 
 type TurmaFiltro = "todos" | "a" | "b";
 
