@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { Textarea } from "@/components/ui/textarea";
+
+/** "18 min" / "1h 05min". */
+const formatDuracao = (min: number) =>
+  min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}min`;
+
+const horaBR = (iso: string) =>
+  new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
 /** Motivos padrão de não comparecimento (editáveis em Admin > + Listas). */
 export const DEFAULT_NO_SHOW_REASONS = [
