@@ -466,9 +466,13 @@ export default function AguardandoAtribuicaoPage() {
               const desqOriginal = Boolean(a.lead_desqualificado);
               const desqEfetivo = turmaOverride[a.id] ?? desqOriginal;
               const reclassificado = desqEfetivo !== desqOriginal;
-              const closerOptions = closers
-                // Lead desqualificado só pode ser atribuído à Turma B (e o inverso).
-                .filter((c) => Boolean(c.em_treinamento) === desqEfetivo)
+              // Lead desqualificado só pode ser atribuído à Turma B (e o inverso).
+              // Gestor/moderador enxerga todos os closers ativos (encaixe operacional),
+              // e se a turma do lead estiver sem closer ativo mostramos todos para não travar a fila.
+              const mesmaTurma = closers.filter((c) => Boolean(c.em_treinamento) === desqEfetivo);
+              const turmaVazia = mesmaTurma.length === 0;
+              const base = turmaLivre || turmaVazia ? closers : mesmaTurma;
+              const closerOptions = base
                 .map((c) => {
                   const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
                   const load = closerLoad(c.id, a.scheduled_date, a.scheduled_time);
