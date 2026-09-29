@@ -209,7 +209,16 @@ export default function TorreControleDialog() {
 
   const linhas = useMemo(() => {
     return reunioesFiltradas
-      .map((r) => ({ ...r, p: presenca[r.id] ?? { presenca: "desconhecido" as Presenca, participantes: [] } }))
+      .map((r) => ({
+        ...r,
+        p: presenca[r.id] ?? {
+          presenca: "desconhecido" as Presenca,
+          participantes: [],
+          presencaAuditada: !!r.torre_presenca_confirmada,
+          tempoJuntosMinutos: r.torre_tempo_juntos_minutos ?? undefined,
+          primeiraDeteccaoAt: r.torre_primeira_deteccao_at ?? undefined,
+        },
+      }))
       .sort((a, b) => PRESENCA[a.p.presenca].order - PRESENCA[b.p.presenca].order || a.scheduled_time.localeCompare(b.scheduled_time));
   }, [reunioes, presenca]);
 
