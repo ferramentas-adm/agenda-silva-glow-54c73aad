@@ -51,7 +51,9 @@ interface Closer {
 }
 
 export default function AguardandoAtribuicaoPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  // Gestor/moderador têm controle livre entre turmas (o banco também libera para eles).
+  const turmaLivre = role === "gestor" || role === "moderador";
   const { can, isLoading: permLoading } = usePermissions();
   const { limit: closerSlotLimit } = useCloserSlotLimit();
   const queryClient = useQueryClient();
@@ -464,15 +466,22 @@ export default function AguardandoAtribuicaoPage() {
               const desqOriginal = Boolean(a.lead_desqualificado);
               const desqEfetivo = turmaOverride[a.id] ?? desqOriginal;
               const reclassificado = desqEfetivo !== desqOriginal;
-              const closerOptions = closers
-                // Lead desqualificado só pode ser atribuído à Turma B (e o inverso).
-                .filter((c) => Boolean(c.em_treinamento) === desqEfetivo)
+              // Lead desqualificado só pode ser atribuído à Turma B (e o inverso).
+              // Gestor/moderador enxerga todos os closers ativos (encaixe operacional),
+              // e se a turma do lead estiver sem closer ativo mostramos todos para não travar a fila.
+              const mesmaTurma = closers.filter((c) => Boolean(c.em_treinamento) === desqEfetivo);
+              const turmaVazia = mesmaTurma.length === 0;
+              const base = turmaLivre || turmaVazia ? closers : mesmaTurma;
+              const closerOptions = base
                 .map((c) => {
                   const blocked = isCloserBlocked(c.id, a.scheduled_date, a.scheduled_time);
                   const load = closerLoad(c.id, a.scheduled_date, a.scheduled_time);
                   return { ...c, blocked, load, full: load >= closerSlotLimit };
                 })
                 .sort((x, y) => {
+                  // Closers da turma do lead aparecem primeiro.
+                  const turma = (o: typeof x) => (Boolean(o.em_treinamento) === desqEfetivo ? 0 : 1);
+                  if (turma(x) !== turma(y)) return turma(x) - turma(y);
                   const rank = (o: typeof x) => (o.blocked ? 2 : o.full ? 1 : 0);
                   if (rank(x) !== rank(y)) return rank(x) - rank(y);
                   if (x.load !== y.load) return x.load - y.load;
@@ -587,6 +596,11 @@ export default function AguardandoAtribuicaoPage() {
                             <SelectValue placeholder="Selecionar Closer" />
                           </SelectTrigger>
                           <SelectContent>
+                            {closerOptions.length === 0 && (
+                              <div className="px-2 py-3 text-xs text-muted-foreground">
+                                Nenhum closer ativo disponível.
+                              </div>
+                            )}
                             {closerOptions.map((c) => (
                               <SelectItem
                                 key={c.id}
@@ -611,6 +625,11 @@ export default function AguardandoAtribuicaoPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {turmaVazia && (
+                          <span className="mt-1 block max-w-[240px] text-[10px] text-amber-600 dark:text-amber-400">
+                            Sem closer ativo na {desqEfetivo ? "Turma B" : "Turma A"} — mostrando todos os closers ativos.
+                          </span>
+                        )}
                       </div>
                       <Button
                         onClick={() => handleAssign(a, desqEfetivo)}
