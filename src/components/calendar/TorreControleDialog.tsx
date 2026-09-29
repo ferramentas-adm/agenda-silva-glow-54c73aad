@@ -479,7 +479,7 @@ export default function TorreControleDialog() {
               {buscaExpandida ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Buscando em todas as reuniões de hoje ({hoje}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}.
+                    Buscando em todas as reuniões de {ehHoje ? "hoje" : "dia"} ({ymdBR(dia)}): {linhas.length} resultado{linhas.length === 1 ? "" : "s"}.
                   </p>
                   <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={voltarAoHorario}>
                     Voltar para {hh}h
