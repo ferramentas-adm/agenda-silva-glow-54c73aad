@@ -31,8 +31,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  const apiKey = req.headers.get("x-api-key");
-  const expected = Deno.env.get("SILVA_VENDAS_API_KEY");
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const apiKey = (req.headers.get("x-api-key") ?? bearer).trim();
+  const expected = (Deno.env.get("SILVA_VENDAS_API_KEY") ?? "").trim();
   if (!expected || apiKey !== expected) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
