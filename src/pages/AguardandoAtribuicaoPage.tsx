@@ -51,7 +51,9 @@ interface Closer {
 }
 
 export default function AguardandoAtribuicaoPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  // Gestor/moderador têm controle livre entre turmas (o banco também libera para eles).
+  const turmaLivre = role === "gestor" || role === "moderador";
   const { can, isLoading: permLoading } = usePermissions();
   const { limit: closerSlotLimit } = useCloserSlotLimit();
   const queryClient = useQueryClient();
