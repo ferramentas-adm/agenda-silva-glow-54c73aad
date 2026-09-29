@@ -11,6 +11,32 @@ import { cn } from "@/lib/utils";
 
 type Presenca = "ambos" | "lead" | "closer" | "nenhum" | "ambiguo" | "desconhecido";
 
+/** Leitura da sala + auditoria já gravada no histórico da reunião. */
+type PresencaItem = {
+  presenca: Presenca;
+  participantes: string[];
+  motivo?: string;
+  tempoJuntosMinutos?: number;
+  primeiraDeteccaoAt?: string;
+  presencaAuditada?: boolean;
+};
+
+/** "18 min" / "1h 05min" — tempo em que lead e closer ficaram juntos na sala. */
+function formatDuracao(min: number) {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  return `${h}h ${String(min % 60).padStart(2, "0")}min`;
+}
+
+/** Hora local (São Paulo) de um instante gravado pela Torre. */
+function horaBR(iso: string) {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
 const PRESENCA: Record<Presenca, { label: string; dot: string; order: number }> = {
   ambiguo: { label: "Não consigo identificar quem está na sala", dot: "bg-yellow-400", order: 0 },
   lead: { label: "Só o lead na sala", dot: "bg-orange-500", order: 1 },
@@ -72,9 +98,13 @@ type ReuniaoRow = {
   meet_link: string | null;
   closer_id: string | null;
   closers: { id: string; name: string; em_treinamento: boolean } | null;
+  torre_presenca_confirmada: boolean | null;
+  torre_primeira_deteccao_at: string | null;
+  torre_tempo_juntos_minutos: number | null;
 };
 
-const TORRE_SELECT = "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(id, name, em_treinamento)";
+const TORRE_SELECT =
+  "id, lead_name, lead_phone, scheduled_time, status, meet_link, closer_id, closers(id, name, em_treinamento), torre_presenca_confirmada, torre_primeira_deteccao_at, torre_tempo_juntos_minutos";
 
 type TurmaFiltro = "todos" | "a" | "b";
 
@@ -165,7 +195,7 @@ export default function TorreControleDialog() {
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("meet-presenca", { body: { ids } });
       if (error) throw error;
-      return (data?.items ?? {}) as Record<string, { presenca: Presenca; participantes: string[]; motivo?: string }>;
+      return (data?.items ?? {}) as Record<string, PresencaItem>;
     },
   });
 
@@ -183,7 +213,16 @@ export default function TorreControleDialog() {
 
   const linhas = useMemo(() => {
     return reunioesFiltradas
-      .map((r) => ({ ...r, p: presenca[r.id] ?? { presenca: "desconhecido" as Presenca, participantes: [] } }))
+      .map((r) => ({
+        ...r,
+        p: presenca[r.id] ?? {
+          presenca: "desconhecido" as Presenca,
+          participantes: [],
+          presencaAuditada: !!r.torre_presenca_confirmada,
+          tempoJuntosMinutos: r.torre_tempo_juntos_minutos ?? undefined,
+          primeiraDeteccaoAt: r.torre_primeira_deteccao_at ?? undefined,
+        },
+      }))
       .sort((a, b) => PRESENCA[a.p.presenca].order - PRESENCA[b.p.presenca].order || a.scheduled_time.localeCompare(b.scheduled_time));
   }, [reunioes, presenca]);
 
@@ -216,10 +255,24 @@ export default function TorreControleDialog() {
           <p className="font-medium text-sm">{l.lead_name}</p>
           <p className="text-xs text-muted-foreground">
             Closer: {l.closers?.name ?? "—"} · {cfg.label}
+            {l.p.presenca === "ambos" && typeof l.p.tempoJuntosMinutos === "number"
+              ? ` (juntos há ${formatDuracao(l.p.tempoJuntosMinutos)})`
+              : ""}
             {l.p.motivo ? ` (${MOTIVO[l.p.motivo] ?? l.p.motivo})` : ""}
           </p>
           {l.p.participantes.length > 0 && (
             <p className="text-xs text-muted-foreground">Na sala: {l.p.participantes.join(", ")}</p>
+          )}
+          {l.p.presencaAuditada && (
+            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              ✓ Validado pela Torre: a reunião aconteceu
+              {l.p.primeiraDeteccaoAt ? ` (desde ${horaBR(l.p.primeiraDeteccaoAt)}` : ""}
+              {l.p.primeiraDeteccaoAt && typeof l.p.tempoJuntosMinutos === "number"
+                ? `, ${formatDuracao(l.p.tempoJuntosMinutos)} juntos)`
+                : l.p.primeiraDeteccaoAt
+                  ? ")"
+                  : ""}
+            </p>
           )}
         </div>
         {l.status === "em_call" && <Badge variant="outline">Em call</Badge>}

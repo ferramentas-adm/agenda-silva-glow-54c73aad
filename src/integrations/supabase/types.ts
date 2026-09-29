@@ -107,6 +107,11 @@ export type Database = {
           sdr_handoff_at: string | null
           sdr_responsavel_id: string | null
           status: Database["public"]["Enums"]["appointment_status"]
+          torre_participantes: string[] | null
+          torre_presenca_confirmada: boolean
+          torre_primeira_deteccao_at: string | null
+          torre_tempo_juntos_minutos: number | null
+          torre_ultima_deteccao_at: string | null
           updated_at: string
         }
         Insert: {
@@ -163,6 +168,11 @@ export type Database = {
           sdr_handoff_at?: string | null
           sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
+          torre_participantes?: string[] | null
+          torre_presenca_confirmada?: boolean
+          torre_primeira_deteccao_at?: string | null
+          torre_tempo_juntos_minutos?: number | null
+          torre_ultima_deteccao_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -219,6 +229,11 @@ export type Database = {
           sdr_handoff_at?: string | null
           sdr_responsavel_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
+          torre_participantes?: string[] | null
+          torre_presenca_confirmada?: boolean
+          torre_primeira_deteccao_at?: string | null
+          torre_tempo_juntos_minutos?: number | null
+          torre_ultima_deteccao_at?: string | null
           updated_at?: string
         }
         Relationships: [

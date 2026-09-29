@@ -514,6 +514,7 @@ export default function OverdueMeetingsLockOverlay() {
         open={!!noShowFor}
         onOpenChange={(o) => { if (!o) setNoShowFor(null); }}
         leadName={noShowFor?.lead_name}
+        agendamentoId={noShowFor?.id}
         loading={updatingId === noShowFor?.id}
         onConfirm={async (reason, note) => {
           const target = noShowFor;

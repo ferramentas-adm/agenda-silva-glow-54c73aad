@@ -2339,6 +2339,7 @@ export function CalendarContent() {
         open={noShowReasonOpen}
         onOpenChange={setNoShowReasonOpen}
         leadName={detailAg?.lead_name}
+        agendamentoId={detailAg?.id}
         loading={updatingStatus}
         onConfirm={async (reason, note) => {
           setNoShowReasonOpen(false);

@@ -242,6 +242,7 @@ export default function PendingMeetingsBanner() {
         open={!!noShowTarget}
         onOpenChange={(o) => { if (!o) setNoShowTarget(null); }}
         leadName={noShowTarget?.lead_name}
+        agendamentoId={noShowTarget?.id}
         loading={updatingId === noShowTarget?.id}
         onConfirm={async (reason, note) => {
           const target = noShowTarget;

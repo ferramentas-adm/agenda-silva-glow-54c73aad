@@ -35,3 +35,7 @@
 - [x] Separar qualificados e desqualificados no Ranking SDRs e na Produtividade SDR.
 - [x] Taxa de Conversão conta só reuniões da Turma A (turma gravada por reunião no momento em que ela acontece).
 - [x] Ao mover closer de A para B, redistribuir reuniões futuras de leads qualificados para closers livres da Turma A (ou fila), com prévia e auditoria.
+- [x] Torre de Controle: gravar presença auditada e minutos em que lead e closer ficaram juntos na sala.
+- [x] Motivo "Cliente precisou sair" fora da Taxa de Conversão apenas para reuniões a partir de 01/10/2026.
+- [x] Alerta visual quando "Cliente precisou sair" for usado em reunião com mais de 15 min juntos.
+- [x] Aviso no "Não compareceu" quando a Torre registrou lead e closer juntos na sala.
