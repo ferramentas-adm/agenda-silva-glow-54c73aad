@@ -357,7 +357,7 @@ export default function TorreControleDialog() {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => { setHora(horaAlvo()); setBusca(""); setBuscaDia(false); setOpen(true); }}>
+      <Button variant="outline" size="sm" className="gap-2" onClick={() => { setHora(horaAlvo()); setDia(hojeYMD); setBusca(""); setBuscaDia(false); setOpen(true); }}>
         <RadioTower className="h-4 w-4" /> Torre de Controle
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
