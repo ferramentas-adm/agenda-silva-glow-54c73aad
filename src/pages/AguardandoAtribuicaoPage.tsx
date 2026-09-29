@@ -596,6 +596,11 @@ export default function AguardandoAtribuicaoPage() {
                             <SelectValue placeholder="Selecionar Closer" />
                           </SelectTrigger>
                           <SelectContent>
+                            {closerOptions.length === 0 && (
+                              <div className="px-2 py-3 text-xs text-muted-foreground">
+                                Nenhum closer ativo disponível.
+                              </div>
+                            )}
                             {closerOptions.map((c) => (
                               <SelectItem
                                 key={c.id}
