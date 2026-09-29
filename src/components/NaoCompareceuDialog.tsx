@@ -20,6 +20,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leadName?: string;
+  /** Quando informado, checamos a auditoria da Torre de Controle desta reunião. */
+  agendamentoId?: string | null;
   onConfirm: (reason: string, note?: string) => Promise<void> | void;
   loading?: boolean;
 }
@@ -29,11 +31,27 @@ interface Props {
  * Cancelar / No-show / Reagendar. O status gravado é sempre `no_show`
  * e o motivo escolhido fica registrado na reunião.
  */
-export default function NaoCompareceuDialog({ open, onOpenChange, leadName, onConfirm, loading }: Props) {
+export default function NaoCompareceuDialog({ open, onOpenChange, leadName, agendamentoId, onConfirm, loading }: Props) {
   const { items, isLoading } = useAppSettingList(APP_SETTING_KEYS.no_show_reasons, DEFAULT_NO_SHOW_REASONS);
   const [option, setOption] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Double-check da Torre de Controle: se o Google Meet registrou lead e closer
+  // juntos na sala, marcar "Não compareceu" contraria a leitura oficial.
+  const { data: torre } = useQuery({
+    queryKey: ["torre-auditoria", agendamentoId],
+    enabled: open && !!agendamentoId,
+    queryFn: async () => {
+      const { data, error: err } = await supabase
+        .from("agendamentos")
+        .select("torre_presenca_confirmada, torre_primeira_deteccao_at, torre_tempo_juntos_minutos")
+        .eq("id", agendamentoId as string)
+        .maybeSingle();
+      if (err) throw err;
+      return data;
+    },
+  });
 
   useEffect(() => {
     if (open) {
