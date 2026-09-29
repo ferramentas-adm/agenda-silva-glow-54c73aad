@@ -479,6 +479,9 @@ export default function AguardandoAtribuicaoPage() {
                   return { ...c, blocked, load, full: load >= closerSlotLimit };
                 })
                 .sort((x, y) => {
+                  // Closers da turma do lead aparecem primeiro.
+                  const turma = (o: typeof x) => (Boolean(o.em_treinamento) === desqEfetivo ? 0 : 1);
+                  if (turma(x) !== turma(y)) return turma(x) - turma(y);
                   const rank = (o: typeof x) => (o.blocked ? 2 : o.full ? 1 : 0);
                   if (rank(x) !== rank(y)) return rank(x) - rank(y);
                   if (x.load !== y.load) return x.load - y.load;
