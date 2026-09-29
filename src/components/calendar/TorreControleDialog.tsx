@@ -165,7 +165,7 @@ export default function TorreControleDialog() {
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("meet-presenca", { body: { ids } });
       if (error) throw error;
-      return (data?.items ?? {}) as Record<string, { presenca: Presenca; participantes: string[]; motivo?: string }>;
+      return (data?.items ?? {}) as Record<string, PresencaItem>;
     },
   });
 
