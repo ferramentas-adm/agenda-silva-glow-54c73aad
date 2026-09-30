@@ -111,14 +111,13 @@ async function createAutoRecordingSpace(
   return null;
 }
 
-// ── Piloto "nome do lead no Meet" ──────────────────────────────────────────
-// Closers nesta lista criam a reunião pelo fluxo nativo do Google Calendar
-// (garante o título "Grupo Silva & <lead>" no Meet) e depois recebem a
-// gravação/transcrição automática via PATCH no espaço do Meet.
-// Qualquer falha no PATCH mantém o evento e o link intactos.
-const TITULO_PILOTO_CLOSER_IDS = new Set<string>([
-  '1d5aeff3-87d8-46c3-bdfd-8f815f8f25ef', // Vitor Lima
-]);
+// ── Fluxo "nome do lead no Meet" ───────────────────────────────────────────
+// Vale para qualquer closer que já autorizou as duas permissões do Meet:
+// a reunião nasce pelo fluxo nativo do Google Calendar (garante o título
+// "Grupo Silva & <lead>") e depois recebe gravação/transcrição automática
+// via PATCH no espaço do Meet. Quem ainda não autorizou segue no fluxo
+// anterior, com link garantido. Qualquer falha no PATCH mantém o evento
+// e o link intactos.
 
 /**
  * Liga gravação e transcrição automáticas em um espaço do Meet já existente
@@ -369,12 +368,12 @@ serve(async (req) => {
     const grantedScopes = (tokenData.granted_scopes ?? '') as string;
     const temEscopoMeet = grantedScopes.includes(MEET_SPACE_SCOPE);
     const temEscopoSettings = grantedScopes.includes(MEET_SETTINGS_SCOPE);
-    // Piloto do título: cria a sala pelo próprio Calendar (nome do lead) e liga
-    // gravação depois. Só vale quando o closer já autorizou o escopo de settings,
+    // Título com nome do lead: cria a sala pelo próprio Calendar e liga a
+    // gravação depois. Só vale quando o closer já autorizou os dois escopos,
     // senão mantém o fluxo atual (gravação garantida).
     const tituloPiloto = closerRow?.auto_recording_enabled === true
-      && temEscopoSettings
-      && TITULO_PILOTO_CLOSER_IDS.has(String(closer_id));
+      && temEscopoMeet
+      && temEscopoSettings;
 
 
     if (closerRow?.auto_recording_enabled === true && !tituloPiloto) {
