@@ -150,7 +150,7 @@ export default function GoogleCalendarBanner() {
       toast.error("Não foi possível verificar a conexão agora. Tente novamente em instantes.");
       return;
     }
-    if (res.data?.connected && (!closerMatch.auto_recording_enabled || res.data?.hasMeetScope)) {
+    if (res.data?.connected && (!closerMatch.auto_recording_enabled || escoposOk(res.data))) {
       toast.success("Conexão confirmada.");
     } else {
       toast.info("Ainda não encontramos a autorização. Conclua o fluxo do Google.");
