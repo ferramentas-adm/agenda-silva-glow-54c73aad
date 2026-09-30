@@ -69,11 +69,14 @@ export default function GoogleCalendarBanner() {
       // Não engolir erro: uma falha de permissão/rede não deve ser
       // interpretada como "closer sem conexão Google".
       if (error) throw error;
+      const scopes =
+        typeof (data as any)?.granted_scopes === "string"
+          ? ((data as any).granted_scopes as string)
+          : "";
       return {
         connected: !!data,
-        hasMeetScope:
-          typeof (data as any)?.granted_scopes === "string" &&
-          (data as any).granted_scopes.includes(MEET_SPACE_SCOPE),
+        hasMeetScope: scopes.includes(MEET_SPACE_SCOPE),
+        hasSettingsScope: scopes.includes(MEET_SETTINGS_SCOPE),
       };
     },
   });
