@@ -8,6 +8,14 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
+// Permissão que mantém o nome do lead no título da reunião do Meet
+// (o sistema liga a gravação na sala criada pelo Google Calendar).
+const MEET_SETTINGS_SCOPE = "https://www.googleapis.com/auth/meetings.space.settings";
+
+// Closers no piloto do título com o nome do lead (espelha google-create-event).
+const TITULO_PILOTO_CLOSER_IDS = new Set<string>([
+  "1d5aeff3-87d8-46c3-bdfd-8f815f8f25ef", // Vitor Lima
+]);
 
 /**
  * Shows a banner for closer users who haven't connected Google Calendar yet.
@@ -66,11 +74,14 @@ export default function GoogleCalendarBanner() {
       // Não engolir erro: uma falha de permissão/rede não deve ser
       // interpretada como "closer sem conexão Google".
       if (error) throw error;
+      const scopes =
+        typeof (data as any)?.granted_scopes === "string"
+          ? ((data as any).granted_scopes as string)
+          : "";
       return {
         connected: !!data,
-        hasMeetScope:
-          typeof (data as any)?.granted_scopes === "string" &&
-          (data as any).granted_scopes.includes(MEET_SPACE_SCOPE),
+        hasMeetScope: scopes.includes(MEET_SPACE_SCOPE),
+        hasSettingsScope: scopes.includes(MEET_SETTINGS_SCOPE),
       };
     },
   });
@@ -86,12 +97,18 @@ export default function GoogleCalendarBanner() {
   if (!closerChecked || !closerMatch) return null;
   if (!tokenChecked || !tokenInfo) return null;
 
+  // Piloto do nome do lead no título da reunião (mesma lista da função de criação).
+  const noPilotoTitulo = TITULO_PILOTO_CLOSER_IDS.has(closerMatch.id);
+
   const needsRecordingScope =
     tokenInfo.connected &&
     closerMatch.auto_recording_enabled === true &&
-    !tokenInfo.hasMeetScope;
+    (!tokenInfo.hasMeetScope || (noPilotoTitulo && !tokenInfo.hasSettingsScope));
 
   if (tokenInfo.connected && !needsRecordingScope) return null;
+
+  const escoposOk = (d?: { hasMeetScope?: boolean; hasSettingsScope?: boolean }) =>
+    Boolean(d?.hasMeetScope) && (!noPilotoTitulo || Boolean(d?.hasSettingsScope));
 
   const startPolling = () => {
     if (pollRef.current) window.clearInterval(pollRef.current);
@@ -101,7 +118,7 @@ export default function GoogleCalendarBanner() {
       const res = await refetchToken();
       const ok =
         res.data?.connected &&
-        (!closerMatch.auto_recording_enabled || res.data?.hasMeetScope);
+        (!closerMatch.auto_recording_enabled || escoposOk(res.data));
       if (ok || ticks > 60) {
         if (pollRef.current) window.clearInterval(pollRef.current);
         pollRef.current = null;
@@ -133,7 +150,7 @@ export default function GoogleCalendarBanner() {
       toast.error("Não foi possível verificar a conexão agora. Tente novamente em instantes.");
       return;
     }
-    if (res.data?.connected && (!closerMatch.auto_recording_enabled || res.data?.hasMeetScope)) {
+    if (res.data?.connected && (!closerMatch.auto_recording_enabled || escoposOk(res.data))) {
       toast.success("Conexão confirmada.");
     } else {
       toast.info("Ainda não encontramos a autorização. Conclua o fluxo do Google.");
@@ -147,10 +164,14 @@ export default function GoogleCalendarBanner() {
       <div className="flex-1 text-foreground">
         {needsRecordingScope ? (
           <>
-            <strong>⚠ Reautorize o Google para ativar a gravação automática.</strong>{" "}
-            Sua agenda está conectada, mas falta a permissão de gravação/transcrição
-            automática do Meet. Autorize uma vez e suas próximas reuniões começam a
-            gravar sozinhas.
+            <strong>
+              ⚠ Reautorize o Google para ativar a gravação automática
+              {noPilotoTitulo && !tokenInfo.hasSettingsScope
+                ? " e o nome do lead na reunião"
+                : ""}.
+            </strong>{" "}
+            Sua agenda está conectada, mas falta uma permissão do Google Meet.
+            Autorize uma vez e suas próximas reuniões já começam certas.
           </>
         ) : (
           <>
