@@ -10,7 +10,7 @@ interface Props {
 export function PropostaFlag({ enviada, url, className }: Props) {
   if (!enviada) return null;
   const content = <span aria-hidden>🟠</span>;
-  const cls = cn("inline-flex items-center justify-center leading-none text-[11px] cursor-pointer", className);
+  const cls = cn("inline-flex h-4 w-4 items-center justify-center rounded-full bg-background/90 shadow-sm ring-1 ring-orange-500 leading-none text-[10px] cursor-pointer", className);
   if (url) {
     return (
       <a

@@ -1275,6 +1275,13 @@ export default function ReunioesListPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            {(detailTarget as any)?.proposta_enviada && (
+              <section className="rounded-md border border-orange-500/50 bg-orange-500/10 p-3 text-sm flex items-center gap-2">
+                <PropostaFlag enviada url={(detailTarget as any).proposta_url} />
+                <span className="font-semibold">Proposta comercial enviada</span>
+                {(detailTarget as any).proposta_url && <a href={(detailTarget as any).proposta_url} target="_blank" rel="noopener noreferrer" className="underline ml-auto">Abrir proposta</a>}
+              </section>
+            )}
             <section>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Produto sugerido pelo SDR</h4>
               <p className="text-sm rounded-md border border-primary/40 bg-primary/10 p-3 font-semibold text-primary">

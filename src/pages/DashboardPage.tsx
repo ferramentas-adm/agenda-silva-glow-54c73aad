@@ -1701,6 +1701,13 @@ export function CalendarContent() {
                 </div>
               </div>
 
+              {(detailAg as any)?.proposta_enviada && (
+                <div className="rounded-lg border border-orange-500/50 bg-orange-500/10 p-3 text-sm flex items-center gap-2">
+                  <PropostaFlag enviada url={(detailAg as any).proposta_url} />
+                  <span className="font-semibold">Proposta comercial enviada</span>
+                  {(detailAg as any).proposta_url && <a href={(detailAg as any).proposta_url} target="_blank" rel="noopener noreferrer" className="underline ml-auto">Abrir proposta</a>}
+                </div>
+              )}
               <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 space-y-0.5">
                 <p className="text-[11px] uppercase tracking-wide text-primary/80 font-semibold">Produto sugerido pelo SDR</p>
                 <p className="text-sm font-semibold text-primary">
@@ -2751,7 +2758,7 @@ const DayView = memo(function DayView({
                               )}>
                                 B
                               </span>
-                              <PropostaFlag enviada={(ag as any).proposta_enviada} url={(ag as any).proposta_url} className={cn("absolute top-0.5 z-10", isCompact ? "right-4" : "right-5")} />
+                              <PropostaFlag enviada={(ag as any).proposta_enviada} url={(ag as any).proposta_url} className={cn("absolute top-0 z-20", isCompact ? "right-4" : "right-5")} />
                               {isDiretor(ag) && (
                                 <span
                                   className={cn(
