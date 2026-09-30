@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.silva-marcar-proposta]
 verify_jwt = false
+
+[functions.silva-atualizar-briefing]
+verify_jwt = false
