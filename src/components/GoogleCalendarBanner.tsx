@@ -12,10 +12,6 @@ const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created
 // (o sistema liga a gravação na sala criada pelo Google Calendar).
 const MEET_SETTINGS_SCOPE = "https://www.googleapis.com/auth/meetings.space.settings";
 
-// Closers no piloto do título com o nome do lead (espelha google-create-event).
-const TITULO_PILOTO_CLOSER_IDS = new Set<string>([
-  "1d5aeff3-87d8-46c3-bdfd-8f815f8f25ef", // Vitor Lima
-]);
 
 /**
  * Shows a banner for closer users who haven't connected Google Calendar yet.
@@ -97,13 +93,13 @@ export default function GoogleCalendarBanner() {
   if (!closerChecked || !closerMatch) return null;
   if (!tokenChecked || !tokenInfo) return null;
 
-  // Piloto do nome do lead no título da reunião (mesma lista da função de criação).
-  const noPilotoTitulo = TITULO_PILOTO_CLOSER_IDS.has(closerMatch.id);
+  // Nome do lead no título da reunião vale para todo closer com gravação ligada.
+  const noPilotoTitulo = true;
 
   const needsRecordingScope =
     tokenInfo.connected &&
     closerMatch.auto_recording_enabled === true &&
-    (!tokenInfo.hasMeetScope || (noPilotoTitulo && !tokenInfo.hasSettingsScope));
+    (!tokenInfo.hasMeetScope || !tokenInfo.hasSettingsScope);
 
   if (tokenInfo.connected && !needsRecordingScope) return null;
 

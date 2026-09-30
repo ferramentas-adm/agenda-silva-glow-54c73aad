@@ -39,6 +39,8 @@ import { DEFAULT_BOOKING_CHANNELS } from "@/hooks/useAppSettingList";
 
 // Escopo do Google necessário para criar salas do Meet com gravação automática.
 const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
+// Permissão que mantém o nome do lead no título da reunião do Meet.
+const MEET_SETTINGS_SCOPE = "https://www.googleapis.com/auth/meetings.space.settings";
 
 
 /* ─── Listas dinâmicas (Canais / Motivos / Justificativas) ───── */
@@ -294,10 +296,15 @@ function UsersSection() {
         .select("closer_id, granted_scopes");
       const googleTokenMap = new Map<string, { hasMeetScope: boolean }>();
       (googleTokens ?? []).forEach((t: any) => {
+        const scopes = typeof t.granted_scopes === "string" ? t.granted_scopes : "";
         googleTokenMap.set(t.closer_id, {
-          hasMeetScope: typeof t.granted_scopes === "string" && t.granted_scopes.includes(MEET_SPACE_SCOPE),
+          // Só conta como completo quando o closer autorizou as duas permissões:
+          // criar a sala e configurar gravação/transcrição automáticas.
+          hasMeetScope:
+            scopes.includes(MEET_SPACE_SCOPE) && scopes.includes(MEET_SETTINGS_SCOPE),
         });
       });
+
 
 
       // Build a map of closer info by email
