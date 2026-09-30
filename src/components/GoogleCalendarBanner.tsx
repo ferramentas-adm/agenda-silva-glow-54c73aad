@@ -8,6 +8,9 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
+// Permissão que mantém o nome do lead no título da reunião do Meet
+// (o sistema liga a gravação na sala criada pelo Google Calendar).
+const MEET_SETTINGS_SCOPE = "https://www.googleapis.com/auth/meetings.space.settings";
 
 /**
  * Shows a banner for closer users who haven't connected Google Calendar yet.
