@@ -95,6 +95,9 @@ export type Database = {
           observation: string | null
           original_agendamento_id: string | null
           produto_interesse: string | null
+          proposta_em: string | null
+          proposta_enviada: boolean
+          proposta_url: string | null
           scheduled_date: string
           scheduled_time: string
           sdr_error: boolean
@@ -156,6 +159,9 @@ export type Database = {
           observation?: string | null
           original_agendamento_id?: string | null
           produto_interesse?: string | null
+          proposta_em?: string | null
+          proposta_enviada?: boolean
+          proposta_url?: string | null
           scheduled_date: string
           scheduled_time: string
           sdr_error?: boolean
@@ -217,6 +223,9 @@ export type Database = {
           observation?: string | null
           original_agendamento_id?: string | null
           produto_interesse?: string | null
+          proposta_em?: string | null
+          proposta_enviada?: boolean
+          proposta_url?: string | null
           scheduled_date?: string
           scheduled_time?: string
           sdr_error?: boolean
