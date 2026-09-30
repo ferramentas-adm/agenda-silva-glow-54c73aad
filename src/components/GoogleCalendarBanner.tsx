@@ -12,6 +12,11 @@ const MEET_SPACE_SCOPE = "https://www.googleapis.com/auth/meetings.space.created
 // (o sistema liga a gravação na sala criada pelo Google Calendar).
 const MEET_SETTINGS_SCOPE = "https://www.googleapis.com/auth/meetings.space.settings";
 
+// Closers no piloto do título com o nome do lead (espelha google-create-event).
+const TITULO_PILOTO_CLOSER_IDS = new Set<string>([
+  "1d5aeff3-87d8-46c3-bdfd-8f815f8f25ef", // Vitor Lima
+]);
+
 /**
  * Shows a banner for closer users who haven't connected Google Calendar yet.
  * Only rendered for users with role "closer" or closers matching their email.
