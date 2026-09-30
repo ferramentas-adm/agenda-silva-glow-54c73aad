@@ -92,12 +92,18 @@ export default function GoogleCalendarBanner() {
   if (!closerChecked || !closerMatch) return null;
   if (!tokenChecked || !tokenInfo) return null;
 
+  // Piloto do nome do lead no título da reunião (mesma lista da função de criação).
+  const noPilotoTitulo = TITULO_PILOTO_CLOSER_IDS.has(closerMatch.id);
+
   const needsRecordingScope =
     tokenInfo.connected &&
     closerMatch.auto_recording_enabled === true &&
-    !tokenInfo.hasMeetScope;
+    (!tokenInfo.hasMeetScope || (noPilotoTitulo && !tokenInfo.hasSettingsScope));
 
   if (tokenInfo.connected && !needsRecordingScope) return null;
+
+  const escoposOk = (d?: { hasMeetScope?: boolean; hasSettingsScope?: boolean }) =>
+    Boolean(d?.hasMeetScope) && (!noPilotoTitulo || Boolean(d?.hasSettingsScope));
 
   const startPolling = () => {
     if (pollRef.current) window.clearInterval(pollRef.current);
@@ -107,7 +113,7 @@ export default function GoogleCalendarBanner() {
       const res = await refetchToken();
       const ok =
         res.data?.connected &&
-        (!closerMatch.auto_recording_enabled || res.data?.hasMeetScope);
+        (!closerMatch.auto_recording_enabled || escoposOk(res.data));
       if (ok || ticks > 60) {
         if (pollRef.current) window.clearInterval(pollRef.current);
         pollRef.current = null;
