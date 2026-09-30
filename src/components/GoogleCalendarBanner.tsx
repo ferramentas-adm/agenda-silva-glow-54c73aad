@@ -164,10 +164,14 @@ export default function GoogleCalendarBanner() {
       <div className="flex-1 text-foreground">
         {needsRecordingScope ? (
           <>
-            <strong>⚠ Reautorize o Google para ativar a gravação automática.</strong>{" "}
-            Sua agenda está conectada, mas falta a permissão de gravação/transcrição
-            automática do Meet. Autorize uma vez e suas próximas reuniões começam a
-            gravar sozinhas.
+            <strong>
+              ⚠ Reautorize o Google para ativar a gravação automática
+              {noPilotoTitulo && !tokenInfo.hasSettingsScope
+                ? " e o nome do lead na reunião"
+                : ""}.
+            </strong>{" "}
+            Sua agenda está conectada, mas falta uma permissão do Google Meet.
+            Autorize uma vez e suas próximas reuniões já começam certas.
           </>
         ) : (
           <>
