@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
       is_venda_avulsa, is_5k, meeting_reason, channel_type,
       lembrete_video_enviado, cancellation_reason, cancellation_note, observation,
       meet_link, google_event_id, meet_error,
+      proposta_enviada, proposta_url, proposta_em,
       closers ( id, name, email )
     `)
     .gte("scheduled_date", since)
@@ -114,6 +115,9 @@ Deno.serve(async (req) => {
       link_reuniao: a.meet_link ?? null,
       link_erro: a.meet_link ? null : (a.meet_error ?? null),
       google_event_id: a.google_event_id ?? null,
+      proposta_enviada: a.proposta_enviada ?? false,
+      proposta_url: a.proposta_url ?? null,
+      proposta_em: a.proposta_em ?? null,
       agendamento_id: a.id,
     };
   });

@@ -30,6 +30,7 @@ import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious, PaginationEllipsis,
 } from "@/components/ui/pagination";
+import { PropostaFlag } from "@/components/PropostaFlag";
 import { cn } from "@/lib/utils";
 import { canDeleteMeeting, DELETE_BLOCKED_MESSAGE } from "@/services/reagendamento";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
@@ -202,7 +203,7 @@ export default function ReunioesListPage() {
       while (true) {
         const { data, error } = await supabase
           .from("agendamentos")
-          .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, produto_interesse, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, cancellation_reason, channel_type, original_agendamento_id, duration_minutes, is_5k, is_venda_avulsa")
+          .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, produto_interesse, proposta_enviada, proposta_url, proposta_em, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, cancellation_reason, channel_type, original_agendamento_id, duration_minutes, is_5k, is_venda_avulsa")
           .is("deleted_at", null)
           .gte("scheduled_date", meetingWindowStart)
           .order("scheduled_date", { ascending: false })
@@ -1023,7 +1024,7 @@ export default function ReunioesListPage() {
                     return (
                       <tr key={ag.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-medium">{ag.lead_name}</div>
+                          <div className="font-medium flex items-center gap-1">{ag.lead_name}<PropostaFlag enviada={(ag as any).proposta_enviada} url={(ag as any).proposta_url} /></div>
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
                             <Phone className="h-3 w-3" />{ag.lead_phone}
                           </div>
