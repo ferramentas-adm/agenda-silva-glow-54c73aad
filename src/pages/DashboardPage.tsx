@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { PropostaFlag } from "@/components/PropostaFlag";
 import { cn } from "@/lib/utils";
 import { countsAsSdr } from "@/lib/sdrOverrides";
 import {
@@ -347,7 +348,7 @@ export function CalendarContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, produto_interesse, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id, cancellation_reason")
+        .select("id, lead_name, lead_phone, closer_id, scheduled_date, scheduled_time, status, meet_link, observation, briefing, produto_interesse, proposta_enviada, proposta_url, proposta_em, deleted_at, created_by, sdr_responsavel_id, created_at, meeting_reason, channel_type, briefing_read_at, briefing_read_by, original_agendamento_id, duration_minutes, is_5k, meta_lead_id, cancellation_reason")
         .is("deleted_at", null)
         .eq("scheduled_date", dateStr)
         .order("scheduled_time", { ascending: true });
@@ -2750,6 +2751,7 @@ const DayView = memo(function DayView({
                               )}>
                                 B
                               </span>
+                              <PropostaFlag enviada={(ag as any).proposta_enviada} url={(ag as any).proposta_url} className={cn("absolute top-0.5 z-10", isCompact ? "right-4" : "right-5")} />
                               {isDiretor(ag) && (
                                 <span
                                   className={cn(

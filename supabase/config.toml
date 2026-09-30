@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.redistribuir-turma]
 verify_jwt = false
+
+[functions.silva-marcar-proposta]
+verify_jwt = false
