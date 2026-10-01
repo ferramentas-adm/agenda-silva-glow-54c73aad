@@ -14,6 +14,7 @@ export function FunilFilter({
   const options: { key: FunilFilterValue; label: string }[] = [
     { key: "todos", label: "Todos" },
     { key: "diretor", label: "Diretor" },
+    { key: "imersao", label: "Imersão 2 dias" },
     { key: "padrao", label: "Padrão" },
   ];
 
@@ -27,7 +28,8 @@ export function FunilFilter({
           size="sm"
           className={cn(
             "h-7 text-xs",
-            opt.key === "diretor" && value === "diretor" && "bg-red-600 hover:bg-red-600/90 text-white"
+            opt.key === "diretor" && value === "diretor" && "bg-red-600 hover:bg-red-600/90 text-white",
+            opt.key === "imersao" && value === "imersao" && "bg-imersao hover:bg-imersao/90 text-primary-foreground"
           )}
           onClick={() => onChange(opt.key)}
         >
