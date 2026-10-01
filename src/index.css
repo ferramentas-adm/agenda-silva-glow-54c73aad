@@ -237,3 +237,9 @@
     animation: pulse-glow 2s ease-in-out infinite;
   }
 }
+
+/* Modo de privacidade (Apresentador) */
+[data-privacy-blur] {
+  filter: blur(6px);
+  user-select: none;
+}
