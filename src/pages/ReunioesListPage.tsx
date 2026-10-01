@@ -18,7 +18,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { isDiretor, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { isDiretor, isImersao, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { ImersaoFlag } from "@/components/ImersaoFlag";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -1075,6 +1076,7 @@ export default function ReunioesListPage() {
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1 items-start">
                             <Badge variant="outline" className={cn("text-[10px]", st.color)}>{st.label}</Badge>
+                            <ImersaoFlag show={isImersao(ag)} />
                             {isDiretor(ag) && (
                               <Badge className="text-[10px] bg-red-600 text-white hover:bg-red-600" title={DIRETOR_TOOLTIP}>
                                 DIRETOR
@@ -1258,6 +1260,7 @@ export default function ReunioesListPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               {detailTarget?.lead_name}
+              <ImersaoFlag show={isImersao(detailTarget)} />
               {isDiretor(detailTarget) && (
                 <Badge className="text-[10px] bg-red-600 text-white hover:bg-red-600" title={DIRETOR_TOOLTIP}>
                   DIRETOR

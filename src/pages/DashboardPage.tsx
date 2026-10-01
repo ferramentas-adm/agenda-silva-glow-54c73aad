@@ -13,7 +13,8 @@ import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
 import { TurmaFilter } from "@/components/calendar/TurmaFilter";
 import { FunilFilter } from "@/components/calendar/FunilFilter";
-import { isDiretor, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { isDiretor, isImersao, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { ImersaoFlag } from "@/components/ImersaoFlag";
 import { linkifyText } from "@/lib/linkify";
 import BriefingDrawer from "@/components/BriefingDrawer";
 import TorreControleDialog from "@/components/calendar/TorreControleDialog";
@@ -516,8 +517,10 @@ export function CalendarContent() {
       }
       if (funil !== "todos") {
         const diretor = isDiretor(a);
+        const imersao = isImersao(a);
         if (funil === "diretor" && !diretor) return false;
-        if (funil === "padrao" && diretor) return false;
+        if (funil === "imersao" && !imersao) return false;
+        if (funil === "padrao" && (diretor || imersao)) return false;
       }
       return true;
     });
@@ -1615,6 +1618,7 @@ export function CalendarContent() {
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               <User className="h-5 w-5 text-primary" />
               {detailAg?.lead_name}
+              <ImersaoFlag show={isImersao(detailAg)} />
               {isDiretor(detailAg) && (
                 <span
                   className="text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 px-2 py-0.5 rounded-full"
@@ -2759,6 +2763,7 @@ const DayView = memo(function DayView({
                                 B
                               </span>
                               <PropostaFlag enviada={(ag as any).proposta_enviada} url={(ag as any).proposta_url} className={cn("absolute top-0 z-20", isCompact ? "right-4" : "right-5")} />
+                              <ImersaoFlag show={isImersao(ag)} compact={isCompact} className="absolute bottom-0 left-0 z-20" />
                               {isDiretor(ag) && (
                                 <span
                                   className={cn(

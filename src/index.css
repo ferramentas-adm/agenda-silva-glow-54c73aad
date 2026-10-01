@@ -16,6 +16,7 @@
     --popover-foreground: 0 0% 92%;
 
     --primary: 66 83% 55%;
+    --imersao: 221 83% 53%;
     --primary-foreground: 0 0% 4%;
 
     --secondary: 240 3% 13%;
@@ -74,6 +75,7 @@
     --popover-foreground: 220 20% 6%;
 
     --primary: 66 85% 28%;
+    --imersao: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 16% 86%;
@@ -143,6 +145,7 @@
     --foreground: 0 0% 92%;
     --muted-foreground: 0 0% 60%;
     --primary: 66 83% 55%;
+    --imersao: 221 83% 53%;
     --primary-foreground: 0 0% 4%;
     --border: 240 3% 16%;
     --glass-bg: 240 4% 8% / 0.6;
