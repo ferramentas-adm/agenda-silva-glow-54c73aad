@@ -12,6 +12,7 @@ import { tenantConfig } from "@/config/tenant";
 import GoogleCalendarBanner from "@/components/GoogleCalendarBanner";
 
 import NotificationBell from "@/components/NotificationBell";
+import PrivacyModeToggle from "@/components/PrivacyModeToggle";
 import PendingMeetingsBanner from "@/components/PendingMeetingsBanner";
 import OverdueFollowUpsBanner from "@/components/OverdueFollowUpsBanner";
 import OverdueMeetingsLockOverlay from "@/components/OverdueMeetingsLockOverlay";
@@ -116,6 +117,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Desktop Sidebar — hover-expand */}
       <aside
+        data-privacy-ignore
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className={cn(
@@ -221,6 +223,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
         <div className="flex items-center gap-1">
+          <PrivacyModeToggle className="px-2 [&>span]:hidden" />
           <NotificationBell />
           <button onClick={() => setMobileOpen(!mobileOpen)}>
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -279,7 +282,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         expanded ? "md:ml-64" : "md:ml-[4.5rem]"
       )}>
         {/* Top bar (desktop): notification bell */}
-        <div className="hidden md:flex items-center justify-end px-4 pt-3">
+        <div className="hidden md:flex items-center justify-end gap-2 px-4 pt-3">
+          <PrivacyModeToggle />
           <NotificationBell />
         </div>
 
