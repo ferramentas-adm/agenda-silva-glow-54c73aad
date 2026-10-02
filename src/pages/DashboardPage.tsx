@@ -13,8 +13,9 @@ import AppLayout from "@/components/AppLayout";
 import CloserFilterBar from "@/components/CloserFilterBar";
 import { TurmaFilter } from "@/components/calendar/TurmaFilter";
 import { FunilFilter } from "@/components/calendar/FunilFilter";
-import { isDiretor, isImersao, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { isDiretor, isImersao, isParceria, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
 import { ImersaoFlag } from "@/components/ImersaoFlag";
+import { ParceriaFlag } from "@/components/ParceriaFlag";
 import { linkifyText } from "@/lib/linkify";
 import BriefingDrawer from "@/components/BriefingDrawer";
 import TorreControleDialog from "@/components/calendar/TorreControleDialog";
@@ -518,8 +519,10 @@ export function CalendarContent() {
       if (funil !== "todos") {
         const diretor = isDiretor(a);
         const imersao = isImersao(a);
+        const parceria = isParceria(a);
         if (funil === "diretor" && !diretor) return false;
         if (funil === "imersao" && !imersao) return false;
+        if (funil === "parceria" && !parceria) return false;
         if (funil === "padrao" && (diretor || imersao)) return false;
       }
       return true;
@@ -1618,6 +1621,7 @@ export function CalendarContent() {
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               <User className="h-5 w-5 text-primary" />
               {detailAg?.lead_name}
+              <ParceriaFlag show={isParceria(detailAg)} />
               <ImersaoFlag show={isImersao(detailAg)} />
               {isDiretor(detailAg) && (
                 <span
@@ -2801,8 +2805,9 @@ const DayView = memo(function DayView({
                                   </div>
                                 );
                               })()}
-                              <div className={cn("font-semibold truncate pr-5", (ag.is_5k || (ag.created_by && userRolesMap.get(ag.created_by) === "closer") || ag.meeting_reason === "segunda_reuniao") && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
-                                {ag.lead_name}
+                              <div className={cn("flex items-center gap-1 font-semibold pr-5", (ag.is_5k || (ag.created_by && userRolesMap.get(ag.created_by) === "closer") || ag.meeting_reason === "segunda_reuniao") && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
+                                <span className="truncate">{ag.lead_name}</span>
+                                <ParceriaFlag show={isParceria(ag)} className={isCompact ? "h-2.5 w-2.5" : undefined} />
                               </div>
 
                               <div className="flex items-center gap-1 text-[11px] opacity-80">

@@ -39,3 +39,4 @@
 - [x] Motivo "Cliente precisou sair" fora da Taxa de Conversão apenas para reuniões a partir de 01/10/2026.
 - [x] Alerta visual quando "Cliente precisou sair" for usado em reunião com mais de 15 min juntos.
 - [x] Aviso no "Não compareceu" quando a Torre registrou lead e closer juntos na sala.
+- [x] Sinalizar Parceria comercial com bolinha verde, filtro próprio e aceite em `/silva-agendar`.

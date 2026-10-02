@@ -3,7 +3,7 @@
 
 const PREFIX_RE = /^\s*(?:\p{Extended_Pictographic}|\uFE0F|\u200D)*\s*diretor\s*(?:·|-|:|\u2022)?\s*/iu;
 
-export type FunilFilterValue = "todos" | "diretor" | "imersao" | "padrao";
+export type FunilFilterValue = "todos" | "diretor" | "imersao" | "parceria" | "padrao";
 
 interface FunilSource {
   lead_name?: string | null;
@@ -37,3 +37,10 @@ export function isImersao(ag: (FunilSource & { briefing?: string | null }) | nul
 }
 
 export const IMERSAO_LABEL = "Imersão 2 dias";
+
+// Funil "Parceria comercial": marca própria nas observações ou texto no briefing.
+export function isParceria(ag: (FunilSource & { briefing?: string | null }) | null | undefined): boolean {
+  if (!ag) return false;
+  if (norm(ag.observation).includes("funil: parceria")) return true;
+  return norm(ag.briefing).includes("parceria comercial");
+}
