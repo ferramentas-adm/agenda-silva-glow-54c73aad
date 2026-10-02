@@ -18,8 +18,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { isDiretor, isImersao, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { isDiretor, isImersao, isParceria, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
 import { ImersaoFlag } from "@/components/ImersaoFlag";
+import { ParceriaFlag } from "@/components/ParceriaFlag";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -1025,7 +1026,7 @@ export default function ReunioesListPage() {
                     return (
                       <tr key={ag.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-medium flex items-center gap-1">{ag.lead_name}<PropostaFlag enviada={(ag as any).proposta_enviada} url={(ag as any).proposta_url} /></div>
+                          <div className="font-medium flex items-center gap-1">{ag.lead_name}<ParceriaFlag show={isParceria(ag)} /><PropostaFlag enviada={(ag as any).proposta_enviada} url={(ag as any).proposta_url} /></div>
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
                             <Phone className="h-3 w-3" />{ag.lead_phone}
                           </div>
@@ -1260,6 +1261,7 @@ export default function ReunioesListPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               {detailTarget?.lead_name}
+              <ParceriaFlag show={isParceria(detailTarget)} />
               <ImersaoFlag show={isImersao(detailTarget)} />
               {isDiretor(detailTarget) && (
                 <Badge className="text-[10px] bg-red-600 text-white hover:bg-red-600" title={DIRETOR_TOOLTIP}>

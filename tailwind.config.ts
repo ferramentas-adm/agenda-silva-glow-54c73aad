@@ -28,6 +28,10 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         imersao: "hsl(var(--imersao))",
+        parceria: {
+          DEFAULT: "hsl(var(--parceria))",
+          foreground: "hsl(var(--parceria-foreground))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
