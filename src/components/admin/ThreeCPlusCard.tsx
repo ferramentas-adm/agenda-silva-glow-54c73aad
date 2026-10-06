@@ -92,7 +92,7 @@ function RuleDialog({ rule, onClose }: { rule: Partial<Rule> | null; onClose: ()
   const nf = useAppSettingList(APP_SETTING_KEYS.motivos_nao_fechamento, DEFAULT_REASONS);
   useEffect(() => { if (rule) setF({ ...EMPTY, ...rule }); }, [rule]);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
-  const absentReasons = [...new Set([NO_SHOW_REASON, ...(noShow.data ?? []), ...(cancel.data ?? [])])];
+  const absentReasons = [...new Set([NO_SHOW_REASON, ...(noShow.items ?? []), ...(cancel.items ?? [])])];
   const hasAbsent = f.statuses.some((s) => s !== "realizada");
   const hasReal = f.statuses.includes("realizada");
 
@@ -144,7 +144,7 @@ function RuleDialog({ rule, onClose }: { rule: Partial<Rule> | null; onClose: ()
               <label className="flex items-center gap-2 text-sm"><Switch checked={f.only_no_sale} onCheckedChange={(v) => set("only_no_sale", v)} /> Só quem não comprou</label>
               <Label>Motivos de não fechamento</Label>
               <p className="text-xs text-muted-foreground">Nenhum marcado = todos os motivos.</p>
-              <MultiCheck options={nf.data ?? []} value={f.nao_fechamento_reasons} onChange={(v) => set("nao_fechamento_reasons", v)} />
+              <MultiCheck options={nf.items ?? []} value={f.nao_fechamento_reasons} onChange={(v) => set("nao_fechamento_reasons", v)} />
             </div>
           )}
           <div className="space-y-2 rounded-md border border-border p-3">
