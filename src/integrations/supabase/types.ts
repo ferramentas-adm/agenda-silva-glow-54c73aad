@@ -1651,6 +1651,57 @@ export type Database = {
           },
         ]
       }
+      threec_rules: {
+        Row: {
+          active: boolean
+          campaign_id: string
+          created_at: string
+          dedupe: boolean
+          id: string
+          include_desqualificados: boolean
+          list_id: string
+          name: string
+          nao_fechamento_reasons: string[]
+          only_no_sale: boolean
+          reasons: string[]
+          skip_future: boolean
+          statuses: string[]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          campaign_id: string
+          created_at?: string
+          dedupe?: boolean
+          id?: string
+          include_desqualificados?: boolean
+          list_id: string
+          name: string
+          nao_fechamento_reasons?: string[]
+          only_no_sale?: boolean
+          reasons?: string[]
+          skip_future?: boolean
+          statuses?: string[]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          campaign_id?: string
+          created_at?: string
+          dedupe?: boolean
+          id?: string
+          include_desqualificados?: boolean
+          list_id?: string
+          name?: string
+          nao_fechamento_reasons?: string[]
+          only_no_sale?: boolean
+          reasons?: string[]
+          skip_future?: boolean
+          statuses?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       threec_run_items: {
         Row: {
           agendamento_id: string | null
@@ -1704,6 +1755,8 @@ export type Database = {
           id: string
           kind: string
           lease_until: string | null
+          rule_id: string | null
+          rule_name: string | null
           run_date: string
           sent: number
           skipped_duplicate: number
@@ -1723,6 +1776,8 @@ export type Database = {
           id?: string
           kind?: string
           lease_until?: string | null
+          rule_id?: string | null
+          rule_name?: string | null
           run_date: string
           sent?: number
           skipped_duplicate?: number
@@ -1742,6 +1797,8 @@ export type Database = {
           id?: string
           kind?: string
           lease_until?: string | null
+          rule_id?: string | null
+          rule_name?: string | null
           run_date?: string
           sent?: number
           skipped_duplicate?: number
@@ -1752,6 +1809,30 @@ export type Database = {
           total?: number
           triggered_by?: string | null
           triggered_by_name?: string | null
+        }
+        Relationships: []
+      }
+      threec_sent: {
+        Row: {
+          agendamento_id: string | null
+          list_id: string
+          rule_id: string | null
+          sent_at: string
+          telefone: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          list_id: string
+          rule_id?: string | null
+          sent_at?: string
+          telefone: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          list_id?: string
+          rule_id?: string | null
+          sent_at?: string
+          telefone?: string
         }
         Relationships: []
       }
@@ -2228,6 +2309,7 @@ export type Database = {
         Args: { _agendamento_id: string; _motivo: string }
         Returns: boolean
       }
+      threec_set_schedule: { Args: { _hhmm: string }; Returns: string }
       transfer_agendamento_closer: {
         Args: { _agendamento_id: string; _new_closer_id: string }
         Returns: boolean
