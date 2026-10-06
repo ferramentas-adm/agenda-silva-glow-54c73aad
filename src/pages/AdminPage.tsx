@@ -33,7 +33,6 @@ import { useCloserSlotLimit } from "@/hooks/useCloserSlotLimit";
 import MeetRolloutPanel from "@/components/admin/MeetRolloutPanel";
 import CrmBulkVendasPanel from "@/components/admin/CrmBulkVendasPanel";
 import PermissionsMatrix from "@/components/admin/PermissionsMatrix";
-import BloqueiosSection from "@/components/admin/BloqueiosSection";
 import { logAudit } from "@/services/auditLog";
 import { DEFAULT_ORDER_BUMPS } from "@/lib/orderBumps";
 import { DEFAULT_BOOKING_CHANNELS } from "@/hooks/useAppSettingList";
