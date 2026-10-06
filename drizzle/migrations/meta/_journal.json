@@ -281,6 +281,13 @@
       "when": 1791315336160,
       "tag": "0039_threec_plus_integration",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791319336652,
+      "tag": "0040_threec_rules",
+      "breakpoints": true
     }
   ]
 }
