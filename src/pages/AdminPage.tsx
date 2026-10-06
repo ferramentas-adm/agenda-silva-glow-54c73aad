@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FollowUpAlertSettingsCard from "@/components/admin/FollowUpAlertSettingsCard";
+import ThreeCPlusCard from "@/components/admin/ThreeCPlusCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -2090,6 +2091,10 @@ export default function AdminPage() {
                 <Send className="h-3.5 w-3.5" />
                 Envio em lote
               </TabsTrigger>
+              <TabsTrigger value="threec" className="gap-1.5 text-xs sm:text-sm">
+                <PhoneCall className="h-3.5 w-3.5" />
+                3C Plus
+              </TabsTrigger>
               <TabsTrigger value="bloqueios" className="gap-1.5 text-xs sm:text-sm">
                 <CalendarX className="h-3.5 w-3.5" />
                 Bloqueios
@@ -2116,6 +2121,9 @@ export default function AdminPage() {
             </TabsContent>
             <TabsContent value="crm-lote">
               <CrmBulkVendasPanel />
+            </TabsContent>
+            <TabsContent value="threec">
+              <ThreeCPlusCard />
             </TabsContent>
             <TabsContent value="bloqueios">
               <BloqueiosSection />
