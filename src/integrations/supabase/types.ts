@@ -1651,6 +1651,128 @@ export type Database = {
           },
         ]
       }
+      threec_run_items: {
+        Row: {
+          agendamento_id: string | null
+          created_at: string
+          id: string
+          lead_name: string | null
+          response: string | null
+          result: string
+          run_id: string
+          status_code: number | null
+          telefone: string | null
+        }
+        Insert: {
+          agendamento_id?: string | null
+          created_at?: string
+          id?: string
+          lead_name?: string | null
+          response?: string | null
+          result: string
+          run_id: string
+          status_code?: number | null
+          telefone?: string | null
+        }
+        Update: {
+          agendamento_id?: string | null
+          created_at?: string
+          id?: string
+          lead_name?: string | null
+          response?: string | null
+          result?: string
+          run_id?: string
+          status_code?: number | null
+          telefone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threec_run_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "threec_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      threec_runs: {
+        Row: {
+          dry_run: boolean
+          error: string | null
+          failed: number
+          finished_at: string | null
+          id: string
+          kind: string
+          lease_until: string | null
+          run_date: string
+          sent: number
+          skipped_duplicate: number
+          skipped_future: number
+          skipped_invalid: number
+          started_at: string
+          status: string
+          total: number
+          triggered_by: string | null
+          triggered_by_name: string | null
+        }
+        Insert: {
+          dry_run?: boolean
+          error?: string | null
+          failed?: number
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          lease_until?: string | null
+          run_date: string
+          sent?: number
+          skipped_duplicate?: number
+          skipped_future?: number
+          skipped_invalid?: number
+          started_at?: string
+          status?: string
+          total?: number
+          triggered_by?: string | null
+          triggered_by_name?: string | null
+        }
+        Update: {
+          dry_run?: boolean
+          error?: string | null
+          failed?: number
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          lease_until?: string | null
+          run_date?: string
+          sent?: number
+          skipped_duplicate?: number
+          skipped_future?: number
+          skipped_invalid?: number
+          started_at?: string
+          status?: string
+          total?: number
+          triggered_by?: string | null
+          triggered_by_name?: string | null
+        }
+        Relationships: []
+      }
+      threec_sent_phones: {
+        Row: {
+          agendamento_id: string | null
+          sent_at: string
+          telefone: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          sent_at?: string
+          telefone: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          sent_at?: string
+          telefone?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
