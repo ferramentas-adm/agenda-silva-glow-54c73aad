@@ -60,7 +60,7 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
   try {
     const statuses = rule.statuses?.length ? rule.statuses : ["no_show"];
     const { data: agsRaw } = await admin.from("agendamentos")
-      .select("id, lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by, scheduled_date, status, cancellation_reason, cancellation_note, booking_channel, channel_type, produto_interesse, lead_desqualificado")
+      .select("id, lead_name, lead_phone, closer_id, sdr_responsavel_id, created_by, scheduled_date, status, cancellation_reason, cancellation_note, booking_channel, channel_type, produto_interesse, lead_desqualificado, briefing, lead_email, lead_state")
       .eq("scheduled_date", runDate).in("status", statuses).is("deleted_at", null).limit(MAX_ITEMS);
     let ags = agsRaw ?? [];
 
@@ -74,12 +74,13 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
 
     // Realizadas: venda / motivos de não fechamento
     const realIds = ags.filter((a: { status: string }) => a.status === "realizada").map((a: { id: string }) => a.id);
-    const vMap = new Map<string, { vendeu: boolean; motivo: string | null }[]>();
+    // deno-lint-ignore no-explicit-any
+    const vMap = new Map<string, any[]>();
     if (realIds.length) {
-      const { data: vs } = await admin.from("vendas").select("agendamento_id, vendeu, motivo_nao_fechamento").in("agendamento_id", realIds);
+      const { data: vs } = await admin.from("vendas").select("agendamento_id, vendeu, motivo_nao_fechamento, explicacao_nao_fechamento, lead_revenue, observacoes, follow_up_temperatura, follow_up_produto, follow_up_valor, follow_up_condicoes, follow_up_canal, follow_up_date").in("agendamento_id", realIds);
       for (const v of vs ?? []) {
         const arr = vMap.get(v.agendamento_id) ?? [];
-        arr.push({ vendeu: v.vendeu, motivo: v.motivo_nao_fechamento });
+        arr.push({ ...v, motivo: v.motivo_nao_fechamento });
         vMap.set(v.agendamento_id, arr);
       }
       const nfSet = new Set((rule.nao_fechamento_reasons ?? []).map(nk));
@@ -126,8 +127,10 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
       if (futureSet.has(tel)) { skippedFuture++; items.push({ ...base, result: "ignorado_reuniao_futura" }); continue; }
       if (sentSet.has(tel) || seen.has(tel)) { skippedDup++; items.push({ ...base, result: "ja_enviado" }); continue; }
       seen.add(tel);
+      const nv = (vMap.get(a.id) ?? []).find((v) => !v.vendeu) ?? {};
+      const brl = (n: unknown) => n == null ? null : Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
       const motivo = a.status === "realizada"
-        ? (vMap.get(a.id) ?? []).find((v) => !v.vendeu)?.motivo
+        ? nv.motivo
         : (a.cancellation_reason ?? a.cancellation_note ?? "No-show");
       toSend.push({
         ag: a, tel,
@@ -143,6 +146,18 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
           motivo_cancelamento_ou_noshow: val(motivo),
           canal_origem: val(a.booking_channel ?? a.channel_type),
           produto_interesse: val(a.produto_interesse),
+          explicacao_nao_fechamento: val(nv.explicacao_nao_fechamento),
+          faturamento_lead: val(nv.lead_revenue),
+          observacoes_reuniao: val(nv.observacoes),
+          temperatura_lead: val(nv.follow_up_temperatura),
+          produto_ofertado: val(nv.follow_up_produto),
+          valor_ofertado: val(brl(nv.follow_up_valor)),
+          condicoes_ofertadas: val(nv.follow_up_condicoes),
+          canal_follow_up: val(nv.follow_up_canal),
+          data_follow_up: val(nv.follow_up_date ? brDate(nv.follow_up_date) : null),
+          briefing_sdr: val(a.briefing),
+          email_lead: val(a.lead_email),
+          uf_lead: val(a.lead_state),
         },
       });
     }
