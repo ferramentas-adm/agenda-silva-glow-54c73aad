@@ -146,30 +146,37 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
       if (dryRun) {
         for (const s of toSend) items.push({ run_id: run.id, agendamento_id: s.ag.id, lead_name: s.ag.lead_name, telefone: s.tel, result: "simulado" });
       } else {
-        const header = Object.keys(toSend[0].row);
         const url = `${BASE}/campaigns/${encodeURIComponent(rule.campaign_id)}/lists/${encodeURIComponent(rule.list_id)}/mailing.json?api_token=${encodeURIComponent(TOKEN)}`;
-        let status = 0, text = "";
-        try {
-          const r = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({ header, mailing: toSend.map((s) => s.row) }),
-            signal: AbortSignal.timeout(30_000),
+        // Formato oficial MailingItem: array direto de { phone, identifier, data }.
+        for (let i = 0; i < toSend.length; i += 100) {
+          const batch = toSend.slice(i, i + 100);
+          const payload = batch.map((s) => {
+            const { identifier, areacodephone, ...data } = s.row;
+            return { phone: areacodephone, identifier, data };
           });
-          status = r.status; text = (await r.text()).slice(0, 1000);
-        } catch (e) { text = String(e).slice(0, 500); }
-        const ok = status >= 200 && status < 300;
-        if (!ok) runError = `3C Plus respondeu ${status || "sem resposta"}: ${text.slice(0, 300)}`;
-        for (const s of toSend) {
-          items.push({ run_id: run.id, agendamento_id: s.ag.id, lead_name: s.ag.lead_name, telefone: s.tel, result: ok ? "enviado" : "erro_api", status_code: status || null, response: text });
+          let status = 0, text = "";
+          try {
+            const r = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "Mozilla/5.0 (GrupoSilva-Agenda)" },
+              body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(30_000),
+            });
+            status = r.status; text = (await r.text()).slice(0, 1000);
+          } catch (e) { text = String(e).slice(0, 500); }
+          const ok = status >= 200 && status < 300;
+          if (!ok && !runError) runError = `3C Plus respondeu ${status || "sem resposta"}: ${text.slice(0, 300)}`;
+          for (const s of batch) {
+            items.push({ run_id: run.id, agendamento_id: s.ag.id, lead_name: s.ag.lead_name, telefone: s.tel, result: ok ? "enviado" : "erro_api", status_code: status || null, response: text });
+          }
+          if (ok) {
+            sent += batch.length;
+            await admin.from("threec_sent").upsert(
+              batch.map((s) => ({ list_id: rule.list_id, telefone: s.tel, rule_id: rule.id, agendamento_id: s.ag.id })),
+              { onConflict: "list_id,telefone" },
+            );
+          } else failed += batch.length;
         }
-        if (ok) {
-          sent = toSend.length;
-          await admin.from("threec_sent").upsert(
-            toSend.map((s) => ({ list_id: rule.list_id, telefone: s.tel, rule_id: rule.id, agendamento_id: s.ag.id })),
-            { onConflict: "list_id,telefone" },
-          );
-        } else failed = toSend.length;
       }
     }
 
