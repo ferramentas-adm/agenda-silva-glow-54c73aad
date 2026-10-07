@@ -46,7 +46,7 @@ const wasAdjusted = (raw: string | null) => {
 type Rule = {
   id: string; name: string; active: boolean; campaign_id: string; list_id: string;
   statuses: string[]; reasons: string[]; only_no_sale: boolean; nao_fechamento_reasons: string[];
-  skip_future: boolean; dedupe: boolean; include_desqualificados: boolean; columns?: string[] | null;
+  skip_future: boolean; dedupe: boolean; include_desqualificados: boolean; columns?: string[] | null; followup_filter?: string | null;
 };
 
 // deno-lint-ignore no-explicit-any
@@ -77,7 +77,7 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
     // deno-lint-ignore no-explicit-any
     const vMap = new Map<string, any[]>();
     if (realIds.length) {
-      const { data: vs } = await admin.from("vendas").select("agendamento_id, vendeu, motivo_nao_fechamento, explicacao_nao_fechamento, lead_revenue, observacoes, follow_up_temperatura, follow_up_produto, follow_up_valor, follow_up_condicoes, follow_up_canal, follow_up_date").in("agendamento_id", realIds);
+      const { data: vs } = await admin.from("vendas").select("agendamento_id, vendeu, motivo_nao_fechamento, explicacao_nao_fechamento, lead_revenue, observacoes, follow_up_temperatura, follow_up_produto, follow_up_valor, follow_up_condicoes, follow_up_canal, follow_up_date, follow_up, follow_up_status").in("agendamento_id", realIds);
       for (const v of vs ?? []) {
         const arr = vMap.get(v.agendamento_id) ?? [];
         arr.push({ ...v, motivo: v.motivo_nao_fechamento });
@@ -91,6 +91,12 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
         if (nfSet.size && !vs.some((v) => !v.vendeu && nfSet.has(nk(v.motivo)))) return false;
         return true;
       });
+    }
+    // Follow-up agendado pelo closer (venda sem fechamento com follow-up ativo e data marcada)
+    const ff = rule.followup_filter ?? "all";
+    if (ff !== "all") {
+      const hasFu = (id: string) => (vMap.get(id) ?? []).some((v) => !v.vendeu && v.follow_up && v.follow_up_date && (v.follow_up_status ?? "ativo") === "ativo");
+      ags = ags.filter((a: { id: string }) => ff === "only" ? hasFu(a.id) : !hasFu(a.id));
     }
 
     let futureSet = new Set<string>();

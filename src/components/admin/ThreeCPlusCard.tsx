@@ -68,7 +68,7 @@ function downloadTemplate(cols: string[], name: string) {
 type Rule = {
   id: string; name: string; active: boolean; campaign_id: string; list_id: string; statuses: string[];
   reasons: string[]; only_no_sale: boolean; nao_fechamento_reasons: string[]; skip_future: boolean;
-  dedupe: boolean; include_desqualificados: boolean; columns: string[];
+  dedupe: boolean; include_desqualificados: boolean; columns: string[]; followup_filter: string;
 };
 type Run = {
   id: string; run_date: string; kind: string; status: string; total: number; sent: number;
@@ -77,7 +77,7 @@ type Run = {
 };
 const EMPTY: Omit<Rule, "id"> = {
   name: "", active: true, campaign_id: "", list_id: "", statuses: ["no_show"], reasons: [],
-  only_no_sale: true, nao_fechamento_reasons: [], skip_future: true, dedupe: true, include_desqualificados: true, columns: ALL_COLUMNS,
+  only_no_sale: true, nao_fechamento_reasons: [], skip_future: true, dedupe: true, include_desqualificados: true, columns: ALL_COLUMNS, followup_filter: "all",
 };
 
 function RunItems({ runId }: { runId: string }) {
@@ -181,6 +181,16 @@ function RuleDialog({ rule, onClose }: { rule: Partial<Rule> | null; onClose: ()
               <MultiCheck options={nf.items ?? []} value={f.nao_fechamento_reasons} onChange={(v) => set("nao_fechamento_reasons", v)} />
             </div>
           )}
+          <div className="space-y-1"><Label>Follow-up agendado pelo closer</Label>
+            <Select value={f.followup_filter} onValueChange={(v) => set("followup_filter", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos (com ou sem follow-up)</SelectItem>
+                <SelectItem value="exclude">Não enviar quem tem follow-up agendado</SelectItem>
+                <SelectItem value="only">Enviar só quem tem follow-up agendado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2 rounded-md border border-border p-3">
             <label className="flex items-center gap-2 text-sm"><Switch checked={f.skip_future} onCheckedChange={(v) => set("skip_future", v)} /> Não enviar quem já tem outra reunião marcada no futuro</label>
             <label className="flex items-center gap-2 text-sm"><Switch checked={f.dedupe} onCheckedChange={(v) => set("dedupe", v)} /> Não enviar de novo quem já foi para esta lista</label>

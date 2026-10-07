@@ -1658,6 +1658,7 @@ export type Database = {
           columns: string[]
           created_at: string
           dedupe: boolean
+          followup_filter: string
           id: string
           include_desqualificados: boolean
           list_id: string
@@ -1675,6 +1676,7 @@ export type Database = {
           columns?: string[]
           created_at?: string
           dedupe?: boolean
+          followup_filter?: string
           id?: string
           include_desqualificados?: boolean
           list_id: string
@@ -1692,6 +1694,7 @@ export type Database = {
           columns?: string[]
           created_at?: string
           dedupe?: boolean
+          followup_filter?: string
           id?: string
           include_desqualificados?: boolean
           list_id?: string
