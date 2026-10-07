@@ -110,6 +110,22 @@ Deno.serve(async (req) => {
         .eq("user_id", user_id)
         .single();
 
+      // Trava: quem tem histórico (reuniões ou vendas) só pode ser inativado.
+      let histCloserId: string | null = null;
+      if (profile?.email) {
+        const { data: c } = await supabaseAdmin.from("closers").select("id").ilike("email", profile.email).maybeSingle();
+        histCloserId = c?.id ?? null;
+      }
+      const orFilter = [`sdr_responsavel_id.eq.${user_id}`, `created_by.eq.${user_id}`, ...(histCloserId ? [`closer_id.eq.${histCloserId}`] : [])].join(",");
+      const { count: agCount } = await supabaseAdmin.from("agendamentos").select("id", { count: "exact", head: true }).or(orFilter);
+      const { count: vCount } = await supabaseAdmin.from("vendas").select("id", { count: "exact", head: true }).eq("created_by", user_id);
+      if ((agCount ?? 0) > 0 || (vCount ?? 0) > 0) {
+        return new Response(JSON.stringify({
+          error: `Este colaborador tem ${agCount ?? 0} reuniões e ${vCount ?? 0} vendas no histórico. Para não perder esses dados nos relatórios, ele não pode ser excluído: desligue a chave para inativar o acesso.`,
+          has_history: true,
+        }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       // Clean up closer-related records if user has an email match
       if (profile?.email) {
         const { data: closer } = await supabaseAdmin

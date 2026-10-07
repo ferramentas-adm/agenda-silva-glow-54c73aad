@@ -1182,6 +1182,7 @@ function UsersSection() {
             <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>? Esta ação não pode ser desfeita.
+              <span className="block mt-2">Só é possível excluir contas sem reuniões ou vendas no histórico. Para ex-colaboradores, desligue a chave (inativar): o acesso é bloqueado e o histórico fica preservado.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
