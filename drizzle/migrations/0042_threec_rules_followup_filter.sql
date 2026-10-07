@@ -1,0 +1,1 @@
+ALTER TABLE public.threec_rules ADD COLUMN followup_filter text NOT NULL DEFAULT 'all';
