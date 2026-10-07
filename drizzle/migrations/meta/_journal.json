@@ -302,6 +302,13 @@
       "when": 1791374149430,
       "tag": "0042_threec_rules_followup_filter",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791403464567,
+      "tag": "0043_turma_b_fallback_turma_a",
+      "breakpoints": true
     }
   ]
 }

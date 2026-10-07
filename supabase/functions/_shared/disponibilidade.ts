@@ -207,9 +207,10 @@ export async function loadDayAvailability(
   ]);
   for (const r of [agRes, closersRes, blocksRes, excRes]) if (r.error) throw r.error;
 
-  const closers: Closer[] = (closersRes.data ?? [])
-    .filter((c: any) => Boolean(c.em_treinamento) === isB)
-    .map((c: any) => ({ id: c.id, name: c.name }));
+  let turmaRows = (closersRes.data ?? []).filter((c: any) => Boolean(c.em_treinamento) === isB);
+  // Sem closers ativos na Turma B: lead desqualificado usa closers da Turma A.
+  if (isB && turmaRows.length === 0) turmaRows = (closersRes.data ?? []).filter((c: any) => !c.em_treinamento);
+  const closers: Closer[] = turmaRows.map((c: any) => ({ id: c.id, name: c.name }));
   const activeIds = new Set(closers.map((c) => c.id));
   const blocks = applyBlockExceptions((blocksRes.data ?? []) as Block[], (excRes.data ?? []) as Exc[]);
 

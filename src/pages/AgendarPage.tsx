@@ -220,8 +220,11 @@ function AgendarPageInner() {
   });
 
   const selectedCloser = closers.find((c) => c.id === closerId);
+  const turmaBVazia = !closers.some((c) => !!c.em_treinamento);
   const incompativel =
-    !!selectedCloser && (selectedCloser.em_treinamento ?? false) !== leadDesqualificado;
+    !!selectedCloser &&
+    (selectedCloser.em_treinamento ?? false) !== leadDesqualificado &&
+    !(leadDesqualificado && turmaBVazia);
 
   // Fetch SDR users for admin selector (role 'sdr' + "Atua como SDR")
   const { data: sdrUsers = [] } = useQuery({
