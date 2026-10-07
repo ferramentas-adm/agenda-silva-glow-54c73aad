@@ -30,12 +30,18 @@ const brtDate = (offsetDays = 0) => {
 const brDate = (iso: string) => iso.split("-").reverse().join("/");
 const val = (v: unknown) => { const s = (v ?? "").toString().trim(); return s ? s : NI; };
 const nk = (s?: string | null) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
+// Retorna 55 + DDD + 9 dígitos. Números com 8 dígitos recebem o 9 após o DDD (qualquer prefixo).
 function normPhone(raw: string | null): string | null {
-  const d = (raw ?? "").replace(/\D/g, "");
-  if (d.length === 10 || d.length === 11) return "55" + d;
-  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d;
+  let d = (raw ?? "").replace(/\D/g, "");
+  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) d = d.slice(2);
+  if (d.length === 10) d = d.slice(0, 2) + "9" + d.slice(2);
+  if (d.length === 11) return "55" + d;
   return null;
 }
+const wasAdjusted = (raw: string | null) => {
+  const d = (raw ?? "").replace(/\D/g, "");
+  return d.length === 10 || (d.length === 12 && d.startsWith("55"));
+};
 
 type Rule = {
   id: string; name: string; active: boolean; campaign_id: string; list_id: string;
@@ -144,7 +150,7 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
     let sent = 0, failed = 0, runError: string | null = null;
     if (toSend.length) {
       if (dryRun) {
-        for (const s of toSend) items.push({ run_id: run.id, agendamento_id: s.ag.id, lead_name: s.ag.lead_name, telefone: s.tel, result: "simulado" });
+        for (const s of toSend) items.push({ run_id: run.id, agendamento_id: s.ag.id, lead_name: s.ag.lead_name, telefone: s.tel, result: "simulado", response: wasAdjusted((s.ag as { lead_phone?: string }).lead_phone ?? null) ? "9º dígito adicionado" : null });
       } else {
         const url = `${BASE}/campaigns/${encodeURIComponent(rule.campaign_id)}/lists/${encodeURIComponent(rule.list_id)}/mailing.json?api_token=${encodeURIComponent(TOKEN)}`;
         // Formato oficial MailingItem: array direto de { phone, identifier, data }.
@@ -167,7 +173,8 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
           const ok = status >= 200 && status < 300;
           if (!ok && !runError) runError = `3C Plus respondeu ${status || "sem resposta"}: ${text.slice(0, 300)}`;
           for (const s of batch) {
-            items.push({ run_id: run.id, agendamento_id: s.ag.id, lead_name: s.ag.lead_name, telefone: s.tel, result: ok ? "enviado" : "erro_api", status_code: status || null, response: text });
+            const adj = wasAdjusted((s.ag as { lead_phone?: string }).lead_phone ?? null) ? "9º dígito adicionado. " : "";
+            items.push({ run_id: run.id, agendamento_id: s.ag.id, lead_name: s.ag.lead_name, telefone: s.tel, result: ok ? "enviado" : "erro_api", status_code: status || null, response: adj + text });
           }
           if (ok) {
             sent += batch.length;
