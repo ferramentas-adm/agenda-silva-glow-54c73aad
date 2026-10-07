@@ -41,6 +41,18 @@ const COLUMN_OPTS = [
   { v: "motivo_cancelamento_ou_noshow", l: "Motivo (não compareceu / cancelada / não fechou)" },
   { v: "canal_origem", l: "Canal de origem" },
   { v: "produto_interesse", l: "Produto de interesse" },
+  { v: "explicacao_nao_fechamento", l: "Explicação do não fechamento" },
+  { v: "faturamento_lead", l: "Faturamento do lead" },
+  { v: "observacoes_reuniao", l: "Observações do closer" },
+  { v: "temperatura_lead", l: "Temperatura do lead" },
+  { v: "produto_ofertado", l: "Produto ofertado" },
+  { v: "valor_ofertado", l: "Valor ofertado" },
+  { v: "condicoes_ofertadas", l: "Condições ofertadas" },
+  { v: "canal_follow_up", l: "Canal do follow-up" },
+  { v: "data_follow_up", l: "Data do follow-up" },
+  { v: "briefing_sdr", l: "Briefing do SDR" },
+  { v: "email_lead", l: "E-mail do lead" },
+  { v: "uf_lead", l: "Estado (UF)" },
 ];
 const ALL_COLUMNS = COLUMN_OPTS.map((c) => c.v);
 const orderCols = (cols: string[]) => ALL_COLUMNS.filter((c) => c === "telefone" || cols.includes(c));
