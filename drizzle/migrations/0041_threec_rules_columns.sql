@@ -1,0 +1,1 @@
+ALTER TABLE public.threec_rules ADD COLUMN columns text[] NOT NULL DEFAULT ARRAY['nome_lead','telefone','data_ultimo_agendamento','status_ultimo_agendamento','ultimo_closer','ultimo_sdr','motivo_cancelamento_ou_noshow','canal_origem','produto_interesse'];

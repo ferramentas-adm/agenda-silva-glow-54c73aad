@@ -288,6 +288,13 @@
       "when": 1791319336652,
       "tag": "0040_threec_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791373045658,
+      "tag": "0041_threec_rules_columns",
+      "breakpoints": true
     }
   ]
 }

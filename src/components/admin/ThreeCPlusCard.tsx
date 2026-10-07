@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, KeyRound, Loader2, PhoneCall, Play, Save, FlaskConical, Plus, Pencil, Trash2, Copy } from "lucide-react";
+import { ChevronDown, ChevronRight, KeyRound, Loader2, PhoneCall, Play, Save, FlaskConical, Plus, Pencil, Trash2, Copy, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useAppSettingList, APP_SETTING_KEYS } from "@/hooks/useAppSettingList";
 import { DEFAULT_REASONS } from "@/lib/vendaConstants";
@@ -31,10 +31,32 @@ const RESULT_LABEL: Record<string, string> = {
   telefone_invalido: "Telefone inválido", ja_enviado: "Já enviado para esta lista", erro_api: "Erro na 3C Plus",
 };
 
+const COLUMN_OPTS = [
+  { v: "nome_lead", l: "Nome do lead" },
+  { v: "telefone", l: "Telefone (obrigatório)" },
+  { v: "data_ultimo_agendamento", l: "Data da reunião" },
+  { v: "status_ultimo_agendamento", l: "Status da reunião" },
+  { v: "ultimo_closer", l: "Closer" },
+  { v: "ultimo_sdr", l: "SDR" },
+  { v: "motivo_cancelamento_ou_noshow", l: "Motivo (não compareceu / cancelada / não fechou)" },
+  { v: "canal_origem", l: "Canal de origem" },
+  { v: "produto_interesse", l: "Produto de interesse" },
+];
+const ALL_COLUMNS = COLUMN_OPTS.map((c) => c.v);
+const orderCols = (cols: string[]) => ALL_COLUMNS.filter((c) => c === "telefone" || cols.includes(c));
+function downloadTemplate(cols: string[], name: string) {
+  const blob = new Blob(["\uFEFF" + orderCols(cols).join(";") + "\r\n"], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `modelo_3cplus_${(name || "regra").normalize("NFD").replace(/[^\w]+/g, "_").toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 type Rule = {
   id: string; name: string; active: boolean; campaign_id: string; list_id: string; statuses: string[];
   reasons: string[]; only_no_sale: boolean; nao_fechamento_reasons: string[]; skip_future: boolean;
-  dedupe: boolean; include_desqualificados: boolean;
+  dedupe: boolean; include_desqualificados: boolean; columns: string[];
 };
 type Run = {
   id: string; run_date: string; kind: string; status: string; total: number; sent: number;
@@ -43,7 +65,7 @@ type Run = {
 };
 const EMPTY: Omit<Rule, "id"> = {
   name: "", active: true, campaign_id: "", list_id: "", statuses: ["no_show"], reasons: [],
-  only_no_sale: true, nao_fechamento_reasons: [], skip_future: true, dedupe: true, include_desqualificados: true,
+  only_no_sale: true, nao_fechamento_reasons: [], skip_future: true, dedupe: true, include_desqualificados: true, columns: ALL_COLUMNS,
 };
 
 function RunItems({ runId }: { runId: string }) {
@@ -152,6 +174,24 @@ function RuleDialog({ rule, onClose }: { rule: Partial<Rule> | null; onClose: ()
             <label className="flex items-center gap-2 text-sm"><Switch checked={f.dedupe} onCheckedChange={(v) => set("dedupe", v)} /> Não enviar de novo quem já foi para esta lista</label>
             <label className="flex items-center gap-2 text-sm"><Switch checked={f.include_desqualificados} onCheckedChange={(v) => set("include_desqualificados", v)} /> Incluir leads da Turma B (desqualificados)</label>
             <label className="flex items-center gap-2 text-sm"><Switch checked={f.active} onCheckedChange={(v) => set("active", v)} /> Regra ativa</label>
+          </div>
+          <div className="space-y-2 rounded-md border border-border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Colunas enviadas para a 3C Plus</Label>
+              <Button type="button" size="sm" variant="outline" onClick={() => downloadTemplate(f.columns, f.name)}>
+                <Download className="h-4 w-4" /> Baixar modelo CSV
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Suba o modelo na 3C Plus ao criar a lista, para as colunas baterem com o envio.</p>
+            <div className="grid sm:grid-cols-2 gap-1">
+              {COLUMN_OPTS.map((c) => (
+                <label key={c.v} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={c.v === "telefone" || f.columns.includes(c.v)} disabled={c.v === "telefone"}
+                    onCheckedChange={(on) => set("columns", on ? [...f.columns, c.v] : f.columns.filter((x) => x !== c.v))} />
+                  {c.l}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
         <DialogFooter>

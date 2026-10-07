@@ -1655,6 +1655,7 @@ export type Database = {
         Row: {
           active: boolean
           campaign_id: string
+          columns: string[]
           created_at: string
           dedupe: boolean
           id: string
@@ -1671,6 +1672,7 @@ export type Database = {
         Insert: {
           active?: boolean
           campaign_id: string
+          columns?: string[]
           created_at?: string
           dedupe?: boolean
           id?: string
@@ -1687,6 +1689,7 @@ export type Database = {
         Update: {
           active?: boolean
           campaign_id?: string
+          columns?: string[]
           created_at?: string
           dedupe?: boolean
           id?: string
