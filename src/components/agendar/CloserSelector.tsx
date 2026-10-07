@@ -40,13 +40,16 @@ export default function CloserSelector({ selectedDate, selectedCloserId, onSelec
   const { data: closers = [] } = useQuery<CloserWithAvailability[]>({
     queryKey: ["closers-availability", dateStr, businessSlots.join(","), treinamento],
     queryFn: async () => {
-      let q = supabase
+      const { data: allActive } = await supabase
         .from("closers")
         .select("id, name, business_hours_start, business_hours_end, business_hours_ranges, em_treinamento")
         .eq("active", true)
-        .eq("em_treinamento", treinamento)
         .order("name");
-      const { data: activeClosers } = await q;
+      let activeClosers = (allActive ?? []).filter((c: any) => !!c.em_treinamento === treinamento);
+      // Sem closers ativos na Turma B: lead desqualificado pode ir para a Turma A.
+      if (treinamento && activeClosers.length === 0) {
+        activeClosers = (allActive ?? []).filter((c: any) => !c.em_treinamento);
+      }
 
       if (!activeClosers?.length) return [];
 

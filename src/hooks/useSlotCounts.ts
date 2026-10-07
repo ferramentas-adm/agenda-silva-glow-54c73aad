@@ -53,7 +53,11 @@ export function useSlotCounts(dateStr: string | null | undefined, treinamento: b
       if (closersRes.error) throw closersRes.error;
       if (blocksRes.error) throw blocksRes.error;
 
-      const matchingClosers = (closersRes.data ?? []).filter((c: any) => !!c.em_treinamento === treinamento);
+      let matchingClosers = (closersRes.data ?? []).filter((c: any) => !!c.em_treinamento === treinamento);
+      // Sem closers ativos na Turma B: usa a capacidade da Turma A.
+      if (treinamento && matchingClosers.length === 0) {
+        matchingClosers = (closersRes.data ?? []).filter((c: any) => !c.em_treinamento);
+      }
       const matchingCloserIds = new Set<string>(matchingClosers.map((c: any) => c.id));
       const activeCount = matchingClosers.length;
       const blocks = applyBlockExceptions((blocksRes.data ?? []) as any[], exceptions);
