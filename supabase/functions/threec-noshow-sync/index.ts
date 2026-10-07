@@ -46,7 +46,7 @@ const wasAdjusted = (raw: string | null) => {
 type Rule = {
   id: string; name: string; active: boolean; campaign_id: string; list_id: string;
   statuses: string[]; reasons: string[]; only_no_sale: boolean; nao_fechamento_reasons: string[];
-  skip_future: boolean; dedupe: boolean; include_desqualificados: boolean;
+  skip_future: boolean; dedupe: boolean; include_desqualificados: boolean; columns?: string[] | null;
 };
 
 // deno-lint-ignore no-explicit-any
@@ -157,7 +157,9 @@ async function runRule(admin: any, rule: Rule, runDate: string, dryRun: boolean,
         for (let i = 0; i < toSend.length; i += 100) {
           const batch = toSend.slice(i, i + 100);
           const payload = batch.map((s) => {
-            const { identifier, areacodephone, ...data } = s.row;
+            const { identifier, areacodephone, ...all } = s.row;
+            const cols = rule.columns?.length ? rule.columns : Object.keys(all);
+            const data = Object.fromEntries(Object.entries(all).filter(([k]) => k === "telefone" || cols.includes(k)));
             return { phone: areacodephone, identifier, data };
           });
           let status = 0, text = "";
