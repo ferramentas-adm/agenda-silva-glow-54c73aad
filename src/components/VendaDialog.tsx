@@ -41,7 +41,10 @@ const LEAD_REVENUE_OPTIONS = [
   "Entre 10k e 30k/mês",
   "Entre 30k e 50k/mês",
   "Entre 50k e 100k/mês",
-  "Acima de 100k/mês",
+  "Entre 100k e 300k/mês",
+  "Entre 300k e 500k/mês",
+  "Entre 500k e 1M/mês",
+  "Acima de 1M/mês",
   "Não tenho essa informação",
 ] as const;
 
