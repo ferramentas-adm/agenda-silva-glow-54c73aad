@@ -321,9 +321,14 @@ serve(async (req) => {
 
       const tagFilter = tagId ? `filter[tags]=${encodeURIComponent(tagId)}&` : "";
       let items: any[] = [];
-      const r = await fetchLeadsUrl(
-        `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
-      );
+      let r;
+      try {
+        r = await fetchLeadsUrl(
+          `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
+        );
+      } catch (e) {
+        return upstreamErrorResponse(e);
+      }
       items = r.items;
 
       // Se a API não honrar `search`, filtra localmente o que veio.
