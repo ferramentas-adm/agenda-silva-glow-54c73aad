@@ -35,7 +35,7 @@ export default function DesfechoPendenteBanner({ onOpen }: Props) {
               <span className="truncate">
                 <strong>{m.lead_name}</strong> — {fmt(m.scheduled_date)} às {m.scheduled_time}
               </span>
-              <Button size="sm" className="h-6 text-xs bg-amber-500 hover:bg-amber-600 text-black" onClick={() => onOpen(m.id, m.lead_name)}>
+              <Button size="sm" className="h-6 text-xs bg-amber-500 hover:bg-amber-600 text-amber-950" onClick={() => onOpen(m.id, m.lead_name)}>
                 Completar desfecho
               </Button>
             </li>
