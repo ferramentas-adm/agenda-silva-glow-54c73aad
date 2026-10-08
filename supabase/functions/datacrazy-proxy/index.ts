@@ -199,6 +199,16 @@ serve(async (req) => {
       const count = parsed && typeof parsed.count === "number" ? parsed.count : null;
       return { items, count };
     };
+    // Propaga o status upstream (ex.: 429 do rate-limit) como resposta HTTP
+    // correta para o cliente, em vez de estourar 500 genérico.
+    const upstreamErrorResponse = (e: unknown) => {
+      const status = (e as { status?: number })?.status ?? 502;
+      const body = JSON.stringify({ error: `DataCrazy request failed [${status}]` });
+      return new Response(body, {
+        status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    };
     const jsonCached = (key: string, body: string) => {
       responseCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, status: 200, body });
       return new Response(body, {
