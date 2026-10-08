@@ -12,12 +12,11 @@ export interface DesfechoPendente {
   scheduled_time: string;
 }
 
-/** Janela de cobrança: reuniões realizadas nos últimos N dias. */
-const JANELA_DIAS = 30;
-
 /**
  * Reuniões do closer logado marcadas como "Realizada" (normalmente pelo gestor)
  * em que o closer ainda não preencheu o desfecho completo.
+ * O aviso considera SOMENTE reuniões de hoje — reuniões de dias anteriores
+ * não geram alerta.
  */
 export function useDesfechoPendente() {
   const { role } = useAuth();
