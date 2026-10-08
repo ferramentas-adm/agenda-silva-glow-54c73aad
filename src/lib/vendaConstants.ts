@@ -59,3 +59,8 @@ export const isDesfechoPendente = (
   status: string | null | undefined,
   venda: { vendeu_closer?: boolean | null; lead_revenue?: string | null } | null | undefined,
 ) => status === "realizada" && (!venda || venda.vendeu_closer == null || !venda.lead_revenue);
+
+/** Closer não pode editar o desfecho depois de registrado (faturamento + vendeu declarados). */
+export const isDesfechoTravadoParaCloser = (
+  venda: { vendeu_closer?: boolean | null; lead_revenue?: string | null } | null | undefined,
+) => !!venda && venda.vendeu_closer != null && !!venda.lead_revenue;

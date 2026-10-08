@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { useAppSettingList, APP_SETTING_KEYS, useProdutosAtivos } from "@/hooks/useAppSettingList";
-import { DEFAULT_REASONS, NICHO_OPTIONS, NICHO_OUTRO, splitNicho } from "@/lib/vendaConstants";
+import { isDesfechoTravadoParaCloser, DEFAULT_REASONS, NICHO_OPTIONS, NICHO_OUTRO, splitNicho } from "@/lib/vendaConstants";
 import OrderBumpsField from "@/components/OrderBumpsField";
 import { OrderBump, parseOrderBumpsColumn } from "@/lib/orderBumps";
 import { CANAL_OPTIONS, TEMPERATURA_OPTIONS } from "@/lib/followUp";
@@ -95,6 +95,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [loadingExisting, setLoadingExisting] = useState(false);
   // Venda já lançada pelo gestor — preservada integralmente ao salvar.
   const [existing, setExisting] = useState<any | null>(null);
+  // Closer não pode alterar um desfecho já registrado.
+  const locked = isCloser && isDesfechoTravadoParaCloser(existing);
 
   // Follow-up combinado
   const [temFollowUp, setTemFollowUp] = useState<"sim" | "nao" | null>(null);
