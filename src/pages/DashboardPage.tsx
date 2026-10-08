@@ -58,6 +58,8 @@ import { logAudit } from "@/services/auditLog";
 import { toast } from "sonner";
 import { useDeletionReasons } from "@/hooks/useDeletionReasons";
 import VendaDialog from "@/components/VendaDialog";
+import DesfechoPendenteBanner from "@/components/DesfechoPendenteBanner";
+import { isDesfechoPendente } from "@/lib/vendaConstants";
 import GestorVendaDialog from "@/components/dashboard/GestorVendaDialog";
 import NaoCompareceuDialog from "@/components/NaoCompareceuDialog";
 import NovoAgendamentoPromptDialog, { type NovoAgendamentoLead } from "@/components/NovoAgendamentoPromptDialog";
@@ -996,6 +998,21 @@ export function CalendarContent() {
     return () => { cancelled = true; };
   }, [detailAg?.id, detailAg?.status, isAdminLike]);
 
+  // Desfecho do closer na reunião aberta (para o botão "Completar desfecho").
+  const { data: detailVenda } = useQuery({
+    queryKey: ["detail-venda-desfecho", detailAg?.id],
+    enabled: !!detailAg && detailAg.status === "realizada" && role === "closer",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendas")
+        .select("vendeu_closer, lead_revenue")
+        .eq("agendamento_id", detailAg!.id)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+  const detailDesfechoPendente = !!detailAg && isDesfechoPendente(detailAg.status, detailVenda);
+
   const handleRevertStatus = async () => {
     if (!detailAg || !prevStatus || !revertReason.trim()) return;
     setReverting(true);
@@ -1150,6 +1167,11 @@ export function CalendarContent() {
   return (
     <>
       <div className="animate-fade-in space-y-4">
+        {role === "closer" && (
+          <DesfechoPendenteBanner
+            onOpen={(id, leadName) => setVendaDialogAg({ id, lead_name: leadName } as any)}
+          />
+        )}
         
 
         {/* Status counters */}
@@ -1938,6 +1960,23 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
                         )}
+                        {/* Reunião já realizada (ex.: gestor deu baixa): o closer preenche/edita o desfecho. */}
+                        {detailAg.status === "realizada" && role === "closer" && !(detailAg as any).is_venda_avulsa && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "gap-1.5 text-xs",
+                              detailDesfechoPendente
+                                ? "border-amber-500/50 text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
+                                : "border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10",
+                            )}
+                            onClick={() => setVendaDialogAg(detailAg)}
+                          >
+                            {detailDesfechoPendente ? <AlertCircle className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                            {detailDesfechoPendente ? "Completar desfecho da reunião" : "Editar desfecho da reunião"}
+                          </Button>
+                        )}
                         {/* Não compareceu — substitui Cancelar / No-show / Reagendar.
                             Alterações de horário passam por aqui (motivo
                             "Alterou horário para o mesmo dia") + novo agendamento.
@@ -2328,6 +2367,8 @@ export function CalendarContent() {
             queryClient.invalidateQueries({ queryKey: ["overdue-meetings"] });
             queryClient.invalidateQueries({ queryKey: ["pending-meetings"] });
             queryClient.invalidateQueries({ queryKey: ["reunioes-list"] });
+            queryClient.invalidateQueries({ queryKey: ["desfecho-pendente"] });
+            queryClient.invalidateQueries({ queryKey: ["detail-venda-desfecho"] });
           }}
 
         />
