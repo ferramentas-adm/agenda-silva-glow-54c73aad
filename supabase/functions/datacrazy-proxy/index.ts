@@ -278,9 +278,15 @@ serve(async (req) => {
       const hit = cacheHit(key);
       if (hit) return hit;
 
-      const { items, count } = await fetchLeadsUrl(
-        `/leads?filter[tags]=${encodeURIComponent(tagId)}&limit=${PAGE_SIZE_AGG}&skip=${page * PAGE_SIZE_AGG}`,
-      );
+      let agg;
+      try {
+        agg = await fetchLeadsUrl(
+          `/leads?filter[tags]=${encodeURIComponent(tagId)}&limit=${PAGE_SIZE_AGG}&skip=${page * PAGE_SIZE_AGG}`,
+        );
+      } catch (e) {
+        return upstreamErrorResponse(e);
+      }
+      const { items, count } = agg;
       const seenPage = new Set<string>();
       const data = items
         .filter((l: any) => l?.id && !seenPage.has(l.id) && seenPage.add(l.id))
