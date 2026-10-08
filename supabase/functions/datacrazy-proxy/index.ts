@@ -75,7 +75,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
-  maxRetries = 1,
+  maxRetries = 2,
   timeoutMs = 12_000,
 ): Promise<Response> {
   let attempt = 0;
@@ -84,7 +84,7 @@ async function fetchWithRetry(
     // Última tentativa: devolve a resposta com o body intacto.
     if (res.status !== 429 || attempt === maxRetries) return res;
     const retryAfter = res.headers.get("Retry-After");
-    let waitMs = 1500 * Math.pow(2, attempt);
+    let waitMs = Math.min(1500 * Math.pow(2, attempt), 8000);
     if (retryAfter) {
       const parsed = parseInt(retryAfter, 10);
       if (!isNaN(parsed)) waitMs = Math.min(parsed * 1000, 8000);
