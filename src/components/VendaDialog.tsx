@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { logAudit } from "@/services/auditLog";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { useAppSettingList, APP_SETTING_KEYS, useProdutosAtivos } from "@/hooks/useAppSettingList";
-import { DEFAULT_REASONS } from "@/lib/vendaConstants";
+import { DEFAULT_REASONS, NICHO_OPTIONS, NICHO_OUTRO, splitNicho } from "@/lib/vendaConstants";
 import OrderBumpsField from "@/components/OrderBumpsField";
 import { OrderBump, parseOrderBumpsColumn } from "@/lib/orderBumps";
 import { CANAL_OPTIONS, TEMPERATURA_OPTIONS } from "@/lib/followUp";
@@ -79,6 +79,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const [vendeuCloser, setVendeuCloser] = useState<"sim" | "nao" | null>(null);
   const [leadRevenue, setLeadRevenue] = useState<string>("");
+  const [nichoOpt, setNichoOpt] = useState<string>("");
+  const [nichoOutro, setNichoOutro] = useState<string>("");
   const [motivo, setMotivo] = useState<string>("");
   const [observacoes, setObservacoes] = useState<string>("");
   const [orderBumps, setOrderBumps] = useState<OrderBump[]>([]);
@@ -124,6 +126,8 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const resetAllFields = () => {
     setVendeuCloser(null);
     setLeadRevenue("");
+    setNichoOpt("");
+    setNichoOutro("");
     setMotivo("");
     setObservacoes("");
     setOrderBumps([]);
@@ -161,6 +165,9 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         if (declared === true) setVendeuCloser("sim");
         else if (declared === false) setVendeuCloser("nao");
         setLeadRevenue((data as { lead_revenue?: string | null }).lead_revenue ?? "");
+        const n = splitNicho((data as { nicho?: string | null }).nicho);
+        setNichoOpt(n.opt);
+        setNichoOutro(n.outro);
         setMotivo((data as { motivo_nao_fechamento?: string | null }).motivo_nao_fechamento ?? "");
         setObservacoes((data as { observacoes?: string | null }).observacoes ?? "");
         setOrderBumps(parseOrderBumpsColumn((data as { order_bumps?: unknown }).order_bumps));
@@ -186,8 +193,11 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             fuValorOk && condicoesLength >= CONDICOES_MIN && !!fuData && !!fuHora
           : false;
 
+  const nichoFinal = nichoOpt === NICHO_OUTRO ? nichoOutro.trim() : nichoOpt;
+  const nichoOk = !!nichoOpt && (nichoOpt !== NICHO_OUTRO || nichoOutro.trim().length >= 2);
+
   const canSubmit =
-    !!vendeuCloser && !!leadRevenue && (vendeuCloser === "sim" || !!motivo) &&
+    !!vendeuCloser && !!leadRevenue && nichoOk && (vendeuCloser === "sim" || !!motivo) &&
     justificationOk && followUpOk;
 
   const handleSubmit = async () => {
@@ -200,6 +210,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
       const payload = {
         vendeu_closer: vendeuCloser === "sim",
         lead_revenue: leadRevenue || null,
+        nicho: nichoFinal || null,
         motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
         observacoes: observacoes.trim() || null,
         order_bumps: vendeuCloser === "sim" && orderBumps.length ? orderBumps : null,
@@ -364,6 +375,28 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
             <p className="text-xs text-muted-foreground">
               Campo obrigatório — selecione a faixa de faturamento mensal informada pelo lead.
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Nicho do cliente *</Label>
+            <Select value={nichoOpt} onValueChange={setNichoOpt}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o nicho" />
+              </SelectTrigger>
+              <SelectContent>
+                {NICHO_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {nichoOpt === NICHO_OUTRO && (
+              <Input
+                value={nichoOutro}
+                onChange={(e) => setNichoOutro(e.target.value)}
+                placeholder="Escreva qual é o nicho do cliente"
+                maxLength={120}
+              />
+            )}
           </div>
 
           <div className="space-y-2">
