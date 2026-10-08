@@ -21,3 +21,14 @@ describe("nicho Outro", () => {
     expect(splitNicho("Pet shop")).toEqual({ opt: "Outro", outro: "Pet shop" });
   });
 });
+
+import { isDesfechoTravadoParaCloser } from "@/lib/vendaConstants";
+describe("trava de desfecho do closer", () => {
+  it("trava quando vendeu e faturamento já foram registrados", () => {
+    expect(isDesfechoTravadoParaCloser({ vendeu_closer: false, lead_revenue: "Abaixo de 10k/mês" })).toBe(true);
+  });
+  it("não trava sem registro ou com registro incompleto", () => {
+    expect(isDesfechoTravadoParaCloser(null)).toBe(false);
+    expect(isDesfechoTravadoParaCloser({ vendeu_closer: true, lead_revenue: null })).toBe(false);
+  });
+});

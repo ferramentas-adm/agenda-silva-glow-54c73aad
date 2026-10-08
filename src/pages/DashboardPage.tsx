@@ -1960,22 +1960,23 @@ export function CalendarContent() {
                             <CheckCircle2 className="h-3.5 w-3.5" />Realizada
                           </Button>
                         )}
-                        {/* Reunião já realizada (ex.: gestor deu baixa): o closer preenche/edita o desfecho. */}
+                        {/* Reunião já realizada: o closer completa o desfecho uma única vez; depois fica travado. */}
                         {detailAg.status === "realizada" && role === "closer" && !(detailAg as any).is_venda_avulsa && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={cn(
-                              "gap-1.5 text-xs",
-                              detailDesfechoPendente
-                                ? "border-amber-500/50 text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
-                                : "border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10",
-                            )}
-                            onClick={() => setVendaDialogAg(detailAg)}
-                          >
-                            {detailDesfechoPendente ? <AlertCircle className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-                            {detailDesfechoPendente ? "Completar desfecho da reunião" : "Editar desfecho da reunião"}
-                          </Button>
+                          detailDesfechoPendente ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 text-xs border-amber-500/50 text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
+                              onClick={() => setVendaDialogAg(detailAg)}
+                            >
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              Completar desfecho da reunião
+                            </Button>
+                          ) : (
+                            <Badge variant="outline" className="gap-1 text-xs border-emerald-500/30 text-emerald-500">
+                              <CheckCircle2 className="h-3.5 w-3.5" />Desfecho concluído
+                            </Badge>
+                          )
                         )}
                         {/* Não compareceu — substitui Cancelar / No-show / Reagendar.
                             Alterações de horário passam por aqui (motivo
