@@ -389,7 +389,12 @@ serve(async (req) => {
         return { items, count };
       };
 
-      const first = await fetchPageDC(0);
+      let first;
+      try {
+        first = await fetchPageDC(0);
+      } catch (e) {
+        return upstreamErrorResponse(e);
+      }
       const totalPages = first.count
         ? Math.ceil(first.count / PAGE_SIZE)
         : (first.items.length === PAGE_SIZE ? 40 : 1);
