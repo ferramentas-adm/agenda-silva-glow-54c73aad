@@ -20,7 +20,7 @@ export default function DesfechoPendenteBanner({ onOpen }: Props) {
       <div className="flex items-center gap-2 flex-wrap">
         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
         <p className="text-sm font-medium flex-1">
-          Você tem {data.length} {data.length === 1 ? "reunião realizada" : "reuniões realizadas"} aguardando o
+          Você tem {data.length} {data.length === 1 ? "reunião realizada hoje" : "reuniões realizadas hoje"} aguardando o
           preenchimento do desfecho (faturamento, nicho, motivo e follow-up).
         </p>
         <Button size="sm" variant="outline" className="h-7 text-xs border-amber-500/40" onClick={() => setExpanded((e) => !e)}>
