@@ -249,10 +249,12 @@ export interface LeadsPage {
   hasMore: boolean;
 }
 
-/** Busca UMA página (100 leads) da tag — carga incremental/background. */
+/** Busca UMA página (100 leads) da tag — carga incremental/background.
+ *  Passa pela fila global serializada (com espaçamento entre chamadas) para
+ *  não estourar o rate-limit do DataCrazy (HTTP 429). */
 export async function buscarLeadsPagina(tagId: string, page: number): Promise<LeadsPage> {
   if (!tagId) return { data: [], page, total: 0, hasMore: false };
-  const res: any = await invokeProxyDirect(
+  const res: any = await api(
     "GET",
     `/leads/by-tag-page?tagId=${encodeURIComponent(tagId)}&page=${page}`,
     undefined,
