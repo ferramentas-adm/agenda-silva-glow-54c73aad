@@ -12,12 +12,11 @@ export interface DesfechoPendente {
   scheduled_time: string;
 }
 
-/** Janela de cobrança: reuniões realizadas nos últimos N dias. */
-const JANELA_DIAS = 30;
-
 /**
  * Reuniões do closer logado marcadas como "Realizada" (normalmente pelo gestor)
  * em que o closer ainda não preencheu o desfecho completo.
+ * O aviso considera SOMENTE reuniões de hoje — reuniões de dias anteriores
+ * não geram alerta.
  */
 export function useDesfechoPendente() {
   const { role } = useAuth();
@@ -30,9 +29,6 @@ export function useDesfechoPendente() {
     refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
     queryFn: async () => {
-      const d = new Date(`${today}T12:00:00`);
-      d.setDate(d.getDate() - JANELA_DIAS);
-      const from = d.toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from("agendamentos")
         .select("id, lead_name, scheduled_date, scheduled_time, status, is_venda_avulsa, vendas(vendeu_closer, lead_revenue)")
@@ -40,7 +36,7 @@ export function useDesfechoPendente() {
         .eq("status", "realizada")
         .eq("is_venda_avulsa", false)
         .is("deleted_at", null)
-        .gte("scheduled_date", from)
+        .eq("scheduled_date", today)
         .order("scheduled_date", { ascending: false })
         .order("scheduled_time", { ascending: false });
       if (error) throw error;

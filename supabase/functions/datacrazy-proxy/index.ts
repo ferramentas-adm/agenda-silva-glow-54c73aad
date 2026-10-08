@@ -75,7 +75,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
-  maxRetries = 1,
+  maxRetries = 2,
   timeoutMs = 12_000,
 ): Promise<Response> {
   let attempt = 0;
@@ -84,7 +84,7 @@ async function fetchWithRetry(
     // Última tentativa: devolve a resposta com o body intacto.
     if (res.status !== 429 || attempt === maxRetries) return res;
     const retryAfter = res.headers.get("Retry-After");
-    let waitMs = 1500 * Math.pow(2, attempt);
+    let waitMs = Math.min(1500 * Math.pow(2, attempt), 8000);
     if (retryAfter) {
       const parsed = parseInt(retryAfter, 10);
       if (!isNaN(parsed)) waitMs = Math.min(parsed * 1000, 8000);
@@ -199,6 +199,16 @@ serve(async (req) => {
       const count = parsed && typeof parsed.count === "number" ? parsed.count : null;
       return { items, count };
     };
+    // Propaga o status upstream (ex.: 429 do rate-limit) como resposta HTTP
+    // correta para o cliente, em vez de estourar 500 genérico.
+    const upstreamErrorResponse = (e: unknown) => {
+      const status = (e as { status?: number })?.status ?? 502;
+      const body = JSON.stringify({ error: `DataCrazy request failed [${status}]` });
+      return new Response(body, {
+        status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    };
     const jsonCached = (key: string, body: string) => {
       responseCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, status: 200, body });
       return new Response(body, {
@@ -268,9 +278,15 @@ serve(async (req) => {
       const hit = cacheHit(key);
       if (hit) return hit;
 
-      const { items, count } = await fetchLeadsUrl(
-        `/leads?filter[tags]=${encodeURIComponent(tagId)}&limit=${PAGE_SIZE_AGG}&skip=${page * PAGE_SIZE_AGG}`,
-      );
+      let agg;
+      try {
+        agg = await fetchLeadsUrl(
+          `/leads?filter[tags]=${encodeURIComponent(tagId)}&limit=${PAGE_SIZE_AGG}&skip=${page * PAGE_SIZE_AGG}`,
+        );
+      } catch (e) {
+        return upstreamErrorResponse(e);
+      }
+      const { items, count } = agg;
       const seenPage = new Set<string>();
       const data = items
         .filter((l: any) => l?.id && !seenPage.has(l.id) && seenPage.add(l.id))
@@ -305,9 +321,14 @@ serve(async (req) => {
 
       const tagFilter = tagId ? `filter[tags]=${encodeURIComponent(tagId)}&` : "";
       let items: any[] = [];
-      const r = await fetchLeadsUrl(
-        `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
-      );
+      let r;
+      try {
+        r = await fetchLeadsUrl(
+          `/leads?${tagFilter}search=${encodeURIComponent(q)}&limit=25`,
+        );
+      } catch (e) {
+        return upstreamErrorResponse(e);
+      }
       items = r.items;
 
       // Se a API não honrar `search`, filtra localmente o que veio.
@@ -368,7 +389,12 @@ serve(async (req) => {
         return { items, count };
       };
 
-      const first = await fetchPageDC(0);
+      let first;
+      try {
+        first = await fetchPageDC(0);
+      } catch (e) {
+        return upstreamErrorResponse(e);
+      }
       const totalPages = first.count
         ? Math.ceil(first.count / PAGE_SIZE)
         : (first.items.length === PAGE_SIZE ? 40 : 1);

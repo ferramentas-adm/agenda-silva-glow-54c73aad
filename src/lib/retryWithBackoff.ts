@@ -107,7 +107,9 @@ export async function retryWithBackoff<T>(
         throw err;
       }
 
-      const delay = initialDelayMs * Math.pow(backoffFactor, attempt - 1);
+      let delay = initialDelayMs * Math.pow(backoffFactor, attempt - 1);
+      // 429 (rate-limit upstream): recuo bem maior antes de tentar de novo.
+      if (extractStatus(err) === 429) delay = Math.max(delay * 3, 2000);
       console.warn(`[retry:${label}] tentativa ${attempt}/${maxAttempts} falhou, retentando em ${delay}ms`, err);
       await new Promise((r) => setTimeout(r, delay));
     }
