@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, DollarSign, CalendarIcon } from "lucide-react";
+import { Loader2, DollarSign, CalendarIcon, Lock } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -75,7 +79,9 @@ const digitsToNumber = (digits: string) => {
  * gestor/moderador/supervisor no GestorVendaDialog.
  */
 export default function VendaDialog({ open, onOpenChange, agendamentoId, leadName, onSuccess, contentClassName }: VendaDialogProps) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isCloser = role === "closer";
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [vendeuCloser, setVendeuCloser] = useState<"sim" | "nao" | null>(null);
   const [leadRevenue, setLeadRevenue] = useState<string>("");
@@ -201,7 +207,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     justificationOk && followUpOk;
 
   const handleSubmit = async () => {
-    if (!canSubmit || !user) return;
+    if (!canSubmit || !user || locked) return;
     setSubmitting(true);
     try {
       const comFollowUp = vendeuCloser === "nao" && temFollowUp === "sim";
@@ -342,16 +348,21 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
       <DialogContent className={`sm:max-w-md max-h-[90vh] overflow-y-auto ${contentClassName ?? ""}`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-emerald-500" />
-            {isEditing ? "Editar Resultado da Reunião" : "Resultado da Reunião"}
+            {locked ? "Desfecho concluído" : isEditing ? "Editar Resultado da Reunião" : "Resultado da Reunião"}
           </DialogTitle>
           <DialogDescription>
             <span className="font-medium">{leadName}</span> — registre o desfecho desta reunião.
-            {isEditing && (
+            {locked ? (
+              <span className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-500">
+                <Lock className="h-3 w-3" /> Desfecho já registrado — somente leitura. Correções devem ser solicitadas à gestão.
+              </span>
+            ) : isEditing && (
               <span className="mt-1 block text-xs text-muted-foreground">
                 Atualizando registro existente.
               </span>
@@ -359,7 +370,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <fieldset disabled={locked} className="space-y-4 disabled:opacity-80">
           <div className="space-y-2">
             <Label>Faturamento do lead *</Label>
             <Select value={leadRevenue} onValueChange={setLeadRevenue}>
@@ -634,18 +645,44 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
               </div>
             )}
           </div>
-        </div>
+        </fieldset>
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancelar
+            {locked ? "Fechar" : "Cancelar"}
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || submitting || loadingExisting}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirmar
-          </Button>
+          {!locked && (
+            <Button
+              onClick={() => (isCloser ? setConfirmOpen(true) : handleSubmit())}
+              disabled={!canSubmit || submitting || loadingExisting}
+            >
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirmar e enviar desfecho da reunião?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Atenção: ao confirmar, todos os dados preenchidos (faturamento, nicho, motivo,
+            justificativa e follow-up) serão gravados definitivamente. Você não poderá alterar
+            essas informações depois. Qualquer correção deverá ser solicitada à gestão.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Revisar dados</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => { setConfirmOpen(false); handleSubmit(); }}
+          >
+            Confirmar e salvar definitivamente
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
