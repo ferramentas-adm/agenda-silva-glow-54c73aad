@@ -1944,6 +1944,7 @@ export type Database = {
           id: string
           lead_revenue: string | null
           motivo_nao_fechamento: string | null
+          nicho: string | null
           observacoes: string | null
           order_bumps: Json | null
           produto: string | null
@@ -1987,6 +1988,7 @@ export type Database = {
           id?: string
           lead_revenue?: string | null
           motivo_nao_fechamento?: string | null
+          nicho?: string | null
           observacoes?: string | null
           order_bumps?: Json | null
           produto?: string | null
@@ -2030,6 +2032,7 @@ export type Database = {
           id?: string
           lead_revenue?: string | null
           motivo_nao_fechamento?: string | null
+          nicho?: string | null
           observacoes?: string | null
           order_bumps?: Json | null
           produto?: string | null
