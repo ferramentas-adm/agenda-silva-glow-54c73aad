@@ -491,15 +491,66 @@ serve(async (req) => {
     // Piloto do título: o evento já nasceu com a sala do próprio Calendar
     // (nome do lead preservado). Agora liga gravação/transcrição na sala.
     let tituloPilotoResultado: { recording: boolean; transcription: boolean; error: string | null } | null = null;
+    let finalMeetLink: string | null = meetLink;
     if (tituloPiloto && meetLink) {
       const meetingCode = String(meetLink).split('/').filter(Boolean).pop() ?? '';
       tituloPilotoResultado = await enableAutoArtifactsOnSpace(accessToken, meetingCode);
       autoRecordingMode = tituloPilotoResultado.recording ? 'auto' : 'fallback';
       if (!tituloPilotoResultado.recording) {
-        await logMeetFailure(
-          'auto_gravacao_patch_falhou',
-          tituloPilotoResultado.error ?? 'PATCH do espaço do Meet não retornou sucesso',
-        );
+        // O Google não deixa o app alterar salas criadas pelo Calendar (403).
+        // Cria uma sala própria pela Meet API (já nasce gravando) e troca a
+        // videoconferência do evento por ela. O título do evento é mantido.
+        const space = await createAutoRecordingSpace(accessToken);
+        let trocou = false;
+        if (space && calData.id) {
+          const code = space.uri.split('/').filter(Boolean).pop() ?? '';
+          const novaDescricao = [
+            description,
+            `\nLink da reunião: ${space.uri}\n(Gravação${space.transcription ? ' e transcrição' : ''} automática ativada)`,
+          ].join('\n');
+          const patchRes = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(calData.id)}?conferenceDataVersion=1`,
+            {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                location: space.uri,
+                description: novaDescricao,
+                conferenceData: {
+                  conferenceId: code,
+                  conferenceSolution: { key: { type: 'hangoutsMeet' }, name: 'Google Meet' },
+                  entryPoints: [{ entryPointType: 'video', uri: space.uri, label: space.uri.replace(/^https?:\/\//, '') }],
+                },
+              }),
+            },
+          );
+          if (!patchRes.ok) {
+            // Sem vínculo oficial: ao menos coloca o link gravável no local/descrição.
+            console.error('[auto-recording] patch conferenceData falhou:', await patchRes.text());
+            const p2 = await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(calData.id)}`,
+              {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ location: space.uri, description: novaDescricao }),
+              },
+            );
+            trocou = p2.ok;
+          } else {
+            trocou = true;
+          }
+          if (trocou) {
+            finalMeetLink = space.uri;
+            autoRecordingMode = 'auto';
+            tituloPilotoResultado = { recording: true, transcription: space.transcription, error: null };
+          }
+        }
+        if (!trocou) {
+          await logMeetFailure(
+            'auto_gravacao_patch_falhou',
+            tituloPilotoResultado.error ?? 'PATCH do espaço do Meet não retornou sucesso',
+          );
+        }
       }
     }
 
