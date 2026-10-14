@@ -160,8 +160,20 @@ export default function CloserBlockDetailsDialog({
       </Dialog>
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Remover bloqueio?</AlertDialogTitle><AlertDialogDescription>O horário {block.start_time}–{block.end_time} de {closerName} voltará a ficar disponível.{block.is_recurring ? " A recorrência inteira será removida." : ""}</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDelete} disabled={saving} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{saving ? "Removendo..." : "Remover"}</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogHeader><AlertDialogTitle>{block.is_recurring ? "Remover bloqueio recorrente" : "Remover bloqueio?"}</AlertDialogTitle><AlertDialogDescription>{block.is_recurring
+            ? `Este bloqueio (${block.start_time}–${block.end_time}) se repete toda ${WEEKDAYS[block.recurrence_weekday ?? 0]}. Deseja remover só o dia ${format(new Date(`${occurrenceDate}T12:00:00`), "dd/MM/yyyy")} ou toda a recorrência?`
+            : `O horário ${block.start_time}–${block.end_time} de ${closerName} voltará a ficar disponível.`}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            {block.is_recurring ? (
+              <>
+                <Button variant="outline" onClick={() => handleDelete("day")} disabled={saving}>Apenas neste dia</Button>
+                <Button variant="destructive" onClick={() => handleDelete("all")} disabled={saving}>{saving ? "Removendo..." : "Toda a recorrência"}</Button>
+              </>
+            ) : (
+              <Button variant="destructive" onClick={() => handleDelete("all")} disabled={saving}>{saving ? "Removendo..." : "Remover"}</Button>
+            )}
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
