@@ -91,13 +91,28 @@ export default function CloserBlockDetailsDialog({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (scope: "all" | "day" = "all") => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("closer_blocks").delete().eq("id", block.id);
-      if (error) throw error;
+      if (block.is_recurring && scope === "day") {
+        const { data: auth } = await supabase.auth.getUser();
+        const { error } = await supabase.from("closer_block_exceptions").insert({
+          block_id: block.id,
+          closer_id: block.closer_id,
+          exception_date: occurrenceDate,
+          start_time: block.start_time,
+          end_time: block.end_time,
+          created_by: auth.user?.id ?? null,
+        });
+        if (error) throw error;
+        logAudit("delete_closer_block", "closer_block", block.id, { ...details, scope: "occurrence" }).catch(() => {});
+        toast.success("Bloqueio removido apenas neste dia");
+      } else {
+        const { error } = await supabase.from("closer_blocks").delete().eq("id", block.id);
+        if (error) throw error;
+        toast.success(block.is_recurring ? "Recorrência removida" : "Bloqueio removido");
+      }
       invalidateBlocks(queryClient);
-      toast.success("Bloqueio removido");
       setConfirmDelete(false);
       onClose();
     } catch (error: unknown) {
