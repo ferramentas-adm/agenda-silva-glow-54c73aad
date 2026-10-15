@@ -515,8 +515,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
     const coletadoCalls = Number(kpiRow?.coletado_calls ?? 0);
     const coletadoAvulsa = Number(kpiRow?.coletado_avulsa ?? 0);
-    const coletadoTotal = coletadoCalls + coletadoAvulsa;
-    const coletadoMedio = totalVendas > 0 ? coletadoTotal / totalVendas : 0;
+    const coletadoVendas = coletadoCalls + coletadoAvulsa;
+    const coletadoComplementos = Number(complementosPeriodo?.total ?? 0);
+    // Coletado Total inclui complementos pagos no período; o Médio segue só a entrada das vendas.
+    const coletadoTotal = coletadoVendas + coletadoComplementos;
+    const coletadoMedio = totalVendas > 0 ? coletadoVendas / totalVendas : 0;
 
     const faturadoCalls = Number(kpiRow?.faturado_calls ?? 0);
     const faturadoAvulsa = Number(kpiRow?.faturado_avulsa ?? 0);
@@ -538,7 +541,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow,
       vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco,
     };
-  }, [kpiRow, conversaoData]);
+  }, [kpiRow, conversaoData, complementosPeriodo]);
 
   const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco } = kpis;
 
@@ -1100,13 +1103,13 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           icon={DollarSign}
           label="Coletado Total"
           value={fmtBRL(coletadoTotal)}
-          sub={
-            totalVendasAvulsas > 0
-              ? `Calls ${fmtBRL(coletadoCalls)} · Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas}) — fechado no período`
-              : `${totalVendas} venda${totalVendas !== 1 ? "s" : ""} fechada${totalVendas !== 1 ? "s" : ""} no período`
-          }
+          sub={[
+            `Calls ${fmtBRL(coletadoCalls)}`,
+            totalVendasAvulsas > 0 ? `Avulsas ${fmtBRL(coletadoAvulsa)} (${totalVendasAvulsas})` : null,
+            `Complementos ${fmtBRL(complementosPeriodo?.total ?? 0)} (${complementosPeriodo?.qtd ?? 0})`,
+          ].filter(Boolean).join(" · ")}
           color="emerald"
-          loading={loadingVendas}
+          loading={loadingVendas || loadingComplementos}
           onClick={() =>
             openDrill(`Vendas fechadas — ${dayLabel}`, fechadasIds, fmtBRL(coletadoTotal))
           }
