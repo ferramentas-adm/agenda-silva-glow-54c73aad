@@ -1177,6 +1177,24 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           }
           color="emerald"
           loading={loadingComplementos}
+          onClick={async () => {
+            const { data, error } = await supabase
+              .from("venda_complementos")
+              .select("valor, vendas!inner(agendamento_id, agendamentos!inner(closer_id))")
+              .gte("data_pagamento", periodFrom)
+              .lte("data_pagamento", periodTo);
+            if (error) return;
+            const rows = (data ?? []) as any[];
+            const filtered = isCloserView && myCloserId
+              ? rows.filter((r) => r.vendas?.agendamentos?.closer_id === myCloserId)
+              : rows;
+            const ids = Array.from(new Set(filtered.map((r) => r.vendas?.agendamento_id).filter(Boolean))) as string[];
+            openDrill(
+              `Complementos recebidos — ${dayLabel}`,
+              ids,
+              `${filtered.length} lançamento${filtered.length !== 1 ? "s" : ""} · ${fmtBRL(complementosPeriodo?.total ?? 0)}`,
+            );
+          }}
         />
         <KpiCard
           icon={Wallet}
