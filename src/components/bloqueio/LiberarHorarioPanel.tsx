@@ -167,10 +167,26 @@ export default function LiberarHorarioPanel({ closers }: { closers: CloserRow[] 
   const handleRemoveRecurrence = async (block: BlockRow) => {
     setBusyId(block.id);
     try {
-      const { error } = await supabase.from("closer_blocks").delete().eq("id", block.id);
+      // Remove a série inteira: inclui registros duplicados da mesma recorrência
+      // (mesmo closer, dia da semana e horário), que mantinham o bloqueio visível.
+      const { data: deleted, error } = await supabase
+        .from("closer_blocks")
+        .delete()
+        .eq("closer_id", block.closer_id)
+        .eq("is_recurring", true)
+        .eq("recurrence_weekday", block.recurrence_weekday as number)
+        .eq("start_time", block.start_time)
+        .eq("end_time", block.end_time)
+        .select("id");
       if (error) throw error;
+      if (!deleted || deleted.length === 0) {
+        throw new Error("Você não tem permissão para remover esta recorrência ou ela já foi removida.");
+      }
       await registerRelease(block, null);
-      toast.success("Recorrência removida");
+      toast.success(
+        deleted.length > 1 ? `Recorrência removida (${deleted.length} registros)` : "Recorrência removida",
+      );
+      await queryClient.refetchQueries({ queryKey: ["blocks-for-release"] });
       invalidateAll();
     } catch (err: unknown) {
       toast.error((err as Error)?.message || "Erro ao remover recorrência");
