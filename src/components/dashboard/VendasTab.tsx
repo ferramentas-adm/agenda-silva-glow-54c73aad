@@ -675,6 +675,54 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
+
+  // Venda em 1ª call = o lead não teve nenhuma reunião realizada antes da reunião da venda
+  // (e a venda não foi marcada como follow-up / 2ª reunião).
+  const vendasCallsSold = useMemo(
+    () => vendasDia.filter((v) => v.vendeu && !agMap.get(v.agendamento_id)?.is_venda_avulsa),
+    [vendasDia, agMap],
+  );
+  const { data: comReuniaoAnterior = new Set<string>() } = useQuery<Set<string>>({
+    queryKey: ["vendas-tab-reuniao-anterior", vendasCallsSold.map((v) => v.agendamento_id).join(",")],
+    enabled: vendasCallsSold.length > 0,
+    queryFn: async () => {
+      const raws = Array.from(new Set(vendasCallsSold.map((v) => agMap.get(v.agendamento_id)?.lead_phone).filter(Boolean) as string[]));
+      const norms = Array.from(new Set(raws.map((p) => phoneNorm(p)).filter(Boolean) as string[]));
+      const phones = Array.from(new Set([...raws, ...norms]));
+      const earliest = new Map<string, string>();
+      for (let i = 0; i < phones.length; i += 200) {
+        const { data, error } = await supabase
+          .from("agendamentos")
+          .select("lead_phone, scheduled_date")
+          .eq("status", "realizada")
+          .is("deleted_at", null)
+          .in("lead_phone", phones.slice(i, i + 200));
+        if (error) throw error;
+        for (const r of data ?? []) {
+          const p = phoneNorm(r.lead_phone);
+          if (!p) continue;
+          const cur = earliest.get(p);
+          if (!cur || r.scheduled_date < cur) earliest.set(p, r.scheduled_date);
+        }
+      }
+      const out = new Set<string>();
+      for (const v of vendasCallsSold) {
+        const ag = agMap.get(v.agendamento_id);
+        const first = earliest.get(phoneNorm(ag?.lead_phone) ?? "");
+        if (ag && first && first < ag.scheduled_date) out.add(v.agendamento_id);
+      }
+      return out;
+    },
+    staleTime: 60_000,
+  });
+  const isFollowSale = (v: VendaRow) =>
+    !!(v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao" || comReuniaoAnterior.has(v.agendamento_id));
+  const primeiraCallIds = vendasCallsSold.filter((v) => !isFollowSale(v)).map((v) => v.agendamento_id);
+  const followIds = vendasCallsSold.filter(isFollowSale).map((v) => v.agendamento_id);
+  const totalCallsSold = vendasCallsSold.length;
+  const pctPrimeira = totalCallsSold > 0 ? (primeiraCallIds.length / totalCallsSold) * 100 : 0;
+  const pctFollowReal = totalCallsSold > 0 ? (followIds.length / totalCallsSold) * 100 : 0;
+  const taxaConvReal = convTotal && convTotal.totalReunioes > 0 ? (fechadasIds.length / convTotal.totalReunioes) * 100 : 0;
   // Data (dd/mm/aaaa) do fechamento posterior do lead, se veio DEPOIS da reunião.
   const recoveredDateFor = (v: VendaRow): string | null => {
     const ag = v.agendamentos;
@@ -1062,19 +1110,19 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         <KpiCard
           icon={Target}
           label="Conversão c/ 2ª reunião e follow-up"
-          value={erroConvTotal ? "—" : `${taxaConvTotal.toFixed(1)}%`}
+          value={erroConvTotal ? "—" : `${taxaConvReal.toFixed(1)}%`}
           sub={
             erroConvTotal
               ? "Não foi possível calcular agora. Tente atualizar a página."
-              : `${convTotal?.totalVendas ?? 0} de ${convTotal?.totalReunioes ?? 0} reuniões do período viraram venda — na 1ª call, na 2ª reunião ou em follow-up, mesmo que fechada depois`
+              : `${fechadasIds.length} de ${convTotal?.totalReunioes ?? 0} reuniões do período: vendas fechadas no período (1ª call, 2ª reunião ou follow-up)`
           }
           color="primary"
           loading={loadingConvTotal}
           onClick={() =>
             openDrill(
               `Reuniões que viraram venda (inclui 2ª reunião e follow-up) — ${dayLabel}`,
-              convTotal?.ids ?? [],
-              `Conversão total: ${taxaConvTotal.toFixed(1)}%`,
+              fechadasIds,
+              `Conversão total: ${taxaConvReal.toFixed(1)}%`,
             )
           }
         />
@@ -1191,10 +1239,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
           icon={Phone}
           label="Vendas em 1ª Call"
-          value={totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}%` : "—"}
+          value={totalCallsSold > 0 ? `${pctPrimeira.toFixed(0)}%` : "—"}
           sub={
-            totalVendas > 0
-              ? `${pctFollow.toFixed(0)}% precisou de follow-up/2ª (${fechadasFollowIds.length} de ${totalVendas})`
+            totalCallsSold > 0
+              ? `${pctFollowReal.toFixed(0)}% precisou de follow-up/2ª (${followIds.length} de ${totalCallsSold})`
               : "Sem vendas no período"
           }
           color="primary"
@@ -1202,8 +1250,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           onClick={() =>
             openDrill(
               `Vendas em 1ª Call — ${dayLabel}`,
-              fechadasPrimeiraCallIds,
-              totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}% fecharam na 1ª call` : undefined,
+              primeiraCallIds,
+              totalCallsSold > 0 ? `${pctPrimeira.toFixed(0)}% fecharam na 1ª call` : undefined,
             )
           }
         />
