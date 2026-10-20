@@ -316,6 +316,13 @@
       "when": 1791492472580,
       "tag": "0044_vendas_nicho",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792516650386,
+      "tag": "0045_dashboard_conversao_total_period",
+      "breakpoints": true
     }
   ]
 }

@@ -431,6 +431,25 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     retry: 1,
   });
 
+  // Conversão total: mesma base, mas conta vendas fechadas depois (2ª reunião / follow-up).
+  const { data: convTotal, isLoading: loadingConvTotal, isError: erroConvTotal } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
+    queryKey: ["vendas-tab-conversao-total", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("dashboard_conversao_total_period", {
+        p_from: convPeriodFrom,
+        p_to: convPeriodTo,
+        p_closer_id: isCloserView && myCloserId ? myCloserId : null,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return { totalReunioes: row?.total_reunioes ?? 0, totalVendas: row?.total_vendas ?? 0, ids: (row?.ids ?? []) as string[] };
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const taxaConvTotal = convTotal && convTotal.totalReunioes > 0 ? (convTotal.totalVendas / convTotal.totalReunioes) * 100 : 0;
+
   // KPIs agregados NO BANCO — não dependem de baixar linhas, então nunca ficam
   // truncados no limite de 1.000 registros nem demoram em períodos longos.
   const { data: kpiRow, isLoading: loadingKpis } = useQuery({
@@ -1092,6 +1111,25 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
               `Reuniões com resultado — ${dayLabel}`,
               conversaoIds,
               `Taxa de conversão: ${taxaConversao.toFixed(1)}%`,
+            )
+          }
+        />
+        <KpiCard
+          icon={Target}
+          label="Conversão c/ 2ª reunião e follow-up"
+          value={erroConvTotal ? "—" : `${taxaConvTotal.toFixed(1)}%`}
+          sub={
+            erroConvTotal
+              ? "Não foi possível calcular agora. Tente atualizar a página."
+              : `${convTotal?.totalVendas ?? 0} de ${convTotal?.totalReunioes ?? 0} reuniões do período viraram venda — na 1ª call, na 2ª reunião ou em follow-up, mesmo que fechada depois`
+          }
+          color="primary"
+          loading={loadingConvTotal}
+          onClick={() =>
+            openDrill(
+              `Reuniões que viraram venda (inclui 2ª reunião e follow-up) — ${dayLabel}`,
+              convTotal?.ids ?? [],
+              `Conversão total: ${taxaConvTotal.toFixed(1)}%`,
             )
           }
         />

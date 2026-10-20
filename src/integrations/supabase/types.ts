@@ -2126,6 +2126,14 @@ export type Database = {
           total_vendas: number
         }[]
       }
+      dashboard_conversao_total_period: {
+        Args: { p_closer_id?: string; p_from: string; p_to: string }
+        Returns: {
+          ids: string[]
+          total_reunioes: number
+          total_vendas: number
+        }[]
+      }
       dashboard_saldo_residual:
         | {
             Args: {
