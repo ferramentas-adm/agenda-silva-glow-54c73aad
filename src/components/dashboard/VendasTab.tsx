@@ -1114,7 +1114,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           sub={
             erroConvTotal
               ? "Não foi possível calcular agora. Tente atualizar a página."
-              : `${fechadasIds.length} de ${convTotal?.totalReunioes ?? 0} reuniões do período viraram venda — na 1ª call, na 2ª reunião ou em follow-up, mesmo que fechada depois`
+              : `${fechadasIds.length} de ${convTotal?.totalReunioes ?? 0} reuniões do período: vendas fechadas no período (1ª call, 2ª reunião ou follow-up)`
           }
           color="primary"
           loading={loadingConvTotal}
