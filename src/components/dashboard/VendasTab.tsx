@@ -400,19 +400,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const convPeriodFrom = periodFrom;
   const convPeriodTo = periodTo;
 
-      if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      return {
-        totalReunioes: row?.total_reunioes ?? 0,
-        totalVendas: row?.total_vendas ?? 0,
-        ids: (row?.ids ?? []) as string[],
-      };
-    },
-    refetchInterval: 5 * 60_000,
-    staleTime: 60_000,
-    retry: 1,
-  });
-
   // Conversão total: mesma base, mas conta vendas fechadas depois (2ª reunião / follow-up).
   const { data: convTotal, isLoading: loadingConvTotal, isError: erroConvTotal } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
     queryKey: ["vendas-tab-conversao-total", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
