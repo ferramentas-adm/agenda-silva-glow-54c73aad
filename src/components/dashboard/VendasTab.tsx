@@ -535,7 +535,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
     return {
       totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou,
-      taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa,
+      coletadoTotal, coletadoCalls, coletadoAvulsa,
       coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow,
       vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco,
     };
