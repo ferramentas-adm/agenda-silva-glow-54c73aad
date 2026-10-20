@@ -1110,19 +1110,19 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
         <KpiCard
           icon={Target}
           label="Conversão c/ 2ª reunião e follow-up"
-          value={erroConvTotal ? "—" : `${taxaConvTotal.toFixed(1)}%`}
+          value={erroConvTotal ? "—" : `${taxaConvReal.toFixed(1)}%`}
           sub={
             erroConvTotal
               ? "Não foi possível calcular agora. Tente atualizar a página."
-              : `${convTotal?.totalVendas ?? 0} de ${convTotal?.totalReunioes ?? 0} reuniões do período viraram venda — na 1ª call, na 2ª reunião ou em follow-up, mesmo que fechada depois`
+              : `${fechadasIds.length} de ${convTotal?.totalReunioes ?? 0} reuniões do período viraram venda — na 1ª call, na 2ª reunião ou em follow-up, mesmo que fechada depois`
           }
           color="primary"
           loading={loadingConvTotal}
           onClick={() =>
             openDrill(
               `Reuniões que viraram venda (inclui 2ª reunião e follow-up) — ${dayLabel}`,
-              convTotal?.ids ?? [],
-              `Conversão total: ${taxaConvTotal.toFixed(1)}%`,
+              fechadasIds,
+              `Conversão total: ${taxaConvReal.toFixed(1)}%`,
             )
           }
         />
@@ -1239,10 +1239,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
           icon={Phone}
           label="Vendas em 1ª Call"
-          value={totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}%` : "—"}
+          value={totalCallsSold > 0 ? `${pctPrimeira.toFixed(0)}%` : "—"}
           sub={
-            totalVendas > 0
-              ? `${pctFollow.toFixed(0)}% precisou de follow-up/2ª (${fechadasFollowIds.length} de ${totalVendas})`
+            totalCallsSold > 0
+              ? `${pctFollowReal.toFixed(0)}% precisou de follow-up/2ª (${followIds.length} de ${totalCallsSold})`
               : "Sem vendas no período"
           }
           color="primary"
@@ -1250,8 +1250,8 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           onClick={() =>
             openDrill(
               `Vendas em 1ª Call — ${dayLabel}`,
-              fechadasPrimeiraCallIds,
-              totalVendas > 0 ? `${pctPrimeiraCall.toFixed(0)}% fecharam na 1ª call` : undefined,
+              primeiraCallIds,
+              totalCallsSold > 0 ? `${pctPrimeira.toFixed(0)}% fecharam na 1ª call` : undefined,
             )
           }
         />
