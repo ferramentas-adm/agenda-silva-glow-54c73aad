@@ -396,28 +396,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   }, [vendas, agMap, periodFrom, periodTo, isCloserView, myCloserId]);
 
 
-  // Base do card "Taxa de Conversão": busca AGENDAMENTOS realizados no período
-  // direto da tabela `agendamentos` (independente da existência de linha em `vendas`).
-  // Isso garante que o denominador case com o total operacional do calendário,
-  // incluindo reuniões criadas por closer. Exclui apenas Call Interompida/Interrompida.
+  // Período usado pelas métricas de conversão (cards e gráfico por hora).
   const convPeriodFrom = periodFrom;
   const convPeriodTo = periodTo;
 
-  const {
-    data: conversaoData,
-    isLoading: loadingConversao,
-    isError: erroConversao,
-  } = useQuery<{ totalReunioes: number; totalVendas: number; ids: string[] }>({
-    queryKey: ["vendas-tab-conversao", convPeriodFrom, convPeriodTo, isCloserView, myCloserId],
-    queryFn: async () => {
-      // Agrega direto no banco via RPC: elimina paginação de milhares de linhas
-      // e o pós-processamento client-side (C4 residual). A RPC roda em
-      // SECURITY INVOKER, então o RLS do usuário continua sendo aplicado.
-      const { data, error } = await supabase.rpc("dashboard_conversao_period", {
-        p_from: convPeriodFrom,
-        p_to: convPeriodTo,
-        p_closer_id: isCloserView && myCloserId ? myCloserId : null,
-      });
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
       return {
@@ -528,9 +510,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     const totalNaoFechou = Number(kpiRow?.nao_fechou ?? 0);
     const totalReunioesComResultado = totalVendasCalls + totalNaoFechou;
 
-    const totalReunioesConv = conversaoData?.totalReunioes ?? 0;
-    const totalVendasConv = conversaoData?.totalVendas ?? 0;
-    const taxaConversao = totalReunioesConv > 0 ? (totalVendasConv / totalReunioesConv) * 100 : 0;
 
     const coletadoCalls = Number(kpiRow?.coletado_calls ?? 0);
     const coletadoAvulsa = Number(kpiRow?.coletado_avulsa ?? 0);
@@ -560,9 +539,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow,
       vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco,
     };
-  }, [kpiRow, conversaoData, complementosPeriodo]);
+  }, [kpiRow, complementosPeriodo]);
 
-  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, taxaConversao, totalReunioesConv, totalVendasConv, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco } = kpis;
+  const { totalReunioesComResultado, totalVendas, totalVendasCalls, totalVendasAvulsas, totalNaoFechou, coletadoTotal, coletadoCalls, coletadoAvulsa, coletadoMedio, faturadoTotal, faturadoCalls, faturadoAvulsa, pctPrimeiraCall, pctFollow, vendasFollowOuSegunda, ofertasPrecoCount, pctOfertaPreco } = kpis;
 
   // IDs para drilldown da métrica de oferta de preço (baseado nas linhas do período).
   const ofertasPrecoIds = useMemo(
@@ -604,7 +583,6 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const drilldownIds = useMemo(() => {
     const fechadasIds = vendasDia.filter((v) => v.vendeu).map((v) => v.agendamento_id);
     const fechadasDesqualificadoIds = vendasDia.filter((v) => v.vendeu && agMap.get(v.agendamento_id)?.lead_desqualificado).map((v) => v.agendamento_id);
-    const conversaoIds = Array.from(new Set([...(conversaoData?.ids ?? []), ...fechadasIds]));
     return {
       vendasDiaIds: vendasDia.map((v) => v.agendamento_id),
       fechadasIds,
@@ -612,11 +590,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       fechadasPrimeiraCallIds: vendasDia.filter((v) => v.vendeu && !v.follow_up && !v.segunda_reuniao && agMap.get(v.agendamento_id)?.meeting_reason !== "segunda_reuniao").map((v) => v.agendamento_id),
       fechadasFollowIds: vendasDia.filter((v) => v.vendeu && (v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao")).map((v) => v.agendamento_id),
       naoFechouIds: vendasDia.filter((v) => !v.vendeu).map((v) => v.agendamento_id),
-      conversaoIds,
     };
-  }, [vendasDia, agMap, conversaoData]);
+  }, [vendasDia, agMap]);
 
-  const { vendasDiaIds, fechadasIds, fechadasDesqualificadoIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds, conversaoIds } = drilldownIds;
+  const { vendasDiaIds, fechadasIds, fechadasDesqualificadoIds, fechadasPrimeiraCallIds, fechadasFollowIds, naoFechouIds } = drilldownIds;
 
   // Filtros do card "Motivos de Não Fechamento"
   const [motivosCloserFilter, setMotivosCloserFilter] = useState<string>("all");
@@ -1092,28 +1069,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
 
 
       {/* KPIs principais (clicáveis) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
 
 
-        <KpiCard
-          icon={Target}
-          label="Taxa de Conversão"
-          value={erroConversao ? "—" : `${taxaConversao.toFixed(1)}%`}
-          sub={
-            erroConversao
-              ? "Não foi possível calcular agora. Tente atualizar a página."
-              : `${totalVendasConv} de ${totalReunioesConv} reuniões realizadas no período (a venda conta no dia da reunião · exclui 2ªs reuniões e calls interrompidas)`
-          }
-          color="primary"
-          loading={loadingConversao}
-          onClick={() =>
-            openDrill(
-              `Reuniões com resultado — ${dayLabel}`,
-              conversaoIds,
-              `Taxa de conversão: ${taxaConversao.toFixed(1)}%`,
-            )
-          }
-        />
         <KpiCard
           icon={Target}
           label="Conversão c/ 2ª reunião e follow-up"
@@ -1802,8 +1760,8 @@ function VendasHojeCard({
               className="mt-3 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground text-left"
             >
               {foraDoPeriodo.length === 1
-                ? "1 venda desta lista tem reunião em outro dia, por isso não entra na Taxa de Conversão do período."
-                : `${foraDoPeriodo.length} vendas desta lista têm reunião em outro dia, por isso não entram na Taxa de Conversão do período.`}
+                ? "1 venda desta lista tem reunião em outro dia, por isso não entra na conversão do período."
+                : `${foraDoPeriodo.length} vendas desta lista têm reunião em outro dia, por isso não entram na conversão do período.`}
             </button>
           )}
           </>
