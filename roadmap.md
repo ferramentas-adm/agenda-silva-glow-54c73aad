@@ -40,3 +40,4 @@
 - [x] Alerta visual quando "Cliente precisou sair" for usado em reunião com mais de 15 min juntos.
 - [x] Aviso no "Não compareceu" quando a Torre registrou lead e closer juntos na sala.
 - [x] Sinalizar Parceria comercial com bolinha verde, filtro próprio e aceite em `/silva-agendar`.
+- [x] Remover o card "Taxa de Conversão" da aba Vendas, mantendo só "Conversão c/ 2ª reunião e follow-up".
