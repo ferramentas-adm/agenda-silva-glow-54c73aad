@@ -18,9 +18,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { isDiretor, isImersao, isParceria, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
+import { isDiretor, isImersao, isParceria, isPerfilQueCompra, DIRETOR_TOOLTIP } from "@/lib/funilDiretor";
 import { ImersaoFlag } from "@/components/ImersaoFlag";
 import { ParceriaFlag } from "@/components/ParceriaFlag";
+import { PerfilQueCompraFlag } from "@/components/PerfilQueCompraFlag";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {

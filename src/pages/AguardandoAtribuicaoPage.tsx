@@ -1,6 +1,7 @@
 import { ImersaoFlag } from "@/components/ImersaoFlag";
 import { ParceriaFlag } from "@/components/ParceriaFlag";
-import { isImersao, isParceria } from "@/lib/funilDiretor";
+import { PerfilQueCompraFlag } from "@/components/PerfilQueCompraFlag";
+import { isImersao, isParceria, isPerfilQueCompra } from "@/lib/funilDiretor";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
