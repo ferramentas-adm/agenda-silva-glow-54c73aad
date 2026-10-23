@@ -1,6 +1,7 @@
 import { ImersaoFlag } from "@/components/ImersaoFlag";
 import { ParceriaFlag } from "@/components/ParceriaFlag";
-import { isImersao, isParceria } from "@/lib/funilDiretor";
+import { PerfilQueCompraFlag } from "@/components/PerfilQueCompraFlag";
+import { isImersao, isParceria, isPerfilQueCompra } from "@/lib/funilDiretor";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -497,6 +498,7 @@ export default function AguardandoAtribuicaoPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-base font-semibold">{a.lead_name}</span>
                         <ParceriaFlag show={isParceria(a)} />
+                        <PerfilQueCompraFlag show={isPerfilQueCompra(a)} />
                         <ImersaoFlag show={isImersao(a)} />
                         {a.is_5k && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
