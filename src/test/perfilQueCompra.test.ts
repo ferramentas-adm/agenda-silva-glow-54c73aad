@@ -8,8 +8,9 @@ describe("isPerfilQueCompra", () => {
     expect(isPerfilQueCompra({ briefing: "PERFIL QUE COMPRÁ" })).toBe(true);
   });
 
-  it("não considera as observações nem outros funis", () => {
-    expect(isPerfilQueCompra({ observation: "Funil: parceria", briefing: "parceria comercial" })).toBe(false);
+  it("só olha o briefing, nunca as observações", () => {
+    expect(isPerfilQueCompra({ briefing: "parceria comercial" })).toBe(false);
+    expect(isPerfilQueCompra({ briefing: "Funil: parceria" })).toBe(false);
     expect(isPerfilQueCompra({ briefing: null })).toBe(false);
     expect(isPerfilQueCompra(null)).toBe(false);
   });
