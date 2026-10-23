@@ -32,6 +32,7 @@ export default {
           DEFAULT: "hsl(var(--parceria))",
           foreground: "hsl(var(--parceria-foreground))",
         },
+        "perfil-compra": "hsl(var(--perfil-compra))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

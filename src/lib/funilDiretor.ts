@@ -44,3 +44,11 @@ export function isParceria(ag: (FunilSource & { briefing?: string | null }) | nu
   if (norm(ag.observation).includes("funil: parceria")) return true;
   return norm(ag.briefing).includes("parceria comercial");
 }
+
+// "Perfil que compra": só o texto do briefing. Não é funil, não altera filtros nem APIs.
+export function isPerfilQueCompra(ag: { briefing?: string | null } | null | undefined): boolean {
+  if (!ag) return false;
+  return norm(ag.briefing).includes("perfil que compra");
+}
+
+export const PERFIL_QUE_COMPRA_TOOLTIP = "Perfil que compra";
