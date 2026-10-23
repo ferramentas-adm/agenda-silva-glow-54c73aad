@@ -1645,6 +1645,7 @@ export function CalendarContent() {
               <User className="h-5 w-5 text-primary" />
               {detailAg?.lead_name}
               <ParceriaFlag show={isParceria(detailAg)} />
+              <PerfilQueCompraFlag show={isPerfilQueCompra(detailAg)} />
               <ImersaoFlag show={isImersao(detailAg)} />
               {isDiretor(detailAg) && (
                 <span
@@ -2851,6 +2852,7 @@ const DayView = memo(function DayView({
                               <div className={cn("flex items-center gap-1 font-semibold pr-5", (ag.is_5k || (ag.created_by && userRolesMap.get(ag.created_by) === "closer") || ag.meeting_reason === "segunda_reuniao") && "pl-8", isCancelled && "line-through", isCompact && "text-[11px]")}>
                                 <span className="truncate">{ag.lead_name}</span>
                                 <ParceriaFlag show={isParceria(ag)} className={isCompact ? "h-2.5 w-2.5" : undefined} />
+                                <PerfilQueCompraFlag show={isPerfilQueCompra(ag)} className={isCompact ? "h-2.5 w-2.5" : undefined} />
                               </div>
 
                               <div className="flex items-center gap-1 text-[11px] opacity-80">

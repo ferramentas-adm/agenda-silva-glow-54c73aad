@@ -498,6 +498,7 @@ export default function AguardandoAtribuicaoPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-base font-semibold">{a.lead_name}</span>
                         <ParceriaFlag show={isParceria(a)} />
+                        <PerfilQueCompraFlag show={isPerfilQueCompra(a)} />
                         <ImersaoFlag show={isImersao(a)} />
                         {a.is_5k && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
