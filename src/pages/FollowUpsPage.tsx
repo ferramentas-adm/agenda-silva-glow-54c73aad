@@ -751,7 +751,7 @@ function FollowUpActionDialog({
 
   const canSubmit = (() => {
     if (!outcome) return false;
-    if (outcome === "fechou") return resumoVenda.trim().length > 0 && valorValido && !!dataVenda && (produtosList.length === 0 || !!produto);
+    if (outcome === "fechou") return true;
     if (outcome === "perdeu") return !!motivo;
     if (outcome === "reagendar") return !!novaData && !!novoHorario;
     return false;
@@ -765,20 +765,15 @@ function FollowUpActionDialog({
       let outcomeType: "fechou" | "perdeu" | "follow_up" | "em_andamento" = "perdeu";
 
       if (outcome === "fechou") {
+        // Venda NÃO é lançada daqui: apenas encerra o follow-up.
+        // A gestão sobe a venda manualmente pelo card da reunião.
         outcomeType = "fechou";
         updatePayload = {
-          vendeu: true,
-          resumo_venda: resumoVenda.trim(),
-          valor: valorNum,
-          produto: produto || null,
-
           follow_up: false,
           follow_up_date: null,
           follow_up_time: null,
           follow_up_status: "concluido",
-          motivo_nao_fechamento: null,
-          observacoes: observacoes.trim() || null,
-          closed_at: dataVenda ? format(dataVenda, "yyyy-MM-dd") : null,
+          observacoes: observacoes.trim() || row.observacoes || null,
         };
 
       } else if (outcome === "perdeu") {
@@ -914,76 +909,10 @@ function FollowUpActionDialog({
           </div>
 
           {outcome === "fechou" && (
-            <>
-              {produtosList.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label>Produto vendido *</Label>
-                  <Select value={produto} onValueChange={setProduto}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o produto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {produtosList.map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground">
-                    Edite a lista em Configurações.
-                  </p>
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="resumo-fu">Resumo da venda *</Label>
-                <Textarea
-                  id="resumo-fu"
-                  value={resumoVenda}
-                  onChange={(e) => setResumoVenda(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="valor-fu">Valor coletado *</Label>
-                <Input
-                  id="valor-fu"
-                  inputMode="numeric"
-                  value={formatBRL(valor)}
-                  onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
-                  placeholder="0,00"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Data da venda *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dataVenda && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dataVenda ? format(dataVenda, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dataVenda}
-                      onSelect={setDataVenda}
-                      disabled={(d) => d > new Date()}
-                      locale={ptBR}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <p className="text-[11px] text-muted-foreground">
-                  Selecione o dia em que a venda realmente aconteceu (pode ser anterior a hoje).
-                </p>
-              </div>
-            </>
+            <p className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+              O follow-up será encerrado. A venda <strong>não</strong> é lançada automaticamente —
+              a gestão registra a venda manualmente pelo card da reunião.
+            </p>
           )}
 
           {outcome === "perdeu" && (
