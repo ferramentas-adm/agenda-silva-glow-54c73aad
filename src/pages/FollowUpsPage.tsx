@@ -34,6 +34,8 @@ import { useAppSettingList, APP_SETTING_KEYS , useProdutosAtivos } from "@/hooks
 import { DEFAULT_REASONS, isPendingStageReason } from "@/lib/vendaConstants";
 import { sendVendaToDataCrazy } from "@/services/datacrazyVenda";
 import { logAudit } from "@/services/auditLog";
+import { buildFollowUpEncerramento } from "@/lib/followUpEncerramento";
+import { brTodayYMD, pickedDateToYMD } from "@/lib/timezone";
 import FollowUpEditDialog, { removeFollowUp, type FollowUpEditTarget } from "@/components/FollowUpEditDialog";
 import FollowUpAddDialog from "@/components/FollowUpAddDialog";
 import { useCan } from "@/hooks/usePermissions";
@@ -738,7 +740,7 @@ function FollowUpActionDialog({
     setResumoVenda("");
     setProduto("");
 
-    setDataVenda(startOfToday());
+    setDataVenda(parseISO(brTodayYMD()));
     setMotivo("");
     setNovaData(undefined);
     setNovoHorario("");
@@ -751,7 +753,7 @@ function FollowUpActionDialog({
 
   const canSubmit = (() => {
     if (!outcome) return false;
-    if (outcome === "fechou") return true;
+    if (outcome === "fechou") return valorValido && !!dataVenda;
     if (outcome === "perdeu") return !!motivo;
     if (outcome === "reagendar") return !!novaData && !!novoHorario;
     return false;
@@ -765,16 +767,15 @@ function FollowUpActionDialog({
       let outcomeType: "fechou" | "perdeu" | "follow_up" | "em_andamento" = "perdeu";
 
       if (outcome === "fechou") {
+        if (!dataVenda) return;
         // Venda NÃO é lançada daqui: apenas encerra o follow-up.
         // A gestão sobe a venda manualmente pelo card da reunião.
         outcomeType = "fechou";
-        updatePayload = {
-          follow_up: false,
-          follow_up_date: null,
-          follow_up_time: null,
-          follow_up_status: "concluido",
-          observacoes: observacoes.trim() || row.observacoes || null,
-        };
+        updatePayload = buildFollowUpEncerramento(
+          valorNum,
+          pickedDateToYMD(dataVenda),
+          observacoes.trim() || row.observacoes || null,
+        ).update;
 
       } else if (outcome === "perdeu") {
         outcomeType = motivoIsPending ? "em_andamento" : "perdeu";
@@ -794,7 +795,7 @@ function FollowUpActionDialog({
           vendeu: false,
           follow_up: true,
           follow_up_status: "ativo",
-          follow_up_date: format(novaData!, "yyyy-MM-dd"),
+          follow_up_date: novaData ? pickedDateToYMD(novaData) : null,
           follow_up_time: novoHorario,
           motivo_nao_fechamento: motivo || row.motivo_nao_fechamento,
           observacoes: observacoes.trim() || null,
@@ -850,8 +851,11 @@ function FollowUpActionDialog({
       await logAudit("follow_up_atualizado", "venda", row.agendamento_id, {
         lead_name: row.agendamentos?.lead_name,
         outcome: outcomeType,
-        valor: null,
+        valor: outcome === "fechou" ? valorNum : null,
         motivo: outcome !== "fechou" ? motivo : null,
+        ...(outcome === "fechou" && dataVenda
+          ? buildFollowUpEncerramento(valorNum, pickedDateToYMD(dataVenda), null).audit
+          : {}),
       });
 
       toast.success(
@@ -909,10 +913,32 @@ function FollowUpActionDialog({
           </div>
 
           {outcome === "fechou" && (
-            <p className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-              O follow-up será encerrado. A venda <strong>não</strong> é lançada automaticamente —
-              a gestão registra a venda manualmente pelo card da reunião.
-            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="valor-fechou">Valor (R$) *</Label>
+                <Input
+                  id="valor-fechou"
+                  inputMode="numeric"
+                  value={formatBRL(valor)}
+                  onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Data da venda *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dataVenda ? format(dataVenda, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dataVenda} onSelect={setDataVenda} locale={ptBR} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
           )}
 
           {outcome === "perdeu" && (
