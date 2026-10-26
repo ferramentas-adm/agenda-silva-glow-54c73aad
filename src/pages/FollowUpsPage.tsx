@@ -835,9 +835,9 @@ function FollowUpActionDialog({
         lead_phone: agData?.lead_phone ?? row.agendamentos?.lead_phone ?? null,
         closer_name: closerName,
         sdr_name: sdrName,
-        vendeu: outcome === "fechou",
-        resumo_venda: outcome === "fechou" ? resumoVenda.trim() : null,
-        valor: outcome === "fechou" ? valorNum : null,
+        vendeu: false,
+        resumo_venda: null,
+        valor: null,
         motivo_nao_fechamento: outcome !== "fechou" ? (motivo || row.motivo_nao_fechamento) : null,
         follow_up: outcome === "reagendar",
         follow_up_date: outcome === "reagendar" && novaData ? format(novaData, "yyyy-MM-dd") : null,
@@ -850,12 +850,12 @@ function FollowUpActionDialog({
       await logAudit("follow_up_atualizado", "venda", row.agendamento_id, {
         lead_name: row.agendamentos?.lead_name,
         outcome: outcomeType,
-        valor: outcome === "fechou" ? valorNum : null,
+        valor: null,
         motivo: outcome !== "fechou" ? motivo : null,
       });
 
       toast.success(
-        outcome === "fechou" ? "Venda fechada!" :
+        outcome === "fechou" ? "Follow-up encerrado — lance a venda manualmente" :
           outcome === "perdeu" ? "Lead marcado como perdido" :
             "Novo follow-up agendado",
       );
