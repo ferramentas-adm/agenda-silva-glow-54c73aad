@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.guard_venda_somente_gestor() TO authenticated;
