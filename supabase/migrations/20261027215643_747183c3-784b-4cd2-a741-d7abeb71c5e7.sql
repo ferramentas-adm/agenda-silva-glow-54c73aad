@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.guard_venda_somente_gestor() FROM PUBLIC, anon, authenticated;
