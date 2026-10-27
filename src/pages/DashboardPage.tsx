@@ -1894,7 +1894,7 @@ export function CalendarContent() {
               {/* Lançar venda — gestor/moderador/supervisor/apresentador lançam a venda
                   em QUALQUER agenda, independente do que o closer preencheu.
                   Ao confirmar, a reunião vira "realizada" automaticamente. */}
-              {(role === "gestor" || role === "moderador" || role === "apresentador" || role === "supervisor") && (
+              {(role === "gestor" || role === "moderador") && (
                 <Button
                   variant="outline"
                   size="sm"
