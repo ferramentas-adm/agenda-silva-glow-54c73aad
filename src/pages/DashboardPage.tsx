@@ -1348,12 +1348,14 @@ export function CalendarContent() {
               {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
           </div>
+          {role !== "closer" && (
           <Link to="/agendar">
             <Button size="sm" className="gap-2">
               <PlusCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Agendar</span>
             </Button>
           </Link>
+          )}
         </div>
 
         {/* Controls */}
@@ -1583,7 +1585,7 @@ export function CalendarContent() {
               setHighlightAgId(null);
               if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
             }}
-            onClickEmptySlot={(closerId, time) => {
+            onClickEmptySlot={role === "closer" ? undefined : (closerId, time) => {
               const dateStr = format(currentDate, "yyyy-MM-dd");
               navigate(`/agendar?closer=${closerId}&date=${dateStr}&time=${time}`);
             }}
