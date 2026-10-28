@@ -91,7 +91,7 @@ import { applyBlockExceptions, fetchBlockExceptions } from "@/lib/closerBlockExc
 
 
 export default function AgendarPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   // Gate de profile: garante que `is_sdr_override` esteja carregado antes de montar
   // o formulário. Sem isso, os `useState` iniciais usam um `canPickCloser` calculado
   // sem o override e SDRs (override) acabam vendo a etapa de Closer.
@@ -112,6 +112,15 @@ export default function AgendarPage() {
       <AppLayout>
         <div className="animate-fade-in max-w-2xl mx-auto p-8 text-sm text-muted-foreground">
           Carregando…
+        </div>
+      </AppLayout>
+    );
+  }
+  if (role === "closer" && !gateProfile?.is_sdr_override) {
+    return (
+      <AppLayout>
+        <div className="max-w-2xl mx-auto p-8 text-sm text-muted-foreground">
+          Closers não podem agendar reuniões. Peça ao SDR ou à gestão.
         </div>
       </AppLayout>
     );

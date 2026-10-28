@@ -330,6 +330,13 @@
       "when": 1793139169657,
       "tag": "0046_grant_guard_venda",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793209176668,
+      "tag": "0047_block_closer_insert_agendamentos",
+      "breakpoints": true
     }
   ]
 }
