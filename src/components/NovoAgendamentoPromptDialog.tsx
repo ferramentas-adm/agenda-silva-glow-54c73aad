@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { CalendarPlus } from "lucide-react";
 import {
   AlertDialog,
@@ -43,6 +44,8 @@ export function buildAgendarUrl(lead: NovoAgendamentoLead): string {
  */
 export default function NovoAgendamentoPromptDialog({ lead, onOpenChange }: Props) {
   const navigate = useNavigate();
+  const { role } = useAuth();
+  if (role === "closer") return null;
 
   return (
     <AlertDialog open={!!lead} onOpenChange={onOpenChange}>

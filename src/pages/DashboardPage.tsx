@@ -2500,7 +2500,7 @@ const DayView = memo(function DayView({
   onDelete?: (target: DeleteTarget) => void;
   onClickBlock: (block: CloserBlock) => void;
   onClickAg: (ag: Agendamento) => void;
-  onClickEmptySlot: (closerId: string, time: string) => void;
+  onClickEmptySlot?: (closerId: string, time: string) => void;
   onClearHighlight?: () => void;
 }) {
   const { slots: DAY_HOURS } = useBusinessHours();
@@ -2741,7 +2741,7 @@ const DayView = memo(function DayView({
                     )}
                     onClick={() => {
                       if (canClickToSchedule) {
-                        onClickEmptySlot(c.id, hour);
+                        onClickEmptySlot?.(c.id, hour);
                       }
                     }}
                     title={canClickToSchedule ? `Agendar às ${hour} com ${c.name}` : undefined}
