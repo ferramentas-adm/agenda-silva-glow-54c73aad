@@ -715,8 +715,10 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     },
     staleTime: 60_000,
   });
+  // Regra: só é follow-up/2ª reunião se o operador marcou isso. Caso contrário, sempre 1ª call.
+  void comReuniaoAnterior;
   const isFollowSale = (v: VendaRow) =>
-    !!(v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao" || comReuniaoAnterior.has(v.agendamento_id));
+    !!(v.follow_up || v.segunda_reuniao || agMap.get(v.agendamento_id)?.meeting_reason === "segunda_reuniao");
   const primeiraCallIds = vendasCallsSold.filter((v) => !isFollowSale(v)).map((v) => v.agendamento_id);
   const followIds = vendasCallsSold.filter(isFollowSale).map((v) => v.agendamento_id);
   const totalCallsSold = vendasCallsSold.length;
