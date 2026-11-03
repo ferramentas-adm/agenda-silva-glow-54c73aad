@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, Fragment, useCallback, memo } from "react";
+import MotivoNaoFechamentoDialog from "@/components/MotivoNaoFechamentoDialog";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, isToday } from "date-fns";
@@ -250,6 +251,7 @@ export function CalendarContent() {
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [detailAg, setDetailAg] = useState<Agendamento | null>(null);
+  const [motivoNFOpen, setMotivoNFOpen] = useState(false);
   const [detailBlock, setDetailBlock] = useState<CloserBlock | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [noShowReasonOpen, setNoShowReasonOpen] = useState(false);
@@ -1921,6 +1923,23 @@ export function CalendarContent() {
                   Reverter para {STATUS_LABELS[prevStatus] ?? prevStatus}
                 </Button>
               )}
+
+              {detailAg.status === "realizada" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs w-full"
+                  onClick={() => setMotivoNFOpen(true)}
+                >
+                  <FileText className="h-3.5 w-3.5" />Ver motivo de não fechamento
+                </Button>
+              )}
+              <MotivoNaoFechamentoDialog
+                open={motivoNFOpen}
+                onOpenChange={setMotivoNFOpen}
+                agendamentoId={detailAg.id}
+                leadName={detailAg.lead_name}
+              />
 
 
 
