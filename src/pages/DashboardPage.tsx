@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, Fragment, useCallback, memo } from "react";
+import MotivoNaoFechamentoDialog from "@/components/MotivoNaoFechamentoDialog";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, isToday } from "date-fns";
