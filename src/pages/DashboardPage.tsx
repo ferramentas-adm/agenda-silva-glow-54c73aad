@@ -1984,8 +1984,8 @@ export function CalendarContent() {
                           </Button>
                         )}
                         {/* Reunião já realizada: o closer completa o desfecho uma única vez; depois fica travado. */}
-                        {detailAg.status === "realizada" && (role === "closer" || role === "gestor") && !(detailAg as any).is_venda_avulsa && (
-                          true ? (
+                        {detailAg.status === "realizada" && role === "closer" && !(detailAg as any).is_venda_avulsa && (
+                          detailDesfechoPendente ? (
                             <Button
                               variant="outline"
                               size="sm"
