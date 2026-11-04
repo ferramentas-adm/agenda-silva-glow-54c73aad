@@ -656,6 +656,27 @@ export default function MetricDrilldownDialog({
                               )}
                             </div>
                           )}
+                          {(() => {
+                            const nicho = v.nicho?.trim() || null;
+                            const subnicho = v.subnicho?.trim() || null;
+                            if (!nicho && !subnicho) return null;
+                            return (
+                              <div className="mt-1.5 grid grid-cols-1 gap-0.5 text-xs">
+                                {nicho && (
+                                  <p className="text-foreground">
+                                    <span className="font-medium text-foreground/70">Nicho: </span>
+                                    {nicho}
+                                  </p>
+                                )}
+                                {subnicho && (
+                                  <p className="text-foreground">
+                                    <span className="font-medium text-foreground/70">Subnicho: </span>
+                                    {subnicho}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })()}
