@@ -58,6 +58,7 @@ export default function MotivoNaoFechamentoDialog({ agendamentoId, leadName, ope
               <Field label="Faturamento" value={data.lead_revenue} />
               <Field label="Nicho" value={data.nicho} />
             </div>
+            <Field label="Subnicho da mentoria" value={data.subnicho} />
             <Field
               label="Follow-up"
               value={
