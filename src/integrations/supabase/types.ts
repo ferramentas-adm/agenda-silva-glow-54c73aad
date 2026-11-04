@@ -1957,6 +1957,7 @@ export type Database = {
           status_antes_venda:
             | Database["public"]["Enums"]["appointment_status"]
             | null
+          subnicho: string | null
           updated_at: string
           valor: number | null
           valor_total_projeto: number | null
@@ -2001,6 +2002,7 @@ export type Database = {
           status_antes_venda?:
             | Database["public"]["Enums"]["appointment_status"]
             | null
+          subnicho?: string | null
           updated_at?: string
           valor?: number | null
           valor_total_projeto?: number | null
@@ -2045,6 +2047,7 @@ export type Database = {
           status_antes_venda?:
             | Database["public"]["Enums"]["appointment_status"]
             | null
+          subnicho?: string | null
           updated_at?: string
           valor?: number | null
           valor_total_projeto?: number | null
