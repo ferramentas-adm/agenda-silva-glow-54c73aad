@@ -87,6 +87,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
   const [leadRevenue, setLeadRevenue] = useState<string>("");
   const [nichoOpt, setNichoOpt] = useState<string>("");
   const [nichoOutro, setNichoOutro] = useState<string>("");
+  const [subnicho, setSubnicho] = useState<string>("");
   const [motivo, setMotivo] = useState<string>("");
   const [observacoes, setObservacoes] = useState<string>("");
   const [orderBumps, setOrderBumps] = useState<OrderBump[]>([]);
@@ -136,6 +137,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
     setLeadRevenue("");
     setNichoOpt("");
     setNichoOutro("");
+    setSubnicho("");
     setMotivo("");
     setObservacoes("");
     setOrderBumps([]);
@@ -176,6 +178,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         const n = splitNicho((data as { nicho?: string | null }).nicho);
         setNichoOpt(n.opt);
         setNichoOutro(n.outro);
+        setSubnicho((data as { subnicho?: string | null }).subnicho ?? "");
         setMotivo((data as { motivo_nao_fechamento?: string | null }).motivo_nao_fechamento ?? "");
         setObservacoes((data as { observacoes?: string | null }).observacoes ?? "");
         setOrderBumps(parseOrderBumpsColumn((data as { order_bumps?: unknown }).order_bumps));
@@ -203,9 +206,10 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
 
   const nichoFinal = nichoOpt === NICHO_OUTRO ? nichoOutro.trim() : nichoOpt;
   const nichoOk = !!nichoOpt && (nichoOpt !== NICHO_OUTRO || nichoOutro.trim().length >= 2);
+  const subnichoOk = subnicho.trim().length >= 2;
 
   const canSubmit =
-    !!vendeuCloser && !!leadRevenue && nichoOk && (vendeuCloser === "sim" || !!motivo) &&
+    !!vendeuCloser && !!leadRevenue && nichoOk && subnichoOk && (vendeuCloser === "sim" || !!motivo) &&
     justificationOk && followUpOk;
 
   const handleSubmit = async () => {
@@ -219,6 +223,7 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
         vendeu_closer: vendeuCloser === "sim",
         lead_revenue: leadRevenue || null,
         nicho: nichoFinal || null,
+        subnicho: subnicho.trim() || null,
         motivo_nao_fechamento: vendeuCloser === "nao" ? motivo || null : null,
         observacoes: observacoes.trim() || null,
         order_bumps: vendeuCloser === "sim" && orderBumps.length ? orderBumps : null,
@@ -410,6 +415,19 @@ export default function VendaDialog({ open, onOpenChange, agendamentoId, leadNam
                 maxLength={120}
               />
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Subnicho da mentoria *</Label>
+            <Input
+              value={subnicho}
+              onChange={(e) => setSubnicho(e.target.value)}
+              placeholder="Ex.: mentoria para dentistas, infoproduto de confeitaria..."
+              maxLength={120}
+            />
+            <p className="text-xs text-muted-foreground">
+              Campo obrigatório — descreva o subnicho específico do cliente dentro do nicho selecionado.
+            </p>
           </div>
 
           <div className="space-y-2">
