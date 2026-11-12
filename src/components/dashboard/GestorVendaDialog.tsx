@@ -245,13 +245,8 @@ export default function GestorVendaDialog({
       }
 
 
-      if (currentStatus !== "realizada") {
-        const { error: agError } = await supabase
-          .from("agendamentos")
-          .update({ status: "realizada" })
-          .eq("id", agendamentoId);
-        if (agError) throw agError;
-      }
+      // O status da reunião NÃO muda ao lançar a venda: "Realizada" fica a
+      // cargo do clique direto no botão (closer preenche o desfecho).
 
       const { agData, closerName, sdrName } = await fetchWebhookMeta();
       sendVendaToDataCrazy({
@@ -291,7 +286,7 @@ export default function GestorVendaDialog({
       });
 
       toast.success("Venda lançada!");
-      onSuccess("realizada");
+      onSuccess(currentStatus ?? "em_call");
       reset();
       onOpenChange(false);
     } catch (err: any) {
