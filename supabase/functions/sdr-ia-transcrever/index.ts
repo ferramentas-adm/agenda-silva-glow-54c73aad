@@ -43,11 +43,27 @@ async function downloadAudio(url: string): Promise<Uint8Array> {
   } catch {
     throw new Error("url_invalida");
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password) {
     throw new Error("url_invalida");
   }
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  // Bloqueia destinos internos (SSRF): IPs literais, localhost e nomes internos.
+  const isIpLiteral = /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":");
+  if (
+    isIpLiteral || host === "localhost" || !host.includes(".") ||
+    /\.(local|internal|localhost|lan|home|corp)$/.test(host) ||
+    host.endsWith(".supabase.co") || host.endsWith(".supabase.in")
+  ) {
+    throw new Error("url_invalida");
+  }
+  // Allowlist opcional de domínios (ex.: "datacrazy.io,whatsapp.net").
+  const allowRaw = (Deno.env.get("SDR_IA_AUDIO_HOSTS") ?? "").trim();
+  if (allowRaw) {
+    const allow = allowRaw.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+    if (!allow.some((a) => host === a || host.endsWith(`.${a}`))) throw new Error("url_invalida");
+  }
 
-  const response = await fetch(parsed);
+  const response = await fetch(parsed, { redirect: "error" });
   if (!response.ok) throw new Error(`falha_download: HTTP ${response.status}`);
 
   const declaredLength = Number(response.headers.get("content-length") ?? "0");

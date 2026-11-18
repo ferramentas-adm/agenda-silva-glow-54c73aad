@@ -147,7 +147,27 @@ serve(async (req) => {
 
     const ALLOWED_PREFIXES = ["/leads", "/tags", "/businesses"];
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-    if (!ALLOWED_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))) {
+    const upperMethod = String(method || "GET").toUpperCase();
+    const pathOnly = normalizedPath.split("?")[0];
+    // Escritas: apenas as rotas usadas pelo app, com IDs simples.
+    const ID = "[A-Za-z0-9_-]+";
+    const WRITE_ROUTES: Record<string, RegExp[]> = {
+      POST: [
+        /^\/businesses$/,
+        /^\/businesses\/actions\/(move|win)$/,
+        new RegExp(`^/leads/${ID}/(activities|notes)$`),
+      ],
+      DELETE: [new RegExp(`^/leads/${ID}/tags/${ID}$`)],
+    };
+    const traversal = /\.\.|\/\/|\\|%2e|%2f/i.test(normalizedPath);
+    const writeOk = upperMethod === "GET" ||
+      (WRITE_ROUTES[upperMethod] ?? []).some((re) => re.test(pathOnly) && !normalizedPath.includes("?"));
+    const payloadOk = payload === undefined || payload === null ||
+      (typeof payload === "object" && !Array.isArray(payload));
+    // Apenas usuários da equipe (com cargo) usam o proxy.
+    const { data: roleRows } = await supabase.from("user_roles").select("role").eq("user_id", user.id).limit(1);
+    if (traversal || !writeOk || !payloadOk || !roleRows || roleRows.length === 0 ||
+        !ALLOWED_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -4,3 +4,5 @@
 - Use `buildFollowUpEncerramento` for closing follow-up contacts: store their amount as follow-up metadata and their date in audit details, never in accounting sale fields, to preserve manual sale reporting.
 
 - Only gestor/moderador may set `vendas.vendeu=true` or change sale amounts; enforced by DB trigger `guard_venda_somente_gestor` so no UI path can bypass it.
+
+- Edge functions authorize callers via `supabase/functions/_shared/authz.ts` (closer-scoped access, cron secret, signed OAuth state) so checks stay consistent.

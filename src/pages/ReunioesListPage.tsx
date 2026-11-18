@@ -1,3 +1,4 @@
+import { csvSafe } from "@/lib/csvSafe";
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -492,7 +493,7 @@ export default function ReunioesListPage() {
     ]);
 
     const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .map((row) => row.map((cell) => `"${csvSafe(cell).replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
     const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });

@@ -1,3 +1,4 @@
+import { csvSafe } from "@/lib/csvSafe";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay, subDays, addDays } from "date-fns";
@@ -233,7 +234,7 @@ function ChannelTable({
       vds.forEach((v) => vMap.set(v.agendamento_id, v));
       const headers = ["Nome do lead", "Telefone", "Origem do lead", "Status", "Data da reunião", "Vendeu", "Valor da venda", "Motivo não fechamento"];
       const esc = (s: unknown) => {
-        const str = String(s ?? "").replace(/[\r\n]+/g, " ").replace(/"/g, '""');
+        const str = csvSafe(s).replace(/[\r\n]+/g, " ").replace(/"/g, '""');
         return `"${str}"`;
       };
       const lines = [headers.map(esc).join(";")];

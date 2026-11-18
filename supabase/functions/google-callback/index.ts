@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyState } from "../_shared/authz.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +15,9 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
-    const closerId = url.searchParams.get('state');
+    const rawState = url.searchParams.get('state');
+    // state é assinado (HMAC) pelo google-auth-url, com expiração — impede vincular conta a outro closer.
+    const closerId = rawState ? await verifyState(Deno.env.get('GOOGLE_CLIENT_SECRET')!, rawState) : null;
 
     if (!code || !closerId) {
       return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><h2>Erro: parâmetros inválidos</h2></body></html>', {

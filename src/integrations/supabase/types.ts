@@ -1240,6 +1240,24 @@ export type Database = {
           },
         ]
       }
+      password_change_requirements: {
+        Row: {
+          created_at: string
+          hash_snapshot: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hash_snapshot?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hash_snapshot?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active: boolean
@@ -2293,6 +2311,7 @@ export type Database = {
       is_manager: { Args: never; Returns: boolean }
       is_manager_or_apresentador: { Args: never; Returns: boolean }
       is_manager_or_sdr: { Args: never; Returns: boolean }
+      is_team_member: { Args: never; Returns: boolean }
       lead_display_name: { Args: { _name: string }; Returns: string }
       lead_first_name: { Args: { _name: string }; Returns: string }
       limpar_registros_antigos: {

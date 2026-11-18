@@ -1,3 +1,4 @@
+import { csvSafe } from "@/lib/csvSafe";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, isBefore, isSameDay } from "date-fns";
@@ -771,7 +772,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
     ];
 
     const escape = (val: unknown) => {
-      const s = val == null ? "" : String(val);
+      const s = csvSafe(val);
       return `"${s.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
     };
 

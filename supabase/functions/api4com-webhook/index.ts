@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     }
 
     if (!chamada) {
-      console.warn("api4com-webhook: chamada não localizada", JSON.stringify({ callId, phone }));
+      console.warn("api4com-webhook: chamada não localizada", JSON.stringify({ callId, phone_suffix: phone ? String(phone).replace(/\D/g, "").slice(-4) : null }));
       return json({ received: true, matched: false });
     }
 

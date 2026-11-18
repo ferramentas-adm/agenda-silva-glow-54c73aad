@@ -2,10 +2,11 @@
 // Disparado por triggers do banco: reunião realizada e venda fechada.
 // Nunca loga dados pessoais (nome, e-mail, telefone, order_id).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { hasValidCronSecret } from "../_shared/authz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -59,6 +60,9 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { persistSession: false } },
   );
+
+  // Só os triggers do banco (com segredo interno) podem disparar eventos.
+  if (!(await hasValidCronSecret(supabase, req))) return json({ error: "Unauthorized" }, 401);
 
   const { data: ag, error: agErr } = await supabase
     .from("agendamentos")

@@ -21,7 +21,10 @@ export default defineTool({
     if (!needle) return fail("Informe um nome ou telefone para buscar.");
     const digits = needle.replace(/\D/g, "");
 
-    const filters = [`lead_name.ilike.%${needle}%`];
+    // Remove caracteres com significado na sintaxe de filtro (.or) para impedir injeção.
+    const safeNeedle = needle.replace(/[^\p{L}\p{N}\s@'-]/gu, " ").trim().slice(0, 100);
+    if (!safeNeedle) return fail("Informe um nome ou telefone para buscar.");
+    const filters = [`lead_name.ilike.%${safeNeedle}%`];
     if (digits.length >= 4) filters.push(`lead_phone.ilike.%${digits}%`);
 
     const { data, error } = await sb

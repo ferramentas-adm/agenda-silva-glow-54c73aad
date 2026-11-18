@@ -1,3 +1,4 @@
+import { canAccessAgendamento, loadCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
@@ -107,9 +108,22 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service);
 
     const payload = await req.json().catch(() => ({}));
-    const agendamentoId: string | null = payload?.agendamento_id ?? null;
-    const leadName: string | null = payload?.lead_name ?? null;
-    const rawPhone: string = payload?.lead_phone ?? "";
+    const agendamentoId: string | null = typeof payload?.agendamento_id === "string" ? payload.agendamento_id : null;
+    if (!agendamentoId) return json({ error: "agendamento_id obrigatório" }, 400);
+
+    // O destino da chamada vem sempre do agendamento (escolhido pelo servidor),
+    // e o usuário precisa ter acesso a esse agendamento.
+    const caller = await loadCaller(admin, user.id, user.email ?? null);
+    if (!(await canAccessAgendamento(admin, caller, agendamentoId))) {
+      return json({ error: "Sem permissão para este agendamento" }, 403);
+    }
+    const { data: ag } = await admin
+      .from("agendamentos")
+      .select("lead_name, lead_phone")
+      .eq("id", agendamentoId)
+      .maybeSingle();
+    const leadName: string | null = ag?.lead_name ?? null;
+    const rawPhone: string = ag?.lead_phone ?? "";
     const destination = normalizeBr(rawPhone);
     if (!destination) return json({ error: "Telefone do lead inválido" }, 400);
 

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { canActOnCloser, loadCaller, signState } from "../_shared/authz.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,6 +43,14 @@ serve(async (req) => {
       });
     }
 
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const caller = await loadCaller(admin, String(claims.claims.sub), (claims.claims.email as string) ?? null);
+    if (!caller.isManager && !canActOnCloser({ ...caller, isPrivileged: false }, closer_id)) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
     const redirectUri = Deno.env.get('GOOGLE_REDIRECT_URI');
 
@@ -71,7 +80,7 @@ serve(async (req) => {
       scope: scopes.join(' '),
       access_type: 'offline',
       prompt: 'consent',
-      state: closer_id,
+      state: await signState(Deno.env.get('GOOGLE_CLIENT_SECRET')!, closer_id),
     });
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;

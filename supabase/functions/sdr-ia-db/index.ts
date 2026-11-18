@@ -9,6 +9,30 @@ const corsHeaders = {
 
 const ALLOWED_TABLES = ["sdr_conversas", "sdr_exclusoes", "sdr_config", "sdr_downsell"];
 
+// Colunas graváveis por tabela (POST). Campos fora da lista são descartados.
+const WRITABLE_COLUMNS: Record<string, string[]> = {
+  sdr_conversas: [
+    "conversation_id", "lead_id", "telefone", "origem", "etapa", "dados", "classificacao",
+    "agendamento_id", "handoff_motivo", "encerrada_motivo", "turnos_agente", "tokens_in",
+    "tokens_out", "last_lead_message_at", "followups_enviados", "updated_at",
+  ],
+  sdr_exclusoes: ["telefone", "motivo", "origem"],
+  sdr_config: ["chave", "valor"],
+  sdr_downsell: [
+    "telefone", "nome", "email", "form_id", "form_at", "origem", "utm_content", "etapa",
+    "pagina_vista_em", "clicou_em", "enviado_em", "respondeu_em", "comprou_em", "pedido_id",
+    "oferta_expira_em", "dados", "updated_at",
+  ],
+};
+
+function pickColumns(table: string, row: unknown): Record<string, unknown> | null {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+  const allowed = WRITABLE_COLUMNS[table] ?? [];
+  const out: Record<string, unknown> = {};
+  for (const k of allowed) if (k in (row as Record<string, unknown>)) out[k] = (row as Record<string, unknown>)[k];
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -37,6 +61,19 @@ Deno.serve(async (req) => {
       return Response.json({ erro: "method_not_allowed", detalhe: "aceita apenas GET e POST" }, { status: 405, headers: corsHeaders });
     }
 
+    const table = ALLOWED_TABLES.find((t) => path === t || path.startsWith(`${t}?`) || path.startsWith(`${t}/`))!;
+    if (/\.\.|\/\/|\\|%2e|%2f/i.test(path) || path.slice(table.length).startsWith("/")) {
+      return Response.json({ erro: "forbidden" }, { status: 403, headers: corsHeaders });
+    }
+    let safeBody: unknown = undefined;
+    if (method === "POST") {
+      const rows = Array.isArray(body) ? body.map((r) => pickColumns(table, r)) : [pickColumns(table, body)];
+      if (rows.length === 0 || rows.some((r) => !r || Object.keys(r).length === 0)) {
+        return Response.json({ erro: "body_invalido" }, { status: 400, headers: corsHeaders });
+      }
+      safeBody = Array.isArray(body) ? rows : rows[0];
+    }
+
     const url = `${Deno.env.get("SUPABASE_URL")}/rest/v1/${path}`;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const headers: Record<string, string> = {
@@ -49,7 +86,7 @@ Deno.serve(async (req) => {
     const res = await fetch(url, {
       method,
       headers,
-      body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
+      body: method === "POST" ? JSON.stringify(safeBody) : undefined,
     });
 
     const text = await res.text();

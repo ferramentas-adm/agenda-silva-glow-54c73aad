@@ -1,3 +1,4 @@
+import { canActOnCloser, loadCaller } from "../_shared/authz.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -257,9 +258,19 @@ serve(async (req) => {
     const closerEmail: string | null = closerRow?.email ?? null;
     const closerName: string | null = closerRow?.name ?? null;
 
+    // Usuário comum: closer puro só cria eventos na própria agenda.
+    if (callerClaims) {
+      const caller = await loadCaller(supabaseAdmin, String(callerClaims.sub), (callerClaims.email as string) ?? null);
+      if (!canActOnCloser(caller, closer_id)) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Nunca falhar em silêncio: toda falha do Calendar/Meet vira linha no audit log.
     async function logMeetFailure(motivo: string, erroGoogle: string | null) {
-      console.error('[meet] falha ao criar evento/link', { motivo, closer_id, closerEmail, erroGoogle });
+      console.error('[meet] falha ao criar evento/link', { motivo, closer_id, erroGoogle });
       try {
         let userId = callerClaims?.sub as string | undefined;
         let email = callerClaims?.email as string | undefined;

@@ -1,3 +1,4 @@
+import { canActOnCloser, loadCaller } from "../_shared/authz.ts";
 // Cria (ou atualiza) o compromisso de follow-up na agenda corporativa do closer.
 // Não cria link de Meet: é um lembrete de ligação/WhatsApp.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -78,6 +79,13 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    const caller = await loadCaller(admin, String(claims.claims.sub), (claims.claims.email as string) ?? null);
+    if (!canActOnCloser(caller, closer_id)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { data: tokenData } = await admin
       .from("closer_google_tokens")

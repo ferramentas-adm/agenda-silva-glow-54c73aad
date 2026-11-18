@@ -693,7 +693,9 @@ var search_lead_default = defineTool11({
     const needle = query.trim();
     if (!needle) return fail("Informe um nome ou telefone para buscar.");
     const digits = needle.replace(/\D/g, "");
-    const filters = [`lead_name.ilike.%${needle}%`];
+    const safeNeedle = needle.replace(/[^\p{L}\p{N}\s@'-]/gu, " ").trim().slice(0, 100);
+    if (!safeNeedle) return fail("Informe um nome ou telefone para buscar.");
+    const filters = [`lead_name.ilike.%${safeNeedle}%`];
     if (digits.length >= 4) filters.push(`lead_phone.ilike.%${digits}%`);
     const { data, error } = await sb.from("agendamentos").select(
       "id, lead_name, lead_phone, lead_email, meta_lead_id, scheduled_date, scheduled_time, status, cancellation_reason, meeting_reason, channel_type, observation, sdr_responsavel_id, created_by, created_at, closers(name, email)"

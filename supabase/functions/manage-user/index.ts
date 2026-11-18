@@ -90,7 +90,26 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Tampouco promover alguém a Gestor
+      // Contas de Moderador/Supervisor: moderador não troca senha nem cargo de outros
+      if (
+        user_id !== callerId &&
+        (action === "change_password" || action === "change_role" || action === "delete") &&
+        (targetRoles.includes("moderador") || targetRoles.includes("supervisor"))
+      ) {
+        return new Response(JSON.stringify({ error: "Moderadores não podem alterar senha ou cargo de outros Moderadores/Supervisores." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Tampouco promover alguém a cargos de gestão (Administrador, Moderador, Supervisor)
+      if (action === "change_role" && ["gestor", "moderador", "supervisor"].includes(body.new_role)) {
+        return new Response(JSON.stringify({ error: "Moderadores não podem promover a cargos de gestão." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       if (action === "change_role" && body.new_role === "gestor") {
         return new Response(JSON.stringify({ error: "Moderadores não podem promover a Administrador." }), {
           status: 403,

@@ -1,3 +1,4 @@
+import { csvSafe } from "@/lib/csvSafe";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -284,7 +285,7 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
         "Closer",
       ];
 
-      const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+      const esc = (v: string) => `"${csvSafe(v).replace(/"/g, '""')}"`;
       const lines = [headers.join(";")];
       finalRows.forEach(([, { latest, count }]) => {
         lines.push(

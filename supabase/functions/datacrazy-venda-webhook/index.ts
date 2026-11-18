@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { canAccessAgendamento, loadCaller } from "../_shared/authz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,6 +78,13 @@ serve(async (req) => {
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("");
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+    const caller = await loadCaller(admin, user.id, user.email ?? null);
+    if (!(await canAccessAgendamento(admin, caller, agendamentoId))) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { data: queued, error: queueError } = await admin
       .from("datacrazy_sales_sync_queue")
       .insert({

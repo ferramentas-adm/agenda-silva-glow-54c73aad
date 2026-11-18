@@ -1,3 +1,4 @@
+import { csvSafe } from "@/lib/csvSafe";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -269,7 +270,7 @@ export default function AuditLogsPage() {
     const csvContent = [
       headers.join(";"),
       ...rows.map((row: any) =>
-        headers.map((h) => `"${String(row[h] ?? "").replace(/"/g, '""')}"`).join(";")
+        headers.map((h) => `"${csvSafe(row[h]).replace(/"/g, '""')}"`).join(";")
       ),
     ].join("\n");
 

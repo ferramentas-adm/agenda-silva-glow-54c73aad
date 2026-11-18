@@ -1,3 +1,4 @@
+import { canActOnCloser, loadCaller } from "../_shared/authz.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -70,6 +71,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    const caller = await loadCaller(supabaseAdmin, String(claims.claims.sub), (claims.claims.email as string) ?? null);
+    if (!canActOnCloser(caller, closer_id)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get token for closer
     const { data: tokenData, error: tokenError } = await supabaseAdmin
