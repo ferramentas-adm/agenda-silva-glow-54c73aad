@@ -724,7 +724,9 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   const totalCallsSold = vendasCallsSold.length;
   const pctPrimeira = totalCallsSold > 0 ? (primeiraCallIds.length / totalCallsSold) * 100 : 0;
   const pctFollowReal = totalCallsSold > 0 ? (followIds.length / totalCallsSold) * 100 : 0;
-  const taxaConvReal = convTotal && convTotal.totalReunioes > 0 ? (fechadasIds.length / convTotal.totalReunioes) * 100 : 0;
+  // Vendas avulsas não têm reunião: ficam fora do numerador, como já ficam fora do denominador (RPC).
+  const fechadasCallIds = fechadasIds.filter((id) => !agMap.get(id)?.is_venda_avulsa);
+  const taxaConvReal = convTotal && convTotal.totalReunioes > 0 ? (fechadasCallIds.length / convTotal.totalReunioes) * 100 : 0;
   // Data (dd/mm/aaaa) do fechamento posterior do lead, se veio DEPOIS da reunião.
   const recoveredDateFor = (v: VendaRow): string | null => {
     const ag = v.agendamentos;
@@ -1116,14 +1118,14 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
           sub={
             erroConvTotal
               ? "Não foi possível calcular agora. Tente atualizar a página."
-              : `${fechadasIds.length} de ${convTotal?.totalReunioes ?? 0} reuniões do período: vendas fechadas no período (1ª call, 2ª reunião ou follow-up)`
+              : `${fechadasCallIds.length} de ${convTotal?.totalReunioes ?? 0} reuniões do período: vendas fechadas no período (1ª call, 2ª reunião ou follow-up)`
           }
           color="primary"
           loading={loadingConvTotal}
           onClick={() =>
             openDrill(
               `Reuniões que viraram venda (inclui 2ª reunião e follow-up) — ${dayLabel}`,
-              fechadasIds,
+              fechadasCallIds,
               `Conversão total: ${taxaConvReal.toFixed(1)}%`,
             )
           }

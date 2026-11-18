@@ -1,3 +1,4 @@
+import { MAX_TENTATIVAS } from "@/lib/followUp";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BellRing, MessageCircle, Phone, X } from "lucide-react";
@@ -141,7 +142,7 @@ export default function FollowUpAlerts() {
               {temperaturaLabel(row.follow_up_temperatura)}
             </Badge>
             <Badge variant="secondary" className="text-[10px]">
-              Tentativa {row.follow_up_tentativas ?? 0}/3
+              Tentativa {row.follow_up_tentativas ?? 0}/{MAX_TENTATIVAS}
             </Badge>
           </div>
           {row.agendamentos?.lead_phone && (

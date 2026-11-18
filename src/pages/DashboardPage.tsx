@@ -2438,7 +2438,7 @@ export function CalendarContent() {
         closerName={detailBlock ? (closerMap.get(detailBlock.closer_id) || "Closer removido") : ""}
         occurrenceDate={dateStr}
         canEdit={!!detailBlock && (role === "gestor" || role === "moderador")}
-        canRemove={!!detailBlock && (role === "gestor" || role === "moderador" || (role === "closer" && detailBlock.closer_id === myCloserId))}
+        canRemove={!!detailBlock && (role === "gestor" || role === "moderador")}
         onClose={() => setDetailBlock(null)}
       />
 

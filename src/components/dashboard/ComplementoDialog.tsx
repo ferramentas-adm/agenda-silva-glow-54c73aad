@@ -20,6 +20,8 @@ export interface ComplementoTarget {
   leadName?: string | null;
   faturado?: number | null;
   coletadoAcumulado?: number | null;
+  /** Valor base da venda (sem complementos). Quando informado, o coletado é recalculado com os complementos carregados. */
+  valorBase?: number | null;
 }
 
 interface Complemento {
@@ -148,7 +150,9 @@ export default function ComplementoDialog({
   };
 
   const faturado = Number(target?.faturado ?? 0);
-  const coletadoBase = Number(target?.coletadoAcumulado ?? 0);
+  const coletadoBase = target?.valorBase != null
+    ? Number(target.valorBase) + totalComplementos
+    : Number(target?.coletadoAcumulado ?? 0);
   const saldo = faturado - coletadoBase;
 
   return (

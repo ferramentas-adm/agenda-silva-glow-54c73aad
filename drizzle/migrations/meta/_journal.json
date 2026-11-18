@@ -344,6 +344,13 @@
       "when": 1793796754352,
       "tag": "0048_add_vendas_subnicho",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795016134900,
+      "tag": "0049_fix_saldo_residual_order",
+      "breakpoints": true
     }
   ]
 }

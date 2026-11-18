@@ -119,7 +119,7 @@ serve(async (req) => {
 
     const canalLabel = canal === "whatsapp" ? "WhatsApp" : canal === "ligacao" ? "Ligação" : "Contato";
     const description = [
-      `Follow-up${tentativa ? ` (tentativa ${tentativa}/3)` : ""} — ${canalLabel}`,
+      `Follow-up${tentativa ? ` (tentativa ${tentativa}/10)` : ""} — ${canalLabel}`,
       lead_phone ? `Telefone: ${lead_phone}` : "",
       produto ? `Produto: ${produto}` : "",
       valor ? `Valor combinado: R$ ${valor}` : "",

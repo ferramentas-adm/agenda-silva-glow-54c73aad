@@ -751,7 +751,7 @@ export default function MetricDrilldownDialog({
                                           vendaId: v.id as string,
                                           leadName: d.lead_name,
                                           faturado: Number(v.valor_total_projeto ?? 0),
-                                          coletadoAcumulado: valorNum,
+                                          valorBase: valorNum,
                                         })
                                       }
                                       title="Lançar pagamento complementar"

@@ -36,6 +36,16 @@ export default function PrivacyModeToggle({ className }: { className?: string })
   const [on, setOn] = useState(() => localStorage.getItem(STORAGE_KEY) === "1");
 
   useEffect(() => {
+    const sync = () => setOn(localStorage.getItem(STORAGE_KEY) === "1");
+    window.addEventListener("privacy-mode-change", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("privacy-mode-change", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  useEffect(() => {
     const active = isApresentador && on;
     if (!active) {
       clearAll();
@@ -61,6 +71,7 @@ export default function PrivacyModeToggle({ className }: { className?: string })
     const v = !on;
     setOn(v);
     localStorage.setItem(STORAGE_KEY, v ? "1" : "0");
+    window.dispatchEvent(new Event("privacy-mode-change"));
   };
 
   return (
