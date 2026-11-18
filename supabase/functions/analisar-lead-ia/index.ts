@@ -215,7 +215,7 @@ serve(async (req) => {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-3.8-flash",
         messages: [
           { role: "system", content: sistema },
           { role: "user", content: "Dados:\n" + JSON.stringify(contexto, null, 2) + "\n\nChame responder_analise com sua análise." },

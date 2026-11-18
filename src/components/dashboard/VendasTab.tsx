@@ -629,6 +629,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // vendeu = true e valor > 0, lançada depois da reunião em que não fechou.
   // Usado para marcar "Fechou em DD/MM" no CSV de motivos — contagens não mudam.
   const phoneNorm = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "");
+  // Mesma regra do banco (normalize_lead_phone): só dígitos, sem DDI 55.
+  const phoneKeyBR = (p: string | null | undefined) => {
+    const d = phoneNorm(p);
+    return d.length >= 12 && d.startsWith("55") ? d.slice(2) : d;
+  };
   // Telefone no padrão 5511998765432 para exportações.
   const formatPhoneE164BR = (raw: string | null | undefined) => {
     const digits = (raw ?? "").replace(/\D/g, "").replace(/^0+/, "");
@@ -653,21 +658,11 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
       for (let i = 0; i < phones.length; i += 300) {
         const chunk = phones.slice(i, i + 300);
         if (chunk.length === 0) continue;
-        const { data, error } = await supabase
-          .from("vendas")
-          .select("id, valor, closed_at, created_at, agendamentos!inner(lead_phone, scheduled_date, deleted_at)")
-          .eq("vendeu", true)
-          .gt("valor", 0)
-          .is("agendamentos.deleted_at", null)
-          .in("agendamentos.lead_phone", chunk);
+        // Compara só os dígitos (ignora parênteses, traço, espaço e DDI 55).
+        const { data, error } = await supabase.rpc("phones_primeira_venda", { _phones: chunk });
         if (error) throw error;
-        for (const r of (data ?? []) as any[]) {
-          const phone = phoneNorm(r.agendamentos?.lead_phone);
-          if (!phone) continue;
-          const ymd = r.closed_at ?? brtYmdOf(r.created_at);
-          if (!ymd) continue;
-          const cur = byPhone.get(phone);
-          if (!cur || ymd < cur) byPhone.set(phone, ymd);
+        for (const r of (data ?? []) as { phone_norm: string | null; first_close: string | null }[]) {
+          if (r.phone_norm && r.first_close) byPhone.set(r.phone_norm, r.first_close);
         }
       }
       return byPhone;
@@ -730,7 +725,7 @@ export default function VendasTab({ currentDate, dateRange }: VendasTabProps) {
   // Data (dd/mm/aaaa) do fechamento posterior do lead, se veio DEPOIS da reunião.
   const recoveredDateFor = (v: VendaRow): string | null => {
     const ag = v.agendamentos;
-    const close = recoveredCloseByPhone.get(phoneNorm(ag?.lead_phone));
+    const close = recoveredCloseByPhone.get(phoneKeyBR(ag?.lead_phone));
     if (!close || !ag) return null;
     return close > ag.scheduled_date ? close : null;
   };

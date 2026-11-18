@@ -12,6 +12,8 @@ interface Props {
   range: { from: string; to: string } | null;
   qualificationFilter: LeadQualificationFilter;
   agendamentos: { id: string; lead_desqualificado: boolean }[];
+  /** Quando há filtro de time/SDR ativo: só estes agendamentos entram. null = sem filtro. */
+  allowedIds?: Set<string> | null;
 }
 
 interface Row {
@@ -32,7 +34,7 @@ interface Row {
  * `booking_channel` preenchido — ou seja, criados a partir da ativação do
  * campo obrigatório na tela de agendamento.
  */
-export default function BookingChannelPanel({ range, qualificationFilter, agendamentos }: Props) {
+export default function BookingChannelPanel({ range, qualificationFilter, agendamentos, allowedIds = null }: Props) {
   const [drill, setDrill] = useState<{ open: boolean; title: string; ids: string[] }>({
     open: false,
     title: "",
@@ -69,6 +71,7 @@ export default function BookingChannelPanel({ range, qualificationFilter, agenda
   );
   const visibleRows = useMemo(() => rows.map((row) => {
     const filterIds = (ids: string[]) => ids.filter((id) =>
+      (!allowedIds || allowedIds.has(id)) &&
       matchesLeadQualification(qualificationById.get(id), qualificationFilter),
     );
     const idsCreated = filterIds(row.ids_created);
@@ -83,7 +86,7 @@ export default function BookingChannelPanel({ range, qualificationFilter, agenda
       ids_realizada: idsRealizada,
       ids_vendas: idsVendas,
     };
-  }), [qualificationById, qualificationFilter, rows]);
+  }), [qualificationById, qualificationFilter, rows, allowedIds]);
 
   const totals = visibleRows.reduce(
     (acc, r) => {

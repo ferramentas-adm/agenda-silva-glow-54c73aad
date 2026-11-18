@@ -351,6 +351,13 @@
       "when": 1795016134900,
       "tag": "0049_fix_saldo_residual_order",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795030613609,
+      "tag": "0050_phone_normalized_lookup",
+      "breakpoints": true
     }
   ]
 }

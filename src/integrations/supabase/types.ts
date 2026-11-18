@@ -2311,6 +2311,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      phones_com_realizada: {
+        Args: { _phones: string[] }
+        Returns: {
+          first_date: string
+          phone_norm: string
+        }[]
+      }
+      phones_primeira_venda: {
+        Args: { _phones: string[] }
+        Returns: {
+          first_close: string
+          phone_norm: string
+        }[]
+      }
       reassign_agendamento_closer_for_result: {
         Args: { _agendamento_id: string; _new_closer_id: string }
         Returns: boolean

@@ -228,18 +228,11 @@ export default function NaoComparecimentoTab({ currentDate, dateRange, updatedAg
       for (let i = 0; i < phones.length; i += CHUNK) {
         const slice = phones[i] ? phones.slice(i, i + CHUNK) : [];
         if (!slice.length) continue;
-        // busca por sufixo de 10/11 dígitos para tolerar formatações diferentes no banco
-        const variants = slice.flatMap((p) => [p, p.replace(/^55/, "")]);
-        const { data, error } = await supabase
-          .from("agendamentos")
-          .select("lead_phone")
-          .eq("status", "realizada")
-          .is("deleted_at", null)
-          .in("lead_phone", variants)
-          .limit(5000);
+        // Compara só os dígitos (ignora parênteses, traço, espaço e DDI 55).
+        const { data, error } = await supabase.rpc("phones_com_realizada", { _phones: slice });
         if (error) throw error;
-        (data ?? []).forEach((d: any) => {
-          const key = phoneDigits(d.lead_phone);
+        (data ?? []).forEach((d: { phone_norm: string | null }) => {
+          const key = phoneDigits(d.phone_norm);
           if (key) compareceram.add(key);
         });
       }

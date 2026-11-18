@@ -259,6 +259,20 @@ export default function ProdutividadeSDRTab({
     );
   }, [agendamentos, sdrIds, range, isRateMode, qualificationFilter]);
 
+  // Quadro "Por canal do agendamento": respeita time e SDR escolhidos.
+  // Sem filtro (todos/todos) não restringe nada, mantendo os números de antes.
+  const bookingChannelAllowedIds = useMemo(() => {
+    if (teamFilter === "all" && selectedSdr === "all") return null;
+    const ids = new Set<string>();
+    [...agendamentos, ...createdAgs].forEach((a) => {
+      const sdr = effectiveSdrId(a);
+      if (!sdr) return;
+      if (selectedSdr !== "all" && sdr !== selectedSdr) return;
+      ids.add(a.id);
+    });
+    return ids;
+  }, [agendamentos, createdAgs, sdrIds, teamFilter, selectedSdr]);
+
   const pct = (value: number, base: number) => (base > 0 ? (value / base) * 100 : 0);
 
   // ─── Dados do gráfico ─────────────────────────────────────────
@@ -595,6 +609,7 @@ export default function ProdutividadeSDRTab({
         range={range}
         qualificationFilter={qualificationFilter}
         agendamentos={[...agendamentos, ...createdAgs]}
+        allowedIds={bookingChannelAllowedIds}
       />
 
       {/* Produtividade por hora — orientada pelo filtro único da página */}

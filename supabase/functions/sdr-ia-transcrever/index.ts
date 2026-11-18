@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
-const MODEL = "google/gemini-2.5-flash";
+const MODEL = "google/gemini-3.8-flash";
 const TRANSCRIPTION_PROMPT =
   "Transcreva este áudio em português do Brasil, literalmente, sem comentários e sem cabeçalho. Se estiver inaudível, responda só: [inaudível]";
 
